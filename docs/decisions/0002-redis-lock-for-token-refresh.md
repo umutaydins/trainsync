@@ -33,4 +33,4 @@ tested with in-memory fakes and the race itself with real Redis + PostgreSQL + f
 - Redis is on the token path; if it is down, refreshes fail (jobs fail anyway without Redis).
 - The 15 s lock TTL must exceed a refresh call; a refresh that retries through several 10 s read
   timeouts can outlive the lock. The double-check inside the lock limits the damage to one failed
-  refresh, which surfaces as `StravaAuthError` and is retried by the job.
+  refresh, which surfaces as `StravaAuthError` on that one call.
