@@ -150,4 +150,6 @@ class WebhookEvent(Base):
     status: Mapped[str] = mapped_column(String(16), server_default=text("'pending'"))
     attempts: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     received_at: Mapped[datetime] = _utc_timestamp(default_now=True)
+    # Set on every claim; drives the retry backoff and the stuck-in-processing check.
+    last_attempt_at: Mapped[datetime | None] = _utc_timestamp(nullable=True)
     processed_at: Mapped[datetime | None] = _utc_timestamp(nullable=True)

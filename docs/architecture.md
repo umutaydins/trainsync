@@ -34,7 +34,7 @@ being up or my rate-limit budget being available at read time.
 | `oauth_tokens` | `athlete_id` (PK/FK), `access_token_enc`, `refresh_token_enc`, `expires_at`, `scope` | encrypted with Fernet |
 | `activities` | `id`, `strava_activity_id` (unique), `athlete_id`, `name`, `sport_type`, `start_date` (timestamptz), `distance_m`, `moving_time_s`, `elapsed_time_s`, `elevation_gain_m`, `average_heartrate` (nullable), `raw` (jsonb), `deleted_at` (nullable), `synced_at` | upsert on `strava_activity_id`; soft delete |
 | `sync_runs` | `id`, `athlete_id`, `kind` (backfill / incremental), `status`, `cursor` (jsonb), `pages`, `upserted`, `error`, `started_at`, `updated_at`, `finished_at` | `cursor` makes backfill resumable; `updated_at` is a per-page heartbeat |
-| `webhook_events` | `id`, `dedup_key` (unique), `payload` (jsonb), `status`, `attempts`, `received_at`, `processed_at` | dedup on (subscription_id, object_type, object_id, aspect_type, event_time) |
+| `webhook_events` | `id`, `dedup_key` (unique), `payload` (jsonb), `status`, `attempts`, `received_at`, `last_attempt_at`, `processed_at` | dedup on (subscription_id, object_type, object_id, aspect_type, event_time) |
 
 Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sport_type, start_date)`,
 `webhook_events (status, received_at)`.
@@ -98,7 +98,9 @@ Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sp
   - `athlete update` with `authorized=false` → mark athlete inactive, delete tokens and the
     athlete's activities.
 - Failed events stay in `webhook_events` with `status=failed` and `attempts`. A cron job retries them
-  with backoff. This acts as a simple dead-letter table.
+  with backoff. This acts as a simple dead-letter table. The same cron (every 5 min) re-enqueues
+  `pending` events older than 10 minutes that have no live job, and releases events stuck in
+  `processing` for over 10 minutes. After 8 attempts an event is a dead letter (ADR 0008).
 
 ### 7. Read API (API key in `X-API-Key` header)
 - `GET /v1/activities?from=&to=&sport_type=&limit=&cursor=`: keyset pagination on `(start_date, id)`.

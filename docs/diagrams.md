@@ -157,6 +157,7 @@ erDiagram
         text status "pending | processing | processed | failed"
         int attempts
         timestamptz received_at
+        timestamptz last_attempt_at
         timestamptz processed_at
     }
 ```

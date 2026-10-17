@@ -51,7 +51,7 @@ class WebhookOutcome:
 
 async def process_event(deps: WebhookDeps, event_id: int) -> WebhookOutcome:
     async with deps.sessionmaker.begin() as session:
-        event = await WebhookEventRepository(session).claim(event_id)
+        event = await WebhookEventRepository(session).claim(event_id, deps.clock())
     if event is None:
         return WebhookOutcome("skipped")  # already processed, or another worker has it
 

@@ -23,6 +23,7 @@ from trainsync.strava.tokens import RedisRefreshLock, TokenManager
 from trainsync.sync.backfill import backfill_job
 from trainsync.sync.context import CTX_KEY, WorkerContext
 from trainsync.sync.incremental import incremental_cron, incremental_job
+from trainsync.sync.webhook_retry import retry_webhooks_cron
 from trainsync.sync.webhooks import process_webhook_event_job
 
 log = get_logger(__name__)
@@ -88,7 +89,7 @@ class WorkerSettings:
         incremental_job,
         process_webhook_event_job,
     ]
-    cron_jobs: ClassVar[list[Any]] = [incremental_cron]
+    cron_jobs: ClassVar[list[Any]] = [incremental_cron, retry_webhooks_cron]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(os.environ.get("REDIS_URL", _DEFAULT_REDIS_URL))
