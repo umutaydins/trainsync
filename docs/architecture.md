@@ -106,7 +106,8 @@ Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sp
 - `GET /v1/activities?from=&to=&sport_type=&limit=&cursor=`: keyset pagination on `(start_date, id)`.
 - `GET /v1/stats/weekly?from=&to=&sport_type=`: per ISO week distance, moving time, elevation, count
   (SQL aggregation).
-- `GET /v1/sync/status`: last sync runs, last webhook, current rate-limit usage, circuit state.
+- `GET /v1/sync/status`: last sync runs, last webhook, webhook retry and dead-letter counts, current
+  rate-limit usage, circuit state of every process (each publishes its breaker transitions to Redis).
 - Responses include `last_synced_at`, so the client knows how fresh the data is when Strava is degraded.
 
 ### 8. Operations

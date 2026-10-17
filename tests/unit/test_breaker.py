@@ -252,3 +252,31 @@ async def test_late_failure_from_before_opening_does_not_extend_cooldown(
 def test_threshold_must_be_positive() -> None:
     with pytest.raises(ValueError, match="failure_threshold"):
         CircuitBreaker(failure_threshold=0)
+
+
+async def test_listener_hears_every_transition(clock: ManualClock) -> None:
+    heard: list[tuple[BreakerState, datetime | None]] = []
+
+    async def listener(state: BreakerState, retry_at: datetime | None) -> None:
+        heard.append((state, retry_at))
+
+    breaker = CircuitBreaker(failure_threshold=2, cooldown=COOLDOWN, clock=clock, listener=listener)
+    await fail(breaker)
+    assert heard == []
+    await fail(breaker)
+    clock.advance(COOLDOWN)
+    await succeed(breaker)
+    assert heard == [
+        (BreakerState.OPEN, T0 + COOLDOWN),
+        (BreakerState.HALF_OPEN, None),
+        (BreakerState.CLOSED, None),
+    ]
+
+
+async def test_failing_listener_never_breaks_a_call(clock: ManualClock) -> None:
+    async def listener(state: BreakerState, retry_at: datetime | None) -> None:
+        raise ConnectionError("redis down")
+
+    breaker = CircuitBreaker(failure_threshold=1, cooldown=COOLDOWN, clock=clock, listener=listener)
+    await fail(breaker)
+    assert breaker.state is BreakerState.OPEN

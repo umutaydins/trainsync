@@ -29,7 +29,8 @@ and wrapped around every logical API call:
   handled the same way, deferred by 30 s. A transient outage pauses a job and never fails it.
   This is also what makes the breaker's failure count matter: the job comes back, and the
   breaker decides whether its next call goes out.
-- `StravaClient.breaker_state` exposes the state for metrics and the sync status endpoint.
+- `StravaClient.breaker_state` exposes the state for metrics; a listener publishes every
+  transition for the sync status endpoint.
 
 ## Why per process, not shared in Redis
 - **The signal is local anyway.** Every process talks to the same Strava over a similar network
@@ -56,7 +57,8 @@ and wrapped around every logical API call:
 ## Consequences
 - During an outage each process sends at most `threshold × 4` HTTP attempts, then one probe per
   cooldown.
-- The API process and every worker open and close independently. A status page shows the state
-  of the process that serves it.
+- The API process and every worker open and close independently. Each process publishes its
+  transitions to Redis (`breaker:{process}`, expiring), and `GET /v1/sync/status` reports every
+  process plus the worst state. Publishing is best effort and never fails a Strava call.
 - The jitter on deferrals spreads the jobs that were waiting, so they don't all hit Strava in the
   same second when it recovers.

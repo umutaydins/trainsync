@@ -9,7 +9,7 @@ while loading a token) leave the state alone.
 """
 
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -30,12 +30,17 @@ class BreakerState(StrEnum):
     HALF_OPEN = "half_open"
 
 
+# Called after every state change with the new state and, when open, the time a probe is allowed.
+BreakerListener = Callable[[BreakerState, datetime | None], Awaitable[None]]
+
+
 class CircuitBreaker:
     def __init__(
         self,
         failure_threshold: int = DEFAULT_FAILURE_THRESHOLD,
         cooldown: timedelta = DEFAULT_COOLDOWN,
         clock: Clock = utc_now,
+        listener: BreakerListener | None = None,
     ) -> None:
         if failure_threshold < 1:
             raise ValueError("failure_threshold must be at least 1")
@@ -46,6 +51,8 @@ class CircuitBreaker:
         self._failures = 0
         self._opened_at: datetime | None = None
         self._probe = asyncio.Lock()
+        self._listener = listener
+        self._changed = False
 
     @property
     def state(self) -> BreakerState:
@@ -57,7 +64,10 @@ class CircuitBreaker:
     @asynccontextmanager
     async def guard(self) -> AsyncIterator[None]:
         """Wrap one logical Strava call; raises `CircuitOpen` without running it if not allowed."""
-        probe = await self.before_call()
+        try:
+            probe = await self.before_call()
+        finally:
+            await self._notify()
         try:
             yield
         except StravaUnavailable:
@@ -73,6 +83,7 @@ class CircuitBreaker:
         finally:
             if probe:
                 self._probe.release()
+            await self._notify()
 
     async def before_call(self) -> bool:
         """Admit a call or raise `CircuitOpen`. Returns `True` for the half-open probe, which
@@ -88,6 +99,7 @@ class CircuitBreaker:
         await self._probe.acquire()  # uncontended: returns without yielding
         if self._state is not BreakerState.HALF_OPEN:
             self._state = BreakerState.HALF_OPEN
+            self._changed = True
             log.info("circuit_half_open")
         return True
 
@@ -109,13 +121,26 @@ class CircuitBreaker:
     def _open(self) -> None:
         self._state = BreakerState.OPEN
         self._opened_at = self._clock()
+        self._changed = True
         log.warning("circuit_opened", failures=self._failures, retry_at=self._retry_at())
 
     def _close(self) -> None:
         self._state = BreakerState.CLOSED
         self._failures = 0
         self._opened_at = None
+        self._changed = True
         log.info("circuit_closed")
+
+    async def _notify(self) -> None:
+        if not self._changed or self._listener is None:
+            return
+        self._changed = False
+        retry_at = self._retry_at() if self._state is BreakerState.OPEN else None
+        try:
+            await self._listener(self._state, retry_at)
+        except Exception:
+            # Publishing the state is best effort; it must never break a Strava call.
+            log.warning("circuit_listener_failed", exc_info=True)
 
     def _retry_at(self) -> datetime:
         if self._opened_at is None:

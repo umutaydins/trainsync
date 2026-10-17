@@ -18,7 +18,7 @@ from pydantic import TypeAdapter
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.logging import get_logger
 from trainsync.core.settings import Settings
-from trainsync.strava.breaker import BreakerState, CircuitBreaker
+from trainsync.strava.breaker import BreakerListener, BreakerState, CircuitBreaker
 from trainsync.strava.budget import Allowance, Priority
 from trainsync.strava.errors import (
     RateLimited,
@@ -73,6 +73,7 @@ class StravaClient:
         rng: random.Random | None = None,
         budget: RateLimitHook | None = None,
         breaker: CircuitBreaker | None = None,
+        breaker_listener: BreakerListener | None = None,
     ) -> None:
         self._http = http
         self._settings = settings
@@ -86,6 +87,7 @@ class StravaClient:
             settings.strava_breaker_failure_threshold,
             timedelta(seconds=settings.strava_breaker_cooldown_s),
             clock,
+            breaker_listener,
         )
 
     def with_token_provider(self, token_provider: TokenProvider) -> "StravaClient":

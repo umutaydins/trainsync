@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from trainsync.core.clock import Clock
@@ -37,6 +38,11 @@ def get_cipher(request: Request) -> TokenCipher:
 def get_strava_client(request: Request) -> StravaClient:
     client: StravaClient = request.app.state.strava
     return client
+
+
+def get_redis(request: Request) -> Redis:
+    redis: Redis = request.app.state.redis
+    return redis
 
 
 def get_job_queue(request: Request) -> JobQueue:
@@ -74,3 +80,4 @@ SessionmakerDep = Annotated[async_sessionmaker[AsyncSession], Depends(get_sessio
 CipherDep = Annotated[TokenCipher, Depends(get_cipher)]
 StravaDep = Annotated[StravaClient, Depends(get_strava_client)]
 JobQueueDep = Annotated[JobQueue, Depends(get_job_queue)]
+RedisDep = Annotated[Redis, Depends(get_redis)]

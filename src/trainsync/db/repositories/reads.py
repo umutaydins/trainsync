@@ -2,12 +2,24 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
-from sqlalchemy import ColumnElement, Select, func, select, tuple_
+from sqlalchemy import (
+    ColumnElement,
+    DateTime,
+    Interval,
+    Select,
+    and_,
+    false,
+    func,
+    literal,
+    select,
+    tuple_,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from trainsync.db.models import Activity, Athlete, SyncRun, SyncStatus
+from trainsync.db.models import Activity, Athlete, SyncRun, SyncStatus, WebhookEvent
+from trainsync.db.repositories.webhook_events import MAX_ATTEMPTS
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +78,10 @@ class ReadRepository:
             stmt = stmt.where(Athlete.id == athlete_id)
         return list((await self._session.scalars(stmt)).all())
 
+    async def athletes(self, athlete_ids: Sequence[int]) -> list[Athlete]:
+        stmt = select(Athlete).where(Athlete.id.in_(athlete_ids)).order_by(Athlete.id)
+        return list((await self._session.scalars(stmt)).all())
+
     async def activity_page(
         self, activity_filter: ActivityFilter, after: Keyset | None, limit: int
     ) -> tuple[list[Activity], Keyset | None]:
@@ -90,3 +106,110 @@ class ReadRepository:
         values = [await self._session.scalar(run_done), await self._session.scalar(written)]
         present = [v for v in values if v is not None]
         return max(present) if present else None
+
+    async def weekly_stats(
+        self, activity_filter: ActivityFilter, first_week: date, last_week: date
+    ) -> list["WeekStats"]:
+        """One row per ISO week (Monday, UTC) from `first_week` to `last_week`, zero-filled.
+
+        The filter's `start_from`/`start_to` still apply to the activities, so partial weeks
+        at the edges only count activities inside the range.
+        """
+        weeks = (
+            func.generate_series(
+                literal(_midnight(first_week), DateTime()),
+                literal(_midnight(last_week), DateTime()),
+                literal(timedelta(weeks=1), Interval()),
+            )
+            .table_valued("week_start")
+            .render_derived()
+        )
+        activity_week = func.date_trunc("week", func.timezone("UTC", Activity.start_date))
+        conditions = activity_filter.conditions() if activity_filter.athlete_ids else [false()]
+        stmt = (
+            select(
+                weeks.c.week_start,
+                func.count(Activity.id),
+                func.coalesce(func.sum(Activity.distance_m), 0.0),
+                func.coalesce(func.sum(Activity.moving_time_s), 0),
+                func.coalesce(func.sum(Activity.elevation_gain_m), 0.0),
+            )
+            .select_from(weeks)
+            .outerjoin(Activity, and_(activity_week == weeks.c.week_start, *conditions))
+            .group_by(weeks.c.week_start)
+            .order_by(weeks.c.week_start)
+        )
+        return [
+            WeekStats(
+                week_start=row[0].date(),
+                count=row[1],
+                distance_m=round(float(row[2]), 1),
+                moving_time_s=int(row[3]),
+                elevation_gain_m=round(float(row[4]), 1),
+            )
+            for row in (await self._session.execute(stmt)).all()
+        ]
+
+    async def latest_runs(self, athlete_ids: Sequence[int]) -> dict[tuple[int, str], SyncRun]:
+        """The newest run per (athlete, kind)."""
+        if not athlete_ids:
+            return {}
+        newest = (
+            select(func.max(SyncRun.id))
+            .where(SyncRun.athlete_id.in_(athlete_ids))
+            .group_by(SyncRun.athlete_id, SyncRun.kind)
+        )
+        runs = await self._session.scalars(select(SyncRun).where(SyncRun.id.in_(newest)))
+        return {(run.athlete_id, run.kind): run for run in runs}
+
+    async def webhook_summary(self) -> "WebhookSummary":
+        received, processed = (
+            await self._session.execute(
+                select(func.max(WebhookEvent.received_at), func.max(WebhookEvent.processed_at))
+            )
+        ).one()
+        by_status = await self._session.execute(
+            select(WebhookEvent.status, func.count()).group_by(WebhookEvent.status)
+        )
+        counts: dict[str, int] = {status: count for status, count in by_status.all()}
+        dead = await self._session.scalar(
+            select(func.count())
+            .select_from(WebhookEvent)
+            .where(WebhookEvent.status == "failed", WebhookEvent.attempts >= MAX_ATTEMPTS)
+        )
+        return WebhookSummary(
+            last_received_at=received,
+            last_processed_at=processed,
+            pending=counts.get("pending", 0),
+            processing=counts.get("processing", 0),
+            failed=counts.get("failed", 0) - (dead or 0),
+            dead_letters=dead or 0,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class WeekStats:
+    week_start: date
+    count: int
+    distance_m: float
+    moving_time_s: int
+    elevation_gain_m: float
+
+
+@dataclass(frozen=True, slots=True)
+class WebhookSummary:
+    last_received_at: datetime | None
+    last_processed_at: datetime | None
+    pending: int
+    processing: int
+    failed: int  # will be retried
+    dead_letters: int  # attempts exhausted
+
+
+def week_start(day: date) -> date:
+    """The Monday of `day`'s ISO week."""
+    return day - timedelta(days=day.weekday())
+
+
+def _midnight(day: date) -> datetime:
+    return datetime(day.year, day.month, day.day)  # naive on purpose: compared in UTC

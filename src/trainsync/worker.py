@@ -16,6 +16,7 @@ from trainsync.core.logging import configure_logging, get_logger
 from trainsync.core.settings import Settings, get_settings
 from trainsync.db.repositories.tokens import SqlTokenStore
 from trainsync.db.session import create_engine, create_sessionmaker
+from trainsync.strava.breaker_status import RedisBreakerPublisher, process_name
 from trainsync.strava.budget import RateBudget
 from trainsync.strava.client import StravaClient
 from trainsync.strava.http import build_http_client
@@ -47,7 +48,14 @@ async def startup(ctx: dict[str, Any]) -> None:
     stack.push_async_callback(http.aclose)
 
     budget = RateBudget(redis, clock)
-    strava = StravaClient(http, settings, clock=clock, sleep=sleep, budget=budget)
+    strava = StravaClient(
+        http,
+        settings,
+        clock=clock,
+        sleep=sleep,
+        budget=budget,
+        breaker_listener=RedisBreakerPublisher(redis, process_name("worker"), clock),
+    )
     tokens = TokenManager(
         SqlTokenStore(sessionmaker, TokenCipher.from_settings(settings)),
         RedisRefreshLock(redis),
