@@ -10,9 +10,15 @@ from trainsync.core.settings import Settings
 class JobQueue(Protocol):
     async def enqueue_backfill(self, athlete_id: int) -> bool: ...
 
+    async def enqueue_webhook_event(self, event_id: int) -> bool: ...
+
 
 def backfill_job_id(athlete_id: int) -> str:
     return f"backfill:{athlete_id}"
+
+
+def webhook_job_id(event_id: int) -> str:
+    return f"webhook:{event_id}"
 
 
 class ArqJobQueue:
@@ -23,6 +29,13 @@ class ArqJobQueue:
         """`False` when a backfill job for this athlete is already queued or running."""
         job = await self.pool.enqueue_job(
             "backfill", athlete_id, _job_id=backfill_job_id(athlete_id)
+        )
+        return job is not None
+
+    async def enqueue_webhook_event(self, event_id: int) -> bool:
+        """`False` when a job for this event is already queued or running."""
+        job = await self.pool.enqueue_job(
+            "process_webhook_event", event_id, _job_id=webhook_job_id(event_id)
         )
         return job is not None
 
