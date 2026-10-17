@@ -10,7 +10,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from fastapi import FastAPI
 
 from trainsync import __version__
-from trainsync.api import auth, health, webhooks
+from trainsync.api import activities, auth, health, webhooks
 from trainsync.api.middleware import RequestIdMiddleware
 from trainsync.core.clock import utc_now
 from trainsync.core.crypto import TokenCipher
@@ -59,4 +59,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(webhooks.router)
+    app.include_router(activities.router)
     return app
