@@ -9,6 +9,7 @@ from collections.abc import Awaitable, Callable
 from typing import Annotated, Any, Literal
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+import httpx
 from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
@@ -18,6 +19,14 @@ from starlette.routing import Match
 from fake_strava.clock import Clock, SystemClock
 from fake_strava.config import FakeStravaConfig
 from fake_strava.state import FakeStravaState, OAuthError
+from fake_strava.webhooks import (
+    DEFAULT_MAX_ATTEMPTS,
+    DEFAULT_TIMEOUT_S,
+    DeliveryReport,
+    FireRequest,
+    WebhookEvent,
+    fire,
+)
 
 API_PREFIX = "/api/v3"
 CONTROL_PREFIX = "/_control"
@@ -69,9 +78,36 @@ class ExpireTokensRequest(BaseModel):
     athlete_id: int | None = None
 
 
-def create_app(config: FakeStravaConfig | None = None, clock: Clock | None = None) -> FastAPI:
+class ScenarioRequest(BaseModel):
+    target_url: str
+    athlete_id: int | None = None
+    subscription_id: int | None = None
+    timeout_s: float = Field(default=DEFAULT_TIMEOUT_S, gt=0)
+    max_attempts: int = Field(default=DEFAULT_MAX_ATTEMPTS, ge=1, le=10)
+
+
+class LifecycleRequest(ScenarioRequest):
+    activity_id: int | None = None
+    title: str = "Renamed by the athlete"
+    delete: bool = True
+    out_of_order: bool = False
+
+
+class ScenarioResponse(BaseModel):
+    activity_id: int | None = None
+    events: list[WebhookEvent]
+    report: DeliveryReport
+
+
+def create_app(
+    config: FakeStravaConfig | None = None,
+    clock: Clock | None = None,
+    webhook_transport: httpx.AsyncBaseTransport | None = None,
+) -> FastAPI:
+    """`webhook_transport` lets tests deliver webhooks in-process (e.g. `httpx.ASGITransport`)."""
     app = FastAPI(title="fake_strava", docs_url="/_docs", openapi_url="/_openapi.json")
     app.state.fake = FakeStravaState(config or FakeStravaConfig(), clock or SystemClock())
+    app.state.webhook_transport = webhook_transport
 
     @app.exception_handler(StravaHTTPError)
     async def _strava_error(_: Request, exc: StravaHTTPError) -> Response:
@@ -81,6 +117,7 @@ def create_app(config: FakeStravaConfig | None = None, clock: Clock | None = Non
     _add_oauth_routes(app)
     _add_api_routes(app)
     _add_control_routes(app)
+    _add_webhook_routes(app)
     return app
 
 
@@ -250,6 +287,103 @@ def _add_control_routes(app: FastAPI) -> None:
         state: StateDep, body: ExpireTokensRequest | None = None
     ) -> dict[str, int]:
         return {"expired": state.expire_tokens(body.athlete_id if body else None)}
+
+
+def _add_webhook_routes(app: FastAPI) -> None:
+    @app.post(f"{CONTROL_PREFIX}/webhooks/fire")
+    async def fire_webhooks(body: FireRequest, request: Request) -> DeliveryReport:
+        return await _fire(request, body)
+
+    @app.post(f"{CONTROL_PREFIX}/scenario/activity-lifecycle")
+    async def activity_lifecycle(
+        body: LifecycleRequest, request: Request, state: StateDep
+    ) -> ScenarioResponse:
+        """Create → rename → (delete) one activity in the fake's state, then fire the matching
+        events (shuffled when `out_of_order`)."""
+        try:
+            created = state.apply_change(
+                "create", athlete_id=body.athlete_id, activity_id=body.activity_id, fields={}
+            )
+        except KeyError as exc:
+            raise StravaHTTPError(404, {"message": f"unknown {exc.args[0]}"}) from exc
+        except ValueError as exc:
+            raise StravaHTTPError(422, {"message": str(exc)}) from exc
+        if created is None:
+            raise RuntimeError("create returned no activity")
+        state.apply_change(
+            "update", athlete_id=None, activity_id=created.id, fields={"name": body.title}
+        )
+        steps: list[tuple[Literal["create", "update", "delete"], dict[str, Any]]] = [
+            ("create", {}),
+            ("update", {"title": body.title}),
+        ]
+        if body.delete:
+            state.apply_change("delete", athlete_id=None, activity_id=created.id, fields={})
+            steps.append(("delete", {}))
+        base_time = int(state.clock.now().timestamp())
+        events = [
+            WebhookEvent(
+                object_type="activity",
+                object_id=created.id,
+                aspect_type=aspect,
+                updates=updates,
+                owner_id=created.athlete_id,
+                subscription_id=_subscription(state, body),
+                event_time=base_time + offset,
+            )
+            for offset, (aspect, updates) in enumerate(steps)
+        ]
+        mode: Literal["single", "out_of_order"] = "out_of_order" if body.out_of_order else "single"
+        report = await _fire(request, _fire_request(body, events, mode))
+        return ScenarioResponse(activity_id=created.id, events=events, report=report)
+
+    @app.post(f"{CONTROL_PREFIX}/scenario/deauthorize")
+    async def deauthorize(
+        body: ScenarioRequest, request: Request, state: StateDep
+    ) -> ScenarioResponse:
+        """The athlete revokes access in Strava settings: tokens die, a deauth event is fired."""
+        athlete_id = body.athlete_id or state.default_athlete_id
+        if athlete_id not in state.athletes:
+            raise StravaHTTPError(404, {"message": "unknown athlete"})
+        state.revoke(athlete_id)
+        event = WebhookEvent(
+            object_type="athlete",
+            object_id=athlete_id,
+            aspect_type="update",
+            updates={"authorized": "false"},
+            owner_id=athlete_id,
+            subscription_id=_subscription(state, body),
+            event_time=int(state.clock.now().timestamp()),
+        )
+        report = await _fire(request, _fire_request(body, [event], "single"))
+        return ScenarioResponse(events=[event], report=report)
+
+
+def _subscription(state: FakeStravaState, body: ScenarioRequest) -> int:
+    if body.subscription_id is not None:
+        return body.subscription_id
+    return state.config.webhook_subscription_id
+
+
+def _fire_request(
+    body: ScenarioRequest,
+    events: list[WebhookEvent],
+    mode: Literal["single", "duplicate", "out_of_order"],
+) -> FireRequest:
+    return FireRequest(
+        target_url=body.target_url,
+        events=events,
+        mode=mode,
+        timeout_s=body.timeout_s,
+        max_attempts=body.max_attempts,
+    )
+
+
+async def _fire(request: Request, body: FireRequest) -> DeliveryReport:
+    state: FakeStravaState = request.app.state.fake
+    transport: httpx.AsyncBaseTransport | None = request.app.state.webhook_transport
+    async with httpx.AsyncClient(transport=transport) as http:
+        return await fire(body, http, state.webhook_rng)
 
 
 async def _read_form(request: Request) -> dict[str, str]:

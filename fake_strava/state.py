@@ -100,6 +100,7 @@ class FakeStravaState:
     def reset(self) -> None:
         cfg = self.config
         self.rng = random.Random(f"errors:{cfg.rng_seed}")
+        self.webhook_rng = random.Random(f"webhooks:{cfg.rng_seed}")
         self.athletes: dict[int, FakeAthlete] = {
             a.id: a for a in seed_athletes(cfg.athletes, cfg.rng_seed)
         }
@@ -176,6 +177,16 @@ class FakeStravaState:
                 token.expires_at = expired_at
                 count += 1
         return count
+
+    def revoke(self, athlete_id: int) -> int:
+        """The athlete revoked our access: all their tokens stop working."""
+        access = [t for t, a in self.access_tokens.items() if a.athlete_id == athlete_id]
+        refresh = [t for t, a in self.refresh_tokens.items() if a == athlete_id]
+        for token in access:
+            del self.access_tokens[token]
+        for token in refresh:
+            del self.refresh_tokens[token]
+        return len(access)
 
     # ------------------------------------------------------------------ rate limits
     def consume_rate_limit(self) -> RateLimitDecision:

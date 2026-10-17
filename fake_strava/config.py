@@ -18,6 +18,8 @@ class FakeStravaConfig(BaseSettings):
     seed_activities: int = Field(default=300, ge=0)
     rng_seed: int = 42
     athletes: int = Field(default=1, ge=1)
+    # `subscription_id` in the webhook events the fake sends (trainsync checks it when set).
+    webhook_subscription_id: int = 1
     # When set, /oauth/token checks them; when unset any client is accepted.
     client_id: str | None = None
     client_secret: str | None = None
