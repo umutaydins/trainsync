@@ -17,8 +17,41 @@ depending on Strava's UI, its availability, or its rate limits every time I quer
 - Retries with exponential backoff and jitter, circuit breaker, proactive token refresh with a distributed lock
 - Idempotent upserts, resumable backfill checkpoints, deduplicated webhook events, dead-letter retries
 
-See [docs/architecture.md](docs/architecture.md) for flows and the failure-mode table, and
-[docs/diagrams.md](docs/diagrams.md) for component, ER, class, sequence and state diagrams.
+See [docs/architecture.md](docs/architecture.md) for flows and the
+[failure-modes table](docs/architecture.md#failure-modes-this-design-handles) (each row linked to
+the fault test that proves it), and [docs/diagrams.md](docs/diagrams.md) for component,
+deployment, ER, class, sequence and state diagrams.
+
+## Architecture
+```mermaid
+flowchart LR
+    strava[("Strava API")]
+    you(["API client"])
+    subgraph api["API process (FastAPI)"]
+        hooks["POST /webhooks/strava<br/>validate · dedup insert · enqueue"]
+        read["/v1/activities · /v1/stats/weekly · /v1/sync/status"]
+        auth["/auth/strava/*"]
+    end
+    subgraph worker["Worker process (arq)"]
+        jobs["backfill · incremental_sync (cron)<br/>process_webhook_event · retry_webhooks (cron)"]
+    end
+    client["StravaClient<br/>retries · rate budget · circuit breaker · token refresh"]
+    pg[("PostgreSQL")]
+    redis[("Redis<br/>jobs · locks · budget")]
+    strava -- "webhooks" --> hooks
+    hooks --> pg
+    hooks --> redis
+    redis --> jobs
+    jobs --> client
+    auth --> client
+    client -- "HTTPS" --> strava
+    jobs --> pg
+    you -- "X-API-Key" --> read
+    read --> pg
+```
+The webhook handler never calls Strava: it stores the event and answers in milliseconds. The
+worker fetches the activity's current state and upserts it, so duplicate and out-of-order events
+end up in the correct final state.
 
 ## Stack
 Python 3.12 · FastAPI · httpx · PostgreSQL · SQLAlchemy 2 · Alembic · Redis · arq · Prometheus ·
@@ -36,6 +69,24 @@ If ports 5432/6379 are taken on your machine, set `POSTGRES_HOST_PORT` / `REDIS_
 
 For development against a real Strava app, copy `.env.example` to `.env`, fill it in and run
 `uv run alembic upgrade head` and `uv run uvicorn trainsync.main:create_app --factory --reload`.
+
+## API
+Interactive docs at http://localhost:8000/docs; the OpenAPI document is committed as
+[docs/openapi.json](docs/openapi.json). `/v1` needs an `X-API-Key` (`dev-key-1` in compose).
+```
+# Newest activities, 50 per page; pass next_cursor back for the next page
+curl -s -H 'X-API-Key: dev-key-1' 'http://localhost:8000/v1/activities?limit=50&sport_type=Run'
+curl -s -H 'X-API-Key: dev-key-1' 'http://localhost:8000/v1/activities?limit=50&cursor=<next_cursor>'
+
+# Weekly totals (ISO weeks, Monday start, UTC), empty weeks zero-filled
+curl -s -H 'X-API-Key: dev-key-1' 'http://localhost:8000/v1/stats/weekly?from=2026-09-01&to=2026-10-18'
+
+# Sync health: runs per athlete, webhook backlog and dead letters, rate-limit usage, circuit state
+curl -s -H 'X-API-Key: dev-key-1' http://localhost:8000/v1/sync/status
+
+# Metrics: API on :8000/metrics, worker on :9100/metrics
+curl -s http://localhost:8000/metrics | grep strava_
+```
 
 ## Quality gates
 | Command | What it checks |
@@ -94,8 +145,22 @@ Reproduce: `make loadtest` (needs Docker). Tune it with `LOADTEST_USERS`, `LOADT
 and `LOADTEST_CLASSES`. The CSVs and summaries land in `loadtest/results/`. The `loadtest`
 workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads the results.
 
+## Design decisions
+| ADR | Decision |
+|---|---|
+| [0001](docs/decisions/0001-string-enums-with-check-constraints.md) | String enums with CHECK constraints instead of native Postgres enums |
+| [0002](docs/decisions/0002-redis-lock-for-token-refresh.md) | Per-athlete Redis lock for token refresh (rotating refresh tokens) |
+| [0003](docs/decisions/0003-arq-instead-of-celery.md) | arq instead of Celery |
+| [0004](docs/decisions/0004-two-priority-rate-budget.md) | Two-priority rate budget shared through Redis |
+| [0005](docs/decisions/0005-per-process-circuit-breaker.md) | Per-process circuit breaker, state published for status |
+| [0006](docs/decisions/0006-ack-persist-then-process-webhooks.md) | Acknowledge, persist, then process webhooks |
+| [0007](docs/decisions/0007-fetch-current-state-on-activity-events.md) | Fetch current state on every activity event, never trust the payload |
+| [0008](docs/decisions/0008-webhook-retry-and-dead-letters.md) | Webhook retry cron with backoff; dead letters kept in place |
+| [0009](docs/decisions/0009-keyset-pagination.md) | Keyset pagination over offset |
+| [0010](docs/decisions/0010-metrics-per-process.md) | Prometheus metrics: one registry per process |
+
 ## Status
 - [x] Phase 1 — Foundation, OAuth, Strava client
 - [x] Phase 2 — Sync engine
 - [x] Phase 3 — Webhooks and read API
-- [ ] Phase 4 — Observability, load test, CI
+- [x] Phase 4 — Observability, load test, CI

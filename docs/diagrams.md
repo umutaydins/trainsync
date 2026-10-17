@@ -33,14 +33,15 @@ flowchart LR
             auth["auth router<br/>/auth/strava/*"]
             hooks["webhooks router<br/>/webhooks/strava"]
             read["read API<br/>/v1/*"]
-            ops["health + metrics"]
+            ops["health + /metrics"]
         end
 
         subgraph worker["Worker process (arq)"]
             backfill["backfill job"]
-            incr["incremental_sync<br/>(cron 30 min)"]
+            incr["incremental_sync"]
             proc["process_webhook_event"]
-            retry["retry_failed_webhooks<br/>(cron 5 min)"]
+            sched["schedule_incremental<br/>(cron :00, :30)"]
+            retry["retry_webhooks<br/>(cron 5 min)"]
         end
 
         subgraph sc["strava package"]
@@ -51,7 +52,7 @@ flowchart LR
         end
 
         pg[("PostgreSQL")]
-        redis[("Redis<br/>queue · locks · budget")]
+        redis[("Redis<br/>queue · locks · budget · breaker state")]
     end
 
     strava -- "webhook POST" --> hooks
@@ -66,6 +67,8 @@ flowchart LR
     sclient --> breaker
     tokens -- "lock" --> redis
     budget -- "usage" --> redis
+    breaker -- "state" --> redis
+    read -- "status: budget, breakers" --> redis
     sclient -- "HTTPS (httpx)" --> strava
     worker -- "upsert" --> pg
     read -- "SELECT" --> pg
@@ -80,7 +83,7 @@ flowchart TB
     subgraph host["Docker host"]
         subgraph net["compose network"]
             api["api<br/>uvicorn :8000"]
-            worker["worker<br/>arq"]
+            worker["worker<br/>arq · metrics :9100"]
             migrate["migrate<br/>alembic upgrade head<br/>(one-shot)"]
             fake["fake-strava<br/>uvicorn :8001"]
             pg[("postgres:16<br/>volume pgdata")]
@@ -89,6 +92,7 @@ flowchart TB
     end
 
     browser -- ":8000" --> api
+    browser -- ":9100 (metrics)" --> worker
     browser -- ":8001 (OAuth authorize)" --> fake
     migrate --> pg
     api --> pg
@@ -164,6 +168,8 @@ erDiagram
 
 ## 4. Class diagram — core modules
 
+Generated from the code (public methods; Protocols shown as interfaces).
+
 ```mermaid
 classDiagram
     direction LR
@@ -173,6 +179,10 @@ classDiagram
         +str redis_url
         +str strava_api_base_url
         +str strava_oauth_base_url
+        +int|None strava_webhook_subscription_id
+        +int strava_breaker_failure_threshold
+        +float strava_breaker_cooldown_s
+        +int worker_metrics_port
         +SecretStr token_encryption_key
         +list~SecretStr~ api_keys
     }
@@ -181,20 +191,30 @@ classDiagram
         -AsyncClient http
         -TokenProvider tokens
         -RetryPolicy policy
+        -RateLimitHook budget
+        -CircuitBreaker breaker
         -Clock clock
         -Sleep sleep
-        -on_rate_limit(snapshot)
+        +breaker_state BreakerState
         +get_athlete(athlete_id, priority) StravaAthlete
         +list_activities(athlete_id, before, after, page, per_page, priority) list~StravaActivity~
         +get_activity(athlete_id, activity_id, priority) StravaActivity
         +exchange_code(code) TokenResponse
         +refresh(refresh_token) TokenResponse
+        +with_token_provider(provider) StravaClient
     }
 
     class TokenProvider {
         <<interface>>
         +access_token(athlete_id) str
         +force_refresh(athlete_id) str
+    }
+
+    class RateLimitHook {
+        <<interface>>
+        +allow(priority) Allowance
+        +record(snapshot)
+        +block_until(reset_at)
     }
 
     class TokenManager {
@@ -221,14 +241,16 @@ classDiagram
         +int max_attempts
         +float base
         +float cap
-        +backoff(attempt) float
-        +is_retryable(outcome) bool
+        +ceiling(attempt) float
+        +backoff(attempt, rng) float
     }
 
     class RateBudget {
         +float low_priority_threshold
         +record(snapshot)
         +allow(priority) Allowance
+        +block_until(reset_at)
+        +latest() BudgetState
     }
 
     class CircuitBreaker {
@@ -241,7 +263,13 @@ classDiagram
         +on_failure(probe)
     }
 
+    class RedisBreakerPublisher {
+        <<BreakerListener>>
+        +__call__(state, retry_at)
+    }
+
     class TokenCipher {
+        +from_settings(settings) TokenCipher
         +encrypt(plain) bytes
         +decrypt(cipher) str
     }
@@ -252,11 +280,44 @@ classDiagram
         +delete(athlete_id)
     }
 
+    class AthleteRepository {
+        +upsert_connected(strava_athlete_id) int
+        +by_strava_id(strava_athlete_id) Athlete
+        +is_active_locked(athlete_id) bool
+        +deauthorize(athlete_id) int
+    }
+
     class ActivityRepository {
         +upsert_many(athlete_id, activities) int
-        +soft_delete(strava_activity_id)
-        +delete_for_athlete(athlete_id)
+        +soft_delete(strava_activity_id) bool
+        +delete_for_athlete(athlete_id) int
         +max_start_date(athlete_id) datetime
+    }
+
+    class SyncRunRepository {
+        +open_run(athlete_id, kind, lock) SyncRun
+        +create(athlete_id, kind, cursor, now) SyncRun
+        +checkpoint(run_id, cursor, upserted, now)
+        +set_status(run_id, status, now, error)
+        +has_succeeded(athlete_id, kind) bool
+    }
+
+    class WebhookEventRepository {
+        +insert_new(dedup_key, payload) int
+        +claim(event_id, now) WebhookEvent
+        +set_status(event_id, status, processed_at)
+        +retry_candidates(now, stale_after, limit) list~WebhookEvent~
+        +release_stuck(event_id, claimed_at) bool
+        +count_dead() int
+    }
+
+    class ReadRepository {
+        +active_athlete_ids(athlete_id) list~int~
+        +activity_page(filter, after, limit) page
+        +weekly_stats(filter, first_week, last_week) list~WeekStats~
+        +latest_runs(athlete_ids) dict
+        +webhook_summary() WebhookSummary
+        +last_synced_at(athlete_ids) datetime
     }
 
     class StravaError {
@@ -279,24 +340,52 @@ classDiagram
     class StravaNotFound {
         <<exception>>
     }
+    class StravaRequestError {
+        <<exception>>
+        +int status_code
+    }
     class StravaUnavailable {
         <<exception>>
     }
 
-    class SyncJobs {
+    class SyncDeps {
+        +sessionmaker
+        +ActivitySource strava
+        +Budget budget
+        +Clock clock
+    }
+
+    class WebhookDeps {
+        +sessionmaker
+        +ActivityFetcher strava
+        +Clock clock
+    }
+
+    class WorkerJobs {
         <<arq jobs>>
         +backfill(ctx, athlete_id)
         +incremental_sync(ctx, athlete_id)
         +process_webhook_event(ctx, event_id)
+        +schedule_incremental(ctx) cron 0,30
+        +retry_webhooks(ctx) cron every 5 min
     }
 
-    SyncJobs --> StravaClient
-    SyncJobs --> ActivityRepository
+    WorkerJobs --> SyncDeps
+    WorkerJobs --> WebhookDeps
+    SyncDeps --> StravaClient
+    SyncDeps --> RateBudget
+    WebhookDeps --> StravaClient
+    WorkerJobs ..> SyncRunRepository
+    WorkerJobs ..> ActivityRepository
+    WorkerJobs ..> AthleteRepository
+    WorkerJobs ..> WebhookEventRepository
     TokenProvider <|.. TokenManager
+    RateLimitHook <|.. RateBudget
     StravaClient --> TokenProvider
     StravaClient --> RetryPolicy
-    StravaClient --> RateBudget
+    StravaClient --> RateLimitHook
     StravaClient --> CircuitBreaker
+    CircuitBreaker --> RedisBreakerPublisher : listener
     StravaClient ..> Settings
     TokenManager --> SqlTokenStore
     TokenManager --> RedisRefreshLock
@@ -308,6 +397,7 @@ classDiagram
     StravaError <|-- StravaAuthError
     StravaAuthError <|-- StravaUnauthorized
     StravaError <|-- StravaNotFound
+    StravaError <|-- StravaRequestError
     StravaError <|-- StravaUnavailable
     StravaClient ..> StravaError : raises
 ```
