@@ -6,7 +6,7 @@ SHELL := /bin/bash
 UV ?= uv
 
 .PHONY: help install lint format typecheck test-unit test-integration test-fault verify \
-        compose-up compose-down
+        compose-up compose-down compose-smoke
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  %-18s %s\n",$$1,$$2}'
@@ -47,3 +47,6 @@ compose-up: ## Start the local stack
 
 compose-down: ## Stop the local stack and drop volumes
 	docker compose down -v
+
+compose-smoke: ## Start the stack, run the OAuth smoke test, tear it down
+	./scripts/compose_smoke.sh

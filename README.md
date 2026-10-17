@@ -25,11 +25,17 @@ Python 3.12 · FastAPI · httpx · PostgreSQL · SQLAlchemy 2 · Alembic · Redi
 pytest · testcontainers · Docker Compose · GitHub Actions
 
 ## Run locally
+The compose stack runs postgres, redis, fake_strava (a Strava imitation), a one-shot `migrate`
+service, the API and the worker. It needs no Strava account.
 ```
-cp .env.example .env
-docker compose up -d
-uv run alembic upgrade head
+docker compose up -d --build --wait
+open http://localhost:8000/auth/strava/login   # connect the fake athlete
+make compose-smoke                             # or: scripted end-to-end check, then tear down
 ```
+If ports 5432/6379 are taken on your machine, set `POSTGRES_HOST_PORT` / `REDIS_HOST_PORT`.
+
+For development against a real Strava app, copy `.env.example` to `.env`, fill it in and run
+`uv run alembic upgrade head` and `uv run uvicorn trainsync.main:create_app --factory --reload`.
 
 ## Load test results
 _TODO — fill in after Phase 4 with measured numbers._

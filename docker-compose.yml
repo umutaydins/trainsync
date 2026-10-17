@@ -1,0 +1,95 @@
+# Local stack. Every secret below is a DEV-ONLY dummy value, never use them anywhere else.
+
+x-trainsync-env: &trainsync-env
+  ENV: prod
+  LOG_LEVEL: INFO
+  DATABASE_URL: postgresql+asyncpg://trainsync:trainsync@postgres:5432/trainsync
+  REDIS_URL: redis://redis:6379/0
+  STRAVA_API_BASE_URL: http://fake-strava:8001/api/v3
+  STRAVA_OAUTH_BASE_URL: http://fake-strava:8001/oauth
+  STRAVA_OAUTH_PUBLIC_BASE_URL: http://localhost:8001/oauth
+  STRAVA_CLIENT_ID: "12345"
+  STRAVA_CLIENT_SECRET: dev-only-client-secret
+  STRAVA_REDIRECT_URI: http://localhost:8000/auth/strava/callback
+  STRAVA_WEBHOOK_VERIFY_TOKEN: dev-only-verify-token
+  STRAVA_WEBHOOK_SUBSCRIPTION_ID: "1"
+  # DEV-ONLY Fernet key, generated once for this compose file. Generate your own for real use.
+  TOKEN_ENCRYPTION_KEY: 7gj1mwRHcdCfctPGMZgPxrd5SGl3jGrhm3bMbFZuTi0=
+  STATE_SIGNING_KEY: dev-only-state-signing-key
+  API_KEYS: dev-key-1
+
+x-trainsync-image: &trainsync-image
+  build: .
+  image: trainsync:dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: trainsync
+      POSTGRES_PASSWORD: trainsync
+      POSTGRES_DB: trainsync
+    ports: ["${POSTGRES_HOST_PORT:-5432}:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trainsync -d trainsync"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    ports: ["${REDIS_HOST_PORT:-6379}:6379"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  fake-strava:
+    <<: *trainsync-image
+    command: ["uvicorn", "fake_strava.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8001", "--no-access-log"]
+    environment:
+      FAKE_STRAVA_SEED_ACTIVITIES: ${FAKE_STRAVA_SEED_ACTIVITIES:-300}
+    ports: ["8001:8001"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/_control/stats', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    <<: *trainsync-image
+    command: ["alembic", "upgrade", "head"]
+    environment: *trainsync-env
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    <<: *trainsync-image
+    environment: *trainsync-env
+    ports: ["8000:8000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      fake-strava: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=2)"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  worker:
+    <<: *trainsync-image
+    command: ["arq", "trainsync.worker.WorkerSettings"]
+    environment: *trainsync-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      fake-strava: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  redisdata:

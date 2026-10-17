@@ -49,6 +49,8 @@ uv run arq trainsync.worker.WorkerSettings
 uv run pytest
 uv run ruff check . && uv run ruff format --check . && uv run mypy   # src/ + fake_strava/
 make verify          # lint + mypy + unit + integration — must be green before merge
+make compose-smoke   # build + start the compose stack, OAuth smoke test, tear down
+docker compose up -d --build   # full local stack (migrations run in the one-shot `migrate` service)
 ```
 
 ## Rules
