@@ -30,6 +30,9 @@ dev = [
     "ruff>=0.6",
     "testcontainers[postgres,redis]>=4.13.3",
 ]
+loadtest = [
+    "locust>=2.32",
+]
 
 [build-system]
 requires = ["hatchling"]

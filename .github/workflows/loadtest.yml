@@ -1,0 +1,36 @@
+name: loadtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      users:
+        description: Concurrent locust users
+        default: "50"
+      duration:
+        description: Run time (locust format, e.g. 2m)
+        default: "2m"
+
+jobs:
+  loadtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: make install
+      - name: make loadtest
+        run: make loadtest
+        env:
+          LOADTEST_USERS: ${{ inputs.users }}
+          LOADTEST_DURATION: ${{ inputs.duration }}
+      - name: summary
+        if: always()
+        run: cat loadtest/results/*-summary.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: loadtest-results
+          path: loadtest/results/
