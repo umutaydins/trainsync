@@ -27,3 +27,5 @@ loadtest/results/*
 .DS_Store
 .idea/
 .vscode/
+coverage.xml
+QUESTIONS.md
