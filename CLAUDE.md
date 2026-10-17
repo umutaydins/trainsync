@@ -47,7 +47,7 @@ uv run alembic upgrade head
 uv run uvicorn trainsync.main:create_app --factory --reload
 uv run arq trainsync.worker.WorkerSettings
 uv run pytest
-uv run ruff check . && uv run ruff format --check . && uv run mypy src
+uv run ruff check . && uv run ruff format --check . && uv run mypy   # src/ + fake_strava/
 make verify          # lint + mypy + unit + integration — must be green before merge
 ```
 
