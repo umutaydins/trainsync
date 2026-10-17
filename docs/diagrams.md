@@ -179,11 +179,12 @@ classDiagram
         -AsyncClient http
         -TokenProvider tokens
         -RetryPolicy policy
-        -CircuitBreaker breaker
-        -RateBudget budget
-        +get_athlete() StravaAthlete
-        +list_activities(before, after, page, per_page) list~StravaActivity~
-        +get_activity(id, priority) StravaActivity
+        -Clock clock
+        -Sleep sleep
+        -on_rate_limit(snapshot)
+        +get_athlete(athlete_id, priority) StravaAthlete
+        +list_activities(athlete_id, before, after, page, per_page, priority) list~StravaActivity~
+        +get_activity(athlete_id, activity_id, priority) StravaActivity
         +exchange_code(code) TokenResponse
         +refresh(refresh_token) TokenResponse
     }
@@ -195,12 +196,23 @@ classDiagram
     }
 
     class TokenManager {
-        -TokenRepository repo
-        -Redis redis
+        -TokenStore store
+        -RefreshLock lock
+        -TokenRefresher refresher
         -Clock clock
         +access_token(athlete_id) str
         +force_refresh(athlete_id) str
-        -with_refresh_lock(athlete_id)
+    }
+
+    class RedisRefreshLock {
+        +acquire(athlete_id) str
+        +release(athlete_id, owner)
+        +is_held(athlete_id) bool
+    }
+
+    class SqlTokenStore {
+        +get(athlete_id) Tokens
+        +save(athlete_id, tokens)
     }
 
     class RetryPolicy {
@@ -258,6 +270,9 @@ classDiagram
     class StravaAuthError {
         <<exception>>
     }
+    class StravaUnauthorized {
+        <<exception>>
+    }
     class StravaNotFound {
         <<exception>>
     }
@@ -280,11 +295,15 @@ classDiagram
     StravaClient --> RateBudget
     StravaClient --> CircuitBreaker
     StravaClient ..> Settings
-    TokenManager --> TokenRepository
+    TokenManager --> SqlTokenStore
+    TokenManager --> RedisRefreshLock
+    TokenManager ..> StravaClient : refresh()
+    SqlTokenStore --> TokenRepository
     TokenRepository --> TokenCipher
     StravaError <|-- RateLimited
     StravaError <|-- CircuitOpen
     StravaError <|-- StravaAuthError
+    StravaAuthError <|-- StravaUnauthorized
     StravaError <|-- StravaNotFound
     StravaError <|-- StravaUnavailable
     StravaClient ..> StravaError : raises
