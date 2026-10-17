@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -18,6 +18,8 @@ class Settings(BaseSettings):
 
     strava_api_base_url: str = "https://www.strava.com/api/v3"
     strava_oauth_base_url: str = "https://www.strava.com/oauth"
+    # Browser-facing OAuth base (the authorize redirect); defaults to STRAVA_OAUTH_BASE_URL.
+    strava_oauth_public_base_url: str = ""
     strava_client_id: str
     strava_client_secret: SecretStr
     strava_redirect_uri: str = "http://localhost:8000/auth/strava/callback"
@@ -39,6 +41,12 @@ class Settings(BaseSettings):
     @classmethod
     def _empty_as_none(cls, value: object) -> object:
         return None if value == "" else value
+
+    @model_validator(mode="after")
+    def _default_public_oauth_url(self) -> "Settings":
+        if not self.strava_oauth_public_base_url:
+            self.strava_oauth_public_base_url = self.strava_oauth_base_url
+        return self
 
 
 @lru_cache
