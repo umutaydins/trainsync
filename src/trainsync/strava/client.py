@@ -7,7 +7,8 @@ without retrying (the calling job waits for the window reset).
 
 import random
 import time
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Mapping
+from datetime import datetime
 from typing import Protocol
 
 import httpx
@@ -16,7 +17,7 @@ from pydantic import TypeAdapter
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.logging import get_logger
 from trainsync.core.settings import Settings
-from trainsync.strava.budget import Priority
+from trainsync.strava.budget import Allowance, Priority
 from trainsync.strava.errors import (
     RateLimited,
     StravaAuthError,
@@ -26,12 +27,16 @@ from trainsync.strava.errors import (
     StravaUnavailable,
 )
 from trainsync.strava.models import StravaActivity, StravaAthlete, TokenResponse
-from trainsync.strava.ratelimit import RateLimitSnapshot, next_window_reset, parse_rate_limit
+from trainsync.strava.ratelimit import (
+    RateLimitSnapshot,
+    next_daily_reset,
+    next_window_reset,
+    parse_rate_limit,
+)
 from trainsync.strava.retry import RetryPolicy, is_retryable
 
 log = get_logger(__name__)
 
-RateLimitCallback = Callable[[RateLimitSnapshot], Awaitable[None]]
 QueryParams = Mapping[str, str | int]
 
 _activities = TypeAdapter(list[StravaActivity])
@@ -41,6 +46,16 @@ class TokenProvider(Protocol):
     async def access_token(self, athlete_id: int) -> str: ...
 
     async def force_refresh(self, athlete_id: int) -> str: ...
+
+
+class RateLimitHook(Protocol):
+    """What the client needs from the rate budget (implemented by `RateBudget`)."""
+
+    async def allow(self, priority: Priority) -> Allowance: ...
+
+    async def record(self, snapshot: RateLimitSnapshot) -> None: ...
+
+    async def block_until(self, reset_at: datetime) -> None: ...
 
 
 class StravaClient:
@@ -54,7 +69,7 @@ class StravaClient:
         clock: Clock = utc_now,
         sleep: Sleep = real_sleep,
         rng: random.Random | None = None,
-        on_rate_limit: RateLimitCallback | None = None,
+        budget: RateLimitHook | None = None,
     ) -> None:
         self._http = http
         self._settings = settings
@@ -63,7 +78,7 @@ class StravaClient:
         self._clock = clock
         self._sleep = sleep
         self._rng = rng or random.Random()  # noqa: S311  (jitter, not crypto)
-        self._on_rate_limit = on_rate_limit
+        self._budget = budget
 
     def with_token_provider(self, token_provider: TokenProvider) -> "StravaClient":
         self._tokens = token_provider
@@ -143,9 +158,12 @@ class StravaClient:
         params: QueryParams | None = None,
         priority: Priority,
     ) -> httpx.Response:
-        del priority  # consumed by the rate budget once it is wired in
         if self._tokens is None:
             raise RuntimeError("StravaClient has no token provider for API calls")
+        if self._budget is not None:
+            allowance = await self._budget.allow(priority)
+            if not allowance.allowed:
+                raise RateLimited(reset_at=allowance.resume_at or next_window_reset(self._clock()))
         url = f"{self._settings.strava_api_base_url}{path}"
         token = await self._tokens.access_token(athlete_id)
         try:
@@ -184,11 +202,14 @@ class StravaClient:
                 continue
 
             self._log_call(template, response.status_code, started, attempt)
-            await self._record_rate_limit(response)
+            snapshot = await self._record_rate_limit(response)
             if response.is_success:
                 return response
             if response.status_code == 429:
-                raise RateLimited(reset_at=next_window_reset(self._clock()))
+                reset_at = self._reset_after_429(snapshot)
+                if self._budget is not None:
+                    await self._budget.block_until(reset_at)
+                raise RateLimited(reset_at=reset_at)
             if is_retryable(response):
                 if attempt == last_attempt:
                     raise StravaUnavailable(f"{template}: {response.status_code}")
@@ -197,10 +218,18 @@ class StravaClient:
             raise _client_error(response.status_code)
         raise AssertionError("unreachable")  # pragma: no cover
 
-    async def _record_rate_limit(self, response: httpx.Response) -> None:
+    async def _record_rate_limit(self, response: httpx.Response) -> RateLimitSnapshot | None:
         snapshot = parse_rate_limit(response.headers)
-        if snapshot is not None and self._on_rate_limit is not None:
-            await self._on_rate_limit(snapshot)
+        if snapshot is not None and self._budget is not None:
+            await self._budget.record(snapshot)
+        return snapshot
+
+    def _reset_after_429(self, snapshot: RateLimitSnapshot | None) -> datetime:
+        """The daily budget resets at midnight UTC, the 15-minute one on the quarter hour."""
+        now = self._clock()
+        if snapshot is not None and snapshot.daily_ratio >= 1.0:
+            return next_daily_reset(now)
+        return next_window_reset(now)
 
     def _log_call(
         self,

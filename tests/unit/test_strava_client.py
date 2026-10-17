@@ -9,6 +9,7 @@ import respx
 
 from tests.support.strava import API, OAUTH, Recorder, StubTokens, activity_json, make_client
 from trainsync.core.settings import Settings
+from trainsync.strava.budget import Allowance
 from trainsync.strava.errors import (
     RateLimited,
     StravaAuthError,
@@ -200,3 +201,49 @@ async def test_second_401_is_auth_error(http: httpx.AsyncClient, settings: Setti
         await make_client(http, settings, tokens=tokens).get_activity(1, 7)
     assert route.call_count == 2
     assert tokens.refresh_calls == 1
+
+
+@respx.mock
+async def test_budget_denial_raises_without_calling_strava(
+    http: httpx.AsyncClient, settings: Settings
+) -> None:
+    route = respx.get(f"{API}/activities/7").mock(return_value=httpx.Response(200))
+    resume = datetime(2026, 10, 17, 12, 15, tzinfo=UTC)
+    recorder = Recorder(deny=Allowance(False, resume))
+    with pytest.raises(RateLimited) as exc_info:
+        await make_client(http, settings, recorder=recorder).get_activity(1, 7, priority="low")
+    assert exc_info.value.reset_at == resume
+    assert route.call_count == 0
+
+
+@respx.mock
+async def test_429_blocks_the_budget_until_window_reset(
+    http: httpx.AsyncClient, settings: Settings
+) -> None:
+    respx.get(f"{API}/activities/7").mock(return_value=httpx.Response(429, headers=RL_HEADERS))
+    recorder = Recorder()
+    with pytest.raises(RateLimited):
+        await make_client(http, settings, recorder=recorder).get_activity(1, 7)
+    assert recorder.blocked == [datetime(2026, 10, 17, 12, 15, tzinfo=UTC)]
+
+
+@respx.mock
+async def test_429_with_daily_budget_exhausted_waits_for_midnight(
+    http: httpx.AsyncClient, settings: Settings
+) -> None:
+    headers = {"X-RateLimit-Limit": "200,2000", "X-RateLimit-Usage": "150,2000"}
+    respx.get(f"{API}/activities/7").mock(return_value=httpx.Response(429, headers=headers))
+    recorder = Recorder()
+    with pytest.raises(RateLimited) as exc_info:
+        await make_client(http, settings, recorder=recorder).get_activity(1, 7)
+    assert exc_info.value.reset_at == datetime(2026, 10, 18, tzinfo=UTC)
+    assert recorder.blocked == [datetime(2026, 10, 18, tzinfo=UTC)]
+
+
+@respx.mock
+async def test_oauth_calls_skip_the_budget(http: httpx.AsyncClient, settings: Settings) -> None:
+    body = {"access_token": "a", "refresh_token": "r", "expires_at": 1_800_000_000}
+    respx.post(f"{OAUTH}/token").mock(return_value=httpx.Response(200, json=body))
+    recorder = Recorder(deny=Allowance(False, datetime(2026, 10, 18, tzinfo=UTC)))
+    token = await make_client(http, settings, recorder=recorder).refresh("r")
+    assert token.access_token == "a"

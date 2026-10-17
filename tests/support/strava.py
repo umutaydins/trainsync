@@ -6,8 +6,10 @@ from datetime import UTC, datetime
 import httpx
 
 from tests.conftest import FAKE_STRAVA_BASE_URL
+from trainsync.core.clock import Clock, utc_now
 from trainsync.core.settings import Settings
-from trainsync.strava.client import StravaClient
+from trainsync.strava.budget import Allowance, Priority
+from trainsync.strava.client import RateLimitHook, StravaClient
 from trainsync.strava.ratelimit import RateLimitSnapshot
 
 API = "https://strava.test/api/v3"
@@ -32,14 +34,24 @@ class StubTokens:
 
 @dataclass
 class Recorder:
+    """Records sleeps and acts as a permissive rate budget that remembers what it saw."""
+
     sleeps: list[float] = field(default_factory=list)
     snapshots: list[RateLimitSnapshot] = field(default_factory=list)
+    blocked: list[datetime] = field(default_factory=list)
+    deny: Allowance | None = None
 
     async def sleep(self, seconds: float) -> None:
         self.sleeps.append(seconds)
 
-    async def on_rate_limit(self, snapshot: RateLimitSnapshot) -> None:
+    async def allow(self, priority: Priority) -> Allowance:
+        return self.deny or Allowance(True)
+
+    async def record(self, snapshot: RateLimitSnapshot) -> None:
         self.snapshots.append(snapshot)
+
+    async def block_until(self, reset_at: datetime) -> None:
+        self.blocked.append(reset_at)
 
 
 def make_client(
@@ -57,7 +69,7 @@ def make_client(
         tokens or StubTokens(),
         clock=lambda: now,
         sleep=recorder.sleep,
-        on_rate_limit=recorder.on_rate_limit,
+        budget=recorder,
     )
 
 
@@ -79,7 +91,12 @@ def activity_json(activity_id: int = 1, **overrides: object) -> dict[str, object
 
 
 def fake_backed_client(
-    fake_client: httpx.AsyncClient, settings: Settings, access_token: str
+    fake_client: httpx.AsyncClient,
+    settings: Settings,
+    access_token: str,
+    *,
+    budget: RateLimitHook | None = None,
+    clock: Clock = utc_now,
 ) -> StravaClient:
     """A real StravaClient talking to the in-process fake_strava with a fixed token."""
 
@@ -96,4 +113,6 @@ def fake_backed_client(
         ),
         StubTokens(token=access_token, refreshed=access_token),
         sleep=no_sleep,
+        clock=clock,
+        budget=budget,
     )
