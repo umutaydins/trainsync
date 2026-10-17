@@ -30,6 +30,10 @@ class StravaAuthError(StravaError):
     """Credentials were rejected (expired/revoked tokens, bad code, bad client)."""
 
 
+class StravaUnauthorized(StravaAuthError):  # noqa: N818
+    """A single request got 401; the client refreshes once before giving up."""
+
+
 class StravaNotFound(StravaError):  # noqa: N818
     """The requested object does not exist (404)."""
 

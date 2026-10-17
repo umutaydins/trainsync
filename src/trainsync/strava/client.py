@@ -21,6 +21,7 @@ from trainsync.strava.errors import (
     StravaAuthError,
     StravaNotFound,
     StravaRequestError,
+    StravaUnauthorized,
     StravaUnavailable,
 )
 from trainsync.strava.models import StravaActivity, StravaAthlete, TokenResponse
@@ -147,7 +148,15 @@ class StravaClient:
             raise RuntimeError("StravaClient has no token provider for API calls")
         url = f"{self._settings.strava_api_base_url}{path}"
         token = await self._tokens.access_token(athlete_id)
-        return await self._send(method, template, url, params=params, token=token)
+        try:
+            return await self._send(method, template, url, params=params, token=token)
+        except StravaUnauthorized:
+            # Refresh once and retry once; a second 401 means access was revoked.
+            token = await self._tokens.force_refresh(athlete_id)
+            try:
+                return await self._send(method, template, url, params=params, token=token)
+            except StravaUnauthorized as exc:
+                raise StravaAuthError("strava rejected a freshly refreshed token") from exc
 
     async def _send(
         self,
@@ -214,7 +223,7 @@ class StravaClient:
 
 def _client_error(status_code: int) -> Exception:
     if status_code == 401:
-        return StravaAuthError("strava rejected the access token")
+        return StravaUnauthorized("strava rejected the access token")
     if status_code == 404:
         return StravaNotFound("strava object not found")
     return StravaRequestError(status_code)

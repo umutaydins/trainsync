@@ -176,3 +176,27 @@ def test_only_strava_package_imports_httpx() -> None:
         if pattern.search(path.read_text()) and path.parent.name != "strava"
     ]
     assert offenders == []
+
+
+@respx.mock
+async def test_401_refreshes_once_and_retries_once(
+    http: httpx.AsyncClient, settings: Settings
+) -> None:
+    route = respx.get(f"{API}/activities/7").mock(
+        side_effect=[httpx.Response(401), httpx.Response(200, json=activity_json(7))]
+    )
+    tokens = StubTokens()
+    await make_client(http, settings, tokens=tokens).get_activity(1, 7)
+    assert tokens.refresh_calls == 1
+    assert route.call_count == 2
+    assert route.calls[1].request.headers["authorization"] == "Bearer access-2"
+
+
+@respx.mock
+async def test_second_401_is_auth_error(http: httpx.AsyncClient, settings: Settings) -> None:
+    route = respx.get(f"{API}/activities/7").mock(return_value=httpx.Response(401))
+    tokens = StubTokens()
+    with pytest.raises(StravaAuthError):
+        await make_client(http, settings, tokens=tokens).get_activity(1, 7)
+    assert route.call_count == 2
+    assert tokens.refresh_calls == 1
