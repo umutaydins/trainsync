@@ -22,6 +22,7 @@ from trainsync.strava.http import build_http_client
 from trainsync.strava.tokens import RedisRefreshLock, TokenManager
 from trainsync.sync.backfill import backfill_job
 from trainsync.sync.context import CTX_KEY, WorkerContext
+from trainsync.sync.incremental import incremental_cron, incremental_job
 
 log = get_logger(__name__)
 
@@ -79,7 +80,8 @@ async def ping(ctx: dict[str, Any]) -> str:
 
 
 class WorkerSettings:
-    functions: ClassVar[list[Any]] = [ping, backfill_job]
+    functions: ClassVar[list[Any]] = [ping, backfill_job, incremental_job]
+    cron_jobs: ClassVar[list[Any]] = [incremental_cron]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(os.environ.get("REDIS_URL", _DEFAULT_REDIS_URL))
