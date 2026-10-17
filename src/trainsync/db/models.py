@@ -132,6 +132,8 @@ class SyncRun(Base):
     upserted: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     error: Mapped[str | None] = mapped_column(Text)
     started_at: Mapped[datetime] = _utc_timestamp(default_now=True)
+    # Heartbeat, bumped with every checkpoint: tells a live run from one whose worker died.
+    updated_at: Mapped[datetime] = _utc_timestamp(default_now=True)
     finished_at: Mapped[datetime | None] = _utc_timestamp(nullable=True)
 
 

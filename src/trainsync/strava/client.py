@@ -8,7 +8,7 @@ without retrying (the calling job waits for the window reset).
 import random
 import time
 from collections.abc import Awaitable, Callable, Mapping
-from typing import Literal, Protocol
+from typing import Protocol
 
 import httpx
 from pydantic import TypeAdapter
@@ -16,6 +16,7 @@ from pydantic import TypeAdapter
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.logging import get_logger
 from trainsync.core.settings import Settings
+from trainsync.strava.budget import Priority
 from trainsync.strava.errors import (
     RateLimited,
     StravaAuthError,
@@ -30,7 +31,6 @@ from trainsync.strava.retry import RetryPolicy, is_retryable
 
 log = get_logger(__name__)
 
-Priority = Literal["high", "low"]
 RateLimitCallback = Callable[[RateLimitSnapshot], Awaitable[None]]
 QueryParams = Mapping[str, str | int]
 

@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 import httpx
 
+from tests.conftest import FAKE_STRAVA_BASE_URL
 from trainsync.core.settings import Settings
 from trainsync.strava.client import StravaClient
 from trainsync.strava.ratelimit import RateLimitSnapshot
@@ -75,3 +76,24 @@ def activity_json(activity_id: int = 1, **overrides: object) -> dict[str, object
     }
     data.update(overrides)
     return data
+
+
+def fake_backed_client(
+    fake_client: httpx.AsyncClient, settings: Settings, access_token: str
+) -> StravaClient:
+    """A real StravaClient talking to the in-process fake_strava with a fixed token."""
+
+    async def no_sleep(_: float) -> None:
+        return None
+
+    return StravaClient(
+        fake_client,
+        settings.model_copy(
+            update={
+                "strava_api_base_url": f"{FAKE_STRAVA_BASE_URL}/api/v3",
+                "strava_oauth_base_url": f"{FAKE_STRAVA_BASE_URL}/oauth",
+            }
+        ),
+        StubTokens(token=access_token, refreshed=access_token),
+        sleep=no_sleep,
+    )

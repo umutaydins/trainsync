@@ -8,8 +8,9 @@ from arq.worker import Worker
 
 from tests.conftest import TEST_ENV
 from trainsync.core.settings import Settings
+from trainsync.sync.context import worker_context
 from trainsync.sync.queue import redis_settings
-from trainsync.worker import WorkerSettings, worker_context
+from trainsync.worker import WorkerSettings
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

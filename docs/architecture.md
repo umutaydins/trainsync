@@ -33,7 +33,7 @@ being up or my rate-limit budget being available at read time.
 | `athletes` | `id`, `strava_athlete_id` (unique), `active`, `created_at` | `active=false` after deauthorization |
 | `oauth_tokens` | `athlete_id` (PK/FK), `access_token_enc`, `refresh_token_enc`, `expires_at`, `scope` | encrypted with Fernet |
 | `activities` | `id`, `strava_activity_id` (unique), `athlete_id`, `name`, `sport_type`, `start_date` (timestamptz), `distance_m`, `moving_time_s`, `elapsed_time_s`, `elevation_gain_m`, `average_heartrate` (nullable), `raw` (jsonb), `deleted_at` (nullable), `synced_at` | upsert on `strava_activity_id`; soft delete |
-| `sync_runs` | `id`, `athlete_id`, `kind` (backfill / incremental), `status`, `cursor` (jsonb), `pages`, `upserted`, `error`, `started_at`, `finished_at` | `cursor` makes backfill resumable |
+| `sync_runs` | `id`, `athlete_id`, `kind` (backfill / incremental), `status`, `cursor` (jsonb), `pages`, `upserted`, `error`, `started_at`, `updated_at`, `finished_at` | `cursor` makes backfill resumable; `updated_at` is a per-page heartbeat |
 | `webhook_events` | `id`, `dedup_key` (unique), `payload` (jsonb), `status`, `attempts`, `received_at`, `processed_at` | dedup on (subscription_id, object_type, object_id, aspect_type, event_time) |
 
 Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sport_type, start_date)`,
@@ -72,6 +72,11 @@ Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sp
 - Paginate `GET /athlete/activities?per_page=200&page=N` (or `before=` timestamp cursor).
 - Upsert each page in one transaction, then persist the cursor in `sync_runs.cursor`.
 - If the worker dies or the rate budget runs out, the next run resumes from the cursor.
+- Cursor = oldest `start_date` on the page + 1 s (always `page=1`), so activities sharing the
+  boundary second are re-fetched instead of skipped; the history is done on an empty page or when
+  a short page makes no progress.
+- One backfill per athlete: arq job id `backfill:{athlete_id}`, and a `running` run whose
+  `updated_at` heartbeat is younger than 5 minutes is left alone (older = its worker died → resume).
 
 ### 5. Incremental sync (cron, every 30 min)
 - `after = max(start_date) - 2 days` overlap window to catch late edits and uploads.

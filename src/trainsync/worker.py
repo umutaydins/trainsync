@@ -6,11 +6,9 @@ in `startup` and closed in `shutdown`; jobs reach them through the typed `Worker
 
 import os
 from contextlib import AsyncExitStack
-from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from arq.connections import ArqRedis, RedisSettings
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.crypto import TokenCipher
@@ -18,32 +16,16 @@ from trainsync.core.logging import configure_logging, get_logger
 from trainsync.core.settings import Settings, get_settings
 from trainsync.db.repositories.tokens import SqlTokenStore
 from trainsync.db.session import create_engine, create_sessionmaker
+from trainsync.strava.budget import UnlimitedBudget
 from trainsync.strava.client import StravaClient
 from trainsync.strava.http import build_http_client
 from trainsync.strava.tokens import RedisRefreshLock, TokenManager
+from trainsync.sync.backfill import backfill_job
+from trainsync.sync.context import CTX_KEY, WorkerContext
 
 log = get_logger(__name__)
 
 _DEFAULT_REDIS_URL: str = Settings.model_fields["redis_url"].default
-_CTX_KEY = "trainsync"
-
-
-@dataclass(frozen=True, slots=True)
-class WorkerContext:
-    settings: Settings
-    engine: AsyncEngine
-    sessionmaker: async_sessionmaker[AsyncSession]
-    redis: ArqRedis
-    strava: StravaClient
-    tokens: TokenManager
-    clock: Clock
-    sleep: Sleep
-    exit_stack: AsyncExitStack
-
-
-def worker_context(ctx: dict[str, Any]) -> WorkerContext:
-    context: WorkerContext = ctx[_CTX_KEY]
-    return context
 
 
 async def startup(ctx: dict[str, Any]) -> None:
@@ -70,13 +52,14 @@ async def startup(ctx: dict[str, Any]) -> None:
         sleep=sleep,
     )
     strava.with_token_provider(tokens)
-    ctx[_CTX_KEY] = WorkerContext(
+    ctx[CTX_KEY] = WorkerContext(
         settings=settings,
         engine=engine,
         sessionmaker=sessionmaker,
         redis=redis,
         strava=strava,
         tokens=tokens,
+        budget=UnlimitedBudget(),
         clock=clock,
         sleep=sleep,
         exit_stack=stack,
@@ -85,7 +68,7 @@ async def startup(ctx: dict[str, Any]) -> None:
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
-    context: WorkerContext | None = ctx.get(_CTX_KEY)
+    context: WorkerContext | None = ctx.get(CTX_KEY)
     if context is not None:
         await context.exit_stack.aclose()
     log.info("worker_shutdown")
@@ -96,7 +79,7 @@ async def ping(ctx: dict[str, Any]) -> str:
 
 
 class WorkerSettings:
-    functions: ClassVar[list[Any]] = [ping]
+    functions: ClassVar[list[Any]] = [ping, backfill_job]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(os.environ.get("REDIS_URL", _DEFAULT_REDIS_URL))

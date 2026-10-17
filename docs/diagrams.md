@@ -147,6 +147,7 @@ erDiagram
         int upserted
         text error
         timestamptz started_at
+        timestamptz updated_at "heartbeat"
         timestamptz finished_at
     }
     webhook_events {
