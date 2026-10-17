@@ -1,9 +1,11 @@
 """Typed access to the per-worker resources that `trainsync.worker.startup` puts into arq's ctx."""
 
-from contextlib import AsyncExitStack
+from collections.abc import Iterator
+from contextlib import AsyncExitStack, contextmanager
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+import structlog
 from arq.connections import ArqRedis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
@@ -55,6 +57,17 @@ class WorkerContext:
 
     def sync_deps(self) -> SyncDeps:
         return SyncDeps(self.sessionmaker, self.strava, self.budget, self.clock)
+
+
+@contextmanager
+def job_log_context(ctx: dict[str, Any], job_name: str, **ids: int) -> Iterator[None]:
+    """Bind `job_id`, `job_name` and the job's ids (e.g. `athlete_id`) to every log line.
+
+    arq runs each job in its own asyncio task, so the binding stays inside this job."""
+    with structlog.contextvars.bound_contextvars(
+        job_id=ctx.get("job_id"), job_name=job_name, **ids
+    ):
+        yield
 
 
 def worker_context(ctx: dict[str, Any]) -> WorkerContext:

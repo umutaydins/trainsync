@@ -9,6 +9,7 @@ from contextlib import AsyncExitStack
 from typing import Any, ClassVar
 
 from arq.connections import ArqRedis, RedisSettings
+from prometheus_client import start_http_server
 
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.crypto import TokenCipher
@@ -47,6 +48,11 @@ async def startup(ctx: dict[str, Any]) -> None:
     http = build_http_client(settings)
     stack.push_async_callback(http.aclose)
 
+    if settings.worker_metrics_port:
+        # One registry per process (ADR 0010); Prometheus scrapes each worker on this port.
+        server, _ = start_http_server(settings.worker_metrics_port)
+        stack.callback(server.server_close)  # LIFO: runs after shutdown()
+        stack.callback(server.shutdown)
     budget = RateBudget(redis, clock)
     strava = StravaClient(
         http,

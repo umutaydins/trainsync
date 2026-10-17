@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from trainsync.core.logging import get_logger
 from trainsync.db.models import WebhookEvent, WebhookStatus
 from trainsync.db.repositories.webhook_events import WebhookEventRepository, next_retry_at
-from trainsync.sync.context import worker_context
+from trainsync.sync.context import job_log_context, worker_context
 from trainsync.sync.queue import webhook_job_id
 
 log = get_logger(__name__)
@@ -84,8 +84,9 @@ async def _has_live_job(pool: ArqRedis, event: WebhookEvent) -> bool:
 
 
 async def retry_webhooks(ctx: dict[str, Any]) -> dict[str, int]:
-    wc = worker_context(ctx)
-    return await retry_webhooks_once(wc.sessionmaker, wc.redis, wc.clock())
+    with job_log_context(ctx, "retry_webhooks"):
+        wc = worker_context(ctx)
+        return await retry_webhooks_once(wc.sessionmaker, wc.redis, wc.clock())
 
 
 retry_webhooks_cron = cron(

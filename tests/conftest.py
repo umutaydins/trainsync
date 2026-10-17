@@ -24,6 +24,7 @@ TEST_ENV = {
     "TOKEN_ENCRYPTION_KEY": TEST_FERNET_KEY,
     "STATE_SIGNING_KEY": "state-signing-key-value",
     "API_KEYS": "test-api-key",
+    "WORKER_METRICS_PORT": "0",
 }
 
 

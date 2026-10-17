@@ -17,6 +17,7 @@ from pydantic import TypeAdapter
 
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.logging import get_logger
+from trainsync.core.metrics import STRAVA_REQUEST_DURATION, STRAVA_REQUESTS, STRAVA_RETRIES
 from trainsync.core.settings import Settings
 from trainsync.strava.breaker import BreakerListener, BreakerState, CircuitBreaker
 from trainsync.strava.budget import Allowance, Priority
@@ -215,6 +216,7 @@ class StravaClient:
                 self._log_call(template, None, started, attempt, error=type(exc).__name__)
                 if attempt == last_attempt:
                     raise StravaUnavailable(f"{template}: {type(exc).__name__}") from exc
+                STRAVA_RETRIES.inc()
                 await self._sleep(self._policy.backoff(attempt, self._rng))
                 continue
 
@@ -230,6 +232,7 @@ class StravaClient:
             if is_retryable(response):
                 if attempt == last_attempt:
                     raise StravaUnavailable(f"{template}: {response.status_code}")
+                STRAVA_RETRIES.inc()
                 await self._sleep(self._policy.backoff(attempt, self._rng))
                 continue
             raise _client_error(response.status_code)
@@ -257,11 +260,14 @@ class StravaClient:
         *,
         error: str | None = None,
     ) -> None:
+        duration = time.perf_counter() - started
+        STRAVA_REQUESTS.labels(template, "error" if status is None else str(status)).inc()
+        STRAVA_REQUEST_DURATION.labels(template).observe(duration)
         log.info(
             "strava_call",
             endpoint=template,
             status=status,
-            duration_ms=round((time.perf_counter() - started) * 1000, 1),
+            duration_ms=round(duration * 1000, 1),
             attempt=attempt + 1,
             error=error,
         )

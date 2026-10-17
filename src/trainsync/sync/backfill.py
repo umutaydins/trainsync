@@ -23,11 +23,12 @@ from trainsync.sync.common import (
     SYNC_MAX_TRIES,
     RunWriter,
     SyncOutcome,
+    counted,
     ensure_budget,
     retry_after,
     run_guarded,
 )
-from trainsync.sync.context import SyncDeps, worker_context
+from trainsync.sync.context import SyncDeps, job_log_context, worker_context
 
 log = get_logger(__name__)
 
@@ -95,12 +96,13 @@ async def _claim(deps: SyncDeps, athlete_id: int) -> tuple[int, int | None] | Sy
 
 
 async def backfill(ctx: dict[str, Any], athlete_id: int) -> str:
-    wc = worker_context(ctx)
-    outcome = await run_backfill(wc.sync_deps(), athlete_id)
-    retry = retry_after(outcome.resume_at, wc.clock())
-    if retry is not None:
-        raise retry
-    return outcome.status
+    with job_log_context(ctx, "backfill", athlete_id=athlete_id):
+        wc = worker_context(ctx)
+        outcome = await counted("backfill", run_backfill(wc.sync_deps(), athlete_id))
+        retry = retry_after(outcome.resume_at, wc.clock())
+        if retry is not None:
+            raise retry
+        return outcome.status
 
 
 backfill_job = func(backfill, name="backfill", max_tries=SYNC_MAX_TRIES)

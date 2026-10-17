@@ -112,8 +112,10 @@ Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sp
 
 ### 8. Operations
 - `GET /health/live` (process up), `GET /health/ready` (DB + Redis reachable).
-- `GET /metrics` Prometheus endpoint.
-- JSON logs with `request_id` / `job_id` correlation.
+- `GET /metrics` Prometheus endpoint on the API; each worker serves its own on
+  `WORKER_METRICS_PORT` (default 9100). One registry per process, no multiprocess mode (ADR 0010).
+- JSON logs with `request_id` (API) / `job_id`, `job_name`, `athlete_id` or `event_id` (worker)
+  correlation.
 
 ## Failure modes this design handles
 

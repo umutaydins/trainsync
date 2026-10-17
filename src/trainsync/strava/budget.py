@@ -14,6 +14,7 @@ from typing import Literal, Protocol
 from redis.asyncio import Redis
 
 from trainsync.core.clock import Clock, utc_now
+from trainsync.core.metrics import STRAVA_RATELIMIT_USAGE
 from trainsync.strava.ratelimit import (
     RateLimitSnapshot,
     next_daily_reset,
@@ -101,6 +102,8 @@ class RateBudget:
         """Store the usage from the latest response (the StravaClient calls this every time)."""
         now = self._clock()
         overall = snapshot.overall
+        STRAVA_RATELIMIT_USAGE.labels("short").set(snapshot.short_ratio)
+        STRAVA_RATELIMIT_USAGE.labels("daily").set(snapshot.daily_ratio)
         mapping: dict[str, str] = {
             "short_usage": str(overall.short_usage),
             "short_limit": str(overall.short_limit),

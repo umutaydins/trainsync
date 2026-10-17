@@ -85,6 +85,7 @@ services:
     <<: *trainsync-image
     command: ["arq", "trainsync.worker.WorkerSettings"]
     environment: *trainsync-env
+    ports: ["9100:9100"]  # worker /metrics (WORKER_METRICS_PORT)
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }

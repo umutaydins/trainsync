@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from trainsync.core.clock import Clock
 from trainsync.core.logging import get_logger
+from trainsync.core.metrics import WEBHOOK_EVENTS, webhook_aspect
 from trainsync.db.models import WebhookStatus
 from trainsync.db.repositories.activities import ActivityRepository
 from trainsync.db.repositories.athletes import AthleteRepository
@@ -23,7 +24,7 @@ from trainsync.strava.budget import Priority
 from trainsync.strava.errors import CircuitOpen, RateLimited, StravaNotFound
 from trainsync.strava.models import StravaActivity
 from trainsync.sync.common import SYNC_MAX_TRIES, retry_after, short_error
-from trainsync.sync.context import worker_context
+from trainsync.sync.context import job_log_context, worker_context
 
 log = get_logger(__name__)
 
@@ -54,9 +55,18 @@ async def process_event(deps: WebhookDeps, event_id: int) -> WebhookOutcome:
         event = await WebhookEventRepository(session).claim(event_id, deps.clock())
     if event is None:
         return WebhookOutcome("skipped")  # already processed, or another worker has it
+    outcome = await _process(deps, event_id, event.payload, event.attempts)
+    aspect = webhook_aspect(event.payload["object_type"], event.payload["aspect_type"])
+    WEBHOOK_EVENTS.labels(aspect, outcome.status).inc()
+    return outcome
+
+
+async def _process(
+    deps: WebhookDeps, event_id: int, payload: dict[str, Any], attempts: int
+) -> WebhookOutcome:
 
     try:
-        status = await _apply(deps, event.payload)
+        status = await _apply(deps, payload)
     except (RateLimited, CircuitOpen) as exc:
         resume_at = exc.reset_at if isinstance(exc, RateLimited) else exc.retry_at
         await _set(deps, event_id, WebhookStatus.PENDING)
@@ -67,9 +77,7 @@ async def process_event(deps: WebhookDeps, event_id: int) -> WebhookOutcome:
         raise
     except Exception as exc:
         await _set(deps, event_id, WebhookStatus.FAILED)
-        log.warning(
-            "webhook_failed", event_id=event_id, attempts=event.attempts, error=short_error(exc)
-        )
+        log.warning("webhook_failed", event_id=event_id, attempts=attempts, error=short_error(exc))
         return WebhookOutcome("failed")
     await _set(deps, event_id, WebhookStatus.PROCESSED, processed_at=deps.clock())
     log.info("webhook_processed", event_id=event_id, outcome=status)
@@ -133,12 +141,14 @@ async def _set(
 
 
 async def process_webhook_event(ctx: dict[str, Any], event_id: int) -> str:
-    wc = worker_context(ctx)
-    outcome = await process_event(WebhookDeps(wc.sessionmaker, wc.strava, wc.clock), event_id)
-    retry = retry_after(outcome.resume_at, wc.clock())
-    if retry is not None:
-        raise retry
-    return outcome.status
+    with job_log_context(ctx, "process_webhook_event", event_id=event_id):
+        wc = worker_context(ctx)
+        deps = WebhookDeps(wc.sessionmaker, wc.strava, wc.clock)
+        outcome = await process_event(deps, event_id)
+        retry = retry_after(outcome.resume_at, wc.clock())
+        if retry is not None:
+            raise retry
+        return outcome.status
 
 
 process_webhook_event_job = func(

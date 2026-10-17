@@ -25,11 +25,12 @@ from trainsync.sync.common import (
     SYNC_MAX_TRIES,
     RunWriter,
     SyncOutcome,
+    counted,
     ensure_budget,
     retry_after,
     run_guarded,
 )
-from trainsync.sync.context import SyncDeps, worker_context
+from trainsync.sync.context import SyncDeps, job_log_context, worker_context
 from trainsync.sync.queue import ArqJobQueue
 
 log = get_logger(__name__)
@@ -93,15 +94,16 @@ async def _claim(deps: SyncDeps, athlete_id: int) -> tuple[int, int, int] | Sync
 
 
 async def incremental_sync(ctx: dict[str, Any], athlete_id: int) -> str:
-    wc = worker_context(ctx)
-    outcome = await run_incremental(wc.sync_deps(), athlete_id)
-    if outcome.status == NEEDS_BACKFILL:
-        await ArqJobQueue(wc.redis).enqueue_backfill(athlete_id)
-        return "backfill_enqueued"
-    retry = retry_after(outcome.resume_at, wc.clock())
-    if retry is not None:
-        raise retry
-    return outcome.status
+    with job_log_context(ctx, "incremental_sync", athlete_id=athlete_id):
+        wc = worker_context(ctx)
+        outcome = await counted("incremental", run_incremental(wc.sync_deps(), athlete_id))
+        if outcome.status == NEEDS_BACKFILL:
+            await ArqJobQueue(wc.redis).enqueue_backfill(athlete_id)
+            return "backfill_enqueued"
+        retry = retry_after(outcome.resume_at, wc.clock())
+        if retry is not None:
+            raise retry
+        return outcome.status
 
 
 incremental_job = func(incremental_sync, name="incremental_sync", max_tries=SYNC_MAX_TRIES)
@@ -153,8 +155,9 @@ async def enqueue_incremental_jobs(
 
 
 async def schedule_incremental(ctx: dict[str, Any]) -> int:
-    wc = worker_context(ctx)
-    return len(await enqueue_incremental_jobs(wc.sessionmaker, wc.redis, wc.clock()))
+    with job_log_context(ctx, "schedule_incremental"):
+        wc = worker_context(ctx)
+        return len(await enqueue_incremental_jobs(wc.sessionmaker, wc.redis, wc.clock()))
 
 
 incremental_cron = cron(

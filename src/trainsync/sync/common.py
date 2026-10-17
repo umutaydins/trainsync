@@ -3,7 +3,7 @@ the mapping of Strava errors to run states."""
 
 import asyncio
 import random
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Coroutine
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
@@ -11,6 +11,7 @@ from typing import Any
 from arq import Retry
 
 from trainsync.core.logging import get_logger
+from trainsync.core.metrics import SYNC_JOBS
 from trainsync.db.models import SyncStatus
 from trainsync.db.repositories.activities import ActivityRepository
 from trainsync.db.repositories.athletes import AthleteRepository
@@ -131,6 +132,17 @@ async def _pause(runs: RunWriter, kind: str, athlete_id: int, resume_at: datetim
     await runs.finish(SyncStatus.PAUSED)
     log.info(f"{kind}_paused", athlete_id=athlete_id, resume_at=resume_at)
     return SyncOutcome("paused", runs.run_id, resume_at)
+
+
+async def counted(kind: str, run: Coroutine[Any, Any, SyncOutcome]) -> SyncOutcome:
+    """Await a sync run and count it in `sync_jobs_total{kind,status}` (`error` if it raised)."""
+    try:
+        outcome = await run
+    except Exception:
+        SYNC_JOBS.labels(kind, "error").inc()
+        raise
+    SYNC_JOBS.labels(kind, outcome.status).inc()
+    return outcome
 
 
 def retry_after(

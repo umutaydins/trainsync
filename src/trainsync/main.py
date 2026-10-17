@@ -8,12 +8,13 @@ from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from trainsync import __version__
 from trainsync.api import activities, auth, health, stats, sync_status, webhooks
 from trainsync.api.errors import VALIDATION_ERROR_EXAMPLE
-from trainsync.api.middleware import RequestIdMiddleware
+from trainsync.api.middleware import MetricsMiddleware, RequestIdMiddleware
 from trainsync.core.clock import utc_now
 from trainsync.core.crypto import TokenCipher
 from trainsync.core.logging import configure_logging, get_logger
@@ -62,6 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.clock = utc_now
     app.state.cipher = TokenCipher.from_settings(settings)
+    app.add_middleware(MetricsMiddleware)
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router)
     app.include_router(auth.router)
@@ -70,6 +72,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(stats.router)
     app.include_router(sync_status.router)
     _document_validation_errors(app)
+
+    @app.get("/metrics", include_in_schema=False)
+    async def metrics() -> Response:
+        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
     return app
 
 

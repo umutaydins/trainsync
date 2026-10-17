@@ -16,6 +16,7 @@ from enum import StrEnum
 
 from trainsync.core.clock import Clock, utc_now
 from trainsync.core.logging import get_logger
+from trainsync.core.metrics import STRAVA_CIRCUIT_STATE
 from trainsync.strava.errors import CircuitOpen, StravaError, StravaUnavailable
 
 log = get_logger(__name__)
@@ -29,6 +30,8 @@ class BreakerState(StrEnum):
     OPEN = "open"
     HALF_OPEN = "half_open"
 
+
+_GAUGE_VALUE = {"closed": 0, "half_open": 1, "open": 2}
 
 # Called after every state change with the new state and, when open, the time a probe is allowed.
 BreakerListener = Callable[[BreakerState, datetime | None], Awaitable[None]]
@@ -98,8 +101,7 @@ class CircuitBreaker:
             raise CircuitOpen(retry_at=self._clock() + self.cooldown)
         await self._probe.acquire()  # uncontended: returns without yielding
         if self._state is not BreakerState.HALF_OPEN:
-            self._state = BreakerState.HALF_OPEN
-            self._changed = True
+            self._set(BreakerState.HALF_OPEN)
             log.info("circuit_half_open")
         return True
 
@@ -119,17 +121,20 @@ class CircuitBreaker:
                 self._open()
 
     def _open(self) -> None:
-        self._state = BreakerState.OPEN
         self._opened_at = self._clock()
-        self._changed = True
+        self._set(BreakerState.OPEN)
         log.warning("circuit_opened", failures=self._failures, retry_at=self._retry_at())
 
     def _close(self) -> None:
-        self._state = BreakerState.CLOSED
         self._failures = 0
         self._opened_at = None
-        self._changed = True
+        self._set(BreakerState.CLOSED)
         log.info("circuit_closed")
+
+    def _set(self, state: BreakerState) -> None:
+        self._state = state
+        self._changed = True
+        STRAVA_CIRCUIT_STATE.set(_GAUGE_VALUE[state.value])
 
     async def _notify(self) -> None:
         if not self._changed or self._listener is None:

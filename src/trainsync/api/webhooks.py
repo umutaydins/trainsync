@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from trainsync.api.deps import JobQueueDep, SessionmakerDep, SettingsDep
 from trainsync.api.errors import error
 from trainsync.core.logging import get_logger
+from trainsync.core.metrics import WEBHOOK_EVENTS, webhook_aspect
 from trainsync.db.repositories.webhook_events import WebhookEventRepository
 
 router = APIRouter(prefix="/webhooks/strava", tags=["webhooks"])
@@ -121,7 +122,7 @@ async def receive_event(
     expected_sub = settings.strava_webhook_subscription_id
     if expected_sub is not None and event.subscription_id != expected_sub:
         log.warning("webhook_wrong_subscription", subscription_id=event.subscription_id)
-        return Ack(status="ignored")
+        return _ack(event, "ignored")
 
     async with sessionmaker.begin() as session:
         event_id = await WebhookEventRepository(session).insert_new(
@@ -129,7 +130,7 @@ async def receive_event(
         )
     if event_id is None:
         log.info("webhook_duplicate", object_type=event.object_type, object_id=event.object_id)
-        return Ack(status="duplicate")
+        return _ack(event, "duplicate")
     try:
         await queue.enqueue_webhook_event(event_id)
     except Exception:
@@ -142,7 +143,12 @@ async def receive_event(
         object_type=event.object_type,
         aspect_type=event.aspect_type,
     )
-    return Ack(status="queued")
+    return _ack(event, "queued")
+
+
+def _ack(event: StravaEvent, status: Literal["queued", "duplicate", "ignored"]) -> Ack:
+    WEBHOOK_EVENTS.labels(webhook_aspect(event.object_type, event.aspect_type), status).inc()
+    return Ack(status=status)
 
 
 async def _parse_event(request: Request) -> StravaEvent:

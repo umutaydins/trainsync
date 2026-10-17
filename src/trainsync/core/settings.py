@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     strava_breaker_failure_threshold: int = Field(default=5, ge=1)
     strava_breaker_cooldown_s: float = Field(default=30.0, gt=0)
 
+    # The worker serves /metrics on this port (0 = off); the API serves it on its own port.
+    worker_metrics_port: int = Field(default=9100, ge=0, le=65535)
+
     token_encryption_key: SecretStr
     state_signing_key: SecretStr
     api_keys: Annotated[list[SecretStr], NoDecode] = Field(min_length=1)
