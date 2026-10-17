@@ -98,7 +98,7 @@ async def incremental_sync(ctx: dict[str, Any], athlete_id: int) -> str:
     if outcome.status == NEEDS_BACKFILL:
         await ArqJobQueue(wc.redis).enqueue_backfill(athlete_id)
         return "backfill_enqueued"
-    retry = retry_after(outcome, wc.clock())
+    retry = retry_after(outcome.resume_at, wc.clock())
     if retry is not None:
         raise retry
     return outcome.status

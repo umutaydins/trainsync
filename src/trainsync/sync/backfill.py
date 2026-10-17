@@ -97,7 +97,7 @@ async def _claim(deps: SyncDeps, athlete_id: int) -> tuple[int, int | None] | Sy
 async def backfill(ctx: dict[str, Any], athlete_id: int) -> str:
     wc = worker_context(ctx)
     outcome = await run_backfill(wc.sync_deps(), athlete_id)
-    retry = retry_after(outcome, wc.clock())
+    retry = retry_after(outcome.resume_at, wc.clock())
     if retry is not None:
         raise retry
     return outcome.status

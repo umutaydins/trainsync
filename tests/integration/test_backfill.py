@@ -16,6 +16,7 @@ from tests.support.factories import create_athlete
 from tests.support.strava import fake_backed_client
 from trainsync.core.settings import Settings
 from trainsync.db.models import Activity, SyncRun
+from trainsync.db.repositories.athletes import AthleteRepository
 from trainsync.strava.budget import Allowance, Priority, UnlimitedBudget
 from trainsync.strava.errors import RateLimited, StravaAuthError, StravaUnavailable
 from trainsync.strava.models import StravaActivity
@@ -275,3 +276,29 @@ async def test_inactive_athlete_is_skipped(
     athlete_id = await create_athlete(sessionmaker, active=False)
     assert (await run_backfill(deps(sessionmaker, strava), athlete_id)).status == "skipped"
     assert await _runs(sessionmaker) == []
+
+
+@dataclass
+class DeauthorizeDuringFetch:
+    """The athlete revokes access while a page is in flight."""
+
+    inner: ActivitySource
+    sessionmaker: async_sessionmaker[AsyncSession]
+
+    async def list_activities(self, athlete_id: int, **kwargs: Any) -> list[StravaActivity]:
+        page = await self.inner.list_activities(athlete_id, **kwargs)
+        async with self.sessionmaker.begin() as session:
+            await AthleteRepository(session).deauthorize(athlete_id)
+        return page
+
+
+async def test_deauthorization_mid_backfill_writes_nothing_back(
+    sessionmaker: async_sessionmaker[AsyncSession], strava: ActivitySource
+) -> None:
+    athlete_id = await create_athlete(sessionmaker)
+    source = DeauthorizeDuringFetch(strava, sessionmaker)
+    outcome = await run_backfill(deps(sessionmaker, source), athlete_id)
+    assert outcome.status == "skipped"
+    assert await _count(sessionmaker) == 0
+    (run,) = await _runs(sessionmaker)
+    assert (run.status, run.pages, run.error) == ("failed", 0, "athlete deauthorized during sync")

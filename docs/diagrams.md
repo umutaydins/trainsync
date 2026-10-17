@@ -535,9 +535,9 @@ Per process (ADR 0005). Defaults: N = 5, cooldown = 30 s.
 ```mermaid
 stateDiagram-v2
     [*] --> pending : POST stored (new dedup_key)
-    pending --> processing : worker claims
-    processing --> processed : applied
-    processing --> pending : RateLimited / CircuitOpen (deferred)
+    pending --> processing : worker claims (attempts + 1)
+    processing --> processed : applied / ignored (unknown owner, inactive athlete)
+    processing --> pending : RateLimited / CircuitOpen (deferred) / worker shutdown
     processing --> failed : error
     failed --> processing : retry cron (backoff, attempts < 8)
     failed --> [*] : attempts ≥ 8 (dead letter)

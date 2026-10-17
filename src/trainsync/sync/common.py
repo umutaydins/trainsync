@@ -13,6 +13,7 @@ from arq import Retry
 from trainsync.core.logging import get_logger
 from trainsync.db.models import SyncStatus
 from trainsync.db.repositories.activities import ActivityRepository
+from trainsync.db.repositories.athletes import AthleteRepository
 from trainsync.db.repositories.sync_runs import SyncRunRepository
 from trainsync.strava.budget import Budget, Priority
 from trainsync.strava.errors import CircuitOpen, RateLimited, StravaAuthError, StravaUnavailable
@@ -38,6 +39,10 @@ class SyncOutcome:
     status: str
     run_id: int | None = None
     resume_at: datetime | None = None
+
+
+class AthleteInactiveError(Exception):
+    """The athlete was deauthorized while the sync was running; stop without writing."""
 
 
 class BudgetDeferralError(Exception):
@@ -81,8 +86,11 @@ class RunWriter:
     async def store_page(
         self, athlete_id: int, page: list[StravaActivity], cursor: dict[str, Any]
     ) -> None:
-        """Upsert the page and advance the cursor in one transaction."""
+        """Upsert the page and advance the cursor in one transaction (unless the athlete was
+        deauthorized meanwhile: then nothing is written)."""
         async with self.deps.sessionmaker.begin() as session:
+            if not await AthleteRepository(session).is_active_locked(athlete_id):
+                raise AthleteInactiveError
             upserted = await ActivityRepository(session).upsert_many(athlete_id, page)
             await SyncRunRepository(session).checkpoint(
                 self.run_id, cursor, upserted, self.deps.clock()
@@ -94,8 +102,8 @@ async def run_guarded(
 ) -> SyncOutcome:
     """Run the page loop, mapping errors to run states:
     rate limit / open circuit / budget / Strava unavailable → `paused` (+ resume time);
-    auth → `failed`; cancellation → `paused` and re-raised; anything else → `failed` and
-    re-raised."""
+    auth / athlete deauthorized meanwhile → `failed`; cancellation → `paused` and re-raised;
+    anything else → `failed` and re-raised."""
     try:
         return await body()
     except (RateLimited, CircuitOpen, BudgetDeferralError) as exc:
@@ -107,6 +115,10 @@ async def run_guarded(
         await runs.finish(SyncStatus.FAILED, error=short_error(exc))
         log.warning(f"{kind}_auth_failed", athlete_id=athlete_id)
         return SyncOutcome("failed", runs.run_id)
+    except AthleteInactiveError:
+        await runs.finish(SyncStatus.FAILED, error="athlete deauthorized during sync")
+        log.info(f"{kind}_stopped_athlete_inactive", athlete_id=athlete_id)
+        return SyncOutcome("skipped", runs.run_id)
     except asyncio.CancelledError:
         await runs.finish(SyncStatus.PAUSED)  # worker shutdown / timeout: resume next time
         raise
@@ -122,13 +134,13 @@ async def _pause(runs: RunWriter, kind: str, athlete_id: int, resume_at: datetim
 
 
 def retry_after(
-    outcome: SyncOutcome, now: datetime, rng: random.Random | None = None
+    resume_at: datetime | None, now: datetime, rng: random.Random | None = None
 ) -> Retry | None:
     """An arq `Retry` that re-runs this job when the deferral is over (plus up to
     `DEFER_JITTER_S` of jitter). arq counts it as a try, not a failure; `SYNC_MAX_TRIES` is
     high enough that deferrals never exhaust it."""
-    if outcome.resume_at is None:
+    if resume_at is None:
         return None
     jitter = (rng or random).uniform(0, DEFER_JITTER_S)
-    delay = max(outcome.resume_at - now, timedelta(0)) + timedelta(seconds=1 + jitter)
+    delay = max(resume_at - now, timedelta(0)) + timedelta(seconds=1 + jitter)
     return Retry(defer=delay)

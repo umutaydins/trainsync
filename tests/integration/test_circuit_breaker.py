@@ -100,7 +100,7 @@ async def test_flaky_strava_opens_circuit_defers_jobs_and_recovers(
     for _ in range(MAX_JOB_RUNS):
         # What the `backfill` job does, with small pages; any exception fails the test.
         outcome = await run_backfill(deps, athlete_id, per_page=PER_PAGE)
-        retry = retry_after(outcome, clock())
+        retry = retry_after(outcome.resume_at, clock())
         if retry is None:
             break
         deferrals += 1
