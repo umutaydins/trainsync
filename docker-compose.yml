@@ -63,6 +63,7 @@ services:
     <<: *trainsync-image
     command: ["alembic", "upgrade", "head"]
     environment: *trainsync-env
+    healthcheck: { disable: true }
     depends_on:
       postgres: { condition: service_healthy }
     restart: "no"
@@ -84,7 +85,9 @@ services:
   worker:
     <<: *trainsync-image
     command: ["arq", "trainsync.worker.WorkerSettings"]
-    environment: *trainsync-env
+    environment:
+      <<: *trainsync-env
+      HEALTHCHECK_URL: http://127.0.0.1:9100/metrics
     ports: ["9100:9100"]  # worker /metrics (WORKER_METRICS_PORT)
     depends_on:
       migrate: { condition: service_completed_successfully }

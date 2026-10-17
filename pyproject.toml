@@ -26,6 +26,7 @@ dev = [
     "mypy>=1.11",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
     "respx>=0.23.1",
     "ruff>=0.6",
     "testcontainers[postgres,redis]>=4.13.3",
@@ -76,3 +77,16 @@ markers = [
     "integration: needs Docker (testcontainers Postgres/Redis and/or fake_strava)",
     "fault: fault-injection scenarios (429/5xx bursts, timeouts, restarts)",
 ]
+
+# ---------------------------------------------------------------- coverage
+[tool.coverage.run]
+branch = true
+source = ["trainsync"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
+
+[tool.coverage.xml]
+output = "coverage.xml"

@@ -20,4 +20,9 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1
 USER app
 EXPOSE 8000
+# One image, several roles: each role points HEALTHCHECK_URL at what proves it is alive
+# (the worker at its metrics port); one-shot roles disable the check in compose.
+ENV HEALTHCHECK_URL=http://127.0.0.1:8000/health/live
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
+    CMD ["python", "-c", "import os, urllib.request; urllib.request.urlopen(os.environ['HEALTHCHECK_URL'], timeout=2)"]
 CMD ["uvicorn", "trainsync.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

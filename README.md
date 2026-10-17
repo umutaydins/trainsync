@@ -37,6 +37,19 @@ If ports 5432/6379 are taken on your machine, set `POSTGRES_HOST_PORT` / `REDIS_
 For development against a real Strava app, copy `.env.example` to `.env`, fill it in and run
 `uv run alembic upgrade head` and `uv run uvicorn trainsync.main:create_app --factory --reload`.
 
+## Quality gates
+| Command | What it checks |
+|---|---|
+| `make verify` | ruff (lint + format), mypy `--strict` on `src/` and `fake_strava/`, unit and integration tests (testcontainers Postgres + Redis + fake_strava), branch coverage ≥ 85% (currently 97%) |
+| `make test-fault` | one fault-injection test per row of the [failure-modes table](docs/architecture.md#failure-modes-this-design-handles) |
+| `make audit` | `pip-audit` over every locked dependency (hash-pinned) |
+| `make compose-smoke` | builds the image, starts the whole stack with healthchecks, runs the OAuth flow, tears down |
+
+CI (`.github/workflows/ci.yml`) runs all four, plus a docker job that builds the image and checks
+three things: it runs as a non-root user, it has a `HEALTHCHECK`, and it contains no
+dev/test/load-test packages. The runtime image is 271 MB (linux/arm64 build on the machine
+below).
+
 ## Load test results
 Measured on 2026-10-18 with `make loadtest` on an Apple M1 MacBook Air (8 cores, 16 GB, fanless).
 Docker Desktop's VM had 8 CPUs and 8 GB. Locust ran on the same machine. The compose stack was

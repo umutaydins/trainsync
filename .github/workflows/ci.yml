@@ -21,6 +21,22 @@ jobs:
       - run: uv python install 3.12
       - run: make install
       - run: make verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage.xml
+          if-no-files-found: ignore
+
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: make audit
 
   fault:
     runs-on: ubuntu-latest
@@ -51,6 +67,19 @@ jobs:
           cache-to: type=gha,mode=max
       - name: runs as non-root
         run: test "$(docker run --rm trainsync:ci id -u)" != "0"
+      - name: has a healthcheck
+        run: test "$(docker inspect trainsync:ci --format '{{json .Config.Healthcheck}}')" != "null"
+      - name: no dev or load-test dependencies
+        run: |
+          docker run --rm trainsync:ci python -c "
+          import importlib.util, sys
+          found = [m for m in ('pytest', 'respx', 'testcontainers', 'locust', 'mypy', 'ruff')
+                   if importlib.util.find_spec(m)]
+          sys.exit(f'dev dependencies in the image: {found}' if found else 0)"
+      - name: image size
+        run: |
+          docker image inspect trainsync:ci --format '{{.Size}}' \
+            | awk '{printf "image size: %.0f MB\n", $1/1e6}'
 
   compose:
     runs-on: ubuntu-latest
