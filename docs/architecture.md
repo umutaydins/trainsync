@@ -104,8 +104,11 @@ Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sp
 
 ### 7. Read API (API key in `X-API-Key` header)
 - `GET /v1/activities?from=&to=&sport_type=&limit=&cursor=`: keyset pagination on `(start_date, id)`.
+- `GET /v1/activities/{strava_activity_id}`: one activity; 404 if unknown or soft-deleted.
 - `GET /v1/stats/weekly?from=&to=&sport_type=`: per ISO week distance, moving time, elevation, count
   (SQL aggregation).
+- `GET /v1/stats/summary?from=&to=&sport_type=`: totals for the range, the same totals per
+  `sport_type`, and the longest activity (greatest distance). One SQL query per block.
 - `GET /v1/sync/status`: last sync runs, last webhook, webhook retry and dead-letter counts, current
   rate-limit usage, circuit state of every process (each publishes its breaker transitions to Redis).
 - Responses include `last_synced_at`, so the client knows how fresh the data is when Strava is degraded.

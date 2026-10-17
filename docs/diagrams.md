@@ -314,7 +314,9 @@ classDiagram
     class ReadRepository {
         +active_athlete_ids(athlete_id) list~int~
         +activity_page(filter, after, limit) page
+        +activity(strava_activity_id, athlete_ids) Activity
         +weekly_stats(filter, first_week, last_week) list~WeekStats~
+        +summary(filter) Summary
         +latest_runs(athlete_ids) dict
         +webhook_summary() WebhookSummary
         +last_synced_at(athlete_ids) datetime

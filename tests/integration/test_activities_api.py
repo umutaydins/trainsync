@@ -159,6 +159,50 @@ async def test_valid_key_is_200_and_wrong_key_is_401(api: httpx.AsyncClient) -> 
     assert empty == {"items": [], "next_cursor": None, "last_synced_at": None}
 
 
+async def test_detail_returns_one_activity_with_optional_raw(
+    api: httpx.AsyncClient, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    athlete_id = await create_athlete(sessionmaker)
+    await _seed(sessionmaker, athlete_id, range(1, 4))
+
+    response = await api.get("/v1/activities/2", headers=KEY)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["activity"]["id"] == 2
+    assert body["activity"]["athlete_id"] == athlete_id
+    assert body["activity"]["sport_type"] == SPORTS[2]
+    assert body["activity"]["raw"] is None
+    assert body["last_synced_at"] is not None
+
+    raw = (await api.get("/v1/activities/2", params={"include": "raw"}, headers=KEY)).json()
+    assert raw["activity"]["raw"]["id"] == 2
+
+
+async def test_detail_is_404_for_unknown_soft_deleted_or_inactive(
+    api: httpx.AsyncClient, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    one = await create_athlete(sessionmaker, 1001)
+    gone = await create_athlete(sessionmaker, 1002)
+    await _seed(sessionmaker, one, range(1, 4))
+    await _seed(sessionmaker, gone, range(4, 6))
+    async with sessionmaker.begin() as session:
+        await ActivityRepository(session).soft_delete(3)
+        await session.execute(update(Athlete).where(Athlete.id == gone).values(active=False))
+
+    for activity_id in (999, 3, 4):
+        response = await api.get(f"/v1/activities/{activity_id}", headers=KEY)
+        assert response.status_code == 404, activity_id
+        assert response.json() == {"detail": "activity not found"}
+
+
+async def test_detail_requires_api_key(
+    api: httpx.AsyncClient, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    await _seed(sessionmaker, await create_athlete(sessionmaker), range(1, 2))
+    assert (await api.get("/v1/activities/1")).status_code == 401
+    assert (await api.get("/v1/activities/1", headers={"X-API-Key": "nope"})).status_code == 401
+
+
 async def test_page_query_uses_athlete_start_date_index(engine: AsyncEngine) -> None:
     async with engine.begin() as conn:
         await conn.execute(

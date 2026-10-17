@@ -120,6 +120,66 @@ async def test_bad_ranges_are_400(params: dict[str, str], api: httpx.AsyncClient
     assert response.status_code == 400
 
 
+async def _summary(api: httpx.AsyncClient, **params: Any) -> dict[str, Any]:
+    response = await api.get("/v1/stats/summary", params=params, headers=KEY)
+    assert response.status_code == 200, response.text
+    body: dict[str, Any] = response.json()
+    return body
+
+
+async def test_summary_matches_hand_computed_fixture(
+    api: httpx.AsyncClient, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    await _seed_fixture(sessionmaker)
+    expected = FIXTURE["summary"]
+    body = await _summary(api, **{"from": FIXTURE["from"], "to": FIXTURE["to"]})
+    assert body["totals"] == expected["totals"]
+    assert body["by_sport"] == expected["by_sport"]
+    assert body["longest"]["id"] == expected["longest"]
+    assert body["longest"]["raw"] is None
+    assert (body["from"], body["to"], body["sport_type"]) == (FIXTURE["from"], FIXTURE["to"], None)
+    assert body["last_synced_at"] is not None
+
+
+async def test_summary_sport_filter(
+    api: httpx.AsyncClient, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    await _seed_fixture(sessionmaker)
+    expected = FIXTURE["summary"]
+    params = {"from": FIXTURE["from"], "to": FIXTURE["to"], "sport_type": "Run"}
+    body = await _summary(api, **params)
+    (run,) = (s for s in expected["by_sport"] if s["sport_type"] == "Run")
+    assert body["by_sport"] == [run]
+    assert body["totals"] == {k: v for k, v in run.items() if k != "sport_type"}
+    assert body["longest"]["id"] == expected["longest_Run"]
+
+
+async def test_summary_of_an_empty_range(
+    api: httpx.AsyncClient, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    await _seed_fixture(sessionmaker)
+    # The week of 2026-09-21 holds only soft-deleted #13.
+    body = await _summary(api, **{"from": "2026-09-21", "to": "2026-09-27"})
+    assert body["totals"] == {
+        "count": 0,
+        "distance_m": 0.0,
+        "moving_time_s": 0,
+        "elevation_gain_m": 0.0,
+    }
+    assert body["by_sport"] == []
+    assert body["longest"] is None
+
+
+async def test_summary_defaults_and_reversed_range(api: httpx.AsyncClient) -> None:
+    body = await _summary(api)
+    assert (body["from"], body["to"]) == ("2026-07-27", "2026-10-18")  # 12 ISO weeks to NOW
+    assert body["totals"]["count"] == 0
+    assert body["last_synced_at"] is None
+    reversed_range = {"from": "2026-10-10", "to": "2026-10-01"}
+    response = await api.get("/v1/stats/summary", params=reversed_range, headers=KEY)
+    assert response.status_code == 400
+
+
 async def test_sync_status_reflects_running_backfill_failed_webhook_and_open_circuit(
     api: httpx.AsyncClient,
     sessionmaker: async_sessionmaker[AsyncSession],
@@ -181,5 +241,5 @@ async def test_sync_status_when_nothing_happened_yet(api: httpx.AsyncClient) -> 
 
 
 async def test_stats_and_status_require_api_key(api: httpx.AsyncClient) -> None:
-    for path in ("/v1/stats/weekly", "/v1/sync/status"):
+    for path in ("/v1/stats/weekly", "/v1/stats/summary", "/v1/sync/status"):
         assert (await api.get(path)).status_code == 401

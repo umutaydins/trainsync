@@ -24,6 +24,50 @@
         "title": "Ack",
         "type": "object"
       },
+      "ActivityDetail": {
+        "examples": [
+          {
+            "activity": {
+              "athlete_id": 1,
+              "average_heartrate": 151.2,
+              "distance_m": 10012.5,
+              "elapsed_time_s": 3100,
+              "elevation_gain_m": 42.0,
+              "id": 10000000123,
+              "moving_time_s": 3000,
+              "name": "Morning Run",
+              "sport_type": "Run",
+              "start_date": "2026-10-01T06:30:00Z",
+              "synced_at": "2026-10-01T07:02:11Z"
+            },
+            "last_synced_at": "2026-10-18T09:30:02Z"
+          }
+        ],
+        "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/ActivityOut"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When data was last written by any sync path; tells how fresh this is",
+            "title": "Last Synced At"
+          }
+        },
+        "required": [
+          "activity",
+          "last_synced_at"
+        ],
+        "title": "ActivityDetail",
+        "type": "object"
+      },
       "ActivityOut": {
         "examples": [
           {
@@ -475,6 +519,158 @@
         "title": "RunOut",
         "type": "object"
       },
+      "SportTotalsOut": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "distance_m": {
+            "title": "Distance M",
+            "type": "number"
+          },
+          "elevation_gain_m": {
+            "title": "Elevation Gain M",
+            "type": "number"
+          },
+          "moving_time_s": {
+            "title": "Moving Time S",
+            "type": "integer"
+          },
+          "sport_type": {
+            "title": "Sport Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sport_type",
+          "count",
+          "distance_m",
+          "moving_time_s",
+          "elevation_gain_m"
+        ],
+        "title": "SportTotalsOut",
+        "type": "object"
+      },
+      "StatsSummary": {
+        "examples": [
+          {
+            "by_sport": [
+              {
+                "count": 4,
+                "distance_m": 205000.0,
+                "elevation_gain_m": 1850.0,
+                "moving_time_s": 24600,
+                "sport_type": "Ride"
+              },
+              {
+                "count": 11,
+                "distance_m": 141295.0,
+                "elevation_gain_m": 643.0,
+                "moving_time_s": 42300,
+                "sport_type": "Run"
+              },
+              {
+                "count": 3,
+                "distance_m": 6000.0,
+                "elevation_gain_m": 0.0,
+                "moving_time_s": 7700,
+                "sport_type": "Swim"
+              }
+            ],
+            "from": "2026-09-07",
+            "last_synced_at": "2026-10-18T09:30:02Z",
+            "longest": {
+              "athlete_id": 1,
+              "average_heartrate": 151.2,
+              "distance_m": 10012.5,
+              "elapsed_time_s": 3100,
+              "elevation_gain_m": 42.0,
+              "id": 10000000123,
+              "moving_time_s": 3000,
+              "name": "Morning Run",
+              "sport_type": "Run",
+              "start_date": "2026-10-01T06:30:00Z",
+              "synced_at": "2026-10-01T07:02:11Z"
+            },
+            "to": "2026-10-04",
+            "totals": {
+              "count": 18,
+              "distance_m": 352295.0,
+              "elevation_gain_m": 2493.0,
+              "moving_time_s": 74600
+            }
+          }
+        ],
+        "properties": {
+          "by_sport": {
+            "description": "The same totals per sport type, A to Z",
+            "items": {
+              "$ref": "#/components/schemas/SportTotalsOut"
+            },
+            "title": "By Sport",
+            "type": "array"
+          },
+          "from": {
+            "format": "date",
+            "title": "From",
+            "type": "string"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
+          },
+          "longest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActivityOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Greatest distance in the range (newest wins a tie); null if none"
+          },
+          "sport_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sport Type"
+          },
+          "to": {
+            "format": "date",
+            "title": "To",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/TotalsOut"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "sport_type",
+          "totals",
+          "by_sport",
+          "longest",
+          "last_synced_at"
+        ],
+        "title": "StatsSummary",
+        "type": "object"
+      },
       "SyncStatusOut": {
         "examples": [
           {
@@ -566,6 +762,34 @@
           "last_synced_at"
         ],
         "title": "SyncStatusOut",
+        "type": "object"
+      },
+      "TotalsOut": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "distance_m": {
+            "title": "Distance M",
+            "type": "number"
+          },
+          "elevation_gain_m": {
+            "title": "Elevation Gain M",
+            "type": "number"
+          },
+          "moving_time_s": {
+            "title": "Moving Time S",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "distance_m",
+          "moving_time_s",
+          "elevation_gain_m"
+        ],
+        "title": "TotalsOut",
         "type": "object"
       },
       "ValidationError": {
@@ -1162,6 +1386,234 @@
         "summary": "List activities",
         "tags": [
           "activities"
+        ]
+      }
+    },
+    "/v1/activities/{strava_activity_id}": {
+      "get": {
+        "description": "One stored activity of an active athlete, by its Strava id. Unknown and soft-deleted activities are 404.",
+        "operationId": "get_activity_v1_activities__strava_activity_id__get",
+        "parameters": [
+          {
+            "description": "Strava activity id",
+            "in": "path",
+            "name": "strava_activity_id",
+            "required": true,
+            "schema": {
+              "description": "Strava activity id",
+              "examples": [
+                10000000123
+              ],
+              "title": "Strava Activity Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "`raw` adds Strava's JSON",
+            "in": "query",
+            "name": "include",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": "raw",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`raw` adds Strava's JSON",
+              "title": "Include"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "activity not found"
+                }
+              }
+            },
+            "description": "Unknown or deleted activity"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get one activity",
+        "tags": [
+          "activities"
+        ]
+      }
+    },
+    "/v1/stats/summary": {
+      "get": {
+        "description": "Count, distance, moving time and elevation for activities whose start date falls in `from`..`to` (both inclusive, UTC days), the same totals per sport type (sorted by sport type), and the longest activity: the one with the greatest distance, the newest on a tie. An empty range gives zeros, an empty `by_sport` and a null `longest`. Defaults to the last 12 weeks. Soft-deleted activities are excluded.",
+        "operationId": "summary_v1_stats_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-01"
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-30"
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sport_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "Run"
+              ],
+              "title": "Sport Type"
+            }
+          },
+          {
+            "description": "Our athlete id",
+            "in": "query",
+            "name": "athlete_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Our athlete id",
+              "title": "Athlete Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "`to` is before `from`"
+                }
+              }
+            },
+            "description": "`to` before `from`"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Totals for a date range",
+        "tags": [
+          "stats"
         ]
       }
     },

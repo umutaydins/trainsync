@@ -62,7 +62,9 @@ def test_every_endpoint_is_documented(spec: dict[str, Any]) -> None:
         "GET /webhooks/strava",
         "POST /webhooks/strava",
         "GET /v1/activities",
+        "GET /v1/activities/{strava_activity_id}",
         "GET /v1/stats/weekly",
+        "GET /v1/stats/summary",
         "GET /v1/sync/status",
     }
 
