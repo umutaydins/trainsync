@@ -8,7 +8,7 @@ from sqlalchemy import Connection, inspect
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from tests.integration.conftest import alembic_config
+from tests.support.containers import alembic_config
 from trainsync.db.models import Base
 
 pytestmark = pytest.mark.integration

@@ -13,6 +13,8 @@ from fake_strava.config import FakeStravaConfig
 from fake_strava.state import FakeStravaState
 from trainsync.core.settings import Settings, get_settings
 
+pytest_plugins = ["tests.support.containers"]
+
 TEST_FERNET_KEY = Fernet.generate_key().decode()
 
 TEST_ENV = {

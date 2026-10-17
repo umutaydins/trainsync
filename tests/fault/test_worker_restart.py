@@ -1,16 +1,15 @@
-"""Phase 2: SIGKILL a real arq worker mid-backfill; a new worker resumes the same run from its
-cursor. fake_strava runs under uvicorn so both worker processes can reach it."""
+"""Failure mode: worker crash mid-backfill.
+
+SIGKILL a real arq worker mid-backfill; a new worker resumes the same run from its cursor.
+fake_strava runs under uvicorn so both worker processes can reach it."""
 
 import asyncio
 import os
 import signal
-import socket
 import subprocess
 import sys
-import time
 from collections.abc import Iterator
 from datetime import UTC, datetime
-from pathlib import Path
 
 import httpx
 import pytest
@@ -20,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import TEST_ENV, fake_strava_login
 from tests.support.factories import create_athlete
+from tests.support.fake_server import REPO_ROOT, run_fake_strava
 from trainsync.core.crypto import TokenCipher
 from trainsync.core.settings import Settings
 from trainsync.db.models import Activity, SyncRun
@@ -27,64 +27,20 @@ from trainsync.db.repositories.tokens import SqlTokenStore, Tokens
 from trainsync.sync.common import STALE_AFTER
 from trainsync.sync.queue import backfill_job_id, create_arq_redis
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
 # Slow pages (~6 of 200) so the kill reliably lands mid-backfill.
 LATENCY_MS = 600
 ARQ_IN_PROGRESS_PREFIX = "arq:in-progress:"
 
 
-def _free_port() -> int:
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        port: int = sock.getsockname()[1]
-        return port
-
-
 @pytest.fixture
 def fake_strava_url() -> Iterator[str]:
-    port = _free_port()
-    env = {
-        **os.environ,
-        "FAKE_STRAVA_SEED_ACTIVITIES": "1000",
-        "FAKE_STRAVA_RATE_LIMIT_15MIN": "100000",
-        "FAKE_STRAVA_RATE_LIMIT_DAILY": "1000000",
-        "FAKE_STRAVA_LATENCY_MS": str(LATENCY_MS),
-    }
-    proc = subprocess.Popen(  # noqa: S603  (fixed args, our own interpreter)
-        [
-            sys.executable,
-            "-m",
-            "uvicorn",
-            "fake_strava.app:create_app",
-            "--factory",
-            "--port",
-            str(port),
-            "--log-level",
-            "warning",
-        ],
-        cwd=REPO_ROOT,
-        env=env,
-    )
-    url = f"http://127.0.0.1:{port}"
-    try:
-        _wait_until_up(url, proc)
+    with run_fake_strava(
+        seed_activities=1000,
+        rate_limit_15min=100_000,
+        rate_limit_daily=1_000_000,
+        latency_ms=LATENCY_MS,
+    ) as url:
         yield url
-    finally:
-        proc.terminate()
-        proc.wait(timeout=10)
-
-
-def _wait_until_up(url: str, proc: subprocess.Popen[bytes]) -> None:
-    deadline = time.monotonic() + 20
-    while time.monotonic() < deadline:
-        if proc.poll() is not None:
-            raise RuntimeError("fake_strava exited during startup")
-        try:
-            httpx.get(f"{url}/_control/config", timeout=1).raise_for_status()
-            return
-        except httpx.TransportError:
-            time.sleep(0.1)
-    raise RuntimeError("fake_strava did not start")
 
 
 def _worker(settings: Settings, fake_url: str, *, burst: bool) -> subprocess.Popen[str]:

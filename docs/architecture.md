@@ -119,13 +119,13 @@ Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sp
 
 ## Failure modes this design handles
 
-| Failure | Behavior |
-|---|---|
-| Strava 5xx / timeouts | retries with backoff → circuit opens → jobs delayed, reads unaffected |
-| Rate limit near / exceeded | backfill pauses, webhooks still processed; 429 waits for window reset |
-| Worker crash mid-backfill | resumes from persisted cursor; upserts are idempotent |
-| Duplicate webhook delivery | dedup key, `ON CONFLICT DO NOTHING` |
-| Out-of-order webhook events | worker always fetches the current activity state |
-| Missed webhooks | incremental sync with an overlap window |
-| Expired / rotated tokens | proactive refresh, 401 retry, per-athlete lock |
-| User revokes access | deauth event → tokens and data removed |
+| Failure | Behavior | Proven by (`make test-fault`) |
+|---|---|---|
+| Strava 5xx / timeouts | retries with backoff → circuit opens → jobs delayed, reads unaffected | [`tests/fault/test_strava_5xx_burst.py`](../tests/fault/test_strava_5xx_burst.py), [`tests/fault/test_strava_timeouts.py`](../tests/fault/test_strava_timeouts.py) |
+| Rate limit near / exceeded | backfill pauses, webhooks still processed; 429 waits for window reset | [`tests/fault/test_rate_limit_burst.py`](../tests/fault/test_rate_limit_burst.py) |
+| Worker crash mid-backfill | resumes from persisted cursor; upserts are idempotent | [`tests/fault/test_worker_restart.py`](../tests/fault/test_worker_restart.py) (real SIGKILL) |
+| Duplicate webhook delivery | dedup key, `ON CONFLICT DO NOTHING` | [`tests/fault/test_duplicate_webhooks.py`](../tests/fault/test_duplicate_webhooks.py) |
+| Out-of-order webhook events | worker always fetches the current activity state | [`tests/fault/test_out_of_order_webhooks.py`](../tests/fault/test_out_of_order_webhooks.py) |
+| Missed webhooks | incremental sync with an overlap window | [`tests/fault/test_missed_webhooks.py`](../tests/fault/test_missed_webhooks.py) |
+| Expired / rotated tokens | proactive refresh, 401 retry, per-athlete lock | [`tests/fault/test_token_rotation.py`](../tests/fault/test_token_rotation.py) |
+| User revokes access | deauth event → tokens and data removed (also mid-backfill) | [`tests/fault/test_deauth_during_backfill.py`](../tests/fault/test_deauth_during_backfill.py) |
