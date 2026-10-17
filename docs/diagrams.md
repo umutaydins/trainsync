@@ -431,20 +431,30 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant C as StravaClient
 
-    W->>DB: find sync_run (backfill, running|paused) or create {cursor.before = null}
-    loop until empty page
-        W->>C: list_activities(before=cursor, per_page=200)
+    W->>DB: SELECT … FOR UPDATE open sync_run (backfill, running|paused)
+    alt running and heartbeat (updated_at) < 5 min old
+        W-->>W: already_running → return (another worker owns it)
+    else none
+        W->>DB: create {cursor.before = null}, status = running
+    else paused, or running with a stale heartbeat (its worker died)
+        W->>DB: status = running (keep cursor)
+    end
+    loop until history done
+        W->>C: list_activities(before=cursor, page=1, per_page=200)
         C-->>W: page (≤ 200, newest first)
         alt page empty
             W->>DB: sync_run.status = succeeded
         else
             W->>DB: BEGIN
             W->>DB: INSERT … ON CONFLICT (strava_activity_id) DO UPDATE
-            W->>DB: sync_run.cursor = min(start_date)+1, pages++, upserted += n
+            W->>DB: sync_run.cursor = min(start_date)+1, pages++, upserted += n, updated_at = now
             W->>DB: COMMIT
+            opt short page that made no progress
+                W->>DB: sync_run.status = succeeded
+            end
         end
     end
-    Note over W,DB: Crash anywhere → the next run starts from the last committed cursor.<br/>Re-fetching one page is harmless because upserts are idempotent.
+    Note over W,DB: RateLimited / CircuitOpen / StravaUnavailable / budget denial → status = paused, job deferred.<br/>Crash anywhere → the next run starts from the last committed cursor.<br/>Re-fetching one page is harmless because upserts are idempotent.
 ```
 
 ## 9. Sequence — webhook ack-then-process
@@ -508,14 +518,17 @@ sequenceDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> Closed
-    Closed --> Closed : success / reset failure count
-    Closed --> Open : N consecutive 5xx or timeouts
+    Closed --> Closed : success, 4xx or 429 / reset failure count
+    Closed --> Open : N consecutive StravaUnavailable (5xx / timeouts after retries)
     Open --> HalfOpen : cooldown elapsed
     Open --> Open : call → CircuitOpen(retry_at)
-    HalfOpen --> Closed : probe succeeds
+    HalfOpen --> Closed : probe answered (2xx, 4xx or 429)
     HalfOpen --> Open : probe fails
     HalfOpen --> HalfOpen : other calls → CircuitOpen (only one probe)
+    HalfOpen --> HalfOpen : probe cancelled / non-Strava error → next call probes
 ```
+
+Per process (ADR 0005). Defaults: N = 5, cooldown = 30 s.
 
 ## 12. State — webhook event
 
@@ -536,9 +549,10 @@ stateDiagram-v2
 ```mermaid
 stateDiagram-v2
     [*] --> running : job starts
-    running --> paused : budget low-priority denial / 429 / circuit open
+    running --> paused : budget denial / 429 / CircuitOpen / StravaUnavailable / worker shutdown
     paused --> running : deferred job resumes from cursor
-    running --> succeeded : empty page reached
+    running --> running : heartbeat stale > 5 min (worker died) → next job takes over, same cursor
+    running --> succeeded : history done (empty page, or short page with no progress)
     running --> failed : auth error / unexpected error
     succeeded --> [*]
     failed --> [*]
