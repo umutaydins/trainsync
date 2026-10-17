@@ -13,7 +13,9 @@ from trainsync import __version__
 from trainsync.api import health
 from trainsync.api.middleware import RequestIdMiddleware
 from trainsync.core.logging import configure_logging, get_logger
+from trainsync.core.redis import create_redis
 from trainsync.core.settings import Settings, get_settings
+from trainsync.db.session import create_engine, create_sessionmaker
 
 log = get_logger(__name__)
 
@@ -26,6 +28,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         async with AsyncExitStack() as stack:
             app.state.exit_stack = stack
+            engine = create_engine(settings)
+            stack.push_async_callback(engine.dispose)
+            app.state.engine = engine
+            app.state.sessionmaker = create_sessionmaker(engine)
+            redis = create_redis(settings)
+            stack.push_async_callback(redis.aclose)
+            app.state.redis = redis
             log.info("app_startup", env=settings.env)
             yield
             log.info("app_shutdown")
