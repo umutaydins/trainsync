@@ -1,5 +1,7 @@
 # trainsync
 
+[![ci](https://github.com/umutaydins/trainsync/actions/workflows/ci.yml/badge.svg)](https://github.com/umutaydins/trainsync/actions/workflows/ci.yml)
+
 A self-hosted backend that keeps a complete, always-fresh copy of my Strava training data in
 PostgreSQL and serves it through my own API.
 
@@ -164,3 +166,4 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 - [x] Phase 2 — Sync engine
 - [x] Phase 3 — Webhooks and read API
 - [x] Phase 4 — Observability, load test, CI
+- [ ] Phase 5 — Web dashboard and Telegram bot

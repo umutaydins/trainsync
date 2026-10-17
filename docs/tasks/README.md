@@ -14,6 +14,7 @@ is green.
 | 2 — Sync engine | P2.1 – P2.6 |
 | 3 — Webhooks and read API | P3.1 – P3.7 |
 | 4 — Observability, load test, CI, README | P4.1 – P4.5 |
+| 5 — Web dashboard and Telegram bot | P5.1 – P5.8 |
 
 Dependency graph:
 
@@ -29,4 +30,7 @@ flowchart LR
     P3.5 --> P3.6
     P3.4 & P3.6 --> P3.7
     P3.7 --> P4.1 --> P4.2 --> P4.3 --> P4.4 --> P4.5
+    P4.5 --> P5.1 --> P5.2 --> P5.3 --> P5.4
+    P5.1 --> P5.5 --> P5.6 & P5.7
+    P5.4 & P5.6 & P5.7 --> P5.8
 ```
