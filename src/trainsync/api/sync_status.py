@@ -6,8 +6,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict, Field
 
-from trainsync.api.activities import UNAUTHORIZED
 from trainsync.api.deps import ClockDep, RedisDep, SessionmakerDep, require_api_key
+from trainsync.api.errors import UNAUTHORIZED
 from trainsync.db.models import SyncKind, SyncRun
 from trainsync.db.repositories.reads import ReadRepository
 from trainsync.strava.breaker import BreakerState

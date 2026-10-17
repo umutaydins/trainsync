@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from trainsync.api.deps import (
     CipherDep,
@@ -15,6 +15,7 @@ from trainsync.api.deps import (
     SettingsDep,
     StravaDep,
 )
+from trainsync.api.errors import error
 from trainsync.core.logging import get_logger
 from trainsync.core.state import InvalidStateError, sign_state, verify_state
 from trainsync.db.repositories.athletes import AthleteRepository
@@ -29,6 +30,12 @@ REQUIRED_SCOPE = "activity:read_all"
 
 
 class ConnectedResponse(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"athlete_id": 1, "strava_athlete_id": 134815, "backfill": "queued"}]
+        }
+    )
+
     athlete_id: int
     strava_athlete_id: int
     backfill: str
@@ -64,7 +71,11 @@ async def login(settings: SettingsDep, clock: ClockDep) -> RedirectResponse:
         "tokens, stores the athlete with encrypted tokens and enqueues the initial backfill."
     ),
     response_model=ConnectedResponse,
-    responses={400: {"description": "Bad state, denied access, missing scope or bad code"}},
+    responses={
+        400: error(
+            "Bad state, denied access, missing scope or bad code", "invalid or expired state"
+        )
+    },
 )
 async def callback(
     settings: SettingsDep,

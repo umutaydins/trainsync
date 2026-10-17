@@ -474,22 +474,31 @@ sequenceDiagram
     API->>API: validate, dedup_key = sha256(sub:type:id:aspect:time)
     API->>DB: INSERT webhook_events ON CONFLICT (dedup_key) DO NOTHING RETURNING id
     alt new row
-        API->>Q: enqueue process_webhook_event(id)
+        API->>Q: enqueue process_webhook_event(id), job id webhook:{id}
+        Note over API,Q: enqueue fails → still 200; retry cron recovers stale pending
     else duplicate
         Note over API: nothing to enqueue
     end
-    API-->>S: 200 (target p99 < 100 ms, hard limit 2 s)
+    API-->>S: 200 (measured p99 ≈ 7 ms locally, hard limit 2 s)
 
     Q->>W: process_webhook_event(id)
-    W->>DB: claim: status pending|failed → processing, attempts++
-    alt activity create / update
+    W->>DB: claim: status pending|failed → processing, attempts++, last_attempt_at = now
+    alt unknown owner / inactive athlete
+        Note over W: nothing to do
+    else activity create / update
         W->>C: get_activity(object_id, priority=high)
         C-->>W: current state (or 404 → treat as deleted)
-        W->>DB: upsert (or soft delete)
+        W->>DB: athlete active FOR SHARE? → upsert (or soft delete)
     else activity delete
         W->>DB: soft delete
     end
-    W->>DB: status = processed
+    alt done
+        W->>DB: status = processed
+    else RateLimited / CircuitOpen
+        W->>DB: status = pending, job deferred (arq Retry)
+    else other error
+        W->>DB: status = failed (retry cron: backoff 2^n min, 8 attempts)
+    end
 ```
 
 ## 10. Sequence — deauthorization
@@ -507,7 +516,7 @@ sequenceDiagram
     API-->>S: 200
     API->>W: enqueue process_webhook_event
     W->>DB: BEGIN
-    W->>DB: athletes.active = false
+    W->>DB: athletes.active = false (row lock: in-flight sync pages wait, then write nothing)
     W->>DB: DELETE oauth_tokens WHERE athlete_id
     W->>DB: DELETE activities WHERE athlete_id
     W->>DB: COMMIT, event processed

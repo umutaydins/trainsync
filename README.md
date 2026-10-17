@@ -43,5 +43,5 @@ _TODO — fill in after Phase 4 with measured numbers._
 ## Status
 - [x] Phase 1 — Foundation, OAuth, Strava client
 - [x] Phase 2 — Sync engine
-- [ ] Phase 3 — Webhooks and read API
+- [x] Phase 3 — Webhooks and read API
 - [ ] Phase 4 — Observability, load test, CI

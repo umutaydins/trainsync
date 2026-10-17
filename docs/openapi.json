@@ -1,0 +1,1559 @@
+{
+  "components": {
+    "schemas": {
+      "Ack": {
+        "examples": [
+          {
+            "status": "queued"
+          }
+        ],
+        "properties": {
+          "status": {
+            "enum": [
+              "queued",
+              "duplicate",
+              "ignored"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "Ack",
+        "type": "object"
+      },
+      "ActivityOut": {
+        "examples": [
+          {
+            "athlete_id": 1,
+            "average_heartrate": 151.2,
+            "distance_m": 10012.5,
+            "elapsed_time_s": 3100,
+            "elevation_gain_m": 42.0,
+            "id": 10000000123,
+            "moving_time_s": 3000,
+            "name": "Morning Run",
+            "sport_type": "Run",
+            "start_date": "2026-10-01T06:30:00Z",
+            "synced_at": "2026-10-01T07:02:11Z"
+          }
+        ],
+        "properties": {
+          "athlete_id": {
+            "title": "Athlete Id",
+            "type": "integer"
+          },
+          "average_heartrate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Heartrate"
+          },
+          "distance_m": {
+            "title": "Distance M",
+            "type": "number"
+          },
+          "elapsed_time_s": {
+            "title": "Elapsed Time S",
+            "type": "integer"
+          },
+          "elevation_gain_m": {
+            "title": "Elevation Gain M",
+            "type": "number"
+          },
+          "id": {
+            "description": "Strava activity id",
+            "title": "Id",
+            "type": "integer"
+          },
+          "moving_time_s": {
+            "title": "Moving Time S",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "raw": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Strava's JSON, only with `include=raw`",
+            "title": "Raw"
+          },
+          "sport_type": {
+            "title": "Sport Type",
+            "type": "string"
+          },
+          "start_date": {
+            "format": "date-time",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "synced_at": {
+            "format": "date-time",
+            "title": "Synced At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "athlete_id",
+          "name",
+          "sport_type",
+          "start_date",
+          "distance_m",
+          "moving_time_s",
+          "elapsed_time_s",
+          "elevation_gain_m",
+          "average_heartrate",
+          "synced_at"
+        ],
+        "title": "ActivityOut",
+        "type": "object"
+      },
+      "ActivityPage": {
+        "examples": [
+          {
+            "items": [
+              {
+                "athlete_id": 1,
+                "average_heartrate": 151.2,
+                "distance_m": 10012.5,
+                "elapsed_time_s": 3100,
+                "elevation_gain_m": 42.0,
+                "id": 10000000123,
+                "moving_time_s": 3000,
+                "name": "Morning Run",
+                "sport_type": "Run",
+                "start_date": "2026-10-01T06:30:00Z",
+                "synced_at": "2026-10-01T07:02:11Z"
+              }
+            ],
+            "last_synced_at": "2026-10-18T09:30:02Z",
+            "next_cursor": "eyJzdGFydF9kYXRlIjogIjIwMjYtMTAtMDFUMDY6MzA6MDBaIiwgImlkIjogNDJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When data was last written by any sync path; tells how fresh this is",
+            "title": "Last Synced At"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` for the next page; null at the end",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "last_synced_at"
+        ],
+        "title": "ActivityPage",
+        "type": "object"
+      },
+      "AthleteSync": {
+        "properties": {
+          "athlete_id": {
+            "title": "Athlete Id",
+            "type": "integer"
+          },
+          "backfill": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "incremental": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "strava_athlete_id": {
+            "title": "Strava Athlete Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "athlete_id",
+          "strava_athlete_id",
+          "backfill",
+          "incremental"
+        ],
+        "title": "AthleteSync",
+        "type": "object"
+      },
+      "BreakerProcess": {
+        "properties": {
+          "changed_at": {
+            "format": "date-time",
+            "title": "Changed At",
+            "type": "string"
+          },
+          "process": {
+            "title": "Process",
+            "type": "string"
+          },
+          "retry_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry At"
+          },
+          "state": {
+            "$ref": "#/components/schemas/BreakerState"
+          }
+        },
+        "required": [
+          "process",
+          "state",
+          "retry_at",
+          "changed_at"
+        ],
+        "title": "BreakerProcess",
+        "type": "object"
+      },
+      "BreakerState": {
+        "enum": [
+          "closed",
+          "open",
+          "half_open"
+        ],
+        "title": "BreakerState",
+        "type": "string"
+      },
+      "ChallengeResponse": {
+        "examples": [
+          {
+            "hub.challenge": "15f7d1a91c1f40f8a748fd134752feb3"
+          }
+        ],
+        "properties": {
+          "hub.challenge": {
+            "title": "Hub.Challenge",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hub.challenge"
+        ],
+        "title": "ChallengeResponse",
+        "type": "object"
+      },
+      "CircuitOut": {
+        "properties": {
+          "processes": {
+            "items": {
+              "$ref": "#/components/schemas/BreakerProcess"
+            },
+            "title": "Processes",
+            "type": "array"
+          },
+          "state": {
+            "$ref": "#/components/schemas/BreakerState",
+            "description": "Worst state across processes"
+          }
+        },
+        "required": [
+          "state",
+          "processes"
+        ],
+        "title": "CircuitOut",
+        "type": "object"
+      },
+      "ConnectedResponse": {
+        "examples": [
+          {
+            "athlete_id": 1,
+            "backfill": "queued",
+            "strava_athlete_id": 134815
+          }
+        ],
+        "properties": {
+          "athlete_id": {
+            "title": "Athlete Id",
+            "type": "integer"
+          },
+          "backfill": {
+            "title": "Backfill",
+            "type": "string"
+          },
+          "strava_athlete_id": {
+            "title": "Strava Athlete Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "athlete_id",
+          "strava_athlete_id",
+          "backfill"
+        ],
+        "title": "ConnectedResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "examples": [
+          {
+            "detail": [
+              {
+                "input": "500",
+                "loc": [
+                  "query",
+                  "limit"
+                ],
+                "msg": "Input should be less than or equal to 200",
+                "type": "less_than_equal"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "RateLimitOut": {
+        "properties": {
+          "blocked_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set after a 429",
+            "title": "Blocked Until"
+          },
+          "daily_ratio": {
+            "title": "Daily Ratio",
+            "type": "number"
+          },
+          "short_ratio": {
+            "description": "Share of the 15-minute budget used",
+            "title": "Short Ratio",
+            "type": "number"
+          },
+          "window_start": {
+            "format": "date-time",
+            "title": "Window Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "short_ratio",
+          "daily_ratio",
+          "window_start",
+          "blocked_until"
+        ],
+        "title": "RateLimitOut",
+        "type": "object"
+      },
+      "RunOut": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "upserted": {
+            "title": "Upserted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "pages",
+          "upserted",
+          "error",
+          "started_at",
+          "updated_at",
+          "finished_at"
+        ],
+        "title": "RunOut",
+        "type": "object"
+      },
+      "SyncStatusOut": {
+        "examples": [
+          {
+            "athletes": [
+              {
+                "athlete_id": 1,
+                "backfill": {
+                  "finished_at": "2026-10-18T09:02:10Z",
+                  "id": 7,
+                  "pages": 3,
+                  "started_at": "2026-10-18T09:00:00Z",
+                  "status": "paused",
+                  "updated_at": "2026-10-18T09:02:10Z",
+                  "upserted": 597
+                },
+                "strava_athlete_id": 134815
+              }
+            ],
+            "circuit": {
+              "processes": [
+                {
+                  "changed_at": "2026-10-18T09:21:00Z",
+                  "process": "worker@host:41",
+                  "retry_at": "2026-10-18T09:21:30Z",
+                  "state": "open"
+                }
+              ],
+              "state": "open"
+            },
+            "last_synced_at": "2026-10-18T09:20:01Z",
+            "rate_limit": {
+              "daily_ratio": 0.31,
+              "short_ratio": 0.82,
+              "window_start": "2026-10-18T09:00:00Z"
+            },
+            "webhooks": {
+              "dead_letters": 0,
+              "failed": 1,
+              "last_processed_at": "2026-10-18T09:20:01Z",
+              "last_received_at": "2026-10-18T09:20:00Z",
+              "pending": 0,
+              "processing": 0
+            }
+          }
+        ],
+        "properties": {
+          "athletes": {
+            "items": {
+              "$ref": "#/components/schemas/AthleteSync"
+            },
+            "title": "Athletes",
+            "type": "array"
+          },
+          "circuit": {
+            "$ref": "#/components/schemas/CircuitOut"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
+          },
+          "rate_limit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RateLimitOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until Strava has answered once"
+          },
+          "webhooks": {
+            "$ref": "#/components/schemas/WebhookStatusOut"
+          }
+        },
+        "required": [
+          "athletes",
+          "webhooks",
+          "rate_limit",
+          "circuit",
+          "last_synced_at"
+        ],
+        "title": "SyncStatusOut",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WebhookStatusOut": {
+        "properties": {
+          "dead_letters": {
+            "description": "Failed 8 times; no longer retried",
+            "title": "Dead Letters",
+            "type": "integer"
+          },
+          "failed": {
+            "description": "Failed, will be retried with backoff",
+            "title": "Failed",
+            "type": "integer"
+          },
+          "last_processed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Processed At"
+          },
+          "last_received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Received At"
+          },
+          "pending": {
+            "title": "Pending",
+            "type": "integer"
+          },
+          "processing": {
+            "title": "Processing",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "last_received_at",
+          "last_processed_at",
+          "pending",
+          "processing",
+          "failed",
+          "dead_letters"
+        ],
+        "title": "WebhookStatusOut",
+        "type": "object"
+      },
+      "Week": {
+        "examples": [
+          {
+            "count": 4,
+            "distance_m": 42195.0,
+            "elevation_gain_m": 310.5,
+            "moving_time_s": 14520,
+            "week_start": "2026-09-28"
+          }
+        ],
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "distance_m": {
+            "title": "Distance M",
+            "type": "number"
+          },
+          "elevation_gain_m": {
+            "title": "Elevation Gain M",
+            "type": "number"
+          },
+          "moving_time_s": {
+            "title": "Moving Time S",
+            "type": "integer"
+          },
+          "week_start": {
+            "description": "Monday of the ISO week (UTC)",
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week_start",
+          "count",
+          "distance_m",
+          "moving_time_s",
+          "elevation_gain_m"
+        ],
+        "title": "Week",
+        "type": "object"
+      },
+      "WeeklyStats": {
+        "examples": [
+          {
+            "from": "2026-09-28",
+            "last_synced_at": "2026-10-18T09:30:02Z",
+            "sport_type": "Run",
+            "to": "2026-10-11",
+            "weeks": [
+              {
+                "count": 4,
+                "distance_m": 42195.0,
+                "elevation_gain_m": 310.5,
+                "moving_time_s": 14520,
+                "week_start": "2026-09-28"
+              },
+              {
+                "count": 4,
+                "distance_m": 42195.0,
+                "elevation_gain_m": 310.5,
+                "moving_time_s": 14520,
+                "week_start": "2026-10-05"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "from": {
+            "format": "date",
+            "title": "From",
+            "type": "string"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
+          },
+          "sport_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sport Type"
+          },
+          "to": {
+            "format": "date",
+            "title": "To",
+            "type": "string"
+          },
+          "weeks": {
+            "items": {
+              "$ref": "#/components/schemas/Week"
+            },
+            "title": "Weeks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "sport_type",
+          "weeks",
+          "last_synced_at"
+        ],
+        "title": "WeeklyStats",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyHeader": {
+        "description": "One of the keys configured in `API_KEYS`.",
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "title": "trainsync",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/auth/strava/callback": {
+      "get": {
+        "description": "Verifies `state`, requires the `activity:read_all` scope, exchanges the code for tokens, stores the athlete with encrypted tokens and enqueues the initial backfill.",
+        "operationId": "callback_auth_strava_callback_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "State",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Scope",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "invalid or expired state"
+                }
+              }
+            },
+            "description": "Bad state, denied access, missing scope or bad code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Strava OAuth callback",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/strava/login": {
+      "get": {
+        "description": "Redirects the browser to Strava's authorize page with a signed, expiring `state`.",
+        "operationId": "login_auth_strava_login_get",
+        "responses": {
+          "302": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Start the Strava OAuth flow",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "live_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Live Health Live Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness: the process is up",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "ready_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "db": "ok",
+                  "redis": "ok",
+                  "status": "ok"
+                },
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "db": "ok",
+                  "redis": "error",
+                  "status": "error"
+                }
+              }
+            },
+            "description": "A dependency is unreachable"
+          }
+        },
+        "summary": "Readiness: PostgreSQL and Redis are reachable",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/v1/activities": {
+      "get": {
+        "description": "Stored activities of all active athletes (or one, with `athlete_id`), newest first. Soft-deleted activities are excluded. Pages are keyset-based: pass `next_cursor` back as `cursor`. Rows inserted while paging never shift or repeat a page.",
+        "operationId": "list_activities_v1_activities_get",
+        "parameters": [
+          {
+            "description": "Start date ≥ this (UTC if no offset)",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Start date ≥ this (UTC if no offset)",
+              "examples": [
+                "2026-10-01"
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "description": "Start date < this (UTC if no offset)",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Start date < this (UTC if no offset)",
+              "examples": [
+                "2026-11-01"
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sport_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "Run"
+              ],
+              "title": "Sport Type"
+            }
+          },
+          {
+            "description": "Our athlete id",
+            "in": "query",
+            "name": "athlete_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Our athlete id",
+              "title": "Athlete Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "`next_cursor` of the previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`next_cursor` of the previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "`raw` adds Strava's JSON",
+            "in": "query",
+            "name": "include",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": "raw",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`raw` adds Strava's JSON",
+              "title": "Include"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "invalid cursor"
+                }
+              }
+            },
+            "description": "Invalid cursor"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List activities",
+        "tags": [
+          "activities"
+        ]
+      }
+    },
+    "/v1/stats/weekly": {
+      "get": {
+        "description": "Count, distance, moving time and elevation per ISO week (Monday start, UTC) for activities whose start date falls in `from`..`to` (both inclusive). Weeks without activities are returned with zeros. Defaults to the last 12 weeks. Soft-deleted activities are excluded.",
+        "operationId": "weekly_v1_stats_weekly_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-01"
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-30"
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sport_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "Run"
+              ],
+              "title": "Sport Type"
+            }
+          },
+          {
+            "description": "Our athlete id",
+            "in": "query",
+            "name": "athlete_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Our athlete id",
+              "title": "Athlete Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "`to` is before `from`"
+                }
+              }
+            },
+            "description": "`to` before `from`, or over 520 weeks"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Weekly totals",
+        "tags": [
+          "stats"
+        ]
+      }
+    },
+    "/v1/sync/status": {
+      "get": {
+        "description": "Latest backfill and incremental run per active athlete, webhook intake and retry counts, current Strava rate-limit usage, and the circuit breaker state of every process that talks to Strava.",
+        "operationId": "sync_status_v1_sync_status_get",
+        "parameters": [
+          {
+            "description": "Our athlete id",
+            "in": "query",
+            "name": "athlete_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Our athlete id",
+              "title": "Athlete Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Sync status",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/webhooks/strava": {
+      "get": {
+        "description": "Strava calls this once when the subscription is created. Echoes `hub.challenge` when `hub.mode=subscribe` and `hub.verify_token` matches `STRAVA_WEBHOOK_VERIFY_TOKEN`.",
+        "operationId": "validate_subscription_webhooks_strava_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "hub.mode",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Hub.Mode",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hub.challenge",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Hub.Challenge",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hub.verify_token",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Hub.Verify Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChallengeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "verification failed"
+                }
+              }
+            },
+            "description": "Wrong mode or verify token"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Webhook subscription validation",
+        "tags": [
+          "webhooks"
+        ]
+      },
+      "post": {
+        "description": "Validates the event, stores it once (deduplicated on subscription, object, aspect and event time) and enqueues `process_webhook_event`. Always answers 200 for a well-formed event, including duplicates and events for another subscription, so Strava does not retry. No Strava call happens here.",
+        "operationId": "receive_event_webhooks_strava_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "aspect_type": "update",
+                "event_time": 1516126040,
+                "object_id": 1360128428,
+                "object_type": "activity",
+                "owner_id": 134815,
+                "subscription_id": 120475,
+                "updates": {
+                  "title": "Morning Run"
+                }
+              },
+              "schema": {
+                "examples": [
+                  {
+                    "aspect_type": "update",
+                    "event_time": 1516126040,
+                    "object_id": 1360128428,
+                    "object_type": "activity",
+                    "owner_id": 134815,
+                    "subscription_id": 120475,
+                    "updates": {
+                      "title": "Morning Run"
+                    }
+                  }
+                ],
+                "properties": {
+                  "aspect_type": {
+                    "enum": [
+                      "create",
+                      "update",
+                      "delete"
+                    ],
+                    "title": "Aspect Type",
+                    "type": "string"
+                  },
+                  "event_time": {
+                    "title": "Event Time",
+                    "type": "integer"
+                  },
+                  "object_id": {
+                    "title": "Object Id",
+                    "type": "integer"
+                  },
+                  "object_type": {
+                    "enum": [
+                      "activity",
+                      "athlete"
+                    ],
+                    "title": "Object Type",
+                    "type": "string"
+                  },
+                  "owner_id": {
+                    "title": "Owner Id",
+                    "type": "integer"
+                  },
+                  "subscription_id": {
+                    "title": "Subscription Id",
+                    "type": "integer"
+                  },
+                  "updates": {
+                    "additionalProperties": true,
+                    "title": "Updates",
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "object_type",
+                  "object_id",
+                  "aspect_type",
+                  "owner_id",
+                  "subscription_id",
+                  "event_time"
+                ],
+                "title": "StravaEvent",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ack"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "invalid webhook event"
+                }
+              }
+            },
+            "description": "Body is not a valid Strava event"
+          }
+        },
+        "summary": "Receive a Strava webhook event",
+        "tags": [
+          "webhooks"
+        ]
+      }
+    }
+  }
+}

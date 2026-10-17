@@ -10,17 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from trainsync.api.deps import SessionmakerDep, require_api_key
+from trainsync.api.errors import UNAUTHORIZED, error
 from trainsync.db.models import Activity
 from trainsync.db.repositories.reads import ActivityFilter, Keyset, ReadRepository
 
 router = APIRouter(prefix="/v1", tags=["activities"], dependencies=[Depends(require_api_key)])
-
-UNAUTHORIZED: dict[int | str, dict[str, Any]] = {
-    401: {
-        "description": "Missing or invalid `X-API-Key`",
-        "content": {"application/json": {"example": {"detail": "missing or invalid API key"}}},
-    }
-}
 
 ACTIVITY_EXAMPLE: dict[str, Any] = {
     "id": 10000000123,
@@ -129,7 +123,7 @@ def as_utc(value: datetime | None) -> datetime | None:
     ),
     response_model=ActivityPage,
     response_model_exclude_none=False,
-    responses={**UNAUTHORIZED, 400: {"description": "Invalid cursor"}},
+    responses={**UNAUTHORIZED, 400: error("Invalid cursor", "invalid cursor")},
 )
 async def list_activities(
     sessionmaker: SessionmakerDep,

@@ -6,8 +6,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from trainsync.api.activities import UNAUTHORIZED
 from trainsync.api.deps import ClockDep, SessionmakerDep, require_api_key
+from trainsync.api.errors import UNAUTHORIZED, error
 from trainsync.db.repositories.reads import ActivityFilter, ReadRepository, week_start
 
 router = APIRouter(prefix="/v1/stats", tags=["stats"], dependencies=[Depends(require_api_key)])
@@ -68,7 +68,10 @@ class WeeklyStats(BaseModel):
     ),
     response_model=WeeklyStats,
     response_model_by_alias=True,
-    responses={**UNAUTHORIZED, 400: {"description": "`to` before `from`, or over 520 weeks"}},
+    responses={
+        **UNAUTHORIZED,
+        400: error("`to` before `from`, or over 520 weeks", "`to` is before `from`"),
+    },
 )
 async def weekly(
     sessionmaker: SessionmakerDep,

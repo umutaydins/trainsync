@@ -17,7 +17,11 @@ log = get_logger(__name__)
 CHECK_TIMEOUT_S = 1.0
 
 
-@router.get("/live", summary="Liveness: the process is up")
+@router.get(
+    "/live",
+    summary="Liveness: the process is up",
+    responses={200: {"content": {"application/json": {"example": {"status": "ok"}}}}},
+)
 async def live() -> dict[str, str]:
     return {"status": "ok"}
 

@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from trainsync.api.deps import JobQueueDep, SessionmakerDep, SettingsDep
+from trainsync.api.errors import error
 from trainsync.core.logging import get_logger
 from trainsync.db.repositories.webhook_events import WebhookEventRepository
 
@@ -73,7 +74,7 @@ class Ack(BaseModel):
     ),
     response_model=ChallengeResponse,
     response_model_by_alias=True,
-    responses={403: {"description": "Wrong mode or verify token"}},
+    responses={403: error("Wrong mode or verify token", "verification failed")},
 )
 async def validate_subscription(
     settings: SettingsDep,
@@ -97,7 +98,7 @@ async def validate_subscription(
         "retry. No Strava call happens here."
     ),
     response_model=Ack,
-    responses={400: {"description": "Body is not a valid Strava event"}},
+    responses={400: error("Body is not a valid Strava event", "invalid webhook event")},
     openapi_extra={
         "requestBody": {
             "required": True,

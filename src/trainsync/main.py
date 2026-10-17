@@ -6,11 +6,13 @@ Run with `uvicorn trainsync.main:create_app --factory`. There is deliberately no
 
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
 
 from trainsync import __version__
 from trainsync.api import activities, auth, health, stats, sync_status, webhooks
+from trainsync.api.errors import VALIDATION_ERROR_EXAMPLE
 from trainsync.api.middleware import RequestIdMiddleware
 from trainsync.core.clock import utc_now
 from trainsync.core.crypto import TokenCipher
@@ -67,4 +69,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(activities.router)
     app.include_router(stats.router)
     app.include_router(sync_status.router)
+    _document_validation_errors(app)
     return app
+
+
+def _document_validation_errors(app: FastAPI) -> None:
+    """Give FastAPI's generated 422 schema an example, like every other response."""
+    default_openapi = app.openapi
+
+    def openapi() -> dict[str, Any]:
+        if app.openapi_schema is None:
+            schema = default_openapi()
+            components = schema.get("components", {}).get("schemas", {})
+            if "HTTPValidationError" in components:
+                components["HTTPValidationError"]["examples"] = [VALIDATION_ERROR_EXAMPLE]
+            app.openapi_schema = schema
+        return app.openapi_schema
+
+    app.openapi = openapi  # type: ignore[method-assign]
