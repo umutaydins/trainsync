@@ -234,9 +234,10 @@ classDiagram
         +int failure_threshold
         +timedelta cooldown
         +state BreakerState
-        +before_call()
-        +on_success()
-        +on_failure()
+        +guard() async context
+        +before_call() bool
+        +on_success(probe)
+        +on_failure(probe)
     }
 
     class TokenCipher {
@@ -388,16 +389,16 @@ sequenceDiagram
     participant S as Strava API
 
     Job->>C: list_activities(before, priority=low)
-    C->>B: before_call()
-    alt circuit open
-        B-->>C: CircuitOpen(retry_at)
-        C-->>Job: CircuitOpen → job re-enqueued with delay
-    else closed / half-open probe
-        C->>RB: allow(low)
-        alt usage ≥ 80%
-            RB-->>C: denied, resume_at = next quarter hour
-            C-->>Job: RateLimited → run paused, deferred
-        else allowed
+    C->>RB: allow(low)
+    alt usage ≥ 80%
+        RB-->>C: denied, resume_at = next quarter hour
+        C-->>Job: RateLimited → run paused, deferred
+    else allowed
+        C->>B: before_call()
+        alt open, or half-open with a probe in flight
+            B-->>C: CircuitOpen(retry_at)
+            C-->>Job: CircuitOpen → run paused, job deferred to retry_at (+ jitter)
+        else closed / half-open probe
             loop attempt 1..4
                 C->>S: GET /athlete/activities (timeouts 3s/10s)
                 S-->>C: response + X-RateLimit-* headers
@@ -406,15 +407,17 @@ sequenceDiagram
                     C->>B: on_success()
                     C-->>Job: activities
                 else 429
+                    C->>B: on_success() (Strava answered)
                     C-->>Job: RateLimited(reset_at) — no retry
                 else 5xx / timeout
                     C->>C: sleep(full jitter backoff)
                 else other 4xx
+                    C->>B: on_success() (Strava answered)
                     C-->>Job: error — no retry
                 end
             end
             C->>B: on_failure() (retries exhausted)
-            C-->>Job: StravaUnavailable
+            C-->>Job: StravaUnavailable → run paused, deferred 30 s
         end
     end
 ```

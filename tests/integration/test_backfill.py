@@ -17,9 +17,10 @@ from tests.support.strava import fake_backed_client
 from trainsync.core.settings import Settings
 from trainsync.db.models import Activity, SyncRun
 from trainsync.strava.budget import Allowance, Priority, UnlimitedBudget
-from trainsync.strava.errors import RateLimited, StravaAuthError
+from trainsync.strava.errors import RateLimited, StravaAuthError, StravaUnavailable
 from trainsync.strava.models import StravaActivity
 from trainsync.sync.backfill import STALE_AFTER, backfill, run_backfill
+from trainsync.sync.common import UNAVAILABLE_DEFER
 from trainsync.sync.context import CTX_KEY, ActivitySource, SyncDeps
 
 NOW = datetime(2026, 10, 17, 12, 7, tzinfo=UTC)
@@ -210,6 +211,18 @@ async def test_rate_limited_pauses_and_job_is_deferred_to_reset(
     defer_ms = exc_info.value.defer_score
     assert defer_ms is not None
     assert abs(defer_ms / 1000 - (reset_at - NOW).total_seconds()) <= 2
+    (run,) = await _runs(sessionmaker)
+    assert run.status == "paused"
+
+
+async def test_strava_unavailable_pauses_instead_of_failing(
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    athlete_id = await create_athlete(sessionmaker)
+    stub = Scripted(StravaUnavailable("/athlete/activities: 503"))
+    outcome = await run_backfill(deps(sessionmaker, stub), athlete_id)
+    assert outcome.status == "paused"
+    assert outcome.resume_at == NOW + UNAVAILABLE_DEFER
     (run,) = await _runs(sessionmaker)
     assert run.status == "paused"
 

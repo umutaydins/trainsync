@@ -65,7 +65,9 @@ Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sp
     instead of hammering with retries.
 - **Circuit breaker** (per process): opens after N consecutive 5xx / timeouts, half-opens after a
   cooldown and lets one probe request through. While open, jobs are re-queued with a delay
-  instead of failing.
+  instead of failing. 4xx and 429 mean Strava answered, so they count as successes. A sync job
+  that gets `StravaUnavailable` while the circuit is still closed is also paused and deferred
+  (30 s) instead of failed. See ADR 0005.
 - Metrics for every call: endpoint, status, duration, retry count.
 
 ### 4. Backfill

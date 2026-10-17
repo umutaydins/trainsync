@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     strava_redirect_uri: str = "http://localhost:8000/auth/strava/callback"
     strava_webhook_verify_token: SecretStr
     strava_webhook_subscription_id: int | None = None
+    # Circuit breaker (per process): consecutive failed calls to open it, seconds until a probe.
+    strava_breaker_failure_threshold: int = Field(default=5, ge=1)
+    strava_breaker_cooldown_s: float = Field(default=30.0, gt=0)
 
     token_encryption_key: SecretStr
     state_signing_key: SecretStr

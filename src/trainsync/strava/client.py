@@ -2,13 +2,14 @@
 
 Every request goes through `_send`: explicit timeouts (shared client), retries with full jitter
 on network errors / 5xx, rate-limit header parsing on every response, and 429 → `RateLimited`
-without retrying (the calling job waits for the window reset).
+without retrying (the calling job waits for the window reset). Every API call also passes the
+per-process circuit breaker, which fails fast with `CircuitOpen` while Strava is down.
 """
 
 import random
 import time
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Protocol
 
 import httpx
@@ -17,6 +18,7 @@ from pydantic import TypeAdapter
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.logging import get_logger
 from trainsync.core.settings import Settings
+from trainsync.strava.breaker import BreakerState, CircuitBreaker
 from trainsync.strava.budget import Allowance, Priority
 from trainsync.strava.errors import (
     RateLimited,
@@ -70,6 +72,7 @@ class StravaClient:
         sleep: Sleep = real_sleep,
         rng: random.Random | None = None,
         budget: RateLimitHook | None = None,
+        breaker: CircuitBreaker | None = None,
     ) -> None:
         self._http = http
         self._settings = settings
@@ -79,10 +82,19 @@ class StravaClient:
         self._sleep = sleep
         self._rng = rng or random.Random()  # noqa: S311  (jitter, not crypto)
         self._budget = budget
+        self._breaker = breaker or CircuitBreaker(
+            settings.strava_breaker_failure_threshold,
+            timedelta(seconds=settings.strava_breaker_cooldown_s),
+            clock,
+        )
 
     def with_token_provider(self, token_provider: TokenProvider) -> "StravaClient":
         self._tokens = token_provider
         return self
+
+    @property
+    def breaker_state(self) -> BreakerState:
+        return self._breaker.state
 
     # ------------------------------------------------------------------ API
 
@@ -165,16 +177,19 @@ class StravaClient:
             if not allowance.allowed:
                 raise RateLimited(reset_at=allowance.resume_at or next_window_reset(self._clock()))
         url = f"{self._settings.strava_api_base_url}{path}"
-        token = await self._tokens.access_token(athlete_id)
-        try:
-            return await self._send(method, template, url, params=params, token=token)
-        except StravaUnauthorized:
-            # Refresh once and retry once; a second 401 means access was revoked.
-            token = await self._tokens.force_refresh(athlete_id)
+        # After the budget check, so a budget denial is never mistaken for an answer from Strava.
+        async with self._breaker.guard():
+            token = await self._tokens.access_token(athlete_id)
             try:
                 return await self._send(method, template, url, params=params, token=token)
-            except StravaUnauthorized as exc:
-                raise StravaAuthError("strava rejected a freshly refreshed token") from exc
+            except StravaUnauthorized:
+                # Refresh once and retry once; a second 401 means access was revoked.
+                token = await self._tokens.force_refresh(athlete_id)
+                try:
+                    return await self._send(method, template, url, params=params, token=token)
+                except StravaUnauthorized as exc:
+                    raise StravaAuthError("strava rejected a freshly refreshed token") from exc
+        raise AssertionError("unreachable")  # pragma: no cover
 
     async def _send(
         self,
