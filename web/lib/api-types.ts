@@ -178,6 +178,334 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/training/body-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List body metrics
+         * @description Oldest first; `from`/`to` inclusive.
+         */
+        get: operations["list_body_metrics_v1_training_body_metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/body-metrics/{day}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Record body weight for a day
+         * @description Upsert by date (idempotent).
+         */
+        put: operations["put_body_metric_v1_training_body_metrics__day__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/exercises": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List or search exercises
+         * @description Built-in and custom exercises by name. `q` matches name or slug (case-insensitive substring), `muscle` the primary or a secondary muscle, `equipment` any of the given.
+         */
+        get: operations["list_exercises_v1_training_exercises_get"];
+        put?: never;
+        /**
+         * Create a custom exercise
+         * @description The slug is derived from the name; a name whose slug exists already is `409`.
+         */
+        post: operations["create_exercise_v1_training_exercises_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/exercises/{exercise_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a custom exercise
+         * @description Built-in exercises are read-only (`409`).
+         */
+        patch: operations["update_exercise_v1_training_exercises__exercise_id__patch"];
+        trace?: never;
+    };
+    "/v1/training/exercises/{exercise_id}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Progress of one exercise
+         * @description Per workout that logged the exercise (oldest first): best set, best e1RM (Epley, 1-12 reps), working volume. `from`/`to` are inclusive UTC dates.
+         */
+        get: operations["exercise_progress_v1_training_exercises__exercise_id__progress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/programs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List programs
+         * @description Every program, newest first, without days.
+         */
+        get: operations["list_programs_v1_training_programs_get"];
+        put?: never;
+        /**
+         * Create a program
+         * @description A program with its days (in order) and planned exercises (in order). The program generator's preview (`POST /programs/generate`) has a `program` field that can be sent here unchanged. New programs are inactive.
+         */
+        post: operations["create_program_v1_training_programs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/programs/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the active program
+         * @description The one active program with its days, or `404` when none is active.
+         */
+        get: operations["get_active_program_v1_training_programs_active_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/programs/{program_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a program
+         * @description One program with its days and planned exercises.
+         */
+        get: operations["get_program_v1_training_programs__program_id__get"];
+        /**
+         * Replace a program
+         * @description Replaces name, goal, weeks and all days. Logged workouts stay; their link to a replaced program day becomes null.
+         */
+        put: operations["replace_program_v1_training_programs__program_id__put"];
+        post?: never;
+        /**
+         * Delete a program
+         * @description Deletes the program and its days; logged workouts stay.
+         */
+        delete: operations["delete_program_v1_training_programs__program_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/programs/{program_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Activate a program
+         * @description Makes this the only active program (idempotent).
+         */
+        post: operations["activate_program_v1_training_programs__program_id__activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/prs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personal records
+         * @description Standing records per exercise: heaviest weight per rep count, best e1RM and best session volume, with the workout that set them.
+         */
+        get: operations["personal_records_v1_training_prs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/volume/weekly": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weekly volume per muscle
+         * @description Working sets and kg (reps x weight) per ISO week and primary muscle. `from`/`to` are inclusive UTC dates; default the last 12 weeks.
+         */
+        get: operations["weekly_volume_v1_training_volume_weekly_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/workouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List workouts
+         * @description Newest first, keyset-paginated (ADR 0009): pass `next_cursor` back as `cursor`.
+         */
+        get: operations["list_workouts_v1_training_workouts_get"];
+        put?: never;
+        /**
+         * Start a workout
+         * @description Starts a workout, free or from a program day. The response lists the day's planned exercises with the last performance of each (working sets of the most recent other workout that logged it).
+         */
+        post: operations["start_workout_v1_training_workouts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/workouts/{workout_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a workout
+         * @description Sets, volume, records hit and (for a program day) the plan with last performance.
+         */
+        get: operations["get_workout_v1_training_workouts__workout_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a workout
+         * @description Deletes the workout and its sets.
+         */
+        delete: operations["delete_workout_v1_training_workouts__workout_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/workouts/{workout_id}/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finish a workout
+         * @description Sets `ended_at` (default now); an empty workout can be finished. Finishing again keeps the first `ended_at` (idempotent) but updates `notes` when sent.
+         */
+        post: operations["finish_workout_v1_training_workouts__workout_id__finish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/workouts/{workout_id}/sets/{client_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Log or correct a set (idempotent)
+         * @description Upsert by the client-generated `client_id` (ADR 0017): the first call creates the set (`201`), a retry or a correction with the same id updates that same set (`200`, same body for the same input). Retries and double taps never create a second set. An id already used in another workout is `409`.
+         */
+        put: operations["put_set_v1_training_workouts__workout_id__sets__client_id__put"];
+        post?: never;
+        /**
+         * Delete a set
+         * @description Idempotent: deleting a set that is not there is also `204`.
+         */
+        delete: operations["delete_set_v1_training_workouts__workout_id__sets__client_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/webhooks/strava": {
         parameters: {
             query?: never;
@@ -347,6 +675,59 @@ export interface components {
             /** Strava Athlete Id */
             strava_athlete_id: number;
         };
+        /** BestSet */
+        BestSet: {
+            /**
+             * E1Rm Kg
+             * @description Epley; null above 12 reps
+             */
+            e1rm_kg: number | null;
+            /** Reps */
+            reps: number;
+            /** Weight Kg */
+            weight_kg: number;
+        };
+        /**
+         * BodyMetricIn
+         * @example {
+         *       "weight_kg": 78.4
+         *     }
+         */
+        BodyMetricIn: {
+            /** Weight Kg */
+            weight_kg: number | string;
+        };
+        /**
+         * BodyMetricList
+         * @example {
+         *       "items": [
+         *         {
+         *           "date": "2026-10-18",
+         *           "weight_kg": 78.4
+         *         }
+         *       ]
+         *     }
+         */
+        BodyMetricList: {
+            /** Items */
+            items: components["schemas"]["BodyMetricOut"][];
+        };
+        /**
+         * BodyMetricOut
+         * @example {
+         *       "date": "2026-10-18",
+         *       "weight_kg": 78.4
+         *     }
+         */
+        BodyMetricOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Weight Kg */
+            weight_kg: number;
+        };
         /** BreakerProcess */
         BreakerProcess: {
             /**
@@ -399,6 +780,178 @@ export interface components {
             strava_athlete_id: number;
         };
         /**
+         * CurrentRecord
+         * @description The standing record; `previous` is the one it beat.
+         * @example {
+         *       "achieved_at": "2026-10-18T17:30:00Z",
+         *       "exercise_id": 20,
+         *       "exercise_name": "Bench Press",
+         *       "kind": "weight_for_reps",
+         *       "previous": 80,
+         *       "reps": 8,
+         *       "value": 82.5,
+         *       "workout_id": 42
+         *     }
+         */
+        CurrentRecord: {
+            /**
+             * Achieved At
+             * Format: date-time
+             */
+            achieved_at: string;
+            /** Exercise Id */
+            exercise_id: number;
+            /** Exercise Name */
+            exercise_name: string;
+            kind: components["schemas"]["PrKind"];
+            /** Previous */
+            previous: number | null;
+            /** Reps */
+            reps: number | null;
+            /** Value */
+            value: number;
+            /** Workout Id */
+            workout_id: number;
+        };
+        /**
+         * Equipment
+         * @enum {string}
+         */
+        Equipment: "barbell" | "dumbbell" | "machine" | "cable" | "bodyweight" | "kettlebell" | "band";
+        /**
+         * ExerciseCreate
+         * @example {
+         *       "equipment": "barbell",
+         *       "movement_pattern": "vertical_push",
+         *       "name": "Landmine Press",
+         *       "primary_muscle": "shoulders",
+         *       "secondary_muscles": [
+         *         "chest",
+         *         "triceps"
+         *       ]
+         *     }
+         */
+        ExerciseCreate: {
+            equipment: components["schemas"]["Equipment"];
+            movement_pattern?: components["schemas"]["MovementPattern"] | null;
+            /** Name */
+            name: string;
+            primary_muscle: components["schemas"]["Muscle"];
+            /** Secondary Muscles */
+            secondary_muscles?: components["schemas"]["Muscle"][];
+        };
+        /**
+         * ExerciseList
+         * @example {
+         *       "items": [
+         *         {
+         *           "equipment": "barbell",
+         *           "id": 20,
+         *           "is_custom": false,
+         *           "movement_pattern": "horizontal_push",
+         *           "name": "Bench Press",
+         *           "primary_muscle": "chest",
+         *           "secondary_muscles": [
+         *             "triceps",
+         *             "shoulders"
+         *           ],
+         *           "slug": "bench-press"
+         *         }
+         *       ]
+         *     }
+         */
+        ExerciseList: {
+            /** Items */
+            items: components["schemas"]["ExerciseOut"][];
+        };
+        /**
+         * ExerciseOut
+         * @example {
+         *       "equipment": "barbell",
+         *       "id": 20,
+         *       "is_custom": false,
+         *       "movement_pattern": "horizontal_push",
+         *       "name": "Bench Press",
+         *       "primary_muscle": "chest",
+         *       "secondary_muscles": [
+         *         "triceps",
+         *         "shoulders"
+         *       ],
+         *       "slug": "bench-press"
+         *     }
+         */
+        ExerciseOut: {
+            equipment: components["schemas"]["Equipment"];
+            /** Id */
+            id: number;
+            /** Is Custom */
+            is_custom: boolean;
+            movement_pattern: components["schemas"]["MovementPattern"] | null;
+            /** Name */
+            name: string;
+            primary_muscle: components["schemas"]["Muscle"];
+            /** Secondary Muscles */
+            secondary_muscles: components["schemas"]["Muscle"][];
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * ExerciseProgress
+         * @example {
+         *       "exercise": {
+         *         "equipment": "barbell",
+         *         "id": 20,
+         *         "is_custom": false,
+         *         "movement_pattern": "horizontal_push",
+         *         "name": "Bench Press",
+         *         "primary_muscle": "chest",
+         *         "secondary_muscles": [
+         *           "triceps",
+         *           "shoulders"
+         *         ],
+         *         "slug": "bench-press"
+         *       },
+         *       "sessions": [
+         *         {
+         *           "best_set": {
+         *             "e1rm_kg": 104.5,
+         *             "reps": 8,
+         *             "weight_kg": 82.5
+         *           },
+         *           "e1rm_kg": 104.5,
+         *           "started_at": "2026-10-18T17:30:00Z",
+         *           "volume_kg": 1890,
+         *           "working_sets": 3,
+         *           "workout_id": 42
+         *         }
+         *       ]
+         *     }
+         */
+        ExerciseProgress: {
+            exercise: components["schemas"]["ExerciseOut"];
+            /**
+             * Sessions
+             * @description Oldest first
+             */
+            sessions: components["schemas"]["SessionProgress"][];
+        };
+        /**
+         * ExerciseUpdate
+         * @description Only the fields that are sent change; the slug stays.
+         * @example {
+         *       "name": "Half-kneeling Landmine"
+         *     }
+         */
+        ExerciseUpdate: {
+            equipment?: components["schemas"]["Equipment"] | null;
+            movement_pattern?: components["schemas"]["MovementPattern"] | null;
+            /** Name */
+            name?: string | null;
+            primary_muscle?: components["schemas"]["Muscle"] | null;
+            /** Secondary Muscles */
+            secondary_muscles?: components["schemas"]["Muscle"][] | null;
+        };
+        /**
          * HTTPValidationError
          * @example {
          *       "detail": [
@@ -418,6 +971,384 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * LastPerformance
+         * @description Working sets of the most recent other workout that logged the exercise.
+         */
+        LastPerformance: {
+            /** Sets */
+            sets: components["schemas"]["PerformedSet"][];
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Workout Id */
+            workout_id: number;
+        };
+        /**
+         * MovementPattern
+         * @description What the program generator (P6.3) picks exercises by; null for custom exercises.
+         * @enum {string}
+         */
+        MovementPattern: "squat" | "hinge" | "lunge" | "horizontal_push" | "vertical_push" | "horizontal_pull" | "vertical_pull" | "chest_fly" | "lateral_raise" | "rear_delt" | "biceps" | "triceps" | "knee_extension" | "knee_flexion" | "calf_raise" | "core";
+        /**
+         * Muscle
+         * @enum {string}
+         */
+        Muscle: "chest" | "back" | "shoulders" | "biceps" | "triceps" | "forearms" | "quads" | "hamstrings" | "glutes" | "calves" | "core";
+        /** MuscleWeek */
+        MuscleWeek: {
+            /** @description Primary muscle of the exercises */
+            muscle: components["schemas"]["Muscle"];
+            /**
+             * Sets
+             * @description Working sets
+             */
+            sets: number;
+            /** Volume Kg */
+            volume_kg: number;
+            /**
+             * Week Start
+             * Format: date
+             * @description Monday of the ISO week (UTC)
+             */
+            week_start: string;
+        };
+        /** PerformedSet */
+        PerformedSet: {
+            /** Reps */
+            reps: number;
+            /** Rpe */
+            rpe?: number | null;
+            /** Weight Kg */
+            weight_kg: number;
+        };
+        /**
+         * PlannedExercise
+         * @description A program-day exercise with what was lifted last time.
+         * @example {
+         *       "exercise": {
+         *         "equipment": "barbell",
+         *         "id": 20,
+         *         "is_custom": false,
+         *         "movement_pattern": "horizontal_push",
+         *         "name": "Bench Press",
+         *         "primary_muscle": "chest",
+         *         "secondary_muscles": [
+         *           "triceps",
+         *           "shoulders"
+         *         ],
+         *         "slug": "bench-press"
+         *       },
+         *       "last_performance": {
+         *         "sets": [
+         *           {
+         *             "reps": 10,
+         *             "rpe": 8.5,
+         *             "weight_kg": 77.5
+         *           },
+         *           {
+         *             "reps": 9,
+         *             "weight_kg": 77.5
+         *           }
+         *         ],
+         *         "started_at": "2026-10-15T17:30:00Z",
+         *         "workout_id": 41
+         *       },
+         *       "progression": "double",
+         *       "rep_max": 12,
+         *       "rep_min": 8,
+         *       "rest_seconds": 90,
+         *       "sets": 3,
+         *       "start_weight_kg": 60
+         *     }
+         */
+        PlannedExercise: {
+            exercise: components["schemas"]["ExerciseOut"];
+            last_performance: components["schemas"]["LastPerformance"] | null;
+            progression: components["schemas"]["Progression"];
+            /** Rep Max */
+            rep_max: number;
+            /** Rep Min */
+            rep_min: number;
+            /** Rest Seconds */
+            rest_seconds: number;
+            /** Sets */
+            sets: number;
+            /** Start Weight Kg */
+            start_weight_kg: number | null;
+        };
+        /**
+         * PlannedExerciseIn
+         * @example {
+         *       "exercise_id": 20,
+         *       "progression": "double",
+         *       "rep_max": 12,
+         *       "rep_min": 8,
+         *       "rest_seconds": 90,
+         *       "sets": 3,
+         *       "start_weight_kg": 60
+         *     }
+         */
+        PlannedExerciseIn: {
+            /** Exercise Id */
+            exercise_id: number;
+            /** @default double */
+            progression: components["schemas"]["Progression"];
+            /** Rep Max */
+            rep_max: number;
+            /** Rep Min */
+            rep_min: number;
+            /** Rest Seconds */
+            rest_seconds: number;
+            /** Sets */
+            sets: number;
+            /** Start Weight Kg */
+            start_weight_kg?: (number | string) | null;
+        };
+        /**
+         * PlannedExerciseOut
+         * @example {
+         *       "exercise": {
+         *         "equipment": "barbell",
+         *         "id": 20,
+         *         "is_custom": false,
+         *         "movement_pattern": "horizontal_push",
+         *         "name": "Bench Press",
+         *         "primary_muscle": "chest",
+         *         "secondary_muscles": [
+         *           "triceps",
+         *           "shoulders"
+         *         ],
+         *         "slug": "bench-press"
+         *       },
+         *       "id": 7,
+         *       "position": 0,
+         *       "progression": "double",
+         *       "rep_max": 12,
+         *       "rep_min": 8,
+         *       "rest_seconds": 90,
+         *       "sets": 3,
+         *       "start_weight_kg": 60
+         *     }
+         */
+        PlannedExerciseOut: {
+            exercise: components["schemas"]["ExerciseOut"];
+            /** Id */
+            id: number;
+            /** Position */
+            position: number;
+            progression: components["schemas"]["Progression"];
+            /** Rep Max */
+            rep_max: number;
+            /** Rep Min */
+            rep_min: number;
+            /** Rest Seconds */
+            rest_seconds: number;
+            /** Sets */
+            sets: number;
+            /** Start Weight Kg */
+            start_weight_kg: number | null;
+        };
+        /**
+         * PrKind
+         * @enum {string}
+         */
+        PrKind: "weight_for_reps" | "e1rm" | "session_volume";
+        /** ProgramDayIn */
+        ProgramDayIn: {
+            /** Exercises */
+            exercises: components["schemas"]["PlannedExerciseIn"][];
+            /** Name */
+            name: string;
+        };
+        /** ProgramDayOut */
+        ProgramDayOut: {
+            /** Day Index */
+            day_index: number;
+            /** Exercises */
+            exercises: components["schemas"]["PlannedExerciseOut"][];
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+        };
+        /**
+         * ProgramGoal
+         * @enum {string}
+         */
+        ProgramGoal: "strength" | "hypertrophy" | "general";
+        /**
+         * ProgramIn
+         * @description `days_per_week` is the number of days.
+         * @example {
+         *       "days": [
+         *         {
+         *           "exercises": [
+         *             {
+         *               "exercise_id": 20,
+         *               "progression": "double",
+         *               "rep_max": 12,
+         *               "rep_min": 8,
+         *               "rest_seconds": 90,
+         *               "sets": 3,
+         *               "start_weight_kg": 60
+         *             }
+         *           ],
+         *           "name": "Upper A"
+         *         },
+         *         {
+         *           "exercises": [
+         *             {
+         *               "exercise_id": 1,
+         *               "progression": "double",
+         *               "rep_max": 12,
+         *               "rep_min": 8,
+         *               "rest_seconds": 90,
+         *               "sets": 3,
+         *               "start_weight_kg": 60
+         *             }
+         *           ],
+         *           "name": "Lower A"
+         *         }
+         *       ],
+         *       "goal": "hypertrophy",
+         *       "name": "Upper/Lower",
+         *       "weeks": 8
+         *     }
+         */
+        ProgramIn: {
+            /** Days */
+            days: components["schemas"]["ProgramDayIn"][];
+            goal: components["schemas"]["ProgramGoal"];
+            /** Name */
+            name: string;
+            /**
+             * Weeks
+             * @default 8
+             */
+            weeks: number;
+        };
+        /**
+         * ProgramList
+         * @example {
+         *       "items": [
+         *         {
+         *           "active": true,
+         *           "created_at": "2026-10-18T10:00:00Z",
+         *           "days_per_week": 4,
+         *           "goal": "hypertrophy",
+         *           "id": 3,
+         *           "name": "Upper/Lower",
+         *           "weeks": 8
+         *         }
+         *       ]
+         *     }
+         */
+        ProgramList: {
+            /** Items */
+            items: components["schemas"]["ProgramSummary"][];
+        };
+        /**
+         * ProgramOut
+         * @example {
+         *       "active": true,
+         *       "created_at": "2026-10-18T10:00:00Z",
+         *       "days": [
+         *         {
+         *           "day_index": 0,
+         *           "exercises": [
+         *             {
+         *               "exercise": {
+         *                 "equipment": "barbell",
+         *                 "id": 20,
+         *                 "is_custom": false,
+         *                 "movement_pattern": "horizontal_push",
+         *                 "name": "Bench Press",
+         *                 "primary_muscle": "chest",
+         *                 "secondary_muscles": [
+         *                   "triceps",
+         *                   "shoulders"
+         *                 ],
+         *                 "slug": "bench-press"
+         *               },
+         *               "id": 7,
+         *               "position": 0,
+         *               "progression": "double",
+         *               "rep_max": 12,
+         *               "rep_min": 8,
+         *               "rest_seconds": 90,
+         *               "sets": 3,
+         *               "start_weight_kg": 60
+         *             }
+         *           ],
+         *           "id": 11,
+         *           "name": "Upper A"
+         *         }
+         *       ],
+         *       "days_per_week": 4,
+         *       "goal": "hypertrophy",
+         *       "id": 3,
+         *       "name": "Upper/Lower",
+         *       "weeks": 8
+         *     }
+         */
+        ProgramOut: {
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Days */
+            days: components["schemas"]["ProgramDayOut"][];
+            /** Days Per Week */
+            days_per_week: number;
+            goal: components["schemas"]["ProgramGoal"];
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Weeks */
+            weeks: number;
+        };
+        /**
+         * ProgramSummary
+         * @example {
+         *       "active": true,
+         *       "created_at": "2026-10-18T10:00:00Z",
+         *       "days_per_week": 4,
+         *       "goal": "hypertrophy",
+         *       "id": 3,
+         *       "name": "Upper/Lower",
+         *       "weeks": 8
+         *     }
+         */
+        ProgramSummary: {
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Days Per Week */
+            days_per_week: number;
+            goal: components["schemas"]["ProgramGoal"];
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Weeks */
+            weeks: number;
+        };
+        /**
+         * Progression
+         * @enum {string}
+         */
+        Progression: "double" | "none";
         /** RateLimitOut */
         RateLimitOut: {
             /**
@@ -437,6 +1368,53 @@ export interface components {
              * Format: date-time
              */
             window_start: string;
+        };
+        /**
+         * RecordList
+         * @example {
+         *       "items": [
+         *         {
+         *           "achieved_at": "2026-10-18T17:30:00Z",
+         *           "exercise_id": 20,
+         *           "exercise_name": "Bench Press",
+         *           "kind": "weight_for_reps",
+         *           "previous": 80,
+         *           "reps": 8,
+         *           "value": 82.5,
+         *           "workout_id": 42
+         *         }
+         *       ]
+         *     }
+         */
+        RecordList: {
+            /** Items */
+            items: components["schemas"]["CurrentRecord"][];
+        };
+        /**
+         * RecordOut
+         * @description A personal record: `value` beats `previous` (null for a first-ever performance).
+         *     `weight_for_reps`: kg lifted for `reps`; `e1rm`: estimated 1RM in kg; `session_volume`: kg.
+         * @example {
+         *       "exercise_id": 20,
+         *       "exercise_name": "Bench Press",
+         *       "kind": "weight_for_reps",
+         *       "previous": 80,
+         *       "reps": 8,
+         *       "value": 82.5
+         *     }
+         */
+        RecordOut: {
+            /** Exercise Id */
+            exercise_id: number;
+            /** Exercise Name */
+            exercise_name: string;
+            kind: components["schemas"]["PrKind"];
+            /** Previous */
+            previous: number | null;
+            /** Reps */
+            reps: number | null;
+            /** Value */
+            value: number;
         };
         /** RunOut */
         RunOut: {
@@ -462,6 +1440,114 @@ export interface components {
             updated_at: string;
             /** Upserted */
             upserted: number;
+        };
+        /** SessionProgress */
+        SessionProgress: {
+            /** @description Working set with the highest e1RM (then weight); null without working sets */
+            best_set: components["schemas"]["BestSet"] | null;
+            /**
+             * E1Rm Kg
+             * @description Best e1RM of the session
+             */
+            e1rm_kg: number | null;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Volume Kg */
+            volume_kg: number;
+            /** Working Sets */
+            working_sets: number;
+            /** Workout Id */
+            workout_id: number;
+        };
+        /**
+         * SetIn
+         * @example {
+         *       "completed_at": "2026-10-18T17:42:10Z",
+         *       "exercise_id": 20,
+         *       "is_warmup": false,
+         *       "reps": 8,
+         *       "rest_seconds": 120,
+         *       "rpe": 8,
+         *       "set_index": 1,
+         *       "weight_kg": 80
+         *     }
+         */
+        SetIn: {
+            /**
+             * Completed At
+             * Format: date-time
+             * @description When the set was done, as the client saw it (part of the idempotent body)
+             */
+            completed_at: string;
+            /** Exercise Id */
+            exercise_id: number;
+            /**
+             * Is Warmup
+             * @default false
+             */
+            is_warmup: boolean;
+            /** Reps */
+            reps: number;
+            /** Rest Seconds */
+            rest_seconds?: number | null;
+            /** Rpe */
+            rpe?: (number | string) | null;
+            /**
+             * Set Index
+             * @description Order of the set within the exercise
+             */
+            set_index: number;
+            /**
+             * Weight Kg
+             * @description kg, 0-500 in 0.25 steps
+             */
+            weight_kg: number | string;
+        };
+        /**
+         * SetOut
+         * @example {
+         *       "client_id": "6f1c2a52-8a7e-4f57-9a43-3c3b4b8f0d11",
+         *       "completed_at": "2026-10-18T17:42:10Z",
+         *       "exercise_id": 20,
+         *       "is_warmup": false,
+         *       "reps": 8,
+         *       "rest_seconds": 120,
+         *       "rpe": 8,
+         *       "set_index": 1,
+         *       "weight_kg": 80,
+         *       "workout_id": 42
+         *     }
+         */
+        SetOut: {
+            /**
+             * Client Id
+             * Format: uuid
+             */
+            client_id: string;
+            /**
+             * Completed At
+             * Format: date-time
+             */
+            completed_at: string;
+            /** Exercise Id */
+            exercise_id: number;
+            /** Is Warmup */
+            is_warmup: boolean;
+            /** Reps */
+            reps: number;
+            /** Rest Seconds */
+            rest_seconds: number | null;
+            /** Rpe */
+            rpe: number | null;
+            /** Set Index */
+            set_index: number;
+            /** Weight Kg */
+            weight_kg: number;
+            /** Workout Id */
+            workout_id: number;
         };
         /** SportTotalsOut */
         SportTotalsOut: {
@@ -718,6 +1804,264 @@ export interface components {
             to: string;
             /** Weeks */
             weeks: components["schemas"]["Week"][];
+        };
+        /**
+         * WeeklyVolume
+         * @example {
+         *       "items": [
+         *         {
+         *           "muscle": "chest",
+         *           "sets": 12,
+         *           "volume_kg": 6420,
+         *           "week_start": "2026-10-12"
+         *         }
+         *       ]
+         *     }
+         */
+        WeeklyVolume: {
+            /**
+             * Items
+             * @description By week, then muscle; weeks without sets omitted
+             */
+            items: components["schemas"]["MuscleWeek"][];
+        };
+        /**
+         * WorkoutDetail
+         * @example {
+         *       "ended_at": "2026-10-18T18:35:00Z",
+         *       "exercise_count": 5,
+         *       "id": 42,
+         *       "notes": "",
+         *       "planned": [
+         *         {
+         *           "exercise": {
+         *             "equipment": "barbell",
+         *             "id": 20,
+         *             "is_custom": false,
+         *             "movement_pattern": "horizontal_push",
+         *             "name": "Bench Press",
+         *             "primary_muscle": "chest",
+         *             "secondary_muscles": [
+         *               "triceps",
+         *               "shoulders"
+         *             ],
+         *             "slug": "bench-press"
+         *           },
+         *           "last_performance": {
+         *             "sets": [
+         *               {
+         *                 "reps": 10,
+         *                 "rpe": 8.5,
+         *                 "weight_kg": 77.5
+         *               },
+         *               {
+         *                 "reps": 9,
+         *                 "weight_kg": 77.5
+         *               }
+         *             ],
+         *             "started_at": "2026-10-15T17:30:00Z",
+         *             "workout_id": 41
+         *           },
+         *           "progression": "double",
+         *           "rep_max": 12,
+         *           "rep_min": 8,
+         *           "rest_seconds": 90,
+         *           "sets": 3,
+         *           "start_weight_kg": 60
+         *         }
+         *       ],
+         *       "program_day_id": 11,
+         *       "program_day_name": "Upper A",
+         *       "records": [
+         *         {
+         *           "exercise_id": 20,
+         *           "exercise_name": "Bench Press",
+         *           "kind": "weight_for_reps",
+         *           "previous": 80,
+         *           "reps": 8,
+         *           "value": 82.5
+         *         }
+         *       ],
+         *       "set_count": 14,
+         *       "sets": [
+         *         {
+         *           "client_id": "6f1c2a52-8a7e-4f57-9a43-3c3b4b8f0d11",
+         *           "completed_at": "2026-10-18T17:42:10Z",
+         *           "exercise_id": 20,
+         *           "is_warmup": false,
+         *           "reps": 8,
+         *           "rest_seconds": 120,
+         *           "rpe": 8,
+         *           "set_index": 1,
+         *           "weight_kg": 80,
+         *           "workout_id": 42
+         *         }
+         *       ],
+         *       "started_at": "2026-10-18T17:30:00Z",
+         *       "volume_kg": 8240
+         *     }
+         */
+        WorkoutDetail: {
+            /**
+             * Ended At
+             * @description null while the workout is in progress
+             */
+            ended_at: string | null;
+            /** Exercise Count */
+            exercise_count: number;
+            /** Id */
+            id: number;
+            /** Notes */
+            notes: string;
+            /**
+             * Planned
+             * @description The program day's exercises in order; empty for a free workout
+             */
+            planned: components["schemas"]["PlannedExercise"][];
+            /** Program Day Id */
+            program_day_id: number | null;
+            /** Program Day Name */
+            program_day_name: string | null;
+            /**
+             * Records
+             * @description Personal records these sets beat, against every earlier workout
+             */
+            records: components["schemas"]["RecordOut"][];
+            /**
+             * Set Count
+             * @description Logged sets, warm-ups included
+             */
+            set_count: number;
+            /**
+             * Sets
+             * @description In completion order
+             */
+            sets: components["schemas"]["SetOut"][];
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Volume Kg
+             * @description Sum of reps x weight of the working sets
+             */
+            volume_kg: number;
+        };
+        /**
+         * WorkoutFinish
+         * @example {
+         *       "ended_at": "2026-10-18T18:35:00Z",
+         *       "notes": "good"
+         *     }
+         */
+        WorkoutFinish: {
+            /**
+             * Ended At
+             * @description Default: now
+             */
+            ended_at?: string | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /**
+         * WorkoutPage
+         * @example {
+         *       "items": [
+         *         {
+         *           "ended_at": "2026-10-18T18:35:00Z",
+         *           "exercise_count": 5,
+         *           "id": 42,
+         *           "notes": "",
+         *           "program_day_id": 11,
+         *           "program_day_name": "Upper A",
+         *           "set_count": 14,
+         *           "started_at": "2026-10-18T17:30:00Z",
+         *           "volume_kg": 8240
+         *         }
+         *       ]
+         *     }
+         */
+        WorkoutPage: {
+            /** Items */
+            items: components["schemas"]["WorkoutSummary"][];
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` for the next page
+             */
+            next_cursor: string | null;
+        };
+        /**
+         * WorkoutStart
+         * @example {
+         *       "program_day_id": 11
+         *     }
+         * @example {
+         *       "notes": "hotel gym"
+         *     }
+         */
+        WorkoutStart: {
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Program Day Id
+             * @description Plan to follow, if any
+             */
+            program_day_id?: number | null;
+            /**
+             * Started At
+             * @description Default: now
+             */
+            started_at?: string | null;
+        };
+        /**
+         * WorkoutSummary
+         * @example {
+         *       "ended_at": "2026-10-18T18:35:00Z",
+         *       "exercise_count": 5,
+         *       "id": 42,
+         *       "notes": "",
+         *       "program_day_id": 11,
+         *       "program_day_name": "Upper A",
+         *       "set_count": 14,
+         *       "started_at": "2026-10-18T17:30:00Z",
+         *       "volume_kg": 8240
+         *     }
+         */
+        WorkoutSummary: {
+            /**
+             * Ended At
+             * @description null while the workout is in progress
+             */
+            ended_at: string | null;
+            /** Exercise Count */
+            exercise_count: number;
+            /** Id */
+            id: number;
+            /** Notes */
+            notes: string;
+            /** Program Day Id */
+            program_day_id: number | null;
+            /** Program Day Name */
+            program_day_name: string | null;
+            /**
+             * Set Count
+             * @description Logged sets, warm-ups included
+             */
+            set_count: number;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Volume Kg
+             * @description Sum of reps x weight of the working sets
+             */
+            volume_kg: number;
         };
     };
     responses: never;
@@ -1172,6 +2516,1351 @@ export interface operations {
                     /**
                      * @example {
                      *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_body_metrics_v1_training_body_metrics_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodyMetricList"];
+                };
+            };
+            /** @description `to` before `from` */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "`to` is before `from`"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_body_metric_v1_training_body_metrics__day__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BodyMetricIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodyMetricOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_exercises_v1_training_exercises_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                muscle?: components["schemas"]["Muscle"] | null;
+                equipment?: components["schemas"]["Equipment"][] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExerciseList"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_exercise_v1_training_exercises_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExerciseCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExerciseOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Slug taken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "exercise `landmine-press` exists"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_exercise_v1_training_exercises__exercise_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exercise_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExerciseUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExerciseOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown exercise */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "exercise not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Built-in exercise */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "built-in exercises are read-only"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exercise_progress_v1_training_exercises__exercise_id__progress_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: never;
+            path: {
+                exercise_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExerciseProgress"];
+                };
+            };
+            /** @description `to` before `from` */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "`to` is before `from`"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown exercise */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "exercise not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_programs_v1_training_programs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramList"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    create_program_v1_training_programs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramOut"];
+                };
+            };
+            /** @description A planned exercise does not exist */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "unknown exercise ids: [999]"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_active_program_v1_training_programs_active_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description No active program */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "no active program"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_program_v1_training_programs__program_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown program */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "program not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replace_program_v1_training_programs__program_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramOut"];
+                };
+            };
+            /** @description A planned exercise does not exist */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "unknown exercise ids: [999]"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown program */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "program not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_program_v1_training_programs__program_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown program */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "program not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_program_v1_training_programs__program_id__activate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown program */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "program not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    personal_records_v1_training_prs_get: {
+        parameters: {
+            query?: {
+                /** @description Only this exercise */
+                exercise_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordList"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    weekly_volume_v1_training_volume_weekly_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyVolume"];
+                };
+            };
+            /** @description `to` before `from` */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "`to` is before `from`"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_workouts_v1_training_workouts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                /** @description `next_cursor` of the previous page */
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkoutPage"];
+                };
+            };
+            /** @description Invalid cursor */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "invalid cursor"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_workout_v1_training_workouts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["WorkoutStart"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkoutDetail"];
+                };
+            };
+            /** @description Unknown program day */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "program day not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_workout_v1_training_workouts__workout_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workout_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkoutDetail"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown workout */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "workout not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_workout_v1_training_workouts__workout_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workout_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown workout */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "workout not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finish_workout_v1_training_workouts__workout_id__finish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workout_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["WorkoutFinish"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkoutDetail"];
+                };
+            };
+            /** @description `ended_at` before the start */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "`ended_at` is before `started_at`"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown workout */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "workout not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_set_v1_training_workouts__workout_id__sets__client_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workout_id: number;
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetOut"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetOut"];
+                };
+            };
+            /** @description Unknown exercise */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "exercise not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown workout */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "workout not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Id used by another workout */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "client_id belongs to another workout"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_set_v1_training_workouts__workout_id__sets__client_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workout_id: number;
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown workout */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "workout not found"
                      *     }
                      */
                     "application/json": unknown;

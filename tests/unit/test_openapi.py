@@ -10,7 +10,7 @@ from trainsync.core.settings import Settings
 from trainsync.main import create_app
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TAGS = {"auth", "webhooks", "activities", "stats", "sync", "health"}
+TAGS = {"auth", "webhooks", "activities", "stats", "sync", "health", "training"}
 
 
 @pytest.fixture
@@ -66,6 +66,28 @@ def test_every_endpoint_is_documented(spec: dict[str, Any]) -> None:
         "GET /v1/stats/weekly",
         "GET /v1/stats/summary",
         "GET /v1/sync/status",
+        "GET /v1/training/body-metrics",
+        "PUT /v1/training/body-metrics/{day}",
+        "GET /v1/training/exercises",
+        "POST /v1/training/exercises",
+        "PATCH /v1/training/exercises/{exercise_id}",
+        "GET /v1/training/exercises/{exercise_id}/progress",
+        "GET /v1/training/programs",
+        "POST /v1/training/programs",
+        "GET /v1/training/programs/active",
+        "DELETE /v1/training/programs/{program_id}",
+        "GET /v1/training/programs/{program_id}",
+        "PUT /v1/training/programs/{program_id}",
+        "POST /v1/training/programs/{program_id}/activate",
+        "GET /v1/training/prs",
+        "GET /v1/training/volume/weekly",
+        "GET /v1/training/workouts",
+        "POST /v1/training/workouts",
+        "DELETE /v1/training/workouts/{workout_id}",
+        "GET /v1/training/workouts/{workout_id}",
+        "POST /v1/training/workouts/{workout_id}/finish",
+        "DELETE /v1/training/workouts/{workout_id}/sets/{client_id}",
+        "PUT /v1/training/workouts/{workout_id}/sets/{client_id}",
     }
 
 

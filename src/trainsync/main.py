@@ -12,7 +12,7 @@ from fastapi import FastAPI, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from trainsync import __version__
-from trainsync.api import activities, auth, health, stats, sync_status, webhooks
+from trainsync.api import activities, auth, health, stats, sync_status, training, webhooks
 from trainsync.api.errors import VALIDATION_ERROR_EXAMPLE
 from trainsync.api.middleware import MetricsMiddleware, RequestIdMiddleware
 from trainsync.core.clock import utc_now
@@ -71,6 +71,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(activities.router)
     app.include_router(stats.router)
     app.include_router(sync_status.router)
+    for router in training.ROUTERS:
+        app.include_router(router)
     _document_validation_errors(app)
 
     @app.get("/metrics", include_in_schema=False)

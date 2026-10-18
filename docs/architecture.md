@@ -148,6 +148,26 @@ reps (none above); records per exercise for weight at a rep count, e1RM and sess
   rate-limit usage, circuit state of every process (each publishes its breaker transitions to Redis).
 - Responses include `last_synced_at`, so the client knows how fresh the data is when Strava is degraded.
 
+### 7b. Training API (Phase 6, `/v1/training`, API key)
+Routers in `api/training/`; every number (volume, e1RM, records, weekly muscle volume) comes from
+`training/math.py`. Weights are exact decimals in requests (0–500 kg in 0.25 steps; reps 0–100;
+RPE 1–10 in 0.5 steps) and JSON numbers in responses.
+- Exercises: `GET /exercises?q=&muscle=&equipment=`; custom ones via `POST /exercises` and
+  `PATCH /exercises/{id}` (built-ins are read-only, `409`).
+- Programs: CRUD under `/programs`, `GET /programs/active`, `POST /programs/{id}/activate`
+  (one active at a time).
+- Workouts: `POST /workouts` (free or `program_day_id`), `GET /workouts` (keyset on
+  `(started_at, id)`, ADR 0009), `GET /workouts/{id}`, `POST /workouts/{id}/finish`, `DELETE`.
+  Start, get and finish return one shape: summary (`volume_kg`, `set_count`), `planned` (the day's
+  exercises with `last_performance`), `sets` and `records` (PRs the sets beat against all earlier
+  workouts).
+- Sets: `PUT /workouts/{id}/sets/{client_id}` upserts by a client-generated UUID (`201` first,
+  `200` on a repeat, `409` when the id belongs to another workout); `DELETE` is idempotent (ADR 0017).
+- Progress: `GET /exercises/{id}/progress` (best set, e1RM and volume per workout),
+  `GET /volume/weekly` (working sets and kg per ISO week and primary muscle), `GET /prs` (standing
+  records, found by replaying workouts oldest first through `detect_prs`).
+- Body metrics: `PUT /body-metrics/{date}`, `GET /body-metrics?from=&to=`.
+
 ### 8. Operations
 - `GET /health/live` (process up), `GET /health/ready` (DB + Redis reachable).
 - `GET /metrics` Prometheus endpoint on the API; each worker serves its own on
