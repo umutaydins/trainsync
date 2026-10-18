@@ -1,0 +1,105 @@
+{
+  "_comment": [
+    "Hand-computed energy balance for P6.4 (tests/integration/test_nutrition_api.py).",
+    "BMR Mifflin-St Jeor male: 10w + 6.25h - 5a + 5; age = 2026 - 1991 = 35; h = 180.",
+    "  w = 80.0 (body_metrics 2026-10-10, used on 10-12 and 10-13): 800 + 1125 - 175 + 5 = 1755.0",
+    "  w = 79.0 (body_metrics 2026-10-14):                            790 + 1125 - 175 + 5 = 1745.0",
+    "Baseline 'light' x1.375: 1755 * 1.375 = 2413.125 -> 2413.1; 1745 * 1.375 = 2399.375 -> 2399.4 (half up).",
+    "Food per 100 g: oats 380 kcal / 13 P / 60 C / 7 F; chicken 165 / 31 / 0 / 3.6; cola 42 / unknown / 10.6 / 0.",
+    "2026-10-12: oats 80 g = 304 kcal, 10.4 P, 48 C, 5.6 F; chicken 200 g = 330 kcal, 62 P, 0 C, 7.2 F",
+    "  intake 634.0 kcal, 72.4 P, 48.0 C, 12.8 F; remaining 2600 - 634 = 1966.0",
+    "  exercise: Run raw.calories 420.5; Ride raw.calories 0 -> raw.kilojoules 650 -> 650 => 1070.5, complete",
+    "  expenditure 2413.1 + 1070.5 = 3483.6; balance 634.0 - 3483.6 = -2849.6",
+    "2026-10-13: cola 330 g = 138.6 kcal, P unknown, 34.98 C, 0 F; oats 50 g = 190 kcal, 6.5 P, 30 C, 3.5 F",
+    "  intake 328.6 kcal, 6.5 P (cola's unknown), 64.98 -> 65.0 C, 3.5 F, macros incomplete; remaining 2271.4",
+    "  exercise: WeightTraining no calories -> unknown; Walk 23:30Z raw.calories 120 => 120.0 known, 1 unknown",
+    "  expenditure 2413.1 + 120.0 = 2533.1; balance 328.6 - 2533.1 = -2204.5, incomplete",
+    "  not counted: a soft-deleted Run and a Run of an inactive athlete (both with calories)",
+    "2026-10-14: no food; EBikeRide 00:00:00Z raw.kilojoules 300 => 300.0",
+    "  expenditure 2399.4 + 300 = 2699.4; balance 0 - 2699.4 = -2699.4; remaining 2600.0",
+    "  not counted: a Run at 2026-10-15T00:00:00Z (next UTC day)",
+    "Totals: intake 634.0 + 328.6 + 0 = 962.6; exercise 1070.5 + 120 + 300 = 1490.5; days logged 2;",
+    "  avg intake 962.6 / 2 = 481.3; balance -2849.6 - 2204.5 - 2699.4 = -7753.5 over 3 days; incomplete."
+  ],
+  "profile": {
+    "sex": "male",
+    "birth_year": 1991,
+    "height_cm": 180,
+    "activity_baseline": "light",
+    "kcal_target": 2600,
+    "protein_target_g": 140
+  },
+  "body_metrics": [
+    {"date": "2026-10-10", "weight_kg": "80.0"},
+    {"date": "2026-10-14", "weight_kg": "79.0"}
+  ],
+  "foods": {
+    "oats": {"name": "Rolled oats", "kcal_100g": 380, "protein_100g": 13, "carbs_100g": 60, "fat_100g": 7},
+    "chicken": {"name": "Chicken breast", "kcal_100g": 165, "protein_100g": 31, "carbs_100g": 0, "fat_100g": 3.6},
+    "cola": {"name": "Cola", "kcal_100g": 42, "protein_100g": null, "carbs_100g": 10.6, "fat_100g": 0}
+  },
+  "logs": [
+    {"date": "2026-10-12", "meal": "breakfast", "food": "oats", "grams": 80},
+    {"date": "2026-10-12", "meal": "dinner", "food": "chicken", "grams": 200},
+    {"date": "2026-10-13", "meal": "snack", "food": "cola", "grams": 330},
+    {"date": "2026-10-13", "meal": "breakfast", "food": "oats", "grams": 50}
+  ],
+  "activities": [
+    {"id": 101, "sport_type": "Run", "start_date": "2026-10-12T06:30:00Z", "calories": 420.5},
+    {"id": 102, "sport_type": "Ride", "start_date": "2026-10-12T18:00:00Z", "calories": 0, "kilojoules": 650},
+    {"id": 103, "sport_type": "WeightTraining", "start_date": "2026-10-13T17:00:00Z"},
+    {"id": 104, "sport_type": "Walk", "start_date": "2026-10-13T23:30:00Z", "calories": 120},
+    {"id": 105, "sport_type": "Run", "start_date": "2026-10-13T07:00:00Z", "calories": 999, "deleted": true},
+    {"id": 106, "sport_type": "Run", "start_date": "2026-10-13T08:00:00Z", "calories": 999, "inactive_athlete": true},
+    {"id": 107, "sport_type": "EBikeRide", "start_date": "2026-10-14T00:00:00Z", "kilojoules": 300},
+    {"id": 108, "sport_type": "Run", "start_date": "2026-10-15T00:00:00Z", "calories": 999}
+  ],
+  "expected": {
+    "from": "2026-10-12",
+    "to": "2026-10-14",
+    "days": [
+      {
+        "date": "2026-10-12",
+        "intake_kcal": 634.0, "protein_g": 72.4, "carbs_g": 48.0, "fat_g": 12.8,
+        "entry_count": 2, "macros_complete": true,
+        "kcal_target": 2600, "protein_target_g": 140, "kcal_remaining": 1966.0,
+        "bmr_kcal": 1755.0, "baseline_kcal": 2413.1, "activity_baseline": "light",
+        "weight_kg": 80.0, "weight_date": "2026-10-10", "estimate_unavailable_reason": null,
+        "exercise_kcal": 1070.5, "exercise_unknown_count": 0, "exercise_complete": true,
+        "activities": [[101, 420.5, true, "calories"], [102, 650.0, true, "kilojoules"]],
+        "expenditure_kcal": 3483.6, "balance_kcal": -2849.6, "balance_complete": true
+      },
+      {
+        "date": "2026-10-13",
+        "intake_kcal": 328.6, "protein_g": 6.5, "carbs_g": 65.0, "fat_g": 3.5,
+        "entry_count": 2, "macros_complete": false,
+        "kcal_target": 2600, "protein_target_g": 140, "kcal_remaining": 2271.4,
+        "bmr_kcal": 1755.0, "baseline_kcal": 2413.1, "activity_baseline": "light",
+        "weight_kg": 80.0, "weight_date": "2026-10-10", "estimate_unavailable_reason": null,
+        "exercise_kcal": 120.0, "exercise_unknown_count": 1, "exercise_complete": false,
+        "activities": [[103, null, false, null], [104, 120.0, true, "calories"]],
+        "expenditure_kcal": 2533.1, "balance_kcal": -2204.5, "balance_complete": false
+      },
+      {
+        "date": "2026-10-14",
+        "intake_kcal": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0,
+        "entry_count": 0, "macros_complete": true,
+        "kcal_target": 2600, "protein_target_g": 140, "kcal_remaining": 2600.0,
+        "bmr_kcal": 1745.0, "baseline_kcal": 2399.4, "activity_baseline": "light",
+        "weight_kg": 79.0, "weight_date": "2026-10-14", "estimate_unavailable_reason": null,
+        "exercise_kcal": 300.0, "exercise_unknown_count": 0, "exercise_complete": true,
+        "activities": [[107, 300.0, true, "kilojoules"]],
+        "expenditure_kcal": 2699.4, "balance_kcal": -2699.4, "balance_complete": true
+      }
+    ],
+    "totals": {
+      "intake_kcal": 962.6,
+      "exercise_kcal": 1490.5,
+      "days_logged": 2,
+      "avg_intake_kcal": 481.3,
+      "balance_kcal": -7753.5,
+      "balance_days": 3,
+      "balance_complete": false
+    }
+  }
+}

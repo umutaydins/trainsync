@@ -237,7 +237,44 @@ erDiagram
         bigint object_id "strava_activity_id, UK with kind"
         timestamptz sent_at
     }
+
+    foods ||--o{ food_logs : "logged as"
+    foods {
+        bigint id PK
+        text name
+        text brand "nullable"
+        varchar barcode UK "nullable"
+        numeric kcal_100g
+        numeric protein_100g "nullable = unknown"
+        numeric carbs_100g "nullable = unknown"
+        numeric fat_100g "nullable = unknown"
+        text source "manual | openfoodfacts"
+        boolean favorite
+        timestamptz created_at
+    }
+    food_logs {
+        bigint id PK
+        uuid client_id UK "idempotent PUT"
+        date date
+        text meal "breakfast | lunch | dinner | snack"
+        bigint food_id FK
+        numeric grams
+        timestamptz created_at
+    }
+    nutrition_profile {
+        int id PK "always 1"
+        text sex
+        int birth_year
+        numeric height_cm
+        text activity_baseline "sedentary | light | moderate"
+        int kcal_target "nullable"
+        int protein_target_g "nullable"
+        timestamptz updated_at
+    }
 ```
+
+Nutrition (P6.4, ADR 0019) is single-user: no `athlete_id`. Body weight for the BMR estimate comes
+from `body_metrics` (training), exercise energy from `activities.raw`.
 
 `notifications` has no foreign key: a row is the idempotency claim for one message (ADR 0012),
 kept even if the activity is deleted later.
