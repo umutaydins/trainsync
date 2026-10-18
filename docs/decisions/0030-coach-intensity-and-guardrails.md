@@ -35,8 +35,14 @@ no matter what he configures.
     meals). Built-in lines are tested against it; local lines that hit it are dropped with a log
     line (never altered); an assistant reply that hits it is replaced by a neutral fallback.
     Profanity is not on the list and is never filtered;
-  - food is never roasted: cravings get the neutral line "eat it, log it, stay in your daily
-    target" with today's remaining kcal; no message suggests eating below the nutrition target.
+  - food rule (replaced by [ADR 0032](0032-food-roast-profanity-level-and-distress.md)): in
+    savage the coach roasts unhealthy *choices* (junk, sugar, alcohol, cigarettes, staying up
+    late, high-sugar logs), never the body, then gives one concrete move (smaller portion, a
+    swap, log it now) with the day's target unchanged; no message suggests skipping meals,
+    compensating or eating below the nutrition target. The first version roasted no food at all
+    ("eat it, log it, stay in your daily target");
+  - distress (guilt spiral, purging, not eating, self-hate, binge talk) gets a calm reply like
+    pain does, in every mode (ADR 0032).
 - **Timed messages run in the worker**, like the check-in (ADR 0020): a cron every minute for the
   schedule-based reminders, and jobs enqueued by the API when a workout starts, a set is logged
   (rest over, under target) and a workout finishes. Every send claims a `notifications` row first
@@ -60,7 +66,8 @@ no matter what he configures.
 - Make savage a third tone — tone and intensity change independently (savage only exists in
   Turkish, and soft mode must drop intensity without changing the language or the tone).
 - Filter profanity in savage — the owner asked for it explicitly; the guardrails target harm
-  (body, identity, health, food restriction), not words he chose.
+  (body, identity, health, food restriction), not words he chose. (ADR 0032 adds a per-chat
+  profanity level: `max` swears in every savage message.)
 
 ## Consequences
 - The bot sends more messages; quiet hours, soft mode and the per-stage idempotency keep that
