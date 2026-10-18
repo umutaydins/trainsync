@@ -32,9 +32,9 @@ from trainsync.coach.mode import (
 from trainsync.core.settings import BotLang, BotProfanity, Settings
 
 # The calm replies to pain and distress (ADR 0030, 0032): a message that carries one is never
-# given a max opener, whoever built it.
+# given a max opener, whoever built it. Matched on the wording before the first field.
 CALM_TEXTS = frozenset(
-    texts[key]
+    texts[key].split("{", 1)[0]
     for texts in NEUTRAL_TEXTS.values()
     for key in (NeutralKey.SAFETY_PAIN, NeutralKey.SAFETY_DISTRESS)
 )

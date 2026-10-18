@@ -97,7 +97,7 @@ NEUTRAL_FIELDS: Mapping[NeutralKey, frozenset[str]] = {
     NeutralKey.CHECKIN_SUMMARY_SLEEP: _fields("hours"),
     NeutralKey.CHECKIN_SUMMARY_ENERGY: _fields("energy"),
     NeutralKey.SAFETY_PAIN: _fields(),
-    NeutralKey.SAFETY_DISTRESS: _fields(),
+    NeutralKey.SAFETY_DISTRESS: _fields("emergency"),
     NeutralKey.FOOD_MOVE_SWEET: _fields(),
     NeutralKey.FOOD_MOVE_FAST_FOOD: _fields(),
     NeutralKey.FOOD_MOVE_FRIED: _fields(),
@@ -148,7 +148,7 @@ _EN: Mapping[NeutralKey, str] = {
     NeutralKey.SAFETY_DISTRESS: (
         "No roast here. That sounds heavy, and one day does not undo your work. Have a normal "
         "meal when you can, and log it only if that helps. If this keeps coming back or you do "
-        "not feel safe, talk to someone you trust or a professional today (emergency: 112)."
+        "not feel safe, talk to someone you trust or a professional today (emergency: {emergency})."
     ),
     NeutralKey.FOOD_MOVE_SWEET: (
         "One move: half the portion, or swap it for fruit with yogurt. Log it with /eat now."
@@ -217,7 +217,7 @@ _TR: Mapping[NeutralKey, str] = {
         "Burada fırça yok. Ağır bir şey gibi duruyor ve tek bir gün emeğini silmez. Fırsat "
         "bulunca normal bir öğün ye, kaydetmek iyi geliyorsa kaydet. Bu tekrar ediyorsa ya da "
         "kendini güvende hissetmiyorsan bugün güvendiğin biriyle ya da bir uzmanla konuş "
-        "(acil durumda 112)."
+        "(acil durumda {emergency})."
     ),
     NeutralKey.FOOD_MOVE_SWEET: (
         "Tek hamle: porsiyonu yarıya indir ya da yoğurtlu meyveyle değiştir. Şimdi /eat ile kaydet."

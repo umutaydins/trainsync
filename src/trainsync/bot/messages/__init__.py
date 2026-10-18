@@ -25,6 +25,7 @@ def messages_for(settings: Settings, rng: random.Random | None = None) -> Messag
         PACKS[settings.bot_tone, settings.bot_lang],
         rng,
         languages={lang: PACKS[settings.bot_tone, lang] for lang in LANGUAGES},
+        emergency_number=settings.emergency_number,
     )
 
 

@@ -50,7 +50,8 @@ never be roasted or sworn at.
 - **Distress overrides everything.** `guardrails.mentions_distress` (guilt spiral, threw up or
   purged, haven't eaten all day, self-hate, binge talk; tr and en) is checked before pain, pain
   before any trigger. Both get a calm reply from the neutral layer, marked so that max never
-  adds an opener, and no assistant call. Distress beats pain because "kustum" after a binge needs
+  adds an opener, and no assistant call. The distress reply names an emergency number from the setting
+  `EMERGENCY_NUMBER` (default 112); the packs only hold a `{emergency}` placeholder. Distress beats pain because "kustum" after a binge needs
   the supportive reply, not "see a doctor".
 - **Unknown commands** answer in the current tone and point to `/help`: the tone pack's line,
   or an `unknown_command` savage line plus the pointer.

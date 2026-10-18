@@ -299,6 +299,7 @@ optional for the API and the worker; the web app needs its three required ones (
 | `BOT_INTENSITY` | bot, worker | `normal` | `savage`: the owner's opt-in to an unrestricted, roasting coach (with `hardcore`, either language); guardrails always hold ([ADR 0030](docs/decisions/0030-coach-intensity-and-guardrails.md)) |
 | `BOT_PROFANITY` | bot, worker | `roast` | `max`: every savage message swears; `/swear` stores a level per chat ([ADR 0032](docs/decisions/0032-food-roast-profanity-level-and-distress.md)) |
 | `SUGAR_LIMIT_G` | bot | `50` | Savage: a day's free sugar (sweets, desserts, sugary drinks, NOVA 4) above this is called out on the next `/eat` |
+| `EMERGENCY_NUMBER` | bot, worker | `112` | Named in the calm reply to distress talk |
 | `HIGH_SUGAR_PER_100G` | bot | `22.5` | Savage: one `/eat` item above this sugar per 100 g gets a roast (fruit, vegetables, plain dairy never) |
 | `WORKOUT_REMINDER_TIME`, `QUIET_HOURS` | worker, bot | `18:00`, `23:00-07:00` | Default start of program days; local window with no proactive coach message |
 | `COACH_MESSAGES_ENABLED`, `COACH_MESSAGES_FILE` | worker, bot | on with a bot token, `config/messages.local.yaml` | Timed coach messages; your own extra lines (git-ignored, example in `config/`) |

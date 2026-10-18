@@ -364,7 +364,8 @@ Design: [ADR 0030](decisions/0030-coach-intensity-and-guardrails.md), task
   system prompt says the user asked for it). The worker and bot log `intensity` at startup.
 - **Guardrails** (every intensity and profanity level, in code and in the assistant prompt):
   never body, weight or appearance; no slurs; distress (guilt spiral, threw up, haven't eaten,
-  self-hate, binge talk) → a calm, supportive reply without swearing; pain, injury, illness,
+  self-hate, binge talk) → a calm, supportive reply without swearing that names
+  `EMERGENCY_NUMBER` (default 112); pain, injury, illness,
   dizziness, chest pain → no roast, rest / see a doctor; never burn-it-off, punishment cardio,
   skipped meals or eating below the nutrition target. Profanity is not filtered.
 - **Food rule** (savage, ADR 0032): junk, sugar, soft and energy drinks, fast or fried food,

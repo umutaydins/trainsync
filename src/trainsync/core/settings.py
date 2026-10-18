@@ -44,6 +44,8 @@ BotLang = Literal["en", "tr"]
 BotIntensity = Literal["normal", "savage"]
 # Where savage swears (ADR 0032): only in the roast lines, or in every savage message.
 BotProfanity = Literal["roast", "max"]
+# The emergency number in the distress reply (ADR 0032); 112 works across the EU and Türkiye.
+DEFAULT_EMERGENCY_NUMBER = "112"
 
 
 def parse_quiet_hours(value: str) -> tuple[time, time]:
@@ -273,6 +275,8 @@ class Settings(BaseSettings):
     sugar_limit_g: float = Field(default=50.0, gt=0, le=1000)
     # One item above this sugar per 100 g gets a roast (the UK front-of-pack "high" mark).
     high_sugar_per_100g: float = Field(default=22.5, gt=0, le=100)
+    # Named in the calm reply to distress talk (ADR 0032): digits, optionally a leading +.
+    emergency_number: str = Field(default=DEFAULT_EMERGENCY_NUMBER, pattern=r"^\+?[0-9]{2,15}$")
 
     @field_validator("coach_messages_enabled", mode="before")
     @classmethod
