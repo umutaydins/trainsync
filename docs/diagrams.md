@@ -26,6 +26,7 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [21. Deployment — production on the MacBook (Phase 7)](#21-deployment--production-on-the-macbook-phase-7)
 - [22. Sequence — nightly backup and weekly restore check](#22-sequence--nightly-backup-and-weekly-restore-check-p74-adr-0024)
 - [23. Activity — make deploy and make rollback](#23-activity--make-deploy-and-make-rollback-p75-adr-0026)
+- [24. State — uptime and stack alerts](#24-state--uptime-and-stack-alerts-p78-adr-0027)
 
 ---
 
@@ -1203,7 +1204,8 @@ sequenceDiagram
 flowchart TB
     strava[("Strava<br/>OAuth + webhooks")]
     vercel["Vercel<br/>web/ BFF (server-side)"]
-    gha["GitHub Actions<br/>public-check (every 6 h)"]
+    gha["GitHub Actions<br/>public-check (every 6 h) · uptime (every 15 min)"]
+    tg["Telegram"]
 
     subgraph ts["Tailscale"]
         funnel["Funnel · TLS for &lt;mac&gt;.&lt;tailnet&gt;.ts.net<br/>:443 real · :8443 demo"]
@@ -1234,6 +1236,8 @@ flowchart TB
     worker --> rd
     bot --> api
     agent -. "docker compose up" .-> dd
+    gha -. "uptime: down / recovered" .-> tg
+    worker -. "stack alerts: start / clear" .-> tg
 ```
 
 ## 22. Sequence — nightly backup and weekly restore check (P7.4, ADR 0024)
@@ -1290,4 +1294,45 @@ flowchart TD
     down --> old
     crossed -- "any reversible = False" --> restore(["refuse · print the restore steps<br/>(pre-deploy backup, then rollback --restored)"])
     old --> rbdone(["smoke test · deploy-state: current = previous · Telegram"])
+```
+
+## 24. State — uptime and stack alerts (P7.8, ADR 0027)
+
+External uptime, per target (`src/trainsync/ops/uptime.py`, run by `.github/workflows/uptime.yml`
+every 15 minutes; state in the Actions cache). Threshold 2: flapping (fail, ok, fail, ok) never
+reaches `down`.
+
+```mermaid
+stateDiagram-v2
+    [*] --> up
+    up --> up: ok
+    up --> failing: fail (n = 1)
+    failing --> up: ok
+    failing --> failing: fail, n + 1 below 2
+    failing --> down: fail, n + 1 reaches 2 / send DOWN
+    down --> down: fail / nothing
+    down --> up: ok / send RECOVERED
+    note right of down
+        a failed send keeps the old state:
+        the next run sends again
+    end note
+```
+
+Stack alerts, per condition (`src/trainsync/notify/alerts.py`, worker cron every 5 minutes; state
+in Redis `alert:<condition>`). Grace: 30 min for the circuit breaker, 0 for the others (their
+threshold is in the observation: dead letters > 0, backup > 36 h, sync > 2 h).
+
+```mermaid
+stateDiagram-v2
+    [*] --> ok
+    ok --> pending: bad (bad_since = now)
+    pending --> ok: ok / nothing
+    pending --> pending: bad, inside the grace
+    pending --> alerted: bad, grace over / send alert
+    alerted --> alerted: bad / nothing
+    alerted --> ok: ok / send resolved
+    note left of pending
+        unknown (no breaker report,
+        never synced) changes nothing
+    end note
 ```

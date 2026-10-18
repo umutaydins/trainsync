@@ -36,6 +36,9 @@ x-app-env: &app-env
   GYM_BAR_KG: ${GYM_BAR_KG:-20}
   GYM_PLATES: ${GYM_PLATES:-25x2,20x2,15x2,10x2,5x2,2.5x2,1.25x2}
   OPENFOODFACTS_ENABLED: ${OPENFOODFACTS_ENABLED:-true}
+  ALERT_CIRCUIT_OPEN_MINUTES: ${ALERT_CIRCUIT_OPEN_MINUTES:-30}
+  ALERT_BACKUP_MAX_AGE_HOURS: ${ALERT_BACKUP_MAX_AGE_HOURS:-36}
+  ALERT_SYNC_STALE_HOURS: ${ALERT_SYNC_STALE_HOURS:-2}
 
 x-app: &app
   image: trainsync:${TRAINSYNC_TAG:?set TRAINSYNC_TAG to the git SHA to run}
@@ -105,6 +108,14 @@ services:
     environment:
       <<: *app-env
       HEALTHCHECK_URL: http://127.0.0.1:9100/metrics
+      # Stack alerts (P7.8): the age of the newest backup, read from the backup folder.
+      BACKUP_DIR: /backups
+    volumes:
+      # The backup service's folder, read-only: the worker only lists the file names.
+      - type: bind
+        source: ${BACKUP_HOST_DIR:-${HOME}/Library/Mobile Documents/com~apple~CloudDocs/trainsync-backups}
+        target: /backups
+        read_only: true
     mem_limit: 512m
     depends_on:
       postgres: { condition: service_healthy }

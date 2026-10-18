@@ -234,6 +234,66 @@ GitHub runs schedules only from the default branch, so it starts after the Phase
   callback domain, re-create the webhook subscription, update Vercel, and point
   `PUBLIC_CHECK_URL` at it. Nothing in the app or the gateway changes.
 
+## Alerts
+
+Design: [ADR 0027](decisions/0027-uptime-and-stack-alerts.md); state machines in
+[diagrams §24](diagrams.md#24-state--uptime-and-stack-alerts-p78-adr-0027). Every alert is a
+Telegram message; each one says either what broke or that it is fixed, never the same thing twice.
+
+| Alert | Who checks | When it fires | When it clears |
+| --- | --- | --- | --- |
+| `trainsync uptime: real is DOWN` / `demo is DOWN` | GitHub Actions `uptime.yml`, every 15 min, `GET <url>/health/ready` | 2nd failed check in a row (non-2xx, timeout, TLS or connection error) | `… RECOVERED` at the first good check |
+| `Strava circuit breaker …, not closed for 30+ min` | worker cron `stack_alerts`, every 5 min | breaker open or half-open for `ALERT_CIRCUIT_OPEN_MINUTES` (30) | an explicit closed report |
+| `N dead-letter webhook event(s)` | worker | any webhook event failed 8 times | no dead letters left |
+| `newest backup is … old` / `no backup in /backups` | worker | newest `trainsync-*.dump.age` older than `ALERT_BACKUP_MAX_AGE_HOURS` (36) | a fresh backup appears |
+| `no successful sync for …` | worker | no finished sync or synced activity for `ALERT_SYNC_STALE_HOURS` (2) while an athlete is connected | the next successful sync |
+
+The backup service's own messages (backup FAILED, weekly restore check) stay as they are (P7.4).
+
+### Where the state lives
+
+- **Uptime**: a JSON file (`{"real": {"status": "down", "failures": 3, "since": …}}`) in the
+  GitHub Actions cache. Each run restores the newest `uptime-state-*` entry and saves a new one
+  (cache entries are immutable). See it in the run's summary, or `gh cache list --key uptime-state-`.
+  Losing it (unused for 7 days, eviction) starts over at "up": at most one repeated alert.
+- **Stack alerts**: Redis keys `alert:circuit_open`, `alert:dead_letters`, `alert:backup_stale`,
+  `alert:sync_stale` = `{"bad_since": …, "alerted": …}`, no expiry; Redis persists them
+  (`appendonly yes`), so a restarted worker neither repeats an alert nor misses a recovery. Look:
+  `docker compose --env-file .env.prod -f compose.prod.yml exec redis redis-cli --scan --pattern 'alert:*'`.
+- A send that definitely failed leaves the state as it was: the next run sends again. A send with
+  an unknown outcome (timeout after sending) counts as sent.
+
+### Configuration
+
+- Uptime (GitHub → Settings → Secrets and variables → Actions): variables `UPTIME_URL` (the real
+  `PUBLIC_API_BASE_URL`) and `UPTIME_DEMO_URL` (`https://<host>.<tailnet>.ts.net:8443`), secrets
+  `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALERT_CHAT_ID`. An empty URL is not checked; both empty =
+  the workflow skips. Schedules run only from the default branch (after the Phase 7 merge); GitHub
+  may start them a few minutes late, and disables them after 60 days without repository activity.
+  The run is red only when an alert could not be sent (a down target is reported on Telegram,
+  not by a failed run, which GitHub would e-mail every 15 minutes).
+- Stack alerts (`.env.prod`): on whenever `TELEGRAM_BOT_TOKEN` and a chat
+  (`TELEGRAM_NOTIFY_CHAT_ID`, else the first of `TELEGRAM_ALLOWED_CHAT_IDS`) are set; thresholds
+  `ALERT_CIRCUIT_OPEN_MINUTES`, `ALERT_BACKUP_MAX_AGE_HOURS`, `ALERT_SYNC_STALE_HOURS`.
+  `compose.prod.yml` mounts `BACKUP_HOST_DIR` read-only into the worker at `/backups`
+  (`BACKUP_DIR`); with `BACKUP_DIR` empty (dev) the backup age is not checked.
+
+### Testing the alerts
+
+- Unit tests (no network, no Telegram): `uv run pytest tests/unit/test_uptime.py
+  tests/unit/test_stack_alerts.py` — down / still down / recovered / flapping, and for each stack
+  condition: starts → one alert, persists → none, clears → one recovery.
+- Uptime by hand: `gh workflow run uptime.yml`, then `gh run list --workflow uptime.yml -L 1` and
+  `gh run view <id> --log | grep 'uptime:'`.
+- Uptime drill (owner check 25): stop the gateway for 35 minutes,
+  `docker compose --env-file .env.prod -f compose.prod.yml stop gateway`; within two scheduled
+  runs (≤ 30 min, plus GitHub's delay) "real is DOWN" arrives; `scripts/mac-prod.sh up` and the
+  next run sends "real RECOVERED". Faster: run `gh workflow run uptime.yml` twice while it is stopped.
+- Stack alert drill (owner check 26), without breaking anything: set
+  `ALERT_BACKUP_MAX_AGE_HOURS=0.01` in `.env.prod`, `scripts/mac-prod.sh up` (recreates the worker);
+  within 5 minutes "newest backup is … old" arrives. Put the value back (36), `scripts/mac-prod.sh up`;
+  within 5 minutes "a fresh backup exists" arrives.
+
 ## Owner checks
 
 Manual checks only the owner can perform. Each one stays PENDING until the owner runs the
@@ -264,6 +324,10 @@ that command on the Mac.
 | 20 | Vercel project and env (P7.6) | follow [deploy-vercel.md](deploy-vercel.md) §1–3; paste `vercel env ls` (or a screenshot list of names per environment, no values) | PENDING | | |
 | 21 | Production on Vercel shows real data (P7.6) | open `https://<project>.vercel.app`, log in; record the dashboard's activity count and `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/stats/summary"` count | PENDING | | |
 | 22 | Preview shows demo data, CSRF passes on Vercel (P7.6) | open a PR preview, log in with the demo password, log one set in /training (expect 403 "demo" from the read-only demo, not "cross-origin") | PENDING | | |
+| 23 | Uptime variables and secrets (P7.8) | `gh variable set UPTIME_URL --body https://<host>.<tailnet>.ts.net && gh variable set UPTIME_DEMO_URL --body https://<host>.<tailnet>.ts.net:8443 && gh secret set TELEGRAM_BOT_TOKEN && gh secret set TELEGRAM_ALERT_CHAT_ID` (each `gh secret set` prompts for the value, so it stays out of the shell history), then `gh variable list && gh secret list` | PENDING | | |
+| 24 | Uptime workflow runs (P7.8) | `gh workflow run uptime.yml`, then `gh run list --workflow uptime.yml -L 1` and `gh run view <id> --log \| grep 'uptime:'` | PENDING | | |
+| 25 | Uptime drill (P7.8) | Alerts → Testing the alerts: stop the gateway for 35 min; paste the DOWN and RECOVERED messages (time + text) | PENDING | | |
+| 26 | Stack alert drill (P7.8) | Alerts → Testing the alerts: `ALERT_BACKUP_MAX_AGE_HOURS=0.01`, then back; paste both messages and `docker compose --env-file .env.prod -f compose.prod.yml exec redis redis-cli get alert:backup_stale` | PENDING | | |
 
 ## Backups and restore
 
