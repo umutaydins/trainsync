@@ -69,6 +69,19 @@ prod-check: ## Production compose with dummy secrets: private DB/Redis, gateway 
 loadtest: ## Compose stack + 5,000 activities, locust 50 users for 2 min, CSV + summary
 	./scripts/loadtest.sh
 
+# ---------------------------------------------------------------- Mac production host (Phase 7)
+
+.PHONY: shellcheck doctor
+
+SHELLCHECK_IMAGE := koalaman/shellcheck:v0.10.0
+SHELL_SCRIPTS = $(shell find scripts deploy -name '*.sh' | sort)
+
+shellcheck: ## shellcheck every scripts/ and deploy/ shell script (pinned Docker image)
+	docker run --rm -v "$(CURDIR):/mnt:ro" -w /mnt $(SHELLCHECK_IMAGE) $(SHELL_SCRIPTS)
+
+doctor: ## Mac production host health: Docker, sleep, disk, Tailscale/Funnel, agent, backups
+	./scripts/mac-prod.sh doctor
+
 # ---------------------------------------------------------------- web dashboard (web/)
 
 .PHONY: web-verify web-e2e
