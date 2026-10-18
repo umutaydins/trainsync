@@ -17,6 +17,13 @@ depending on Strava's UI, its availability, or its rate limits every time I quer
   detail, sync status and a "Connect Strava" button
 - A Telegram bot that answers `/week`, `/last`, `/stats`, `/status` (and, optionally, plain
   questions through Claude), and announces each new activity exactly once
+- Strength training next to the runs: an exercise library, rule-based program generator,
+  double progression with suggested weights, a phone-first workout screen (rest timer, plate
+  calculator, installable PWA), progress charts and personal records
+- Food logging (own foods plus an optional Open Food Facts lookup) with daily and weekly
+  summaries and a clearly labelled energy-balance estimate
+- An evening check-in in Telegram ("did you train?") that stores the workout or the reason, with
+  streaks and adherence on the web
 
 ## How it stays reliable
 - Rate-limit-aware Strava client: reads `X-RateLimit-*` headers, two-priority budget, waits for window reset on 429
@@ -104,7 +111,7 @@ pnpm dev` (it reads the web variables below from its environment).
 A private, single-user dashboard in `web/`. Every page and every BFF call needs a signed session
 cookie (one password, `DASHBOARD_PASSWORD`). Pages are server components that read the API with
 the key held on the server; the few client-side calls ("Load more", the sync page refresh) go to
-the BFF route `/api/ts/v1/*`, which only forwards GETs on five read paths and adds the key there
+the BFF route `/api/ts/v1/*`, which forwards only allowlisted method + path pairs (reads, plus CSRF-checked JSON writes for training, nutrition and check-ins) and adds the key there
 ([ADR 0011](docs/decisions/0011-server-side-bff.md)). `make web-verify` builds with canary
 secrets and fails if any of them shows up in a browser-served file.
 
@@ -120,6 +127,34 @@ with fake Strava data.
 Dark mode and phone width: [dashboard-dark.png](docs/img/dashboard-dark.png),
 [dashboard-mobile.png](docs/img/dashboard-mobile.png).
 
+## Training and nutrition (Phase 6)
+Single-user gym training and food logging next to the Strava data, in the API (`/v1/training`,
+`/v1/nutrition`, `/v1/checkins`), the dashboard and the bot.
+
+- **Programs**: `/training/programs` generates a full-body, upper/lower or push/pull/legs program
+  from days per week, goal, equipment and session length, deterministically and without an LLM
+  ([ADR 0018](docs/decisions/0018-rule-based-programs.md)); edit, save, activate.
+- **Workout screen** (`/training/workout/<id>`, phone-first): planned sets with last time's
+  numbers and the suggested weight (double progression: +2.5 kg, +5 kg for lower body, −10 %
+  after two missed sessions), ✓ to log, workout and rest timers that stay right when the screen
+  locks, plate calculator, screen wake lock. Each set carries a client-generated id, so a double
+  tap or a retry over bad gym Wi-Fi stores one set
+  ([ADR 0017](docs/decisions/0017-client-generated-ids-for-set-logging.md),
+  [ADR 0021](docs/decisions/0021-web-workout-screen-and-pwa.md)). Installable as a PWA.
+- **History and progress**: workouts with volume and records, e1RM and best-set charts per
+  exercise, weekly sets and kg per muscle, a PR board, body-weight trend if entered.
+- **Nutrition** (`/nutrition`): meals, add food by search or barcode, live kcal and macros,
+  targets, weekly averages. The energy balance (Mifflin–St Jeor BMR × activity baseline + calories
+  of synced activities) is labelled as an estimate and says "unknown" when Strava has no calorie
+  number, never a guess ([ADR 0019](docs/decisions/0019-energy-balance-estimates-and-open-food-facts.md)).
+  Neutral wording only.
+- **Check-ins** (`/training/checkins`): calendar of daily reports from the bot, streak and
+  adherence ([ADR 0020](docs/decisions/0020-daily-check-in.md)).
+
+| Programs | Workout (plate sheet) | Progress | Nutrition |
+|---|---|---|---|
+| ![Program builder](docs/img/programs.png) | ![Workout screen with the plate calculator](docs/img/workout.png) | ![Progress charts](docs/img/progress.png) | ![Nutrition day](docs/img/nutrition.png) |
+
 ## Telegram bot
 A separate process (`python -m trainsync.bot`, compose service `bot`) that long-polls Telegram
 ([ADR 0012](docs/decisions/0012-telegram-first-behind-a-notifier.md),
@@ -133,6 +168,21 @@ A separate process (`python -m trainsync.bot`, compose service `bot`) that long-
 | `/last` | the latest activity: distance, time, pace or speed, elevation, average heart rate |
 | `/stats [4w\|12w\|52w] [sport]` | totals and best week for the period (default `4w`), e.g. `/stats 12w run` |
 | `/status` | sync health in one line: last sync, webhooks pending / failed / dead, Strava circuit state, rate-limit usage |
+| `/today` | today's planned program day with suggested weights (or what is logged so far) |
+| `/plates 102.5` | plates per side for a target weight |
+| `/log bench 80x5x3` | log sets into today's workout (starts one if needed); also `80x5,5,4` and `bw x12x3` |
+| `/done` | finish the workout: volume, duration, records |
+| `/eat <food> <grams>` | log a food from your list (numbered choices when ambiguous) |
+| `/kcal` | today's intake vs target, macros |
+| `/weight 78.4` | today's body weight |
+| `/report` (or "rapor") | start the daily check-in now |
+
+**Daily check-in**: at `CHECKIN_TIME` (local, `CHECKIN_TZ`) the worker asks once whether you
+trained, unless today's check-in exists, and reminds once after `CHECKIN_REMINDER_MINUTES`. With
+buttons you walk the planned exercises (as planned, ±2.5 kg, skip, or type `80x5x3`), give a
+reason when you skipped, and optionally body weight, sleep and energy. Telegram retries and
+double taps never store anything twice. Nutrition and body-weight messages are neutral in every
+`BOT_TONE`; rest and sick days are never pushed.
 
 **Natural-language questions** (optional): with `ANTHROPIC_API_KEY` set, any plain text such as
 "how far did I run in September?" goes to Claude with four tools that map 1:1 to read endpoints
@@ -195,6 +245,20 @@ In compose, the `bot` service takes `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_CHAT
 `ANTHROPIC_API_KEY` and `ASSISTANT_MODEL` from your shell or `.env`, and the `worker` takes the Telegram variables and
 `DASHBOARD_PUBLIC_URL`; add any other variable to that service's `environment` in
 `docker-compose.yml`.
+
+## Configuration added in Phase 6
+All optional; defaults in [.env.example](.env.example), and compose passes them through.
+
+| Variable | Used by | Default | Purpose |
+|---|---|---|---|
+| `GYM_BAR_KG` | API | `20` | Bar weight for the plate calculator |
+| `GYM_PLATES` | API | `25x2,20x2,15x2,10x2,5x2,2.5x2,1.25x2` | Plate inventory as `<kg>x<pairs>` |
+| `PROGRESSION_INCREMENT_KG`, `PROGRESSION_LOWER_BODY_INCREMENT_KG` | API | `2.5`, `5` | Double-progression step |
+| `OPENFOODFACTS_ENABLED` | API | `true` | Food lookup in Open Food Facts (public, no key); `false` = local foods only |
+| `OPENFOODFACTS_BASE_URL`, `OPENFOODFACTS_USER_AGENT`, `OPENFOODFACTS_TIMEOUT_S` | API | public API, `trainsync/0.1 (…)`, `3` | Lookup endpoint, the User-Agent OFF asks for, timeout |
+| `CHECKIN_ENABLED` | worker | on with a bot token | Evening check-in prompt |
+| `CHECKIN_TIME`, `CHECKIN_TZ` | worker, bot | `21:00`, `Europe/Istanbul` | Local prompt time; the zone is also the bot's "today" |
+| `CHECKIN_REMINDER_MINUTES` | worker | `90` | One reminder after this many minutes; `0` = none |
 
 ## API
 Interactive docs at http://localhost:8000/docs; the OpenAPI document is committed as
@@ -293,6 +357,11 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 | [0014](docs/decisions/0014-llm-as-a-planner-over-the-read-api.md) | LLM as a planner over the read API, never as a data source |
 | [0015](docs/decisions/0015-signed-oauth-return-to.md) | Allowlisted `return_to` signed into the OAuth state |
 | [0016](docs/decisions/0016-bot-message-packs-and-tone.md) | Bot wording in message packs per tone and language |
+| [0017](docs/decisions/0017-client-generated-ids-for-set-logging.md) | Client-generated ids for idempotent set logging |
+| [0018](docs/decisions/0018-rule-based-programs.md) | Rule-based programs; LLM optional on top |
+| [0019](docs/decisions/0019-energy-balance-estimates-and-open-food-facts.md) | Energy-balance estimates and the Open Food Facts lookup |
+| [0020](docs/decisions/0020-daily-check-in.md) | Daily check-in: streaks, adherence, scheduler bookkeeping, conversation state |
+| [0021](docs/decisions/0021-web-workout-screen-and-pwa.md) | Web workout screen: timestamp timers, retry queue, PWA without a service worker |
 
 ## Status
 - [x] Phase 1 — Foundation, OAuth, Strava client
@@ -300,4 +369,4 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 - [x] Phase 3 — Webhooks and read API
 - [x] Phase 4 — Observability, load test, CI
 - [x] Phase 5 — Web dashboard and Telegram bot
-- [ ] Phase 6 — Strength training, programs and nutrition
+- [x] Phase 6 — Strength training, programs and nutrition

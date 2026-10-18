@@ -21,6 +21,8 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [16. Activity — rate-limit budget decision](#16-activity--rate-limit-budget-decision)
 - [17. State — daily check-in conversation](#17-state--daily-check-in-conversation)
 - [18. Sequence — evening check-in prompt](#18-sequence--evening-check-in-prompt)
+- [19. Sequence — log a set with retry](#19-sequence--log-a-set-with-retry)
+- [20. Sequence — rest timer and a backgrounded tab](#20-sequence--rest-timer-and-a-backgrounded-tab)
 
 ---
 
@@ -1111,4 +1113,77 @@ sequenceDiagram
     TG-->>Bot: callback_query (getUpdates)
     Bot->>API: PUT /v1/checkins/{date} (status)
     Bot->>TG: answerCallbackQuery, remove buttons, next question
+```
+
+## 19. Sequence — log a set with retry
+
+The client id is created once per set row, so a double tap, a retry and a replay from the queue
+are the same `PUT` (ADR 0017). Gym Wi-Fi drops the answer, not the request, in the second case.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Workout screen
+    participant Q as Retry queue (localStorage)
+    participant BFF as BFF /api/ts
+    participant API as API
+    participant DB as Postgres
+
+    UI->>UI: tap ✓ (row already has client_id = uuid A)
+    UI->>BFF: PUT /v1/training/workouts/42/sets/A (CSRF token, JSON)
+    BFF->>API: PUT … + X-API-Key
+    API->>DB: INSERT … ON CONFLICT (client_id) DO UPDATE … RETURNING xmax = 0
+    DB-->>API: row, created
+    API-->>UI: 201 set
+    UI->>UI: second tap on the same row: same uuid A
+    UI->>BFF: PUT …/sets/A
+    BFF->>API: PUT …/sets/A
+    API->>DB: upsert, conflict → update
+    API-->>UI: 200, same body (still one row)
+    UI->>BFF: PUT …/sets/B (next set)
+    BFF->>API: PUT …/sets/B
+    API->>DB: upsert (stored)
+    API--xUI: answer lost (Wi-Fi drop, status 0)
+    UI->>Q: keep {path …/sets/B, body}
+    Note over UI,Q: browser fires `online`, or the next write succeeds
+    Q->>BFF: PUT …/sets/B (same path, same body)
+    BFF->>API: PUT …/sets/B
+    API->>DB: upsert, conflict → update
+    API-->>Q: 200, entry leaves the queue (still one row)
+    Note over Q,API: a 4xx answer is final: the entry is dropped and shown as an error
+```
+
+## 20. Sequence — rest timer and a backgrounded tab
+
+Timers store absolute times and render `endsAt − now()`, so frozen intervals in a backgrounded
+tab or behind a locked screen do not matter (ADR 0021).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as Lifter
+    participant UI as Workout screen
+    participant LS as localStorage
+    participant OS as Browser / phone
+
+    U->>UI: log set 2 of Bench Press (rest 90 s)
+    UI->>LS: save {endsAt: now + 90 000, alerted: false}
+    loop every 250 ms while visible
+        UI->>UI: render ceil((endsAt − now) / 1000)
+    end
+    U->>OS: lock the screen
+    OS-->>UI: intervals throttled or frozen
+    Note over UI: 3 minutes pass, nothing renders
+    U->>OS: unlock
+    OS-->>UI: visibilitychange / next tick
+    UI->>UI: remaining = max(0, endsAt − now) = 0 → 0:00
+    alt zero passed less than 60 s ago and not alerted
+        UI->>OS: vibrate, beep, optional Notification
+        UI->>LS: alerted = true
+    else asleep long past zero
+        UI->>LS: alerted = true (no late alarm)
+    end
+    U->>UI: reload the page
+    UI->>LS: read state for workout 42
+    LS-->>UI: endsAt, alerted (timer restored, no repeated alert)
 ```
