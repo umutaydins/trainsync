@@ -54,6 +54,11 @@ name without typing in nutrition labels. Two choices need writing down:
 - Tests never reach OFF: `OPENFOODFACTS_BASE_URL` points at `http://openfoodfacts.invalid` in the
   test settings and respx fakes it.
 
+- **Each food log entry snapshots the food's kcal and macros per 100 g** when it is written (and
+  again when the same `client_id` is PUT again). Summaries and the log read the snapshot, so
+  editing a food changes only entries logged after the edit. Entries that existed before
+  migration 0008 were backfilled from the food's values at that time.
+
 ## Alternatives considered
 - **Guess unknown exercise from MET × duration × weight** — plausible-looking numbers with large,
   invisible error; the flag keeps the UI honest instead.
@@ -65,9 +70,8 @@ name without typing in nutrition labels. Two choices need writing down:
 - **Proxy every search to OFF without caching** — slow, fragile, and a logged food would depend on
   a third party being up when the summary is read.
 - **USDA FoodData Central** — needs an API key and has few packaged EU/TR products with barcodes.
-- **Snapshot kcal/macros into each food log** — would freeze history against later corrections;
-  not needed for one user, so logs reference the food's current values (a correction updates past
-  days too).
+- **Read the food's current values in every summary** (the first version) — a correction or a
+  re-cached product silently rewrote past days. Replaced by the snapshot below (migration 0008).
 
 ## Consequences
 - The summary carries more fields (`*_complete`, `*_unknown_count`, `estimate_unavailable_reason`)

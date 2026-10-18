@@ -263,6 +263,10 @@ erDiagram
         text meal "breakfast | lunch | dinner | snack"
         bigint food_id FK
         numeric grams
+        numeric kcal_100g "snapshot at log time"
+        numeric protein_100g "snapshot, nullable"
+        numeric carbs_100g "snapshot, nullable"
+        numeric fat_100g "snapshot, nullable"
         timestamptz created_at
     }
     nutrition_profile {

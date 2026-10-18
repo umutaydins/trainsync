@@ -28,7 +28,7 @@ MEAL_ORDER = case({m.value: i for i, m in enumerate(Meal)}, value=FoodLog.meal)
 class LogValues:
     date: date
     meal: str
-    food_id: int
+    food: Food  # its current per-100 g values are snapshotted into the entry
     grams: Decimal
 
 
@@ -125,12 +125,18 @@ class NutritionRepository:
     # ------------------------------------------------------------ food log
 
     async def put_log(self, client_id: uuid.UUID, values: LogValues) -> tuple[FoodLog, bool]:
-        """Idempotent upsert by `client_id`: (row, created). A retry updates the same row."""
+        """Idempotent upsert by `client_id`: (row, created). A retry updates the same row and
+        takes a fresh snapshot of the food's values."""
+        food = values.food
         fields = {
             "date": values.date,
             "meal": values.meal,
-            "food_id": values.food_id,
+            "food_id": food.id,
             "grams": values.grams,
+            "kcal_100g": food.kcal_100g,
+            "protein_100g": food.protein_100g,
+            "carbs_100g": food.carbs_100g,
+            "fat_100g": food.fat_100g,
         }
         values_stmt = insert(FoodLog).values(client_id=client_id, **fields)
         stmt = values_stmt.on_conflict_do_update(

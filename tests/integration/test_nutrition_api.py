@@ -221,6 +221,30 @@ async def test_same_food_log_put_twice_stores_one_row(
     assert (await _ok(await api.get(f"{BASE}/log")))["entries"] == []
 
 
+async def test_editing_a_food_does_not_change_past_days(api: httpx.AsyncClient) -> None:
+    oats = await _food(api, **FIXTURE["foods"]["oats"])  # 380 kcal, 13 / 60 / 7 g per 100 g
+    await _ok(await _log(api, oats["id"], 80, day="2026-10-13"), 201)
+    before_log = await _ok(await api.get(f"{BASE}/log", params={"date": "2026-10-13"}))
+    before_day = await _ok(await api.get(f"{BASE}/summary", params={"date": "2026-10-13"}))
+    assert before_log["entries"][0]["kcal"] == 304.0
+    assert before_day["intake_kcal"] == 304.0
+
+    edit = {"kcal_100g": 400, "protein_100g": 10, "carbs_100g": None, "fat_100g": 8}
+    await _ok(await api.patch(f"{BASE}/foods/{oats['id']}", json=edit))
+
+    # The past day reads the values snapshotted when it was logged.
+    after_log = await _ok(await api.get(f"{BASE}/log", params={"date": "2026-10-13"}))
+    after_day = await _ok(await api.get(f"{BASE}/summary", params={"date": "2026-10-13"}))
+    assert after_log == before_log
+    assert after_day == before_day
+
+    # A new entry takes the food's current values, unknown carbs included.
+    new = await _ok(await _log(api, oats["id"], 50, day="2026-10-14"), 201)
+    assert (new["kcal"], new["protein_g"], new["carbs_g"], new["fat_g"]) == (200.0, 5.0, None, 4.0)
+    day = await _ok(await api.get(f"{BASE}/summary", params={"date": "2026-10-14"}))
+    assert (day["intake_kcal"], day["macros_complete"]) == (200.0, False)
+
+
 async def test_food_log_validation(api: httpx.AsyncClient) -> None:
     oats = await _food(api, **FIXTURE["foods"]["oats"])
     assert (await _log(api, 999_999, 50)).status_code == 404

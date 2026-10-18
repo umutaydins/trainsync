@@ -297,7 +297,7 @@ export interface paths {
         get?: never;
         /**
          * Log food (idempotent)
-         * @description Upsert by the client-generated `client_id`: `201` when it created the entry, `200` when an entry with this id already existed and was updated. Retrying the same request stores one entry.
+         * @description Upsert by the client-generated `client_id`: `201` when it created the entry, `200` when an entry with this id already existed and was updated. Retrying the same request stores one entry. The food's kcal and macros are copied into the entry, so editing the food later does not change past days.
          */
         put: operations["put_log_v1_nutrition_log__client_id__put"];
         post?: never;

@@ -73,7 +73,7 @@ Nutrition (Phase 6, P6.4, single user, no `athlete_id`; ADR 0019):
 | Table | Key columns | Notes |
 |---|---|---|
 | `foods` | `id`, `name`, `brand`, `barcode` (unique, nullable), `kcal_100g` numeric(6,1), `protein_100g` / `carbs_100g` / `fat_100g` (numeric(5,1), nullable = unknown), `source` (manual / openfoodfacts), `favorite`, `created_at` | Open Food Facts results are cached here, upserted on `barcode`; editing a cached row turns it `manual`, so later lookups leave it alone |
-| `food_logs` | `id`, `client_id` (uuid, unique), `date`, `meal` (breakfast / lunch / dinner / snack), `food_id` (FK), `grams` numeric(6,1), `created_at` | upsert on `client_id`: a retried log is one row; index (`date`, `meal`) |
+| `food_logs` | `id`, `client_id` (uuid, unique), `date`, `meal` (breakfast / lunch / dinner / snack), `food_id` (FK), `grams` numeric(6,1), `kcal_100g`, `protein_100g`, `carbs_100g`, `fat_100g` (snapshot of the food at log time), `created_at` | upsert on `client_id`: a retried log is one row; summaries read the snapshot, so editing a food never changes past days; index (`date`, `meal`) |
 | `nutrition_profile` | `id` (always 1), `sex`, `birth_year`, `height_cm`, `activity_baseline` (sedentary / light / moderate), `kcal_target`, `protein_target_g`, `updated_at` | one row; body weight is not here, it comes from `body_metrics` |
 
 Energy balance (`nutrition/energy.py`, pure, all values are estimates; `nutrition/summary.py` reads

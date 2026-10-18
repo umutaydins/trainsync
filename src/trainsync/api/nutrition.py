@@ -440,10 +440,11 @@ class LogOut(BaseModel):
             food_name=food.name,
             brand=food.brand,
             grams=float(log.grams),
-            kcal=float(tenth(per_grams(food.kcal_100g, log.grams))),
-            protein_g=amount(food.protein_100g),
-            carbs_g=amount(food.carbs_100g),
-            fat_g=amount(food.fat_100g),
+            # Snapshotted at log time: editing the food later does not change this entry.
+            kcal=float(tenth(per_grams(log.kcal_100g, log.grams))),
+            protein_g=amount(log.protein_100g),
+            carbs_g=amount(log.carbs_100g),
+            fat_g=amount(log.fat_100g),
             created_at=log.created_at,
         )
 
@@ -484,7 +485,8 @@ async def day_log(
     description=(
         "Upsert by the client-generated `client_id`: `201` when it created the entry, `200` "
         "when an entry with this id already existed and was updated. Retrying the same request "
-        "stores one entry."
+        "stores one entry. The food's kcal and macros are copied into the entry, so editing the "
+        "food later does not change past days."
     ),
     response_model=LogOut,
     status_code=status.HTTP_200_OK,
@@ -505,7 +507,7 @@ async def put_log(
         food = await repo.food(body.food_id)
         if food is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "food not found")
-        values = LogValues(body.date, body.meal.value, body.food_id, Decimal(str(body.grams)))
+        values = LogValues(body.date, body.meal.value, food, Decimal(str(body.grams)))
         log, created = await repo.put_log(client_id, values)
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return LogOut.from_rows(log, food)
