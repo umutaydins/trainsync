@@ -250,7 +250,8 @@ erDiagram
     }
     chat_settings {
         bigint chat_id PK "Telegram chat"
-        text lang "en | tr (ADR 0031)"
+        text lang "en | tr, nullable (ADR 0031)"
+        text profanity "roast | max, nullable (ADR 0032)"
         timestamptz updated_at
     }
 
@@ -264,6 +265,8 @@ erDiagram
         numeric protein_100g "nullable = unknown"
         numeric carbs_100g "nullable = unknown"
         numeric fat_100g "nullable = unknown"
+        numeric sugars_100g "nullable = unknown (ADR 0032)"
+        smallint nova_group "1-4, nullable"
         text source "manual | openfoodfacts"
         boolean favorite
         timestamptz created_at
@@ -279,6 +282,8 @@ erDiagram
         numeric protein_100g "snapshot, nullable"
         numeric carbs_100g "snapshot, nullable"
         numeric fat_100g "snapshot, nullable"
+        numeric sugars_100g "snapshot, nullable"
+        smallint nova_group "snapshot, nullable"
         timestamptz created_at
     }
     nutrition_profile {
@@ -1450,4 +1455,29 @@ sequenceDiagram
     Note over W: a reminder, check-in, notification or alert is due
     W->>DB: SELECT lang for TELEGRAM_NOTIFY_CHAT_ID
     W-->>U: message in English
+```
+
+## 28. Activity — a chat message in savage mode, profanity and the guardrails (P6.13, ADR 0032)
+
+Distress first, then pain, then the triggers. The calm replies never get a max opener; every other
+savage message does in max, unless it already carries a max line.
+
+```mermaid
+flowchart TD
+    M[chat message] --> D{distress?<br/>guilt, threw up, not eating,<br/>self-hate, binge}
+    D -- yes --> C1[calm SAFETY_DISTRESS reply<br/>no swearing, no assistant]
+    D -- no --> P{pain, injury, illness?}
+    P -- yes --> C2[calm SAFETY_PAIN reply<br/>no swearing, no assistant]
+    P -- no --> S{savage in effect?<br/>configured, not /yumusak}
+    S -- no --> N[tone pack / assistant]
+    S -- yes --> F{unhealthy choice?<br/>junk, sugar, alcohol,<br/>cigarettes, up late}
+    F -- yes --> R1[food_roast line + one move<br/>+ day's target unchanged]
+    F -- no --> E{excuse?}
+    E -- yes --> R2[excuse roast + one action today]
+    E -- no --> N
+    R1 & R2 & N --> L{profanity max?<br/>/swear, else BOT_PROFANITY}
+    L -- roast --> OUT[send]
+    L -- max --> O[lines from the max pools;<br/>max_opener in front of a message<br/>with no savage line]
+    O --> OUT
+    C1 & C2 --> OUT
 ```

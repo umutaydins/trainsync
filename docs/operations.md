@@ -362,10 +362,16 @@ Design: [ADR 0030](decisions/0030-coach-intensity-and-guardrails.md), task
   `BOT_TONE=hardcore` and works in both chat languages; it is an explicit opt-in to unrestricted profanity and
   brutal roasting of excuses and missed work, in the coach lines and in the assistant (whose
   system prompt says the user asked for it). The worker and bot log `intensity` at startup.
-- **Guardrails** (every intensity, in code and in the assistant prompt): never body, weight or
-  appearance; no slurs; pain, injury, illness, dizziness, chest pain → no roast, rest / see a
-  doctor; food is never roasted ("eat it, log it, stay in your daily target"), nothing pushes
-  below the nutrition target. Profanity is not filtered.
+- **Guardrails** (every intensity and profanity level, in code and in the assistant prompt):
+  never body, weight or appearance; no slurs; distress (guilt spiral, threw up, haven't eaten,
+  self-hate, binge talk) → a calm, supportive reply without swearing; pain, injury, illness,
+  dizziness, chest pain → no roast, rest / see a doctor; never burn-it-off, punishment cardio,
+  skipped meals or eating below the nutrition target. Profanity is not filtered.
+- **Food rule** (savage, ADR 0032): junk, sugar, soft and energy drinks, fast or fried food,
+  alcohol, cigarettes and staying up late in the chat, and `/eat` logs with more than 22.5 g
+  sugar per 100 g or NOVA group 4, or that take the day past `SUGAR_LIMIT_G` (50 g), get a
+  `food_roast` line about the choice, one concrete move (portion, swap, log it now) and the
+  day's kcal target unchanged. Sugar and NOVA come from Open Food Facts (or a manual food).
 - **Soft mode**: `/yumusak` in the chat → normal intensity for 24 h; `/sert` → back. It is the
   Redis key `coach:soft` (TTL 24 h), shared by bot and worker:
   `docker compose --env-file .env.prod -f compose.prod.yml exec redis redis-cli ttl coach:soft`.
@@ -407,6 +413,27 @@ Design: [ADR 0031](decisions/0031-runtime-bot-language.md), task
   `delete from chat_settings` returns every chat to `BOT_LANG` (restart the bot to drop its cache:
   `scripts/mac-prod.sh restart bot`).
 
+## Profanity (/swear)
+
+Design: [ADR 0032](decisions/0032-food-roast-profanity-level-and-distress.md), task
+[P6.13](tasks/P6.13-food-roast-and-profanity.md).
+
+- `BOT_PROFANITY=roast` (default) swears only in the savage lines; `max` swears in every savage
+  message: confirmations, reminders, check-in questions, summaries, praise, errors (a rotated
+  `max_opener` line in front of messages that carry no savage line) and the assistant (its
+  system prompt). It only applies while savage is in effect: not with `BOT_INTENSITY=normal`,
+  not in `/yumusak`.
+- `/swear` in the chat shows "max" / "roast" buttons; `/swear max` and `/swear roast` switch
+  directly. The choice is `chat_settings.profanity` (backed up with the database); no value =
+  `BOT_PROFANITY`. The worker reads it at send time, like the language.
+- Calm replies to pain and distress never get an opener or a swear word, in any mode.
+- Own max lines: a `max:` section inside `tr:` / `en:` in `config/messages.local.yaml` (same
+  categories plus `max_opener`), and a top-level `punchline_en_max` for both languages.
+- Check or reset it:
+  `docker compose --env-file .env.prod -f compose.prod.yml exec postgres psql -U trainsync -c "select * from chat_settings"`;
+  `update chat_settings set profanity = null` returns every chat to `BOT_PROFANITY` (then
+  `scripts/mac-prod.sh restart bot` to drop the bot's cache).
+
 ## Owner checks
 
 Manual checks only the owner can perform. Each one stays PENDING until the owner runs the
@@ -447,6 +474,9 @@ that command on the Mac.
 | 30 | Coach intensity chosen (P6.11) | set `BOT_INTENSITY` (and, for savage, `BOT_TONE=hardcore`) in `.env.prod`, `scripts/mac-prod.sh up`, then `scripts/mac-prod.sh logs bot \| grep bot_startup` (shows `intensity`) | PENDING | | |
 | 31 | Program days scheduled (P6.11) | set `weekday` / `start_time` on the active program's days (API), then wait for the 30-minute reminder on the next training day | PENDING | | |
 | 32 | Bot language switch (P6.12) | in the chat: `/lang`, press "English", then `/week` (English); `/lang tr`, `/week` (Turkish); `scripts/mac-prod.sh restart bot`, `/week` (still Turkish) | PENDING | | |
+| 36 | Profanity switch (P6.13) | with `BOT_INTENSITY=savage`: `/swear max`, then `/kcal` (an opener line on top), `/swear roast`, `/kcal` (none); `scripts/mac-prod.sh restart bot`, `/kcal` (still none) | PENDING | | |
+| 37 | Food roast and sugar data (P6.13) | in savage: "bu akşam baklava yiyeceğim" (a roast, one move, the day's target); `/eat` a high-sugar product found through Open Food Facts (a roast after the log line) | PENDING | | |
+| 38 | Distress reply (P6.13) | in max: "bugün hiçbir şey yemedim" → the calm reply, no swearing, no roast | PENDING | | |
 
 ## Backups and restore
 

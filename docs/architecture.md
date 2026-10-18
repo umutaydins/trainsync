@@ -31,8 +31,11 @@ being up or my rate-limit budget being available at read time.
   (replies, notifications, the assistant's persona) comes from a message pack chosen by
   `BOT_TONE` × `BOT_LANG` (ADR 0016). `BOT_INTENSITY=savage` adds the owner's opt-in brutal
   coach (savage line pack, excuse roasts, timed messages from the worker), and hard guardrails
-  (body, slurs, pain/illness, food) hold in every intensity (ADR 0030). `BOT_LANG` is the
+  (body, slurs, pain/illness, distress, food restriction) hold in every intensity (ADR 0030). `BOT_LANG` is the
   default; `/lang` stores a language per chat that the bot and the worker follow (ADR 0031).
+  Savage also roasts unhealthy choices (chat mentions, high-sugar or NOVA 4 `/eat` logs) with one
+  concrete move, and `BOT_PROFANITY` / `/swear` (per chat) decides whether only the roasts or
+  every savage message swears (ADR 0032).
 - **Web dashboard** (`web/`, Next.js): server-side BFF that holds the API key and forwards
   allowlisted method + path combinations to the API (reads, and CSRF-checked JSON writes to
   training, nutrition and check-ins); the browser never sees the key (ADR 0011). Phase 6 pages:
