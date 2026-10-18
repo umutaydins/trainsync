@@ -1,0 +1,32 @@
+"""`notifications` rows: the idempotency guard for outgoing notifications (ADR 0012)."""
+
+from datetime import datetime
+
+from sqlalchemy import delete
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from trainsync.db.models import Notification, NotificationKind
+
+
+class NotificationRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def claim(self, kind: NotificationKind, object_id: int, now: datetime) -> bool:
+        """Insert the row; `False` if this notification was already claimed (sent or sending)."""
+        stmt = (
+            insert(Notification)
+            .values(kind=kind.value, object_id=object_id, sent_at=now)
+            .on_conflict_do_nothing(index_elements=[Notification.kind, Notification.object_id])
+            .returning(Notification.id)
+        )
+        return await self._session.scalar(stmt) is not None
+
+    async def release(self, kind: NotificationKind, object_id: int) -> None:
+        """Undo a claim after a failed send, so a retry can claim it again."""
+        await self._session.execute(
+            delete(Notification).where(
+                Notification.kind == kind.value, Notification.object_id == object_id
+            )
+        )

@@ -53,3 +53,8 @@ BOT_UPDATES = Counter(
     "Telegram updates handled by the bot, by command (a fixed set) and outcome",
     ["command", "outcome"],
 )
+NOTIFICATIONS = Counter(
+    "notifications_total",
+    "New-activity notification attempts by channel and outcome",
+    ["channel", "outcome"],
+)

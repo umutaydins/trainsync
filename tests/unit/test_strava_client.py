@@ -169,7 +169,7 @@ async def test_token_endpoint_rejection_is_auth_error(
 
 
 # Outbound clients for other services (Phase 5), named one by one; they must not touch Strava.
-NON_STRAVA_HTTP_CLIENTS = {"bot/telegram.py", "bot/read_api.py"}
+NON_STRAVA_HTTP_CLIENTS = {"bot/telegram.py", "bot/read_api.py", "notify/jobs.py"}
 
 
 def test_only_strava_package_imports_httpx() -> None:

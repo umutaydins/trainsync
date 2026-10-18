@@ -17,6 +17,12 @@ from trainsync.core.logging import configure_logging, get_logger
 from trainsync.core.settings import Settings, get_settings
 from trainsync.db.repositories.tokens import SqlTokenStore
 from trainsync.db.session import create_engine, create_sessionmaker
+from trainsync.notify.jobs import (
+    NOTIFY_CTX_KEY,
+    NotifyDeps,
+    build_notifier,
+    notify_new_activity_job,
+)
 from trainsync.strava.breaker_status import RedisBreakerPublisher, process_name
 from trainsync.strava.budget import RateBudget
 from trainsync.strava.client import StravaClient
@@ -82,7 +88,11 @@ async def startup(ctx: dict[str, Any]) -> None:
         sleep=sleep,
         exit_stack=stack,
     )
-    log.info("worker_startup", env=settings.env)
+    notifier, chat_ref = build_notifier(settings, http, sleep)
+    ctx[NOTIFY_CTX_KEY] = NotifyDeps(
+        sessionmaker, notifier, chat_ref, settings.dashboard_public_url, clock
+    )
+    log.info("worker_startup", env=settings.env, notifier=notifier.channel)
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
@@ -102,6 +112,7 @@ class WorkerSettings:
         backfill_job,
         incremental_job,
         process_webhook_event_job,
+        notify_new_activity_job,
     ]
     cron_jobs: ClassVar[list[Any]] = [incremental_cron, retry_webhooks_cron]
     on_startup = startup

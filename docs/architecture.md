@@ -38,6 +38,7 @@ being up or my rate-limit budget being available at read time.
 | `activities` | `id`, `strava_activity_id` (unique), `athlete_id`, `name`, `sport_type`, `start_date` (timestamptz), `distance_m`, `moving_time_s`, `elapsed_time_s`, `elevation_gain_m`, `average_heartrate` (nullable), `raw` (jsonb), `deleted_at` (nullable), `synced_at` | upsert on `strava_activity_id`; soft delete |
 | `sync_runs` | `id`, `athlete_id`, `kind` (backfill / incremental), `status`, `cursor` (jsonb), `pages`, `upserted`, `error`, `started_at`, `updated_at`, `finished_at` | `cursor` makes backfill resumable; `updated_at` is a per-page heartbeat |
 | `webhook_events` | `id`, `dedup_key` (unique), `payload` (jsonb), `status`, `attempts`, `received_at`, `last_attempt_at`, `processed_at` | dedup on (subscription_id, object_type, object_id, aspect_type, event_time) |
+| `notifications` | `id`, `kind` (`new_activity`), `object_id`, `sent_at`; unique (`kind`, `object_id`) | claimed before sending, released on a failed send (ADR 0012) |
 
 Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sport_type, start_date)`,
 `webhook_events (status, received_at)`.
@@ -105,6 +106,15 @@ Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sp
   `pending` events older than 10 minutes that have no live job, and releases events stuck in
   `processing` for over 10 minutes. After 8 attempts an event is a dead letter (ADR 0008).
 
+### 6b. New-activity notifications (Phase 5)
+- After a live `activity create` event is upserted, webhook processing enqueues
+  `notify_new_activity(strava_activity_id)` with job id `notify:{id}`. Backfill and incremental
+  sync never do: history is not news.
+- The job claims `(new_activity, id)` in `notifications` (`ON CONFLICT DO NOTHING`), commits, then
+  sends through the `Notifier` (Telegram, or the `NullNotifier` without a token). A definite
+  failure releases the claim and arq retries with backoff (10 s, 30 s, 90 s, 270 s; 5 tries).
+  A timeout after the request went out keeps the claim: at most one message per activity.
+
 ### 7. Read API (API key in `X-API-Key` header)
 - `GET /v1/activities?from=&to=&sport_type=&limit=&cursor=`: keyset pagination on `(start_date, id)`.
 - `GET /v1/activities/{strava_activity_id}`: one activity; 404 if unknown or soft-deleted.
@@ -135,3 +145,4 @@ Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sp
 | Missed webhooks | incremental sync with an overlap window | [`tests/fault/test_missed_webhooks.py`](../tests/fault/test_missed_webhooks.py) |
 | Expired / rotated tokens | proactive refresh, 401 retry, per-athlete lock | [`tests/fault/test_token_rotation.py`](../tests/fault/test_token_rotation.py) |
 | User revokes access | deauth event → tokens and data removed (also mid-backfill) | [`tests/fault/test_deauth_during_backfill.py`](../tests/fault/test_deauth_during_backfill.py) |
+| Telegram down when a new activity arrives | notification claim released, job retried with backoff, exactly one message once Telegram is back | [`tests/fault/test_telegram_down.py`](../tests/fault/test_telegram_down.py) |

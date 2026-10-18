@@ -13,7 +13,14 @@ from trainsync.db.models import Base
 
 pytestmark = pytest.mark.integration
 
-TABLES = {"athletes", "oauth_tokens", "activities", "sync_runs", "webhook_events"}
+TABLES = {
+    "athletes",
+    "oauth_tokens",
+    "activities",
+    "sync_runs",
+    "webhook_events",
+    "notifications",
+}
 
 
 async def _table_names(url: str) -> set[str]:

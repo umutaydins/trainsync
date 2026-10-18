@@ -47,6 +47,7 @@ def sent_messages(route: respx.Route) -> list[dict[str, Any]]:
     """Bodies of the `sendMessage` calls Telegram accepted (status 200) on this route."""
     sent: list[dict[str, Any]] = []
     for call in route.calls:
-        if call.response is not None and call.response.status_code == 200:
+        response = call.optional_response  # None when the call raised (e.g. ConnectError)
+        if response is not None and response.status_code == 200:
             sent.append(json.loads(call.request.content))
     return sent

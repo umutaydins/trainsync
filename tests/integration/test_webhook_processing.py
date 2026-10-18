@@ -323,3 +323,7 @@ class SimpleContext:
 
     def clock(self) -> datetime:
         return self.deps.clock()
+
+    @property
+    def redis(self) -> Any:
+        return None  # only used to enqueue notifications after a `create`, not reached here
