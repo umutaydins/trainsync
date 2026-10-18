@@ -16,6 +16,7 @@ from prometheus_client import start_http_server
 from redis.asyncio import Redis
 
 from trainsync.bot.assistant import TIMEOUT_S, AnthropicPlanner, Assistant, RedisRateLimiter
+from trainsync.bot.checkin import CheckinFlow
 from trainsync.bot.common import Feature, RedisStateStore, StateStore
 from trainsync.bot.handlers import Commands, Dispatcher, TextHandler
 from trainsync.bot.messages import Messages, messages_for
@@ -82,9 +83,11 @@ async def run(
 def features(
     settings: Settings, api: ReadApi, store: StateStore, msg: Messages, *, clock: Clock
 ) -> list[Feature]:
-    """Training and nutrition commands (P6.8); "today" is the local day in `CHECKIN_TZ`."""
+    """Check-in (P6.9; first, so a check-in answer is never taken for something else),
+    training and nutrition commands (P6.8). "Today" is the local day in `CHECKIN_TZ`."""
     zone = settings.checkin_zone
     return [
+        CheckinFlow(api, store, clock, zone, msg),
         TrainingCommands(api, store, clock, zone, msg),
         NutritionCommands(api, store, clock, zone, msg),
     ]

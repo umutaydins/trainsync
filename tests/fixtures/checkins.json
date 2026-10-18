@@ -1,0 +1,115 @@
+{
+  "_comment": "Hand-computed check-in streaks and adherence (ADR 0020). Today is Sunday 2026-10-18 and has no check-in yet; the active program has 3 days per week. Sep 10-25: 16 days in a row (done/rest), Sep 26 missing, Sep 27 skipped, Oct 4 missing. Current streak: Oct 17 back to Oct 5 = 13 days (rest and sick days count, today is not over yet).",
+  "today": "2026-10-18",
+  "days_per_week": 3,
+  "days": {
+    "2026-09-10": "done",
+    "2026-09-11": "rest",
+    "2026-09-12": "done",
+    "2026-09-13": "rest",
+    "2026-09-14": "done",
+    "2026-09-15": "rest",
+    "2026-09-16": "done",
+    "2026-09-17": "rest",
+    "2026-09-18": "done",
+    "2026-09-19": "rest",
+    "2026-09-20": "done",
+    "2026-09-21": "rest",
+    "2026-09-22": "done",
+    "2026-09-23": "rest",
+    "2026-09-24": "done",
+    "2026-09-25": "rest",
+    "2026-09-27": "skipped",
+    "2026-09-28": "done",
+    "2026-09-29": "rest",
+    "2026-09-30": "done",
+    "2026-10-01": "skipped",
+    "2026-10-02": "partial",
+    "2026-10-03": "rest",
+    "2026-10-05": "sick_or_injured",
+    "2026-10-06": "sick_or_injured",
+    "2026-10-07": "sick_or_injured",
+    "2026-10-08": "sick_or_injured",
+    "2026-10-09": "sick_or_injured",
+    "2026-10-10": "done",
+    "2026-10-11": "rest",
+    "2026-10-12": "done",
+    "2026-10-13": "rest",
+    "2026-10-14": "done",
+    "2026-10-15": "done",
+    "2026-10-16": "done",
+    "2026-10-17": "rest"
+  },
+  "cases": [
+    {
+      "name": "three full ISO weeks",
+      "from": "2026-09-28",
+      "to": "2026-10-18",
+      "_why": "week 1: planned min(3, 7) = 3, trained 28 Sep, 30 Sep, 2 Oct = 3; week 2: five sick days -> planned min(3, 7 - 5) = 2, trained 10 Oct = 1; week 3: planned 3, trained 4 -> 3. 7 / 8 = 0.875",
+      "planned": 8,
+      "done": 7,
+      "adherence": 0.875,
+      "weeks": [
+        [
+          "2026-09-28",
+          3,
+          3
+        ],
+        [
+          "2026-10-05",
+          2,
+          1
+        ],
+        [
+          "2026-10-12",
+          3,
+          3
+        ]
+      ],
+      "current_streak": 13,
+      "longest_streak": 16,
+      "counts": {
+        "done": 7,
+        "partial": 1,
+        "skipped": 1,
+        "rest": 5,
+        "sick_or_injured": 5
+      }
+    },
+    {
+      "name": "range starting on a Thursday",
+      "from": "2026-10-01",
+      "to": "2026-10-18",
+      "_why": "week 1 has 4 days in range (Thu-Sun): planned min(3, 4) = 3, trained 2 Oct = 1; then 2/1 and 3/3. 5 / 8 = 0.625",
+      "planned": 8,
+      "done": 5,
+      "adherence": 0.625,
+      "weeks": [
+        [
+          "2026-09-28",
+          3,
+          1
+        ],
+        [
+          "2026-10-05",
+          2,
+          1
+        ],
+        [
+          "2026-10-12",
+          3,
+          3
+        ]
+      ],
+      "current_streak": 13,
+      "longest_streak": 16,
+      "counts": {
+        "done": 5,
+        "partial": 1,
+        "skipped": 1,
+        "rest": 4,
+        "sick_or_injured": 5
+      }
+    }
+  ]
+}

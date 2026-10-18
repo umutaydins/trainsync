@@ -15,6 +15,7 @@ from trainsync import __version__
 from trainsync.api import (
     activities,
     auth,
+    checkins,
     health,
     nutrition,
     stats,
@@ -86,6 +87,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     for router in training.ROUTERS:
         app.include_router(router)
     app.include_router(nutrition.router)
+    app.include_router(checkins.router)
     _document_validation_errors(app)
 
     @app.get("/metrics", include_in_schema=False)

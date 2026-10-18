@@ -118,6 +118,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/checkins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List check-ins
+         * @description Check-ins in `from`..`to` (inclusive, local days); default: the last 12 weeks.
+         */
+        get: operations["list_checkins_v1_checkins_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/checkins/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Streak and adherence
+         * @description Current and longest streak (consecutive days with a check-in that is not `skipped`) and adherence over `from`..`to` (default: the current ISO week and the three before it). Adherence = planned days done / planned days, where each ISO week plans `days_per_week` of the active program, capped by its days inside the range minus sick/injured days; done + partial days count as done (ADR 0020).
+         */
+        get: operations["checkin_summary_v1_checkins_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/checkins/{day}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a day's check-in */
+        get: operations["get_checkin_v1_checkins__day__get"];
+        /**
+         * Save a day's check-in (idempotent)
+         * @description Upsert by date: `201` when it created the check-in, `200` when it replaced it. The same request twice stores one row. `body_weight_kg` is also written to body metrics for that date; leaving it out later does not delete that body metric.
+         */
+        put: operations["put_checkin_v1_checkins__day__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/nutrition/foods": {
         parameters: {
             query?: never;
@@ -531,6 +592,26 @@ export interface paths {
          * @description The one active program with its days, or `404` when none is active.
          */
         get: operations["get_active_program_v1_training_programs_active_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/programs/active/next-day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Next day of the active program
+         * @description The program day that is up next, in rotation: the day after the one the latest workout followed (wrapping around), the first day if none, or the day of a still-open workout. Planned exercises come with the double-progression suggestion (ADR 0018). `404` when no program is active.
+         */
+        get: operations["next_day_v1_training_programs_active_next_day_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1033,6 +1114,204 @@ export interface components {
         ChallengeResponse: {
             /** Hub.Challenge */
             "hub.challenge": string;
+        };
+        /**
+         * CheckinIn
+         * @description Replaces the day's check-in (every field; omitted ones become null).
+         * @example {
+         *       "body_weight_kg": 78.4,
+         *       "energy_1_5": 4,
+         *       "sleep_hours": 7.5,
+         *       "status": "done",
+         *       "workout_id": 42
+         *     }
+         * @example {
+         *       "reason_note": "late meeting",
+         *       "status": "skipped"
+         *     }
+         */
+        CheckinIn: {
+            /**
+             * Body Weight Kg
+             * @description Also stored in body metrics
+             */
+            body_weight_kg?: number | string | null;
+            /** Energy 1 5 */
+            energy_1_5?: number | null;
+            /** Reason Note */
+            reason_note?: string | null;
+            /** Sleep Hours */
+            sleep_hours?: number | string | null;
+            status: components["schemas"]["CheckinStatus"];
+            /**
+             * Workout Id
+             * @description The workout logged that day
+             */
+            workout_id?: number | null;
+        };
+        /**
+         * CheckinList
+         * @example {
+         *       "from": "2026-10-01",
+         *       "items": [
+         *         {
+         *           "body_weight_kg": 78.4,
+         *           "created_at": "2026-10-18T18:05:00Z",
+         *           "date": "2026-10-18",
+         *           "energy_1_5": 4,
+         *           "sleep_hours": 7.5,
+         *           "status": "done",
+         *           "updated_at": "2026-10-18T18:07:30Z",
+         *           "workout_id": 42
+         *         }
+         *       ],
+         *       "to": "2026-10-18"
+         *     }
+         */
+        CheckinList: {
+            /**
+             * From
+             * Format: date
+             */
+            from: string;
+            /**
+             * Items
+             * @description Oldest first; days without a check-in are absent
+             */
+            items: components["schemas"]["CheckinOut"][];
+            /**
+             * To
+             * Format: date
+             */
+            to: string;
+        };
+        /**
+         * CheckinOut
+         * @example {
+         *       "body_weight_kg": 78.4,
+         *       "created_at": "2026-10-18T18:05:00Z",
+         *       "date": "2026-10-18",
+         *       "energy_1_5": 4,
+         *       "sleep_hours": 7.5,
+         *       "status": "done",
+         *       "updated_at": "2026-10-18T18:07:30Z",
+         *       "workout_id": 42
+         *     }
+         */
+        CheckinOut: {
+            /** Body Weight Kg */
+            body_weight_kg: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Energy 1 5 */
+            energy_1_5: number | null;
+            /** Reason Note */
+            reason_note: string | null;
+            /** Sleep Hours */
+            sleep_hours: number | null;
+            status: components["schemas"]["CheckinStatus"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Workout Id */
+            workout_id: number | null;
+        };
+        /**
+         * CheckinStatus
+         * @enum {string}
+         */
+        CheckinStatus: "done" | "partial" | "skipped" | "rest" | "sick_or_injured";
+        /**
+         * CheckinSummary
+         * @example {
+         *       "adherence": 0.778,
+         *       "counts": {
+         *         "done": 6,
+         *         "partial": 1,
+         *         "rest": 8,
+         *         "sick_or_injured": 0,
+         *         "skipped": 2
+         *       },
+         *       "current_streak": 6,
+         *       "days_per_week": 3,
+         *       "from": "2026-09-28",
+         *       "longest_streak": 11,
+         *       "planned_days": 9,
+         *       "planned_days_done": 7,
+         *       "to": "2026-10-18",
+         *       "today": "2026-10-18",
+         *       "weeks": [
+         *         {
+         *           "done": 3,
+         *           "planned": 3,
+         *           "week_start": "2026-09-28"
+         *         }
+         *       ]
+         *     }
+         */
+        CheckinSummary: {
+            /**
+             * Adherence
+             * @description planned_days_done / planned_days; null if 0
+             */
+            adherence: number | null;
+            /**
+             * Counts
+             * @description Check-ins per status in the range
+             */
+            counts: {
+                [key: string]: number;
+            };
+            /**
+             * Current Streak
+             * @description Days in a row with a check-in that is not `skipped`, up to today (or yesterday while today has none yet)
+             */
+            current_streak: number;
+            /**
+             * Days Per Week
+             * @description Of the active program; null without one
+             */
+            days_per_week: number | null;
+            /**
+             * From
+             * Format: date
+             */
+            from: string;
+            /** Longest Streak */
+            longest_streak: number;
+            /**
+             * Planned Days
+             * @description Per ISO week: min(days_per_week, days in range - sick/injured days)
+             */
+            planned_days: number;
+            /**
+             * Planned Days Done
+             * @description done + partial days, at most planned per week
+             */
+            planned_days_done: number;
+            /**
+             * To
+             * Format: date
+             */
+            to: string;
+            /**
+             * Today
+             * Format: date
+             * @description The local day (`CHECKIN_TZ`) the streak is counted to
+             */
+            today: string;
+            /** Weeks */
+            weeks: components["schemas"]["WeekOut"][];
         };
         /** CircuitOut */
         CircuitOut: {
@@ -1762,6 +2041,81 @@ export interface components {
              * @description Monday of the ISO week (UTC)
              */
             week_start: string;
+        };
+        /**
+         * NextDay
+         * @example {
+         *       "day_id": 11,
+         *       "day_index": 0,
+         *       "day_name": "Upper A",
+         *       "planned": [
+         *         {
+         *           "exercise": {
+         *             "equipment": "barbell",
+         *             "id": 20,
+         *             "is_custom": false,
+         *             "movement_pattern": "horizontal_push",
+         *             "name": "Bench Press",
+         *             "primary_muscle": "chest",
+         *             "secondary_muscles": [
+         *               "triceps",
+         *               "shoulders"
+         *             ],
+         *             "slug": "bench-press"
+         *           },
+         *           "last_performance": {
+         *             "sets": [
+         *               {
+         *                 "reps": 10,
+         *                 "rpe": 8.5,
+         *                 "weight_kg": 77.5
+         *               },
+         *               {
+         *                 "reps": 9,
+         *                 "weight_kg": 77.5
+         *               }
+         *             ],
+         *             "started_at": "2026-10-15T17:30:00Z",
+         *             "workout_id": 41
+         *           },
+         *           "progression": "double",
+         *           "rep_max": 12,
+         *           "rep_min": 8,
+         *           "rest_seconds": 90,
+         *           "sets": 3,
+         *           "start_weight_kg": 60,
+         *           "suggestion": {
+         *             "action": "hold",
+         *             "previous_weight_kg": 77.5,
+         *             "weight_kg": 77.5
+         *           }
+         *         }
+         *       ],
+         *       "program_id": 3,
+         *       "program_name": "Upper/Lower"
+         *     }
+         */
+        NextDay: {
+            /** Day Id */
+            day_id: number;
+            /** Day Index */
+            day_index: number;
+            /** Day Name */
+            day_name: string;
+            /**
+             * Open Workout Id
+             * @description An unfinished workout that follows this day, to continue instead of a new one
+             */
+            open_workout_id: number | null;
+            /**
+             * Planned
+             * @description The day's exercises with last performance and suggested weight
+             */
+            planned: components["schemas"]["PlannedExercise"][];
+            /** Program Id */
+            program_id: number;
+            /** Program Name */
+            program_name: string;
         };
         /** PerformedSet */
         PerformedSet: {
@@ -2933,6 +3287,19 @@ export interface components {
              */
             week_start: string;
         };
+        /** WeekOut */
+        WeekOut: {
+            /** Done */
+            done: number;
+            /** Planned */
+            planned: number;
+            /**
+             * Week Start
+             * Format: date
+             * @description Monday of the ISO week
+             */
+            week_start: string;
+        };
         /**
          * WeeklyStats
          * @example {
@@ -3520,6 +3887,257 @@ export interface operations {
                     /**
                      * @example {
                      *       "detail": "activity not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_checkins_v1_checkins_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinList"];
+                };
+            };
+            /** @description `to` before `from`, or too long */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "`to` is before `from`"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    checkin_summary_v1_checkins_summary_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinSummary"];
+                };
+            };
+            /** @description `to` before `from`, or too long */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "`to` is before `from`"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_checkin_v1_checkins__day__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description No check-in that day */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "no check-in for this date"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_checkin_v1_checkins__day__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckinIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinOut"];
+                };
+            };
+            /** @description Unknown workout */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "workout not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4974,6 +5592,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProgramOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description No active program */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "no active program"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    next_day_v1_training_programs_active_next_day_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NextDay"];
                 };
             };
             /** @description Missing or invalid `X-API-Key` */

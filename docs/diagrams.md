@@ -19,6 +19,8 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [14. State — webhook event](#14-state--webhook-event)
 - [15. State — sync run](#15-state--sync-run)
 - [16. Activity — rate-limit budget decision](#16-activity--rate-limit-budget-decision)
+- [17. State — daily check-in conversation](#17-state--daily-check-in-conversation)
+- [18. Sequence — evening check-in prompt](#18-sequence--evening-check-in-prompt)
 
 ---
 
@@ -291,6 +293,7 @@ erDiagram
     program_days |o--o{ workouts : "followed by"
     workouts ||--o{ workout_sets : "logs"
     exercises ||--o{ workout_sets : "of"
+    workouts |o--o{ daily_checkins : "reported by"
 
     exercises {
         int id PK
@@ -354,6 +357,18 @@ erDiagram
     body_metrics {
         date date PK
         numeric weight_kg
+    }
+    daily_checkins {
+        bigint id PK
+        date date UK "local day (CHECKIN_TZ)"
+        text status "done | partial | skipped | rest | sick_or_injured"
+        bigint workout_id FK "nullable, set null"
+        text reason_note "nullable"
+        numeric sleep_hours "nullable"
+        int energy_1_5 "nullable"
+        numeric body_weight_kg "nullable, also in body_metrics"
+        timestamptz created_at
+        timestamptz updated_at
     }
 ```
 
@@ -1043,4 +1058,57 @@ flowchart TD
     is429 -- yes --> setblk["set blocked_until = next quarter hour"]
     is429 -- no --> done([done])
     setblk --> done
+```
+
+## 17. State — daily check-in conversation
+
+State in Redis (`checkin:{chat}:{yyyymmdd}`, 6 h TTL). Every transition raises `seq`; buttons carry
+`ci:{yyyymmdd}:{seq}:{action}`, so a button from an older message, a double tap or a redelivered
+press no longer matches and gets a polite "earlier question" toast. A redelivered text answer has
+an `update_id` the state already saw and is ignored (ADR 0020).
+
+```mermaid
+stateDiagram-v2
+    [*] --> status : /report, "rapor", or the worker's prompt (seq 0)
+    status --> exercise : Done / Partly, active program<br/>(PUT check-in, start or reuse today's workout)
+    status --> freeform : Done / Partly, no program
+    status --> reason : Skipped
+    status --> scale : Rest / Sick (stored, no pushing)
+    exercise --> exercise : As planned / ±2.5 kg / typed sets / Skip exercise<br/>(PUT sets, next exercise)
+    exercise --> exercise : invalid input → re-prompt
+    exercise --> scale : last exercise
+    freeform --> freeform : "bench 80x5x3" (PUT sets) / numbered choice
+    freeform --> scale : Finish / "done"
+    reason --> scale : text, or Skip (hardcore may push here only)
+    scale --> sleep : number or Skip
+    sleep --> energy : number or Skip
+    energy --> done : 1-5 or Skip<br/>(PUT check-in, summary with volume, PRs, streak)
+    done --> status : Edit (same client ids: overwrite, never duplicate)
+    done --> [*] : TTL 6 h
+```
+
+## 18. Sequence — evening check-in prompt
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Cron as worker cron (every 5 min)
+    participant DB as Postgres
+    participant TG as Telegram
+    participant Bot as bot process
+    participant API as API
+    Cron->>DB: check-in for local today? prompt / reminder claimed?
+    alt before CHECKIN_TIME, or answered
+        Cron-->>Cron: nothing
+    else due and not sent yet
+        Cron->>DB: claim (checkin_prompt, yyyymmdd) — ON CONFLICT DO NOTHING
+        Cron->>TG: sendMessage + 5 status buttons (seq 0)
+        Note over Cron,DB: failure → release, next tick retries;<br/>unknown outcome → keep the claim
+    else prompt sent ≥ CHECKIN_REMINDER_MINUTES ago, unanswered
+        Cron->>DB: claim (checkin_reminder, yyyymmdd)
+        Cron->>TG: one reminder
+    end
+    TG-->>Bot: callback_query (getUpdates)
+    Bot->>API: PUT /v1/checkins/{date} (status)
+    Bot->>TG: answerCallbackQuery, remove buttons, next question
 ```

@@ -10,6 +10,7 @@ import {
   WeeklyBlock,
   WeeklySkeleton,
 } from "@/components/dashboard/blocks";
+import { CheckinTilesBlock } from "@/components/checkins/tiles";
 import { DashboardFilters } from "@/components/dashboard/filters";
 import { PageHeader } from "@/components/ui";
 import { formatDay, sportLabel } from "@/lib/format";
@@ -59,6 +60,9 @@ export default async function DashboardPage({
             </Suspense>
             <Suspense key={`longest-${key}`} fallback={<CardSkeleton title="Longest activity" rows={2} />}>
               <LongestBlock range={range} />
+            </Suspense>
+            <Suspense fallback={<CardSkeleton title="Check-ins" rows={2} />}>
+              <CheckinTilesBlock />
             </Suspense>
           </div>
         </div>

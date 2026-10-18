@@ -174,6 +174,8 @@ class Dispatcher:
         BOT_UPDATES.labels(label, outcome).inc()
 
     async def _send(self, chat_id: int, reply: Reply, label: str, outcome: str) -> str:
+        if not reply.text:
+            return "duplicate"  # a feature recognised a redelivered update: nothing to say
         try:
             await self._telegram.send_message(chat_id, reply.text, reply.keyboard)
         except (TelegramError, TelegramUnavailableError) as exc:

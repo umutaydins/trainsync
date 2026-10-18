@@ -9,7 +9,7 @@ import json
 import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -420,18 +420,21 @@ def install(router: respx.MockRouter, clock: Any) -> FakeApi:
         return httpx.Response(201 if created else 200, json=api.checkins[day])
 
     def checkin_summary(request: httpx.Request) -> httpx.Response:
-        to = request.url.params.get("to", date.today().isoformat())
+        to = request.url.params["to"]
         return httpx.Response(
             200,
             json={
                 "from": to,
                 "to": to,
+                "today": to,
                 "current_streak": api.streak,
                 "longest_streak": api.streak,
+                "days_per_week": None,
                 "planned_days": 0,
                 "planned_days_done": 0,
                 "adherence": None,
                 "counts": {},
+                "weeks": [],
             },
         )
 

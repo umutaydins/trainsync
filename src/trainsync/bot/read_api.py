@@ -15,6 +15,7 @@ import httpx
 from pydantic import BaseModel, SecretStr
 
 from trainsync.api.activities import ActivityDetail, ActivityPage
+from trainsync.api.checkins import CheckinIn, CheckinOut, CheckinSummary
 from trainsync.api.nutrition import DaySummary, FoodList, FoodLookup, LogIn, LogOut
 from trainsync.api.stats import StatsSummary, WeeklyStats
 from trainsync.api.sync_status import SyncStatusOut
@@ -128,6 +129,16 @@ class ReadApi:
 
     async def nutrition_summary(self, day: date) -> DaySummary:
         return await self._get("/v1/nutrition/summary", {"date": day.isoformat()}, DaySummary)
+
+    # ---------------------------------------------------------------- check-ins (P6.9)
+
+    async def put_checkin(self, day: date, body: CheckinIn) -> CheckinOut:
+        path = f"/v1/checkins/{day.isoformat()}"
+        return await self._send("PUT", path, body.model_dump(mode="json"), CheckinOut)
+
+    async def checkin_summary(self, today: date) -> CheckinSummary:
+        params = {"to": today.isoformat()}
+        return await self._get("/v1/checkins/summary", params, CheckinSummary)
 
     # ---------------------------------------------------------------- transport
 
