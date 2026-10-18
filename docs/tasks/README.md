@@ -16,6 +16,8 @@ is green.
 | 4 — Observability, load test, CI, README | P4.1 – P4.5 |
 | 5 — Web dashboard and Telegram bot | P5.1 – P5.8 |
 | 6 — Strength training, programs and nutrition | P6.1 – P6.10 |
+| 7 — Deploy (Mac backend + Vercel web) | P7.1 – P7.10 |
+| 8 — Body composition, Apple Health and adaptive programs | P8.1 – P8.10 |
 
 Dependency graph:
 
@@ -40,4 +42,17 @@ flowchart LR
     P6.4 & P6.6 --> P6.7
     P6.3 & P6.4 --> P6.8 --> P6.9
     P6.7 & P6.9 --> P6.10
+    P6.10 --> P7.1 --> P7.2 --> P7.3
+    P7.1 --> P7.4
+    P7.1 & P7.4 --> P7.5
+    P7.3 --> P7.6 & P7.7 & P7.8
+    P7.3 & P7.6 --> P7.9
+    P7.5 & P7.7 & P7.8 & P7.9 --> P7.10
+    P7.10 --> P8.1 --> P8.2 --> P8.3
+    P7.10 --> P8.4
+    P8.1 & P8.4 --> P8.5
+    P8.1 & P8.5 --> P8.6
+    P8.5 & P8.6 --> P8.7 & P8.9
+    P8.3 & P8.6 --> P8.8
+    P8.7 & P8.8 & P8.9 --> P8.10
 ```

@@ -370,3 +370,5 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 - [x] Phase 4 — Observability, load test, CI
 - [x] Phase 5 — Web dashboard and Telegram bot
 - [x] Phase 6 — Strength training, programs and nutrition
+- [ ] Phase 7 — Deploy (Mac backend + Vercel web)
+- [ ] Phase 8 — Body composition, Apple Health and adaptive programs
