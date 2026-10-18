@@ -1,8 +1,10 @@
 """Typed application settings, loaded from environment variables (and `.env`)."""
 
+from datetime import time
 from decimal import Decimal
 from functools import lru_cache
 from typing import Annotated, Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -146,6 +148,39 @@ class Settings(BaseSettings):
     @classmethod
     def _parse_plates(cls, value: object) -> object:
         return parse_inventory(value) if isinstance(value, str) else value
+
+    # ---------------------------------------------------------------- daily check-in (P6.9)
+    # The evening "did you train?" prompt in Telegram (ADR 0020). Empty CHECKIN_ENABLED = on when a
+    # bot token is set. CHECKIN_TZ is also the bot's "today" for /log, /eat, /kcal and /weight.
+    checkin_enabled: bool | None = None
+    checkin_time: time = time(21, 0)
+    checkin_tz: str = "Europe/Istanbul"
+    # One reminder this many minutes after the prompt when nothing was answered; 0 = none.
+    checkin_reminder_minutes: int = Field(default=90, ge=0, le=720)
+
+    @field_validator("checkin_enabled", mode="before")
+    @classmethod
+    def _empty_bool_as_none(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @field_validator("checkin_tz")
+    @classmethod
+    def _known_zone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise ValueError(f"unknown time zone {value!r}") from exc
+        return value
+
+    @property
+    def checkin_zone(self) -> ZoneInfo:
+        return ZoneInfo(self.checkin_tz)
+
+    @property
+    def checkin_active(self) -> bool:
+        """The scheduler sends prompts: a bot token, a target chat, and not switched off."""
+        enabled = self.bot_enabled if self.checkin_enabled is None else self.checkin_enabled
+        return enabled and self.bot_enabled and self.notify_chat_id() is not None
 
 
 @lru_cache

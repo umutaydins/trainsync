@@ -30,6 +30,7 @@ from trainsync.bot.assistant import (
 )
 from trainsync.bot.messages import PACKS, Key, Messages
 from trainsync.bot.read_api import ReadApi
+from trainsync.core.redis import create_redis
 
 API = "http://trainsync-api"
 NOW = datetime(2026, 10, 18, 9, 0, tzinfo=UTC)
@@ -431,9 +432,13 @@ async def test_anthropic_planner_request_shape() -> None:
 
 async def test_text_handler_is_off_without_a_key(http: httpx.AsyncClient) -> None:
     read_api = ReadApi(http, API, SecretStr("k"))
+    redis = create_redis(make_settings())  # lazy: never connects here
     async with AsyncExitStack() as stack:
-        off = await bot_main.text_handler(make_settings(), read_api, stack, MSG, clock=lambda: NOW)
+        stack.push_async_callback(redis.aclose)
+        off = await bot_main.text_handler(
+            make_settings(), read_api, redis, stack, MSG, clock=lambda: NOW
+        )
         assert off is None
         settings = make_settings(anthropic_api_key="sk-test-not-real")
-        on = await bot_main.text_handler(settings, read_api, stack, MSG, clock=lambda: NOW)
+        on = await bot_main.text_handler(settings, read_api, redis, stack, MSG, clock=lambda: NOW)
         assert on is not None

@@ -14,7 +14,12 @@ PACK = MessagePack(
             "/week: this week vs last week\n"
             "/last: latest activity\n"
             "/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run\n"
-            "/status: sync health",
+            "/status: sync health\n"
+            "/today: today's planned workout\n"
+            "/log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)\n"
+            "/done: finish the workout\n"
+            "/plates 102.5: plates per side\n"
+            "/report: daily check-in",
         ),
         Key.NO_ASSISTANT: ("I only understand commands for now.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("Unknown command /{command}.\n\n{help}",),
@@ -65,5 +70,65 @@ PACK = MessagePack(
             "I needed too many lookups for that one. Try narrowing the question.",
         ),
         Key.ASSISTANT_REFUSED: ("I can't help with that one. Ask me about your training.",),
+        Key.TODAY_NO_PROGRAM: (
+            "No active program. Create one on the web, or log freely with /log.",
+        ),
+        Key.TODAY_TITLE: ("Today: {program} · {day_name}",),
+        Key.TODAY_EXERCISE: ("• {name}: {plan} · {suggested}",),
+        Key.TODAY_IN_PROGRESS: ("In progress: {count} sets logged.",),
+        Key.TODAY_FOOTER: ("Log with /log, finish with /done.",),
+        Key.USAGE_PLATES: ("Usage: /plates 102.5",),
+        Key.PLATES: ("{target}: {per_side} per side (bar {bar})",),
+        Key.PLATES_NONE: ("just the bar",),
+        Key.PLATES_INEXACT: ("Closest possible: {achieved} ({difference} short).",),
+        Key.USAGE_LOG: ("Usage: /log bench 80x5x3 (also 80x5,5,4 or bw x12x3)",),
+        Key.LOG_UNKNOWN_EXERCISE: ('I don\'t know an exercise called "{query}".',),
+        Key.LOG_CHOOSE_EXERCISE: ("Which exercise? Reply with a number:\n{choices}",),
+        Key.LOG_SAVED: ("Logged {exercise}: {sets}. Workout volume {volume}.",),
+        Key.DONE_NO_WORKOUT: ("No open workout today.",),
+        Key.DONE_SUMMARY: (
+            "Workout done: {count} sets · {exercises} exercises · {volume} · {duration}",
+        ),
+        Key.PRS_TITLE: ("New records:",),
+        Key.PR_WEIGHT_FOR_REPS: ("🏆 {exercise}: {load} x {reps}",),
+        Key.PR_E1RM: ("🏆 {exercise}: e1RM {value}",),
+        Key.PR_VOLUME: ("🏆 {exercise}: session volume {value}",),
+        Key.CHECKIN_PROMPT: ("Daily check-in: did you train today?",),
+        Key.CHECKIN_REMINDER: ("Reminder: today's check-in is still open. Did you train today?",),
+        Key.CHECKIN_BTN_DONE: ("✅ Done",),
+        Key.CHECKIN_BTN_PARTIAL: ("🟡 Partly",),
+        Key.CHECKIN_BTN_SKIPPED: ("❌ Skipped",),
+        Key.CHECKIN_BTN_REST: ("😴 Rest day",),
+        Key.CHECKIN_BTN_SICK: ("🤕 Sick/injured",),
+        Key.CHECKIN_BTN_AS_PLANNED: ("As planned",),
+        Key.CHECKIN_BTN_STEP: ("{step}",),
+        Key.CHECKIN_BTN_SKIP_EXERCISE: ("Skip exercise",),
+        Key.CHECKIN_BTN_FINISH: ("Finish",),
+        Key.CHECKIN_BTN_EDIT: ("✏️ Edit",),
+        Key.CHECKIN_EXERCISE: (
+            "{index}/{total} {name}\nPlan: {plan} · {suggested}\n"
+            "Tap a button or type 80x5x3, 80x5,5,4 or bw x12x3.",
+        ),
+        Key.CHECKIN_SETS_SAVED: ("Saved {name}: {sets}.",),
+        Key.CHECKIN_EXERCISE_SKIPPED: ("Skipped {name}.",),
+        Key.CHECKIN_ALREADY_LOGGED: ("{name}: already logged today ({sets}).",),
+        Key.CHECKIN_ASK_FREEFORM: (
+            "What did you do? One exercise per message, like /log: bench 80x5x3. "
+            "Tap Finish when you're done.",
+        ),
+        Key.CHECKIN_INVALID_SETS: (
+            "I couldn't read that. Type 80x5x3, 80x5,5,4 or bw x12x3, or tap a button.",
+        ),
+        Key.CHECKIN_ASK_REASON: ("What got in the way? A few words, or tap Skip.",),
+        Key.CHECKIN_REASON_SAVED: ("Noted, thanks.",),
+        Key.CHECKIN_SKIPPED_NO_REASON: ("Noted.",),
+        Key.CHECKIN_REST_SAVED: ("Rest day noted. Recovery is part of training.",),
+        Key.CHECKIN_SICK_SAVED: ("Noted. Take care of yourself; training can wait.",),
+        Key.CHECKIN_SUMMARY: ("Check-in saved for {day}: {status}",),
+        Key.CHECKIN_SUMMARY_WORKOUT: ("Workout: {count} sets · {volume}",),
+        Key.CHECKIN_SUMMARY_STREAK: ("Check-in streak: {days} days",),
+        Key.CHECKIN_STALE: (
+            "That button belongs to an earlier question. Send /report to start the check-in again.",
+        ),
     },
 )

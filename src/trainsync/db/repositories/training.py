@@ -219,6 +219,18 @@ class WorkoutRepository:
         )
         return await self._session.scalar(stmt)
 
+    async def latest_for_days(self, program_day_ids: Sequence[int]) -> Workout | None:
+        """The most recent workout that followed one of these program days."""
+        if not program_day_ids:
+            return None
+        stmt = (
+            select(Workout)
+            .where(Workout.program_day_id.in_(program_day_ids))
+            .order_by(Workout.started_at.desc(), Workout.id.desc())
+            .limit(1)
+        )
+        return await self._session.scalar(stmt)
+
     async def finish(self, workout_id: int, ended_at: datetime) -> None:
         await self._session.execute(
             update(Workout)

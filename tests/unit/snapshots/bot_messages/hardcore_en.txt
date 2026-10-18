@@ -4,6 +4,14 @@ Coach here. Commands, no excuses.
 /last: latest activity
 /stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run
 /status: sync health
+/today: today's planned workout
+/log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)
+/done: finish the workout
+/plates 102.5: plates per side
+/report: daily check-in
+/eat <food> <grams>: log food, e.g. /eat oats 60
+/kcal: today's intake and macros
+/weight 78.4: today's scale reading
 
 ## no assistant
 I don't do small talk. Commands only.
@@ -13,6 +21,14 @@ Coach here. Commands, no excuses.
 /last: latest activity
 /stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run
 /status: sync health
+/today: today's planned workout
+/log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)
+/done: finish the workout
+/plates 102.5: plates per side
+/report: daily check-in
+/eat <food> <grams>: log food, e.g. /eat oats 60
+/kcal: today's intake and macros
+/weight 78.4: today's scale reading
 
 ## unknown command
 /foo? Not a thing.
@@ -22,6 +38,14 @@ Coach here. Commands, no excuses.
 /last: latest activity
 /stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run
 /status: sync health
+/today: today's planned workout
+/log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)
+/done: finish the workout
+/plates 102.5: plates per side
+/report: daily check-in
+/eat <food> <grams>: log food, e.g. /eat oats 60
+/kcal: today's intake and macros
+/weight 78.4: today's scale reading
 
 ## usage
 Wrong. Usage: /stats [4w|12w|52w] [sport], e.g. /stats 12w run
@@ -120,4 +144,146 @@ Too many lookups for that one. Narrow it down.
 
 ## assistant, refused
 Not my business. Ask about your training.
+
+## today.no_program
+No active program. Build one on the web, or just lift and /log it.
+
+## today.title
+Today: Upper/Lower · Upper A. No skipping.
+
+## today.exercise
+• Bench Press: 3 x 8-12 · 80 kg
+
+## today.in_progress
+14 sets in. Keep going.
+
+## today.footer
+Log with /log, finish with /done. Go.
+
+## usage.plates
+Wrong. Usage: /plates 102.5
+
+## plates
+102.5 kg: 25 + 15 + 1.25 kg per side (bar 20 kg)
+
+## plates.none
+just the bar
+
+## plates.inexact
+Closest possible: 100 kg (2.5 kg short).
+
+## usage.log
+Wrong. Usage: /log bench 80x5x3 (also 80x5,5,4 or bw x12x3)
+
+## log.unknown_exercise
+"zercher"? Never heard of it.
+
+## log.choose_exercise
+Which one? Number, quick:
+1. Bench Press
+2. Incline Bench Press
+
+## log.saved
+Got it. Bench Press: 80 kg x 5, 5, 5. Volume 8,240 kg. Keep moving.
+
+## done.no_workout
+No open workout today. Start one with /log.
+
+## done.summary
+Done: 14 sets · 5 exercises · 8,240 kg · 1h 05m. Good work.
+
+## prs.title
+New records. Hell yes:
+
+## pr.weight_for_reps
+🏆 Bench Press: 82.5 kg x 8
+
+## pr.e1rm
+🏆 Bench Press: e1RM 96.3 kg
+
+## pr.volume
+🏆 Bench Press: session volume 96.3 kg
+
+## checkin.prompt
+Coach here. Did you train today?
+
+## checkin.reminder
+Still waiting on today's report. Did you train?
+
+## checkin.button.done
+✅ Done
+
+## checkin.button.partial
+🟡 Partly
+
+## checkin.button.skipped
+❌ Skipped
+
+## checkin.button.rest
+😴 Rest day
+
+## checkin.button.sick
+🤕 Sick/injured
+
+## checkin.button.as_planned
+As planned
+
+## checkin.button.step
++2.5 kg
+
+## checkin.button.skip_exercise
+Skip exercise
+
+## checkin.button.finish
+Finish
+
+## checkin.button.edit
+✏️ Edit
+
+## checkin.exercise
+2/5 Bench Press
+Plan: 3 x 8-12 · 80 kg
+Tap a button or type 80x5x3, 80x5,5,4 or bw x12x3.
+
+## checkin.sets_saved
+Saved Bench Press: 80 kg x 5, 5, 5. Next.
+
+## checkin.exercise_skipped
+Skipped Bench Press. Noted.
+
+## checkin.already_logged
+Bench Press: already logged today (80 kg x 5, 5, 5).
+
+## checkin.ask_freeform
+What did you do? One exercise per message, like /log: bench 80x5x3. Tap Finish when you're done.
+
+## checkin.invalid_sets
+Can't read that. Type 80x5x3, 80x5,5,4 or bw x12x3, or tap a button.
+
+## checkin.ask_reason
+Skipped. Why? A few words, or tap Skip.
+
+## checkin.reason_saved
+Noted. Tomorrow counts.
+
+## checkin.skipped_no_reason
+No reason? Then there's no excuse either. Tomorrow you train.
+
+## checkin.rest_saved
+Rest day noted. Recovery is part of training.
+
+## checkin.sick_saved
+Noted. Get well first; training can wait.
+
+## checkin.summary
+Check-in saved for 18 Oct: ✅
+
+## checkin.summary.workout
+Workout: 14 sets · 8,240 kg
+
+## checkin.summary.streak
+Check-in streak: 6 days. Don't break it.
+
+## checkin.stale
+That button belongs to an earlier question. Send /report to start the check-in again.
 

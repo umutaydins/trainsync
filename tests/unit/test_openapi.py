@@ -75,6 +75,7 @@ def test_every_endpoint_is_documented(spec: dict[str, Any]) -> None:
         "GET /v1/training/programs",
         "POST /v1/training/programs",
         "GET /v1/training/programs/active",
+        "GET /v1/training/programs/active/next-day",
         "DELETE /v1/training/programs/{program_id}",
         "GET /v1/training/programs/{program_id}",
         "PUT /v1/training/programs/{program_id}",

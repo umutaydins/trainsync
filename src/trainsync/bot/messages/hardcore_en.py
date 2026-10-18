@@ -20,7 +20,12 @@ PACK = MessagePack(
             "/week: this week vs last week\n"
             "/last: latest activity\n"
             "/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run\n"
-            "/status: sync health",
+            "/status: sync health\n"
+            "/today: today's planned workout\n"
+            "/log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)\n"
+            "/done: finish the workout\n"
+            "/plates 102.5: plates per side\n"
+            "/report: daily check-in",
         ),
         Key.NO_ASSISTANT: ("I don't do small talk. Commands only.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("/{command}? Not a thing.\n\n{help}",),
@@ -99,5 +104,66 @@ PACK = MessagePack(
         ),
         Key.ASSISTANT_TOO_MANY_CALLS: ("Too many lookups for that one. Narrow it down.",),
         Key.ASSISTANT_REFUSED: ("Not my business. Ask about your training.",),
+        Key.TODAY_NO_PROGRAM: (
+            "No active program. Build one on the web, or just lift and /log it.",
+        ),
+        Key.TODAY_TITLE: ("Today: {program} · {day_name}. No skipping.",),
+        Key.TODAY_EXERCISE: NEUTRAL.texts[Key.TODAY_EXERCISE],
+        Key.TODAY_IN_PROGRESS: ("{count} sets in. Keep going.",),
+        Key.TODAY_FOOTER: ("Log with /log, finish with /done. Go.",),
+        Key.USAGE_PLATES: ("Wrong. Usage: /plates 102.5",),
+        Key.PLATES: NEUTRAL.texts[Key.PLATES],
+        Key.PLATES_NONE: NEUTRAL.texts[Key.PLATES_NONE],
+        Key.PLATES_INEXACT: NEUTRAL.texts[Key.PLATES_INEXACT],
+        Key.USAGE_LOG: ("Wrong. Usage: /log bench 80x5x3 (also 80x5,5,4 or bw x12x3)",),
+        Key.LOG_UNKNOWN_EXERCISE: ('"{query}"? Never heard of it.',),
+        Key.LOG_CHOOSE_EXERCISE: ("Which one? Number, quick:\n{choices}",),
+        Key.LOG_SAVED: (
+            "Logged {exercise}: {sets}. Volume {volume}. Next set.",
+            "{exercise}: {sets} in the bank. Volume {volume}.",
+            "Got it. {exercise}: {sets}. Volume {volume}. Keep moving.",
+        ),
+        Key.DONE_NO_WORKOUT: ("No open workout today. Start one with /log.",),
+        Key.DONE_SUMMARY: (
+            "Done: {count} sets · {exercises} exercises · {volume} · {duration}. Good work.",
+        ),
+        Key.PRS_TITLE: ("New records. Hell yes:",),
+        Key.PR_WEIGHT_FOR_REPS: NEUTRAL.texts[Key.PR_WEIGHT_FOR_REPS],
+        Key.PR_E1RM: NEUTRAL.texts[Key.PR_E1RM],
+        Key.PR_VOLUME: NEUTRAL.texts[Key.PR_VOLUME],
+        Key.CHECKIN_PROMPT: ("Coach here. Did you train today?",),
+        Key.CHECKIN_REMINDER: ("Still waiting on today's report. Did you train?",),
+        Key.CHECKIN_BTN_DONE: NEUTRAL.texts[Key.CHECKIN_BTN_DONE],
+        Key.CHECKIN_BTN_PARTIAL: NEUTRAL.texts[Key.CHECKIN_BTN_PARTIAL],
+        Key.CHECKIN_BTN_SKIPPED: NEUTRAL.texts[Key.CHECKIN_BTN_SKIPPED],
+        Key.CHECKIN_BTN_REST: NEUTRAL.texts[Key.CHECKIN_BTN_REST],
+        Key.CHECKIN_BTN_SICK: NEUTRAL.texts[Key.CHECKIN_BTN_SICK],
+        Key.CHECKIN_BTN_AS_PLANNED: NEUTRAL.texts[Key.CHECKIN_BTN_AS_PLANNED],
+        Key.CHECKIN_BTN_STEP: NEUTRAL.texts[Key.CHECKIN_BTN_STEP],
+        Key.CHECKIN_BTN_SKIP_EXERCISE: NEUTRAL.texts[Key.CHECKIN_BTN_SKIP_EXERCISE],
+        Key.CHECKIN_BTN_FINISH: NEUTRAL.texts[Key.CHECKIN_BTN_FINISH],
+        Key.CHECKIN_BTN_EDIT: NEUTRAL.texts[Key.CHECKIN_BTN_EDIT],
+        Key.CHECKIN_EXERCISE: NEUTRAL.texts[Key.CHECKIN_EXERCISE],
+        Key.CHECKIN_SETS_SAVED: ("Saved {name}: {sets}. Next.",),
+        Key.CHECKIN_EXERCISE_SKIPPED: ("Skipped {name}. Noted.",),
+        Key.CHECKIN_ALREADY_LOGGED: NEUTRAL.texts[Key.CHECKIN_ALREADY_LOGGED],
+        Key.CHECKIN_ASK_FREEFORM: NEUTRAL.texts[Key.CHECKIN_ASK_FREEFORM],
+        Key.CHECKIN_INVALID_SETS: (
+            "Can't read that. Type 80x5x3, 80x5,5,4 or bw x12x3, or tap a button.",
+        ),
+        Key.CHECKIN_ASK_REASON: ("Skipped. Why? A few words, or tap Skip.",),
+        Key.CHECKIN_REASON_SAVED: ("Noted. Tomorrow counts.",),
+        Key.CHECKIN_SKIPPED_NO_REASON: (
+            "No reason? Then there's no excuse either. Tomorrow you train.",
+            "Skipped without a reason. Damn. Tomorrow, show up.",
+            "Nothing to say? Fine. Make tomorrow count.",
+        ),
+        # Calm in every tone (ADR 0020): no pushing on rest or illness.
+        Key.CHECKIN_REST_SAVED: ("Rest day noted. Recovery is part of training.",),
+        Key.CHECKIN_SICK_SAVED: ("Noted. Get well first; training can wait.",),
+        Key.CHECKIN_SUMMARY: NEUTRAL.texts[Key.CHECKIN_SUMMARY],
+        Key.CHECKIN_SUMMARY_WORKOUT: NEUTRAL.texts[Key.CHECKIN_SUMMARY_WORKOUT],
+        Key.CHECKIN_SUMMARY_STREAK: ("Check-in streak: {days} days. Don't break it.",),
+        Key.CHECKIN_STALE: NEUTRAL.texts[Key.CHECKIN_STALE],
     },
 )

@@ -211,6 +211,29 @@ RPE 1–10 in 0.5 steps) and JSON numbers in responses.
   progression (`progression.py`: `start` / `increase` / `hold` / `deload`, with `weight_kg`).
   `GET /plates?target=` gives the plates per side (`plates.py`), using `GYM_BAR_KG` and
   `GYM_PLATES`.
+- Next day (P6.8): `GET /programs/active/next-day` is the active program's day that is up, in
+  rotation: the day after the one the latest workout followed (wrapping around), the first day
+  without history, or the day of a still-open workout (`open_workout_id`). Planned exercises come
+  with their `suggestion`, so `/today` in the bot shows suggested weights without starting a workout.
+
+### 7c. Bot: training and nutrition commands (Phase 6, P6.8)
+The bot stays an API client (read and write, same API key). Commands live in `Feature` groups
+(`bot/training.py`, `bot/nutrition.py`, `bot/checkin.py`) that the dispatcher asks in turn:
+- `/today` (next program day with suggested weights), `/plates 102.5`, `/log bench 80x5x3`
+  (also `80x5,5,4` and `bw x12x3`, one parser in `bot/parsing.py` shared with the check-in),
+  `/done` (finish, summary with volume and records), `/eat <food> <grams>`, `/kcal`, `/weight 78.4`.
+- **Local day**: "today" is the owner's day in `CHECKIN_TZ` (default `Europe/Istanbul`), not UTC:
+  `/log` adds to the open workout started on that day (or starts a free one), `/eat`, `/kcal` and
+  `/weight` send that date explicitly. The meal is picked from the local hour.
+- **Idempotency**: client ids are `uuid5` of `tg:{chat}:{update_id}:{n}` (`/log` set n) and
+  `tg:{chat}:{update_id}:eat`. A redelivered update (the bot crashed before confirming it)
+  rewrites the same rows; a set that already exists keeps its `set_index`.
+- **Exercise names**: a small alias table (`bench`, `dl`, `ohp`, `rdl`, `pullup`, …), then
+  `GET /exercises?q=` matched on slug/name, exact before prefix. Food names match stored foods
+  (favourites first), falling back to the Open Food Facts lookup. More than one candidate → a
+  numbered list; the choice waits in Redis (`bot:pending:{chat}`, 15 min) and a number answers it.
+- **Wording**: training texts come from the tone packs; food, scale, sleep and energy texts come
+  from a tone-free layer (`messages/neutral.py`, `NeutralKey`), identical in every `BOT_TONE`.
 
 ### 8. Operations
 - `GET /health/live` (process up), `GET /health/ready` (DB + Redis reachable).

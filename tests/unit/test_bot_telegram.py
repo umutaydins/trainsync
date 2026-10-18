@@ -1,5 +1,6 @@
 """P5.5: the Telegram client honours 429 `retry_after` and backs off on 5xx, via injected sleep."""
 
+import json
 from collections.abc import AsyncIterator
 
 import httpx
@@ -18,12 +19,14 @@ from tests.support.telegram import (
     sent_messages,
 )
 from trainsync.bot.telegram import (
+    Button,
     TelegramApi,
     TelegramDeliveryUnknownError,
     TelegramError,
     TelegramRetryAfterError,
     TelegramUnavailableError,
     backoff_delay,
+    keyboard_markup,
 )
 
 
@@ -153,3 +156,63 @@ async def test_get_updates_does_not_retry_itself(http: httpx.AsyncClient) -> Non
 def test_backoff_is_capped() -> None:
     assert [backoff_delay(n) for n in (1, 2, 3)] == [1.0, 2.0, 4.0]
     assert backoff_delay(20) == 30.0
+
+
+# ---------------------------------------------------------------- buttons (P6.9)
+
+
+@respx.mock
+async def test_polling_asks_for_button_presses_too(http: httpx.AsyncClient) -> None:
+    route = respx.get(f"{BOT_URL}/getUpdates").mock(
+        return_value=ok(
+            [
+                {
+                    "update_id": 5,
+                    "callback_query": {
+                        "id": "cq-1",
+                        "from": {"id": 42},
+                        "data": "ci:20261018:0:s:done",
+                        "message": {"message_id": 9, "chat": {"id": 42}, "text": "Q"},
+                    },
+                }
+            ]
+        )
+    )
+    [update] = await api(http, SleepRecorder()).get_updates(None, poll_timeout=0)
+    params = route.calls.last.request.url.params
+    assert params["allowed_updates"] == '["message","callback_query"]'
+    assert update.callback_query is not None
+    assert update.callback_query.data == "ci:20261018:0:s:done"
+    assert update.callback_query.message is not None
+    assert update.callback_query.message.message_id == 9
+
+
+@respx.mock
+async def test_inline_keyboard_answer_and_removal(http: httpx.AsyncClient) -> None:
+    send = respx.post(f"{BOT_URL}/sendMessage").mock(return_value=ok({}))
+    answer = respx.post(f"{BOT_URL}/answerCallbackQuery").mock(return_value=ok(True))
+    edit = respx.post(f"{BOT_URL}/editMessageReplyMarkup").mock(return_value=ok(True))
+    client = api(http, SleepRecorder())
+    keyboard = ((Button("Yes", "y"), Button("No", "n")), (Button("Skip", "s"),))
+    await client.send_message(42, "Q?", keyboard)
+    await client.answer_callback_query("cq-1", "Saved")
+    await client.answer_callback_query("cq-2")
+    await client.remove_keyboard(42, 9)
+    assert sent_messages(send)[0]["reply_markup"] == {
+        "inline_keyboard": [
+            [{"text": "Yes", "callback_data": "y"}, {"text": "No", "callback_data": "n"}],
+            [{"text": "Skip", "callback_data": "s"}],
+        ]
+    }
+    bodies = [json.loads(c.request.content) for c in answer.calls]
+    assert bodies == [{"callback_query_id": "cq-1", "text": "Saved"}, {"callback_query_id": "cq-2"}]
+    assert json.loads(edit.calls.last.request.content) == {
+        "chat_id": 42,
+        "message_id": 9,
+        "reply_markup": {"inline_keyboard": []},
+    }
+
+
+def test_callback_data_is_limited_to_64_bytes() -> None:
+    with pytest.raises(ValueError, match="64 bytes"):
+        keyboard_markup(((Button("x", "y" * 65),),))

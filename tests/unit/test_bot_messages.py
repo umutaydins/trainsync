@@ -25,7 +25,18 @@ from trainsync.api.stats import StatsSummary, TotalsOut, WeeklyStats
 from trainsync.api.sync_status import SyncStatusOut
 from trainsync.bot import formatting
 from trainsync.bot.formatting import Verdict, week_verdict
-from trainsync.bot.messages import FIELDS, PACKS, Key, MessagePack, Messages, messages_for
+from trainsync.bot.messages import (
+    FIELDS,
+    NEUTRAL_FIELDS,
+    NEUTRAL_TEXTS,
+    PACKS,
+    RESPECTFUL,
+    Key,
+    MessagePack,
+    Messages,
+    NeutralKey,
+    messages_for,
+)
 
 FIXTURE: dict[str, Any] = json.loads(
     (Path(__file__).parents[1] / "fixtures" / "bot_api_responses.json").read_text(encoding="utf-8")
@@ -124,9 +135,9 @@ def scenarios(msg: Messages) -> dict[str, str]:
     this_week, last_week = summary("summary_this_week"), summary("summary_last_week")
     empty = summary("summary_empty_week")
     return {
-        "help": msg(Key.HELP),
-        "no assistant": msg(Key.NO_ASSISTANT, help=msg(Key.HELP)),
-        "unknown command": msg(Key.UNKNOWN_COMMAND, command="foo", help=msg(Key.HELP)),
+        "help": msg.help(),
+        "no assistant": msg(Key.NO_ASSISTANT, help=msg.help()),
+        "unknown command": msg(Key.UNKNOWN_COMMAND, command="foo", help=msg.help()),
         "usage": msg(Key.USAGE_STATS),
         "api down": msg(Key.API_DOWN),
         "week, 68% of last week": formatting.format_week(this_week, last_week, NOW, msg),
@@ -153,7 +164,49 @@ def scenarios(msg: Messages) -> dict[str, str]:
         "assistant, unavailable": msg(Key.ASSISTANT_UNAVAILABLE),
         "assistant, too many calls": msg(Key.ASSISTANT_TOO_MANY_CALLS),
         "assistant, refused": msg(Key.ASSISTANT_REFUSED),
+        **training_scenarios(msg),
     }
+
+
+def training_scenarios(msg: Messages) -> dict[str, str]:
+    """Every training and check-in key once, with sample numbers (P6.8, P6.9)."""
+    sample: dict[str, object] = {
+        "program": "Upper/Lower",
+        "day_name": "Upper A",
+        "day": "18 Oct",
+        "count": 14,
+        "name": "Bench Press",
+        "exercise": "Bench Press",
+        "plan": "3 x 8-12",
+        "suggested": "80 kg",
+        "sets": "80 kg x 5, 5, 5",
+        "target": "102.5 kg",
+        "per_side": "25 + 15 + 1.25 kg",
+        "bar": "20 kg",
+        "achieved": "100 kg",
+        "difference": "2.5 kg",
+        "query": "zercher",
+        "choices": "1. Bench Press\n2. Incline Bench Press",
+        "volume": "8,240 kg",
+        "exercises": 5,
+        "duration": "1h 05m",
+        "load": "82.5 kg",
+        "reps": 8,
+        "value": "96.3 kg",
+        "step": "+2.5 kg",
+        "index": 2,
+        "total": 5,
+        "status": "✅",
+        "days": 6,
+    }
+    keys = [key for key in Key if key.value.split(".")[0] in TRAINING_GROUPS]
+    return {
+        f"{key.value}": msg(key, **{f: sample[f] for f in FIELDS[key] if f in sample})
+        for key in keys
+    }
+
+
+TRAINING_GROUPS = {"today", "usage", "plates", "log", "done", "prs", "pr", "checkin"}
 
 
 def render_snapshot(pack: MessagePack) -> str:
@@ -288,6 +341,73 @@ def blocked(text: str) -> list[str]:
 def test_packs_contain_no_blocked_word(pack: MessagePack) -> None:
     for key, template in every_template(pack):
         assert not blocked(template), f"{pack.tone}/{pack.lang} {key}: {blocked(template)}"
+
+
+@pytest.mark.parametrize("lang", ["en", "tr"])
+def test_neutral_texts_contain_no_blocked_word(lang: str) -> None:
+    for key, template in NEUTRAL_TEXTS[lang].items():  # type: ignore[index]
+        assert not blocked(template), f"neutral/{lang} {key}: {blocked(template)}"
+
+
+# ---------------------------------------------------------------- tone-free layer (P6.8)
+
+NUTRITION_WORDS = re.compile(
+    r"\b(eat|food|kcal|calorie\w*|meal|macro\w*|protein|carb\w*|scale|sleep|energy"
+    r"|yiyecek\w*|yemek\w*|öğün\w*|makro\w*|tartı\w*|uyku\w*|enerji\w*)\b",
+    re.IGNORECASE,
+)
+
+
+@pytest.mark.parametrize("lang", ["en", "tr"])
+def test_every_language_defines_every_neutral_key(lang: str) -> None:
+    texts = NEUTRAL_TEXTS[lang]  # type: ignore[index]
+    assert set(texts) == set(NeutralKey)
+    assert set(NEUTRAL_FIELDS) == set(NeutralKey)
+    for key, template in texts.items():
+        used = {name for _, name, _, _ in string.Formatter().parse(template) if name}
+        assert used <= NEUTRAL_FIELDS[key], f"{lang} {key}: {used - NEUTRAL_FIELDS[key]}"
+
+
+@pack_ids
+def test_packs_have_no_nutrition_or_body_keys(pack: MessagePack) -> None:
+    """Food, the scale, sleep and energy live only in the tone-free layer."""
+    key_names = {key.value for key in pack.texts}
+    assert not key_names & {key.value for key in NeutralKey}
+    for key in pack.texts:
+        assert not re.match(r"(eat|kcal|meal|scale|weight|body|food|nutrition)", key.value), key
+    if pack.tone == "hardcore":
+        for key, template in every_template(pack):
+            if key is Key.HELP:
+                continue  # lists the command names, not wording about food
+            assert not NUTRITION_WORDS.search(template), f"{pack.lang} {key}: {template}"
+
+
+def test_neutral_texts_are_the_same_in_every_tone() -> None:
+    for lang in ("en", "tr"):
+        neutral = Messages(PACKS["neutral", lang])  # type: ignore[index]
+        hardcore = Messages(PACKS["hardcore", lang])  # type: ignore[index]
+        for key in NeutralKey:
+            fields: dict[str, object] = dict.fromkeys(NEUTRAL_FIELDS[key], "?")
+            assert neutral.neutral(key, **fields) == hardcore.neutral(key, **fields)
+
+
+MILD_PROFANITY = re.compile(r"\b(damn|hell|crap|lan|ulan|hassiktir)\b", re.IGNORECASE)
+
+
+@hardcore_ids
+def test_rest_and_sick_answers_are_calm_in_hardcore(pack: MessagePack) -> None:
+    """Rest days and being sick or injured are never pushed on (ADR 0020)."""
+    for key in RESPECTFUL:
+        for template in pack.texts[key]:
+            assert not MILD_PROFANITY.search(template), f"{pack.lang} {key}: {template}"
+            assert "!" not in template
+
+
+@hardcore_ids
+def test_hardcore_may_push_only_on_a_skip_without_reason(pack: MessagePack) -> None:
+    neutral = PACKS["neutral", pack.lang]
+    assert pack.texts[Key.CHECKIN_SKIPPED_NO_REASON] != neutral.texts[Key.CHECKIN_SKIPPED_NO_REASON]
+    assert len(pack.texts[Key.CHECKIN_SKIPPED_NO_REASON]) >= 3
 
 
 def test_blocklist_catches_what_it_should() -> None:

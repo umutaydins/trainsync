@@ -13,13 +13,17 @@ from contextlib import AsyncExitStack
 
 import anthropic
 from prometheus_client import start_http_server
+from redis.asyncio import Redis
 
 from trainsync.bot.assistant import TIMEOUT_S, AnthropicPlanner, Assistant, RedisRateLimiter
+from trainsync.bot.common import Feature, RedisStateStore, StateStore
 from trainsync.bot.handlers import Commands, Dispatcher, TextHandler
 from trainsync.bot.messages import Messages, messages_for
+from trainsync.bot.nutrition import NutritionCommands
 from trainsync.bot.polling import Poller
 from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import TelegramApi
+from trainsync.bot.training import TrainingCommands
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.logging import configure_logging, get_logger
 from trainsync.core.redis import create_redis
@@ -55,12 +59,15 @@ async def run(
         )
         read_api = ReadApi(http, settings.bot_api_base_url, settings.bot_read_api_key())
         msg = messages_for(settings)
+        redis = create_redis(settings)
+        stack.push_async_callback(redis.aclose)
         dispatcher = Dispatcher(
             telegram,
             Commands(read_api, clock, msg),
             set(settings.telegram_allowed_chat_ids),
             msg,
-            await text_handler(settings, read_api, stack, msg, clock=clock),
+            await text_handler(settings, read_api, redis, stack, msg, clock=clock),
+            features=features(settings, read_api, RedisStateStore(redis), msg, clock=clock),
         )
         log.info(
             "bot_startup",
@@ -72,8 +79,25 @@ async def run(
     log.info("bot_shutdown")
 
 
+def features(
+    settings: Settings, api: ReadApi, store: StateStore, msg: Messages, *, clock: Clock
+) -> list[Feature]:
+    """Training and nutrition commands (P6.8); "today" is the local day in `CHECKIN_TZ`."""
+    zone = settings.checkin_zone
+    return [
+        TrainingCommands(api, store, clock, zone, msg),
+        NutritionCommands(api, store, clock, zone, msg),
+    ]
+
+
 async def text_handler(
-    settings: Settings, read_api: ReadApi, stack: AsyncExitStack, msg: Messages, *, clock: Clock
+    settings: Settings,
+    read_api: ReadApi,
+    redis: Redis,
+    stack: AsyncExitStack,
+    msg: Messages,
+    *,
+    clock: Clock,
 ) -> TextHandler | None:
     """The natural-language assistant (P5.7), or None without `ANTHROPIC_API_KEY`."""
     if not settings.assistant_enabled:
@@ -83,8 +107,6 @@ async def text_handler(
         api_key=settings.anthropic_api_key.get_secret_value(), timeout=TIMEOUT_S, max_retries=1
     )
     stack.push_async_callback(client.close)
-    redis = create_redis(settings)
-    stack.push_async_callback(redis.aclose)
     assistant = Assistant(
         AnthropicPlanner(client, settings.assistant_model),
         read_api,

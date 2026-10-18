@@ -23,7 +23,12 @@ PACK = MessagePack(
             "/week: bu hafta ve geçen hafta\n"
             "/last: son aktivite\n"
             "/stats [4w|12w|52w] [spor]: toplamlar ve en iyi hafta, ör. /stats 12w run\n"
-            "/status: senkron durumu",
+            "/status: senkron durumu\n"
+            "/today: bugünkü planlı antrenman\n"
+            "/log bench 80x5x3: set kaydet (80x5,5,4 ya da bw x12x3 de olur)\n"
+            "/done: antrenmanı bitir\n"
+            "/plates 102.5: bir tarafa takılacak plakalar\n"
+            "/report: günlük rapor",
         ),
         Key.NO_ASSISTANT: ("Sohbet yok, sadece komut.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("/{command} diye bir şey yok lan.\n\n{help}",),
@@ -100,5 +105,64 @@ PACK = MessagePack(
         Key.ASSISTANT_UNAVAILABLE: ("Şu an soru yok. Komutlar çalışıyor: /week, /stats, /last.",),
         Key.ASSISTANT_TOO_MANY_CALLS: ("Bunun için çok fazla sorgu lazım. Daralt.",),
         Key.ASSISTANT_REFUSED: ("O benim işim değil. Antrenmanını sor.",),
+        Key.TODAY_NO_PROGRAM: ("Aktif program yok. Web'de kur ya da kaldır ve /log ile yaz.",),
+        Key.TODAY_TITLE: ("Bugün: {program} · {day_name}. Kaçmak yok.",),
+        Key.TODAY_EXERCISE: NEUTRAL.texts[Key.TODAY_EXERCISE],
+        Key.TODAY_IN_PROGRESS: ("{count} set tamam. Devam.",),
+        Key.TODAY_FOOTER: ("/log ile kaydet, /done ile bitir. Hadi.",),
+        Key.USAGE_PLATES: ("Yanlış. Kullanım: /plates 102.5",),
+        Key.PLATES: NEUTRAL.texts[Key.PLATES],
+        Key.PLATES_NONE: NEUTRAL.texts[Key.PLATES_NONE],
+        Key.PLATES_INEXACT: NEUTRAL.texts[Key.PLATES_INEXACT],
+        Key.USAGE_LOG: ("Yanlış. Kullanım: /log bench 80x5x3 (80x5,5,4 ya da bw x12x3 de olur)",),
+        Key.LOG_UNKNOWN_EXERCISE: ('"{query}" diye bir egzersiz yok lan.',),
+        Key.LOG_CHOOSE_EXERCISE: ("Hangisi? Numarayı yaz, çabuk:\n{choices}",),
+        Key.LOG_SAVED: (
+            "Kaydedildi, {exercise}: {sets}. Hacim {volume}. Sıradaki set.",
+            "{exercise}: {sets} cebe. Hacim {volume}.",
+            "Tamam. {exercise}: {sets}. Hacim {volume}. Durmak yok.",
+        ),
+        Key.DONE_NO_WORKOUT: ("Bugün açık antrenman yok. /log ile başla.",),
+        Key.DONE_SUMMARY: (
+            "Bitti: {count} set · {exercises} egzersiz · {volume} · {duration}. Helal.",
+        ),
+        Key.PRS_TITLE: ("Yeni rekorlar. Hassiktir, işte bu:",),
+        Key.PR_WEIGHT_FOR_REPS: NEUTRAL.texts[Key.PR_WEIGHT_FOR_REPS],
+        Key.PR_E1RM: NEUTRAL.texts[Key.PR_E1RM],
+        Key.PR_VOLUME: NEUTRAL.texts[Key.PR_VOLUME],
+        Key.CHECKIN_PROMPT: ("Koç burada. Bugün antrenman yaptın mı?",),
+        Key.CHECKIN_REMINDER: ("Bugünkü raporu hâlâ bekliyorum. Antrenman yaptın mı?",),
+        Key.CHECKIN_BTN_DONE: NEUTRAL.texts[Key.CHECKIN_BTN_DONE],
+        Key.CHECKIN_BTN_PARTIAL: NEUTRAL.texts[Key.CHECKIN_BTN_PARTIAL],
+        Key.CHECKIN_BTN_SKIPPED: NEUTRAL.texts[Key.CHECKIN_BTN_SKIPPED],
+        Key.CHECKIN_BTN_REST: NEUTRAL.texts[Key.CHECKIN_BTN_REST],
+        Key.CHECKIN_BTN_SICK: NEUTRAL.texts[Key.CHECKIN_BTN_SICK],
+        Key.CHECKIN_BTN_AS_PLANNED: NEUTRAL.texts[Key.CHECKIN_BTN_AS_PLANNED],
+        Key.CHECKIN_BTN_STEP: NEUTRAL.texts[Key.CHECKIN_BTN_STEP],
+        Key.CHECKIN_BTN_SKIP_EXERCISE: NEUTRAL.texts[Key.CHECKIN_BTN_SKIP_EXERCISE],
+        Key.CHECKIN_BTN_FINISH: NEUTRAL.texts[Key.CHECKIN_BTN_FINISH],
+        Key.CHECKIN_BTN_EDIT: NEUTRAL.texts[Key.CHECKIN_BTN_EDIT],
+        Key.CHECKIN_EXERCISE: NEUTRAL.texts[Key.CHECKIN_EXERCISE],
+        Key.CHECKIN_SETS_SAVED: ("Kaydedildi, {name}: {sets}. Sıradaki.",),
+        Key.CHECKIN_EXERCISE_SKIPPED: ("{name} geçildi. Not aldım.",),
+        Key.CHECKIN_ALREADY_LOGGED: NEUTRAL.texts[Key.CHECKIN_ALREADY_LOGGED],
+        Key.CHECKIN_ASK_FREEFORM: NEUTRAL.texts[Key.CHECKIN_ASK_FREEFORM],
+        Key.CHECKIN_INVALID_SETS: (
+            "Okuyamadım. 80x5x3, 80x5,5,4 ya da bw x12x3 yaz veya bir düğmeye dokun.",
+        ),
+        Key.CHECKIN_ASK_REASON: ("Atladın. Neden? Birkaç kelime yaz ya da Geç'e dokun.",),
+        Key.CHECKIN_REASON_SAVED: ("Not aldım. Yarın önemli.",),
+        Key.CHECKIN_SKIPPED_NO_REASON: (
+            "Sebep yok mu? O zaman bahane de yok. Yarın antrenman var.",
+            "Sebepsiz atladın ulan. Yarın oradasın.",
+            "Söyleyecek bir şey yok mu? Peki. Yarını boş geçme.",
+        ),
+        # Calm in every tone (ADR 0020): no pushing on rest or illness.
+        Key.CHECKIN_REST_SAVED: ("Dinlenme günü kaydedildi. Toparlanma da antrenmanın parçası.",),
+        Key.CHECKIN_SICK_SAVED: ("Not aldım. Önce iyileş; antrenman bekleyebilir.",),
+        Key.CHECKIN_SUMMARY: NEUTRAL.texts[Key.CHECKIN_SUMMARY],
+        Key.CHECKIN_SUMMARY_WORKOUT: NEUTRAL.texts[Key.CHECKIN_SUMMARY_WORKOUT],
+        Key.CHECKIN_SUMMARY_STREAK: ("Rapor serisi: {days} gün. Bozma.",),
+        Key.CHECKIN_STALE: NEUTRAL.texts[Key.CHECKIN_STALE],
     },
 )
