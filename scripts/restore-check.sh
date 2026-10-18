@@ -9,11 +9,15 @@
 #   scripts/restore-check.sh --identity KEY.txt [PATH]      # identity other than the configured one
 #
 # Reads .env.prod (ENV_FILE overrides) and uses the backup image of compose.prod.yml, so it
-# needs no local Postgres or age. The live database is not touched.
+# needs no local Postgres or age. The live database is not touched. The image tag is the one
+# `scripts/mac-prod.sh tag` resolves (TRAINSYNC_TAG, the env file, the last deploy, the running
+# stack, the git SHA), so TRAINSYNC_TAG need not be set.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 env_file=${ENV_FILE:-.env.prod}
+TRAINSYNC_TAG="$(TRAINSYNC_ENV_FILE="$env_file" scripts/mac-prod.sh tag)"
+export TRAINSYNC_TAG
 args=(docker compose --env-file "$env_file" -f compose.prod.yml run --rm --no-deps)
 
 if [ "${1:-}" = "--identity" ]; then

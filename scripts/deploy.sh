@@ -278,7 +278,7 @@ The deploy being undone ran a migration that is not reversible, so its downgrade
 data the previous version needs. Restore the pre-deploy backup instead (docs/operations.md,
 "Backups and restore" > "Restoring for real" and "Deploy and rollback"):
 
-  1. docker compose --env-file .env.prod -f compose.prod.yml stop api worker bot
+  1. scripts/mac-prod.sh compose stop api worker bot
   2. ls "\$BACKUP_HOST_DIR" | grep -- '-$label.dump.age'        # the pre-deploy backup
   3. scripts/restore-check.sh PATH/trainsync-…-$label.dump.age
   4. restore it into the live database (the pg_restore command in docs/operations.md)

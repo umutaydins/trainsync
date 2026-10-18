@@ -10,13 +10,15 @@
 #   scripts/mac-prod.sh doctor             check the Mac is fit to serve; prints a fix per failure
 #   scripts/mac-prod.sh install-agent      install + load the LaunchAgent (start at login)
 #   scripts/mac-prod.sh uninstall-agent    unload + remove the LaunchAgent
+#   scripts/mac-prod.sh compose ARGS...    any docker compose command on the prod stack
+#   scripts/mac-prod.sh tag                print the image tag the commands above use
 #
 # Every external command (docker, pmset, tailscale, df, curl, launchctl, fdesetup, git, ...) is
 # looked up on PATH, so tests run this script against stub commands. Overridable settings:
 #   TRAINSYNC_ENV_FILE  default <repo>/.env.prod
 #   TRAINSYNC_TAG       image tag; default: the value in the env file, else the tag the last
-#                       deploy/rollback started (TRAINSYNC_STATE_DIR/deploy-state, P7.5),
-#                       else the current git SHA
+#                       deploy/rollback started (TRAINSYNC_STATE_DIR/deploy-state, P7.5), else
+#                       the tag of the running api container (as deploy.sh), else the git SHA
 #   BACKUP_DIR          default the iCloud Drive folder trainsync-backups (P7.4)
 #   BACKUP_MAX_AGE_HOURS (36), MIN_FREE_GB (10), GATEWAY_PORT (8080)
 #   LAUNCH_AGENTS_DIR   default ~/Library/LaunchAgents;  TRAINSYNC_LOG_DIR default ~/Library/Logs/trainsync
@@ -37,7 +39,7 @@ DEPLOY_STATE="${TRAINSYNC_STATE_DIR:-$HOME/Library/Application Support/trainsync
 DOCKER_SETTINGS="${DOCKER_SETTINGS:-$HOME/Library/Group Containers/group.com.docker/settings-store.json}"
 
 usage() {
-  sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 die() {
@@ -67,6 +69,16 @@ resolve_tag() {
     # What `make deploy` / `make rollback` last started (P7.5): a reboot after a rollback brings
     # back the rolled-back-to version, not the checked-out commit.
     tag="$(grep -E '^current_tag=' "$DEPLOY_STATE" | tail -n 1 | cut -d= -f2- || true)"
+  fi
+  if [ -z "$tag" ] && [ -f "$ENV_FILE" ]; then
+    # No deploy recorded: whatever is running now (deploy.sh's running_tag). The compose file
+    # needs some tag to parse, so the lookup itself runs with a placeholder.
+    local image
+    image="$(TRAINSYNC_TAG=unknown docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" \
+      ps --format '{{.Image}}' api 2>/dev/null | head -n 1 || true)"
+    case "$image" in
+      trainsync:*) tag="${image#trainsync:}" ;;
+    esac
   fi
   if [ -z "$tag" ]; then
     tag="$(git -C "$ROOT" rev-parse --short=12 HEAD)" || die "no TRAINSYNC_TAG and no git SHA"
@@ -306,6 +318,8 @@ main() {
     doctor) cmd_doctor ;;
     install-agent) cmd_install_agent ;;
     uninstall-agent) cmd_uninstall_agent ;;
+    compose) compose "$@" ;;
+    tag) resolve_tag && echo ;;
     -h | --help | help) usage ;;
     *)
       usage >&2

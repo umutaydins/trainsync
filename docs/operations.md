@@ -29,10 +29,16 @@ scripts/mac-prod.sh build              # build the images for the current tag
 scripts/mac-prod.sh doctor             # is the Mac fit to serve? (also: make doctor)
 scripts/mac-prod.sh install-agent      # start the stack at every login
 scripts/mac-prod.sh uninstall-agent    # stop doing that (the running stack is untouched)
+scripts/mac-prod.sh compose ARGS...    # any docker compose command (exec, run, ps, …) on the stack
+scripts/mac-prod.sh tag                # the image tag all of the above use
 ```
 
-Image tag: `TRAINSYNC_TAG` from the shell, else from `.env.prod`, else the current git SHA
-(12 characters). Leave it empty in `.env.prod` so the checked-out commit decides.
+Image tag: `TRAINSYNC_TAG` from the shell, else from `.env.prod`, else the tag the last
+`make deploy` / `make rollback` started (`deploy-state`), else the tag of the running api
+container, else the current git SHA (12 characters). Leave it empty in `.env.prod`. `make
+backup-now`, `make restore-check` and every command in this document go through the same
+lookup, so none of them needs `TRAINSYNC_TAG` in the shell (compose.prod.yml refuses to start
+without a tag, which is why plain `docker compose --env-file .env.prod …` fails).
 
 `doctor` checks, and prints the fix command for every failure (exit 1 if any fails):
 
@@ -153,7 +159,7 @@ so the LaunchAgent at login) starts the current tag from it when `.env.prod` lea
    tables or columns those migrations added are lost.
 3. If any crossed migration is `reversible = False`, rollback refuses and prints the restore
    procedure:
-   1. `docker compose --env-file .env.prod -f compose.prod.yml stop api worker bot`
+   1. `scripts/mac-prod.sh compose stop api worker bot`
    2. find the pre-deploy backup `trainsync-…-predeploy<sha7>.dump.age` in `BACKUP_HOST_DIR`
    3. `scripts/restore-check.sh PATH/…-predeploy<sha7>.dump.age`
    4. restore it as in "Restoring for real" below (step 3 there)
@@ -259,7 +265,7 @@ The backup service's own messages (backup FAILED, weekly restore check) stay as 
 - **Stack alerts**: Redis keys `alert:circuit_open`, `alert:dead_letters`, `alert:backup_stale`,
   `alert:sync_stale` = `{"bad_since": …, "alerted": …}`, no expiry; Redis persists them
   (`appendonly yes`), so a restarted worker neither repeats an alert nor misses a recovery. Look:
-  `docker compose --env-file .env.prod -f compose.prod.yml exec redis redis-cli --scan --pattern 'alert:*'`.
+  `scripts/mac-prod.sh compose exec redis redis-cli --scan --pattern 'alert:*'`.
 - A send that definitely failed leaves the state as it was: the next run sends again. A send with
   an unknown outcome (timeout after sending) counts as sent.
 
@@ -286,7 +292,7 @@ The backup service's own messages (backup FAILED, weekly restore check) stay as 
 - Uptime by hand: `gh workflow run uptime.yml`, then `gh run list --workflow uptime.yml -L 1` and
   `gh run view <id> --log | grep 'uptime:'`.
 - Uptime drill (owner check 25): stop the gateway for 35 minutes,
-  `docker compose --env-file .env.prod -f compose.prod.yml stop gateway`; within two scheduled
+  `scripts/mac-prod.sh compose stop gateway`; within two scheduled
   runs (≤ 30 min, plus GitHub's delay) "real is DOWN" arrives; `scripts/mac-prod.sh up` and the
   next run sends "real RECOVERED". Faster: run `gh workflow run uptime.yml` twice while it is stopped.
 - Stack alert drill (owner check 26), without breaking anything: set
@@ -342,7 +348,7 @@ All secrets live in `.env.prod` (and, for the web app, in Vercel's environment).
 | `STATE_SIGNING_KEY` | replace it; `mac-prod.sh up` | only an OAuth login started in the minutes before fails; start it again |
 | `STRAVA_CLIENT_SECRET` | "Reset" on strava.com/settings/api, put the new value in `.env.prod`, `mac-prod.sh up` | token refreshes fail until the new value is in; existing access tokens keep working until they expire |
 | `STRAVA_WEBHOOK_VERIFY_TOKEN` | change it, `mac-prod.sh up`, then `strava-subscription.py delete` and `create` (Strava checks it only when subscribing) | none |
-| `POSTGRES_PASSWORD` | `docker compose --env-file .env.prod -f compose.prod.yml exec postgres psql -U trainsync -c "ALTER USER trainsync PASSWORD '<new>'"`, then set it in `.env.prod`, `mac-prod.sh up` | the app reconnects with the new password |
+| `POSTGRES_PASSWORD` | `scripts/mac-prod.sh compose exec postgres psql -U trainsync -c "ALTER USER trainsync PASSWORD '<new>'"`, then set it in `.env.prod`, `mac-prod.sh up` | the app reconnects with the new password |
 | `TELEGRAM_BOT_TOKEN` | BotFather → `/revoke`, new token into `.env.prod` (and the GitHub secret for uptime alerts: `gh secret set TELEGRAM_BOT_TOKEN`), `mac-prod.sh up` | the bot is silent until the new token is in |
 | `DASHBOARD_PASSWORD`, `DASHBOARD_SESSION_SECRET` (Vercel) | change in Vercel → redeploy | a new session secret logs every browser out |
 | Backup age key (`BACKUP_AGE_RECIPIENT` / identity) | see "Backups and restore": new key pair, new recipient in `.env.prod`; **keep the old identity** as long as backups made with it are within retention (6 months) | old backups still need the old identity to restore |
@@ -368,7 +374,7 @@ Design: [ADR 0030](decisions/0030-coach-intensity-and-guardrails.md), task
   below the nutrition target. Profanity is not filtered.
 - **Soft mode**: `/yumusak` in the chat → normal intensity for 24 h; `/sert` → back. It is the
   Redis key `coach:soft` (TTL 24 h), shared by bot and worker:
-  `docker compose --env-file .env.prod -f compose.prod.yml exec redis redis-cli ttl coach:soft`.
+  `scripts/mac-prod.sh compose exec redis redis-cli ttl coach:soft`.
 - **Timed messages** (worker, to `TELEGRAM_NOTIFY_CHAT_ID`; off without a bot token, or with
   `COACH_MESSAGES_ENABLED=false`): on a scheduled program day 30 min before the start, at the
   start, +30 and +90 min nudges and a "missed" message at +180 min, each only while no workout
@@ -403,7 +409,7 @@ Design: [ADR 0031](decisions/0031-runtime-bot-language.md), task
   and the worker's reminders, notifications and stack alerts (read at send time, no restart). The
   host uptime check (`ops/uptime.py`) stays English.
 - Check or reset it:
-  `docker compose --env-file .env.prod -f compose.prod.yml exec postgres psql -U trainsync -c "select * from chat_settings"`;
+  `scripts/mac-prod.sh compose exec postgres psql -U trainsync -c "select * from chat_settings"`;
   `delete from chat_settings` returns every chat to `BOT_LANG` (restart the bot to drop its cache:
   `scripts/mac-prod.sh restart bot`).
 
@@ -440,7 +446,7 @@ that command on the Mac.
 | 23 | Uptime variables and secrets (P7.8) | `gh variable set UPTIME_URL --body https://<host>.<tailnet>.ts.net && gh variable set UPTIME_DEMO_URL --body https://<host>.<tailnet>.ts.net:8443 && gh secret set TELEGRAM_BOT_TOKEN && gh secret set TELEGRAM_ALERT_CHAT_ID` (each `gh secret set` prompts for the value, so it stays out of the shell history), then `gh variable list && gh secret list` | PENDING | | |
 | 24 | Uptime workflow runs (P7.8) | `gh workflow run uptime.yml`, then `gh run list --workflow uptime.yml -L 1` and `gh run view <id> --log \| grep 'uptime:'` | PENDING | | |
 | 25 | Uptime drill (P7.8) | Alerts → Testing the alerts: stop the gateway for 35 min; paste the DOWN and RECOVERED messages (time + text) | PENDING | | |
-| 26 | Stack alert drill (P7.8) | Alerts → Testing the alerts: `ALERT_BACKUP_MAX_AGE_HOURS=0.01`, then back; paste both messages and `docker compose --env-file .env.prod -f compose.prod.yml exec redis redis-cli get alert:backup_stale` | PENDING | | |
+| 26 | Stack alert drill (P7.8) | Alerts → Testing the alerts: `ALERT_BACKUP_MAX_AGE_HOURS=0.01`, then back; paste both messages and `scripts/mac-prod.sh compose exec redis redis-cli get alert:backup_stale` | PENDING | | |
 | 27 | Demo stack running (P7.9) | `cp .env.demo.example .env.demo && chmod 600 .env.demo`, set `DEMO_API_KEY`, then `docker compose --env-file .env.demo -f compose.demo.yml up -d --build && docker compose --env-file .env.demo -f compose.demo.yml ps` | PENDING | | |
 | 28 | Demo public on :8443 (P7.9) | `scripts/funnel.sh on all && curl -s -o /dev/null -w '%{http_code}\n' -H "X-API-Key: <demo key>" https://<host>.<tailnet>.ts.net:8443/v1/activities` (expect 200) and the same with `-X PUT …/v1/nutrition/profile` (expect 403) | PENDING | | |
 | 29 | Preview shows the demo, README link filled in (P7.9) | decide preview protection ([deploy-vercel.md](deploy-vercel.md) §3), open the preview URL logged out of Vercel, log in with `trainsync-demo`, confirm demo data (program "Upper/Lower 4-day"); put the URL into README "Live demo" | PENDING | | |
@@ -492,18 +498,18 @@ make backup-now                      # one backup now + retention (LABEL=predepl
 make restore-check                   # newest backup → scratch DB → row counts vs the sidecar
 scripts/restore-check.sh PATH/trainsync-….dump.age          # a specific backup
 scripts/restore-check.sh --identity KEY.txt [PATH]          # with another identity file
-docker compose --env-file .env.prod -f compose.prod.yml logs backup
-docker compose --env-file .env.prod -f compose.prod.yml run --rm backup prune --dry-run
+scripts/mac-prod.sh compose logs backup
+scripts/mac-prod.sh compose run --rm backup prune --dry-run
 make restore-check-ci                # CI variant: seeded DB, throwaway key, bad backups must fail
 ```
 
 ### Restoring for real
 
-1. Stop writers: `docker compose --env-file .env.prod -f compose.prod.yml stop api worker bot`.
+1. Stop writers: `scripts/mac-prod.sh compose stop api worker bot`.
 2. Check the backup first: `scripts/restore-check.sh PATH/trainsync-….dump.age`.
 3. Restore into the live database (replaces its contents):
    ```
-   docker compose --env-file .env.prod -f compose.prod.yml run --rm \
+   scripts/mac-prod.sh compose run --rm \
      -v PATH_DIR:/restore:ro -v ~/.config/trainsync/backup-identity.txt:/run/key:ro \
      --entrypoint bash backup -c \
      'age -d -i /run/key /restore/trainsync-….dump.age | pg_restore --clean --if-exists --no-owner --no-acl -d trainsync'
