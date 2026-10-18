@@ -300,3 +300,4 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 - [x] Phase 3 — Webhooks and read API
 - [x] Phase 4 — Observability, load test, CI
 - [x] Phase 5 — Web dashboard and Telegram bot
+- [ ] Phase 6 — Strength training, programs and nutrition
