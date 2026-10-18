@@ -1,0 +1,197 @@
+# Production stack (P7.1): run with
+#   docker compose --env-file .env.prod -f compose.prod.yml up -d
+# Every secret comes from .env.prod (git-ignored; template: .env.prod.example) through
+# `${VAR:?…}`, so compose refuses to start while one is missing. Postgres and Redis live on an
+# internal network with no published ports; the only published port is the gateway on
+# 127.0.0.1:8080, which Tailscale Funnel exposes (P7.3) and which forwards only the routes in
+# deploy/gateway/routes.toml. Migrations are a separate one-shot step (`--profile migrate run
+# --rm migrate`, P7.5). Images are tagged with the git SHA in TRAINSYNC_TAG.
+
+name: trainsync-prod
+
+x-app-env: &app-env
+  ENV: prod
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  DATABASE_URL: postgresql+asyncpg://trainsync:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}@postgres:5432/trainsync
+  REDIS_URL: redis://redis:6379/0
+  STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID:?set STRAVA_CLIENT_ID in .env.prod}
+  STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:?set STRAVA_CLIENT_SECRET in .env.prod}
+  STRAVA_REDIRECT_URI: ${PUBLIC_API_BASE_URL:?set PUBLIC_API_BASE_URL in .env.prod}/auth/strava/callback
+  STRAVA_WEBHOOK_VERIFY_TOKEN: ${STRAVA_WEBHOOK_VERIFY_TOKEN:?set STRAVA_WEBHOOK_VERIFY_TOKEN in .env.prod}
+  STRAVA_WEBHOOK_SUBSCRIPTION_ID: ${STRAVA_WEBHOOK_SUBSCRIPTION_ID:-}
+  TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:?set TOKEN_ENCRYPTION_KEY in .env.prod}
+  STATE_SIGNING_KEY: ${STATE_SIGNING_KEY:?set STATE_SIGNING_KEY in .env.prod}
+  API_KEYS: ${API_KEYS:?set API_KEYS in .env.prod}
+  OAUTH_RETURN_TO_ALLOWLIST: ${OAUTH_RETURN_TO_ALLOWLIST:-}
+  DASHBOARD_PUBLIC_URL: ${DASHBOARD_PUBLIC_URL:-}
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  TELEGRAM_ALLOWED_CHAT_IDS: ${TELEGRAM_ALLOWED_CHAT_IDS:-}
+  TELEGRAM_NOTIFY_CHAT_ID: ${TELEGRAM_NOTIFY_CHAT_ID:-}
+  BOT_TONE: ${BOT_TONE:-neutral}
+  BOT_LANG: ${BOT_LANG:-en}
+  CHECKIN_ENABLED: ${CHECKIN_ENABLED:-}
+  CHECKIN_TIME: ${CHECKIN_TIME:-21:00}
+  CHECKIN_TZ: ${CHECKIN_TZ:-Europe/Istanbul}
+  CHECKIN_REMINDER_MINUTES: ${CHECKIN_REMINDER_MINUTES:-90}
+  GYM_BAR_KG: ${GYM_BAR_KG:-20}
+  GYM_PLATES: ${GYM_PLATES:-25x2,20x2,15x2,10x2,5x2,2.5x2,1.25x2}
+  OPENFOODFACTS_ENABLED: ${OPENFOODFACTS_ENABLED:-true}
+  ALERT_CIRCUIT_OPEN_MINUTES: ${ALERT_CIRCUIT_OPEN_MINUTES:-30}
+  ALERT_BACKUP_MAX_AGE_HOURS: ${ALERT_BACKUP_MAX_AGE_HOURS:-36}
+  ALERT_SYNC_STALE_HOURS: ${ALERT_SYNC_STALE_HOURS:-2}
+
+x-app: &app
+  image: trainsync:${TRAINSYNC_TAG:?set TRAINSYNC_TAG to the git SHA to run}
+  build: .
+  restart: unless-stopped
+  networks: [backend, egress]
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trainsync
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+      POSTGRES_DB: trainsync
+    volumes: [pgdata:/var/lib/postgresql/data]
+    networks: [backend]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trainsync -d trainsync"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    networks: [backend]
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    <<: *app
+    profiles: [migrate]
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment: *app-env
+    healthcheck: { disable: true }
+    networks: [backend]
+    mem_limit: 256m
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    <<: *app
+    environment: *app-env
+    mem_limit: 512m
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+
+  worker:
+    <<: *app
+    command: ["arq", "trainsync.worker.WorkerSettings"]
+    environment:
+      <<: *app-env
+      HEALTHCHECK_URL: http://127.0.0.1:9100/metrics
+      # Stack alerts (P7.8): the age of the newest backup, read from the backup folder.
+      BACKUP_DIR: /backups
+    volumes:
+      # The backup service's folder, read-only: the worker only lists the file names.
+      - type: bind
+        source: ${BACKUP_HOST_DIR:-${HOME}/Library/Mobile Documents/com~apple~CloudDocs/trainsync-backups}
+        target: /backups
+        read_only: true
+    mem_limit: 512m
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  bot:
+    <<: *app
+    command: ["python", "-m", "trainsync.bot"]
+    environment:
+      <<: *app-env
+      HEALTHCHECK_URL: http://127.0.0.1:9101/metrics
+      BOT_API_BASE_URL: http://api:8000
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ASSISTANT_MODEL: ${ASSISTANT_MODEL:-claude-sonnet-5-5}
+    mem_limit: 256m
+    depends_on:
+      api: { condition: service_healthy }
+
+  # Nightly encrypted pg_dump + retention + weekly restore check (P7.4, ADR 0024). One-shot
+  # backup now (P7.5 pre-deploy): `docker compose ... run --rm backup now predeploy`.
+  backup:
+    build:
+      context: .
+      dockerfile: deploy/backup/Dockerfile
+    image: trainsync-backup:${TRAINSYNC_TAG:?set TRAINSYNC_TAG to the git SHA to run}
+    restart: unless-stopped
+    command: ["loop"]
+    environment:
+      PGHOST: postgres
+      PGUSER: trainsync
+      PGDATABASE: trainsync
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?set BACKUP_AGE_RECIPIENT in .env.prod}
+      BACKUP_TIME: ${BACKUP_TIME:-03:30}
+      BACKUP_TZ: ${BACKUP_TZ:-Europe/Istanbul}
+      RESTORE_CHECK_WEEKDAY: ${RESTORE_CHECK_WEEKDAY:-7}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_ALLOWED_CHAT_IDS: ${TELEGRAM_ALLOWED_CHAT_IDS:-}
+      TELEGRAM_NOTIFY_CHAT_ID: ${TELEGRAM_NOTIFY_CHAT_ID:-}
+    volumes:
+      # A bind mount that must already exist (no silent empty directory on a typo).
+      - type: bind
+        source: ${BACKUP_HOST_DIR:-${HOME}/Library/Mobile Documents/com~apple~CloudDocs/trainsync-backups}
+        target: /backups
+    secrets: [backup_identity]
+    # backend for Postgres; egress only for the Telegram alerts.
+    networks: [backend, egress]
+    mem_limit: 256m
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  gateway:
+    build: deploy/gateway
+    image: trainsync-gateway:${TRAINSYNC_TAG:?set TRAINSYNC_TAG to the git SHA to run}
+    restart: unless-stopped
+    environment:
+      EXPOSE_DOCS: ${EXPOSE_DOCS:-false}
+    ports: ["127.0.0.1:${GATEWAY_PORT:-8080}:8080"]
+    networks: [egress]
+    mem_limit: 128m
+    depends_on:
+      api: { condition: service_healthy }
+
+networks:
+  # No route out and nothing published: only the app containers reach Postgres and Redis.
+  backend:
+    internal: true
+  # Outbound internet for Strava, Telegram, Anthropic and Open Food Facts; the gateway's port.
+  egress: {}
+
+volumes:
+  pgdata:
+  redisdata:
+
+secrets:
+  # The age identity (private key) for the weekly restore check. Optional: the placeholder
+  # keeps nightly backups running and the weekly check reports itself skipped.
+  backup_identity:
+    file: ${BACKUP_AGE_IDENTITY_FILE:-./deploy/backup/no-identity.txt}

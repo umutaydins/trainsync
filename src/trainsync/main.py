@@ -24,10 +24,14 @@ from trainsync.api import (
     webhooks,
 )
 from trainsync.api.errors import VALIDATION_ERROR_EXAMPLE
-from trainsync.api.middleware import MetricsMiddleware, RequestIdMiddleware
+from trainsync.api.middleware import (
+    DemoReadOnlyMiddleware,
+    MetricsMiddleware,
+    RequestIdMiddleware,
+)
 from trainsync.core.clock import utc_now
 from trainsync.core.crypto import TokenCipher
-from trainsync.core.logging import configure_logging, get_logger
+from trainsync.core.logging import configure_logging, get_logger, warn_dev_secrets
 from trainsync.core.redis import create_redis
 from trainsync.core.settings import Settings, get_settings
 from trainsync.db.session import create_engine, create_sessionmaker
@@ -68,7 +72,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
             # Food lookup (P6.4): the same shared client, its own timeout per request.
             app.state.openfoodfacts = OpenFoodFactsClient(http, settings)
-            log.info("app_startup", env=settings.env)
+            log.info("app_startup", env=settings.env, demo_mode=settings.demo_mode)
+            warn_dev_secrets(settings, log)
             yield
             log.info("app_shutdown")
 
@@ -76,6 +81,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.clock = utc_now
     app.state.cipher = TokenCipher.from_settings(settings)
+    if settings.demo_mode:
+        # Innermost: a refused write is still timed and carries its request id.
+        app.add_middleware(DemoReadOnlyMiddleware)
     app.add_middleware(MetricsMiddleware)
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router)

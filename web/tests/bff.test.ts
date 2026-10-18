@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DELETE, GET, PATCH, POST, PUT } from "@/app/api/ts/[...path]/route";
+import { BACKEND_UNREACHABLE } from "@/lib/upstream";
 import { TEST_API_KEY, jsonResponse, stubServerEnv } from "./support/env";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -105,7 +106,7 @@ describe("BFF /api/ts/[...path]", () => {
     fetchMock.mockRejectedValue(new TypeError("fetch failed"));
     const response = await call("v1/stats/weekly");
     expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({ error: "trainsync API unavailable" });
+    expect(await response.json()).toEqual({ error: BACKEND_UNREACHABLE });
   });
 
   it("never echoes the API key in responses", async () => {

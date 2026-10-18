@@ -1,0 +1,87 @@
+# GENERATED from routes.toml by scripts/render_gateway.py; do not edit by hand.
+{
+	admin off
+	auto_https off
+	order rate_limit before reverse_proxy
+	servers {
+		trusted_proxies static private_ranges
+		client_ip_headers X-Forwarded-For
+	}
+}
+
+:8080 {
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		Strict-Transport-Security "max-age=31536000"
+		Content-Security-Policy "frame-ancestors 'none'"
+	}
+	log {
+		output stdout
+		format json
+	}
+
+	@webhooks {
+		path /webhooks/strava /webhooks/strava/*
+	}
+	handle @webhooks {
+		request_body {
+			max_size 64KB
+		}
+		reverse_proxy api:8000
+	}
+
+	@auth {
+		path /auth/strava/*
+	}
+	handle @auth {
+		rate_limit {
+			zone auth {
+				key {client_ip}
+				events 20
+				window 1m
+			}
+		}
+		request_body {
+			max_size 16KB
+		}
+		reverse_proxy api:8000
+	}
+
+	@api {
+		path /v1/*
+	}
+	handle @api {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy api:8000
+	}
+
+	@health {
+		path /health/*
+	}
+	handle @health {
+		request_body {
+			max_size 1KB
+		}
+		reverse_proxy api:8000
+	}
+
+	@docs {
+		path /docs /docs/* /openapi.json
+		expression "{$EXPOSE_DOCS:false}" == "true"
+	}
+	handle @docs {
+		request_body {
+			max_size 1KB
+		}
+		reverse_proxy api:8000
+	}
+
+	handle {
+		respond 404
+	}
+}

@@ -118,3 +118,11 @@ part needs no BFF change.
   a reverse proxy, a client can send its own header and rotate addresses. Put the app behind a
   reverse proxy that sets the header (or a VPN) if it is reachable from the internet.
 - Rotating `DASHBOARD_SESSION_SECRET` signs everyone out, which is the intended way to revoke.
+
+## Update (P7.6, Vercel)
+Mutations are accepted from `WEB_PUBLIC_URL` and from the exact hostnames Vercel gives the running
+deployment (`VERCEL_URL`, `VERCEL_BRANCH_URL`, `VERCEL_PROJECT_PRODUCTION_URL`), never from a
+pattern: previews of this project work, other projects and lookalike domains do not
+(`web/lib/origins.ts`, `web/tests/origins.test.ts`). Upstream calls time out after 8 s
+(`UPSTREAM_TIMEOUT_MS`), below Vercel's function limit, and an unreachable backend is shown as
+"Backend unreachable".

@@ -1,0 +1,90 @@
+"""P7.1: the public-route allowlist (deploy/gateway/routes.toml) and its rendered Caddyfile."""
+
+import importlib.util
+import sys
+from pathlib import Path
+from types import ModuleType
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def _render_module() -> ModuleType:
+    path = ROOT / "scripts" / "render_gateway.py"
+    spec = importlib.util.spec_from_file_location("render_gateway", path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["render_gateway"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+gateway = _render_module()
+
+
+def test_committed_caddyfile_is_rendered_from_routes() -> None:
+    assert gateway.CADDYFILE.read_text(encoding="utf-8") == gateway.render(), (
+        "run: uv run python scripts/render_gateway.py"
+    )
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/webhooks/strava",
+        "/webhooks/strava/",
+        "/auth/strava/login",
+        "/auth/strava/callback",
+        "/v1/activities",
+        "/v1/training/workouts/42/sets/abc",
+        "/health/live",
+        "/health/ready",
+    ],
+)
+def test_public_routes_are_forwarded(path: str) -> None:
+    assert gateway.is_routed(path)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/",
+        "/metrics",
+        "/docs",
+        "/openapi.json",
+        "/redoc",
+        "/v1",
+        "/v2/activities",
+        "/webhooks/other",
+        "/auth/other/login",
+        "/healthz",
+        "/_control/stats",
+    ],
+)
+def test_everything_else_is_not(path: str) -> None:
+    assert not gateway.is_routed(path)
+
+
+def test_docs_only_with_expose_docs() -> None:
+    assert gateway.is_routed("/docs", {"EXPOSE_DOCS": "true"})
+    assert gateway.is_routed("/openapi.json", {"EXPOSE_DOCS": "true"})
+    assert not gateway.is_routed("/openapi.json", {"EXPOSE_DOCS": "yes"})
+
+
+def test_every_route_has_a_body_limit_a_matching_probe_and_auth_is_rate_limited() -> None:
+    routes = gateway.load().routes
+    for route in routes:
+        assert route.max_body, route.name
+        assert route.matches(route.probe), route.name
+    assert {r.name for r in routes if r.rate_limit} == {"auth"}
+    for probe in gateway.load().blocked_probes:
+        assert not gateway.is_routed(probe), probe
+
+
+def test_unknown_paths_fall_through_to_404_in_the_caddyfile() -> None:
+    caddyfile = gateway.render()
+    assert caddyfile.rstrip().endswith("handle {\n\t\trespond 404\n\t}\n}")
+    assert "admin off" in caddyfile
+    assert "metrics" not in caddyfile

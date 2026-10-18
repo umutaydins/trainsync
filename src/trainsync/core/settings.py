@@ -1,15 +1,41 @@
 """Typed application settings, loaded from environment variables (and `.env`)."""
 
+import base64
+import binascii
 from datetime import time
 from decimal import Decimal
 from functools import lru_cache
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic import Field, SecretStr, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from trainsync.training.plates import DEFAULT_INVENTORY, parse_inventory
+
+# The DEV-ONLY defaults in docker-compose.yml (`${VAR:-default}`) are labelled, so they are found
+# by their label instead of by a copy of the values: plain ones start with `dev-`, and the dev
+# Fernet key decodes to `dev-only-…`. Running with ENV=prod while one of them is still in use logs
+# a warning at startup (tests/unit/test_dev_defaults.py checks every compose default is labelled).
+DEV_ONLY_PREFIX = "dev-"
+DEV_ONLY_SECRETS = (
+    "STRAVA_CLIENT_SECRET",
+    "STRAVA_WEBHOOK_VERIFY_TOKEN",
+    "TOKEN_ENCRYPTION_KEY",
+    "STATE_SIGNING_KEY",
+    "API_KEYS",
+)
+
+
+def is_dev_default(value: str) -> bool:
+    """A labelled dummy: `dev-…`, or a key whose base64 decodes to `dev-only…`."""
+    if value.startswith(DEV_ONLY_PREFIX):
+        return True
+    try:
+        return base64.urlsafe_b64decode(value.encode()).startswith(b"dev-only")
+    except (binascii.Error, ValueError):
+        return False
+
 
 # Wording of every bot reply, notification and assistant prompt (ADR 0016).
 BotTone = Literal["neutral", "hardcore"]
@@ -21,6 +47,9 @@ class Settings(BaseSettings):
 
     env: Literal["dev", "test", "prod"] = "dev"
     log_level: str = "INFO"
+    # Public read-only demo (P7.9, ADR 0028): every write answers 403; `python -m trainsync.demo
+    # reset` (and the demo worker's nightly cron) refuse to run unless this is on.
+    demo_mode: bool = False
 
     database_url: str = "postgresql+asyncpg://trainsync:trainsync@localhost:5432/trainsync"
     redis_url: str = "redis://localhost:6379/0"
@@ -56,6 +85,25 @@ class Settings(BaseSettings):
     @classmethod
     def _empty_as_none(cls, value: object) -> object:
         return None if value == "" else value
+
+    def dev_secrets_in_use(self) -> list[str]:
+        """Names (never values) of secrets still set to a docker-compose dev default."""
+        current = {
+            "STRAVA_CLIENT_SECRET": [self.strava_client_secret],
+            "STRAVA_WEBHOOK_VERIFY_TOKEN": [self.strava_webhook_verify_token],
+            # Every key of a rotation list decrypts, so a dev key anywhere in it is a problem.
+            "TOKEN_ENCRYPTION_KEY": [
+                SecretStr(k.strip())
+                for k in self.token_encryption_key.get_secret_value().split(",")
+            ],
+            "STATE_SIGNING_KEY": [self.state_signing_key],
+            "API_KEYS": self.api_keys,
+        }
+        return [
+            name
+            for name, secrets in current.items()
+            if any(is_dev_default(s.get_secret_value()) for s in secrets)
+        ]
 
     @model_validator(mode="after")
     def _default_public_oauth_url(self) -> "Settings":
@@ -182,7 +230,37 @@ class Settings(BaseSettings):
         enabled = self.bot_enabled if self.checkin_enabled is None else self.checkin_enabled
         return enabled and self.bot_enabled and self.notify_chat_id() is not None
 
+    # ---------------------------------------------------------------- stack alerts (P7.8)
+    # The worker checks these every 5 minutes and sends one Telegram message when a condition
+    # starts and one when it clears (ADR 0027). Off while no bot token and chat are set.
+    # Strava circuit breaker not closed for this long.
+    alert_circuit_open_minutes: int = Field(default=30, ge=1, le=1440)
+    # Newest `trainsync-*.dump.age` in BACKUP_DIR older than this. Empty BACKUP_DIR = not checked
+    # (compose.prod.yml mounts the backup folder read-only into the worker).
+    alert_backup_max_age_hours: float = Field(default=36.0, gt=0, le=24 * 30)
+    backup_dir: str = ""
+    # No successful sync for this long while an athlete is connected.
+    alert_sync_stale_hours: float = Field(default=2.0, gt=0, le=24 * 7)
+
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()  # type: ignore[call-arg]  # required fields come from the environment
+    try:
+        return Settings()  # type: ignore[call-arg]  # required fields come from the environment
+    except ValidationError as exc:
+        # Fail fast with the variable names, not a pydantic traceback (and never the values).
+        raise SystemExit(settings_error(exc)) from None
+
+
+def settings_error(exc: ValidationError) -> str:
+    """`trainsync: missing or invalid settings: TOKEN_ENCRYPTION_KEY (missing), ...`"""
+    problems = []
+    for error in exc.errors():
+        name = "_".join(str(part) for part in error["loc"][:1]).upper() or "SETTINGS"
+        reason = "missing" if error["type"] == "missing" else "invalid"
+        problems.append(f"{name} ({reason})")
+    return (
+        "trainsync: missing or invalid settings: "
+        + ", ".join(dict.fromkeys(problems))
+        + ". Set them in the environment (production: .env.prod, see .env.prod.example)."
+    )

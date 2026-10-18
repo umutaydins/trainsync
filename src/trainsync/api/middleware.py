@@ -1,5 +1,7 @@
-"""ASGI middleware: request id assignment, log correlation and request latency metrics."""
+"""ASGI middleware: request id assignment, log correlation, request latency metrics and the
+read-only demo guard."""
 
+import json
 import time
 import uuid
 
@@ -63,3 +65,43 @@ def _incoming_request_id(scope: Scope) -> str | None:
             if decoded and len(decoded) <= _MAX_REQUEST_ID_LEN and decoded.isprintable():
                 return decoded
     return None
+
+
+DEMO_DETAIL = "This is a read-only demo."
+# Lets a client (the web BFF) tell this 403 from an authorization failure.
+DEMO_HEADER = "x-trainsync-demo"
+READ_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+# GET routes that still write: the OAuth callback stores tokens; login only starts that flow.
+WRITE_PATH_PREFIXES = ("/auth/strava/",)
+
+
+def is_demo_blocked(method: str, path: str) -> bool:
+    """A request the read-only demo refuses: any non-read method, or the Strava connect flow."""
+    return method.upper() not in READ_METHODS or path.startswith(WRITE_PATH_PREFIXES)
+
+
+class DemoReadOnlyMiddleware:
+    """`DEMO_MODE=true` (P7.9, ADR 0028): answer every write with 403 before any route runs, so a
+    new write route is covered without touching it. The demo data is seeded by `trainsync.demo`
+    straight into the database, never over HTTP."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or not is_demo_blocked(scope["method"], scope["path"]):
+            await self.app(scope, receive, send)
+            return
+        body = json.dumps({"detail": DEMO_DETAIL}).encode()
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 403,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode()),
+                    (DEMO_HEADER.encode(), b"read-only"),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": body})

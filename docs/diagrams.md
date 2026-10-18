@@ -23,6 +23,11 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [18. Sequence — evening check-in prompt](#18-sequence--evening-check-in-prompt)
 - [19. Sequence — log a set with retry](#19-sequence--log-a-set-with-retry)
 - [20. Sequence — rest timer and a backgrounded tab](#20-sequence--rest-timer-and-a-backgrounded-tab)
+- [21. Deployment — production on the MacBook (Phase 7)](#21-deployment--production-on-the-macbook-phase-7)
+- [22. Sequence — nightly backup and weekly restore check](#22-sequence--nightly-backup-and-weekly-restore-check-p74-adr-0024)
+- [23. Activity — make deploy and make rollback](#23-activity--make-deploy-and-make-rollback-p75-adr-0026)
+- [24. State — uptime and stack alerts](#24-state--uptime-and-stack-alerts-p78-adr-0027)
+- [25. Deployment — public read-only demo](#25-deployment--public-read-only-demo-p79-adr-0028)
 
 ---
 
@@ -1192,4 +1197,187 @@ sequenceDiagram
     U->>UI: reload the page
     UI->>LS: read state for workout 42
     LS-->>UI: endsAt, alerted (timer restored, no repeated alert)
+```
+
+## 21. Deployment — production on the MacBook (Phase 7)
+
+```mermaid
+flowchart TB
+    strava[("Strava<br/>OAuth + webhooks")]
+    vercel["Vercel<br/>web/ BFF (server-side)"]
+    gha["GitHub Actions<br/>public-check (every 6 h) · uptime (every 15 min)"]
+    tg["Telegram"]
+
+    subgraph ts["Tailscale"]
+        funnel["Funnel · TLS for &lt;mac&gt;.&lt;tailnet&gt;.ts.net<br/>:443 real · :8443 demo"]
+    end
+
+    subgraph mac["MacBook (always on, no AC sleep)"]
+        agent["LaunchAgent com.trainsync.stack<br/>at login: wait for Docker → mac-prod.sh up"]
+        deploy["make deploy / make rollback<br/>(green CI, pre-deploy backup, migrate, smoke)"]
+        icloud[("iCloud Drive<br/>trainsync-backups (*.dump.age)")]
+        demo["compose.demo.yml · 127.0.0.1:8081<br/>read-only demo (diagram 25)"]
+        subgraph dd["Docker Desktop · compose.prod.yml"]
+            gw["gateway (Caddy)<br/>127.0.0.1:8080 · route allowlist"]
+            api["api"]
+            worker["worker"]
+            bot["bot"]
+            backup["backup<br/>nightly pg_dump + age · retention · weekly restore check"]
+            subgraph backend["backend network (internal)"]
+                pg[("postgres")]
+                rd[("redis")]
+            end
+        end
+    end
+
+    strava -- "https://host/auth/strava/callback<br/>https://host/webhooks/strava" --> funnel
+    vercel -- "https://host/v1/* + X-API-Key" --> funnel
+    gha -- "allowlisted → forwarded<br/>everything else → 404" --> funnel
+    funnel -- "http 127.0.0.1:8080" --> gw
+    gw --> api
+    api --> pg
+    api --> rd
+    worker --> pg
+    worker --> rd
+    bot --> api
+    agent -. "docker compose up" .-> dd
+    deploy -. "images tagged by git SHA" .-> dd
+    funnel -- "http 127.0.0.1:8081" --> demo
+    backup --> pg
+    backup -- "encrypted dumps" --> icloud
+    worker -. "reads backup age" .-> icloud
+    backup -. "backup / restore-check result" .-> tg
+    gha -. "uptime: down / recovered" .-> tg
+    worker -. "stack alerts: start / clear" .-> tg
+```
+
+## 22. Sequence — nightly backup and weekly restore check (P7.4, ADR 0024)
+
+```mermaid
+sequenceDiagram
+    participant L as backup loop
+    participant PG as postgres
+    participant D as BACKUP_DIR (iCloud Drive)
+    participant S as scratch Postgres (in the backup container)
+    participant T as Telegram
+    loop every minute
+        L->>D: due? (slot passed, no backup since)
+    end
+    L->>PG: BEGIN REPEATABLE READ; pg_export_snapshot()
+    L->>PG: row counts of every table (same snapshot)
+    L->>PG: pg_dump -Fc --snapshot
+    L->>D: age -r recipient → .name.partial, then rename .counts.json and .dump.age
+    L->>D: retention (7 daily / 4 weekly / 6 monthly)
+    alt restore-check weekday and identity mounted
+        L->>S: age -d (authenticated) → pg_restore
+        L->>S: row counts
+        L->>L: compare with .counts.json
+        L->>T: passed / FAILED
+    else backup failed
+        L->>T: backup FAILED, retry in 1 h
+    end
+```
+
+## 23. Activity — make deploy and make rollback (P7.5, ADR 0026)
+
+```mermaid
+flowchart TD
+    start(["make deploy"]) --> clean{"clean worktree, branch main,<br/>HEAD == origin/main after fetch?"}
+    clean -- no --> refuse(["refuse · deploys.log"])
+    clean -- yes --> ci{"gh run list --commit SHA --workflow ci<br/>completed success?"}
+    ci -- no --> refuse
+    ci -- yes --> build["build images, TRAINSYNC_TAG = SHA[:12]"]
+    build --> backup["backup now predeploy&lt;sha7&gt;"]
+    backup --> before["alembic current → rev_before"]
+    before --> migrate["one-shot migrate: alembic upgrade head → rev_after"]
+    migrate --> state["deploy-state: current = new, previous = old, rev_before"]
+    state --> up["up -d"]
+    up --> smoke{"smoke: /health/ready via gateway,<br/>/v1/sync/status with an API key, bot getMe"}
+    smoke -- ok --> done(["success · deploys.log · Telegram"])
+    smoke -- fail --> rb
+    build & backup & migrate -- fail --> abort(["abort: the old version keeps running · Telegram"])
+
+    rbstart(["make rollback"]) --> rb{"previous deploy recorded<br/>and its image present?"}
+    rb -- no --> rbrefuse(["refuse"])
+    rb -- yes --> crossed{"migrations between<br/>rev_before and rev_after?"}
+    crossed -- none --> old["up -d with the previous tag"]
+    crossed -- "all reversible = True" --> down["alembic downgrade rev_before<br/>(new image: it has the downgrade code)"]
+    down --> old
+    crossed -- "any reversible = False" --> restore(["refuse · print the restore steps<br/>(pre-deploy backup, then rollback --restored)"])
+    old --> rbdone(["smoke test · deploy-state: current = previous · Telegram"])
+```
+
+## 24. State — uptime and stack alerts (P7.8, ADR 0027)
+
+External uptime, per target (`src/trainsync/ops/uptime.py`, run by `.github/workflows/uptime.yml`
+every 15 minutes; state in the Actions cache). Threshold 2: flapping (fail, ok, fail, ok) never
+reaches `down`.
+
+```mermaid
+stateDiagram-v2
+    [*] --> up
+    up --> up: ok
+    up --> failing: fail (n = 1)
+    failing --> up: ok
+    failing --> failing: fail, n + 1 below 2
+    failing --> down: fail, n + 1 reaches 2 / send DOWN
+    down --> down: fail / nothing
+    down --> up: ok / send RECOVERED
+    note right of down
+        a failed send keeps the old state:
+        the next run sends again
+    end note
+```
+
+Stack alerts, per condition (`src/trainsync/notify/alerts.py`, worker cron every 5 minutes; state
+in Redis `alert:<condition>`). Grace: 30 min for the circuit breaker, 0 for the others (their
+threshold is in the observation: dead letters > 0, backup > 36 h, sync > 2 h).
+
+```mermaid
+stateDiagram-v2
+    [*] --> ok
+    ok --> pending: bad (bad_since = now)
+    pending --> ok: ok / nothing
+    pending --> pending: bad, inside the grace
+    pending --> alerted: bad, grace over / send alert
+    alerted --> alerted: bad / nothing
+    alerted --> ok: ok / send resolved
+    note left of pending
+        unknown (no breaker report,
+        never synced) changes nothing
+    end note
+```
+
+## 25. Deployment — public read-only demo (P7.9, ADR 0028)
+
+```mermaid
+flowchart TB
+    visitor["Visitor (README link)"]
+    preview["Vercel preview<br/>web/ BFF · demo key + password"]
+
+    subgraph ts["Tailscale"]
+        funnel["Funnel :8443"]
+    end
+
+    subgraph dd["Docker Desktop · compose.demo.yml (project trainsync-demo)"]
+        gw["gateway (same Caddy image + routes.toml)<br/>127.0.0.1:8081"]
+        api["api · DEMO_MODE=true<br/>DemoReadOnlyMiddleware: writes → 403"]
+        subgraph backend["backend network (internal)"]
+            pg[("postgres · demo-pgdata")]
+            rd[("redis")]
+            fs["fake_strava (no real Strava)"]
+            worker["demo worker<br/>reset cron 03:00 UTC"]
+            seed["seed (one-shot on up)<br/>python -m trainsync.demo reset"]
+        end
+    end
+
+    visitor --> preview
+    preview -- "GET /v1/* + X-API-Key" --> funnel
+    funnel -- "http 127.0.0.1:8081" --> gw
+    gw --> api
+    api -- "reads" --> pg
+    api --> rd
+    seed -- "wipe + synthetic dataset<br/>(seed.py, fixed RNG)" --> pg
+    worker -- "same reset nightly" --> pg
+    api -. "Strava URLs point here" .-> fs
 ```

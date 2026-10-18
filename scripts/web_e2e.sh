@@ -8,7 +8,8 @@ PROJECT=${COMPOSE_PROJECT_NAME:-trainsync-e2e}
 export POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-15432} REDIS_HOST_PORT=${REDIS_HOST_PORT:-16379}
 # The e2e logs manually created foods only: no Open Food Facts calls from the stack.
 export OPENFOODFACTS_ENABLED=false
-compose() { docker compose -p "$PROJECT" "$@"; }
+# An empty env file: the run uses the compose dev defaults whatever your .env overrides.
+compose() { docker compose --env-file /dev/null -p "$PROJECT" "$@"; }
 
 cleanup() {
   status=$?
@@ -22,6 +23,8 @@ cleanup() {
 trap cleanup EXIT
 
 echo "e2e: installing web dependencies and the Playwright browser"
+# PLAYWRIGHT_INSTALL_ARGS is zero or more flags (CI: --with-deps), so it is split on purpose.
+# shellcheck disable=SC2086
 (cd web && pnpm install --frozen-lockfile && pnpm exec playwright install ${PLAYWRIGHT_INSTALL_ARGS:-} chromium)
 
 echo "e2e: starting stack"

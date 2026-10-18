@@ -10,7 +10,8 @@ PROJECT=${COMPOSE_PROJECT_NAME:-trainsync-smoke}
 # The smoke test talks to postgres/redis through `docker compose exec`, so their host ports only
 # need to be free, not standard.
 export POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-15432} REDIS_HOST_PORT=${REDIS_HOST_PORT:-16379}
-compose() { docker compose -p "$PROJECT" "$@"; }
+# An empty env file: the run uses the compose dev defaults whatever your .env overrides.
+compose() { docker compose --env-file /dev/null -p "$PROJECT" "$@"; }
 
 cleanup() {
   status=$?
@@ -82,5 +83,17 @@ code=$(write -H 'Content-Type: text/plain' -H "Origin: $WEB" -H "X-CSRF-Token: $
 [ "$code" = "415" ] || fail "BFF write with a non-JSON body: $code"
 rm -rf "$web_dir"
 echo "  login gate, BFF, CSRF and key isolation OK"
+
+echo "smoke: dev-default warning"
+# The stack runs with ENV=prod on the DEV-ONLY defaults, so every process must say so.
+# Logs are read in full first: `grep -q` would stop early and break the pipe under pipefail.
+for service in api worker bot; do
+  logs=$(compose logs "$service")
+  grep -q dev_default_secrets_in_prod <<<"$logs" \
+    || fail "$service did not warn about dev-default secrets"
+done
+logs=$(compose logs web)
+grep -q "DEV-ONLY docker-compose defaults" <<<"$logs" || fail "web did not warn about dev-default secrets"
+echo "  api, worker, bot and web warn"
 
 echo "smoke: OK"

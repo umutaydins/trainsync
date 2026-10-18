@@ -81,6 +81,52 @@ jobs:
           docker image inspect trainsync:ci --format '{{.Size}}' \
             | awk '{printf "image size: %.0f MB\n", $1/1e6}'
 
+  prod-check:
+    # compose.prod.yml with dummy secrets (P7.1): private DB/Redis, gateway allowlist, fail-fast.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: make prod-check
+
+  demo-check:
+    # compose.demo.yml (P7.9): own project, DEMO_MODE, seeded reads and 403 writes via the gateway.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: make demo-check
+
+  shellcheck:
+    # Every scripts/ and deploy/ shell script, with the pinned koalaman/shellcheck image.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - run: make shellcheck
+
+  restore-check:
+    # Backup image (P7.4): backup of a seeded DB restores with matching counts; truncated,
+    # altered, wrong-key and count-mismatch backups fail; the loop and retention run.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: make install
+      - run: make restore-check-ci
+
   compose:
     runs-on: ubuntu-latest
     timeout-minutes: 20
