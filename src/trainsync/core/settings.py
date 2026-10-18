@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     dashboard_public_url: str = ""
     # Natural-language questions in the bot (P5.7, ADR 0014); off while the key is empty.
     anthropic_api_key: SecretStr = SecretStr("")
-    assistant_model: str = "claude-opus-5-5"
+    assistant_model: str = "claude-sonnet-5-5"
     assistant_rate_limit_per_hour: int = Field(default=20, ge=1)
 
     @field_validator("telegram_allowed_chat_ids", mode="before")

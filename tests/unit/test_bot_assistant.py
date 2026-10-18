@@ -83,7 +83,7 @@ def message(content: list[dict[str, Any]], stop_reason: str = "tool_use") -> Bet
             "id": "msg_test",
             "type": "message",
             "role": "assistant",
-            "model": "claude-opus-5-5",
+            "model": "claude-sonnet-5-5",
             "content": content,
             "stop_reason": stop_reason,
             "stop_sequence": None,
@@ -383,12 +383,12 @@ async def test_anthropic_planner_request_shape() -> None:
         class beta:  # noqa: N801  # mirrors the SDK's attribute name
             messages = FakeMessages()
 
-    planner = AnthropicPlanner(FakeClient(), "claude-opus-5-5")  # type: ignore[arg-type]
+    planner = AnthropicPlanner(FakeClient(), "claude-sonnet-5-5")  # type: ignore[arg-type]
     reply = await planner.create(
         system="s", tools=TOOLS, messages=[{"role": "user", "content": "q"}]
     )
     assert reply.content[0].type == "text"
-    assert sent["model"] == "claude-opus-5-5"
+    assert sent["model"] == "claude-sonnet-5-5"
     assert sent["tools"] == TOOLS
     assert sent["output_config"] == {"effort": "low"}
     assert sent["fallbacks"] == "default"

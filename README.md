@@ -139,8 +139,8 @@ A separate process (`python -m trainsync.bot`, compose service `bot`) that long-
 (summary, weekly, activity list, sync status). Every number in the answer comes from the API, never
 from the model ([ADR 0014](docs/decisions/0014-llm-as-a-planner-over-the-read-api.md)). At most 5
 tool calls and 20 s per question, and `ASSISTANT_RATE_LIMIT_PER_HOUR` questions per chat (20 by
-default). `ASSISTANT_MODEL` defaults to `claude-opus-5-5`; point it at a cheaper Claude model if
-cost matters more than answer quality. Without a key, plain text gets the command list.
+default). `ASSISTANT_MODEL` defaults to `claude-sonnet-5-5`; set it to another Claude model id
+to trade cost against answer quality. Without a key, plain text gets the command list.
 
 **New-activity notifications**: when a Strava webhook announces a new activity, the worker sends
 one message to `TELEGRAM_NOTIFY_CHAT_ID` (default: the first allowlisted chat), linking to
@@ -187,11 +187,11 @@ optional for the API and the worker; the web app needs its three required ones (
 | `BOT_METRICS_PORT` | bot | `9101` | Bot `/metrics` port |
 | `DASHBOARD_PUBLIC_URL` | worker | empty | Notifications link to `<url>/activities/<id>`; empty = no link |
 | `ANTHROPIC_API_KEY` | bot | empty | Enables natural-language questions; empty = off |
-| `ASSISTANT_MODEL` | bot | `claude-opus-5-5` | Claude model for questions; can be pointed at a cheaper model |
+| `ASSISTANT_MODEL` | bot | `claude-sonnet-5-5` | Claude model for questions |
 | `ASSISTANT_RATE_LIMIT_PER_HOUR` | bot | `20` | Questions per chat per hour (counted in Redis) |
 
-In compose, the `bot` service takes `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_CHAT_IDS` and
-`ANTHROPIC_API_KEY` from your shell or `.env`, and the `worker` takes the Telegram variables and
+In compose, the `bot` service takes `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_CHAT_IDS`,
+`ANTHROPIC_API_KEY` and `ASSISTANT_MODEL` from your shell or `.env`, and the `worker` takes the Telegram variables and
 `DASHBOARD_PUBLIC_URL`; add any other variable to that service's `environment` in
 `docker-compose.yml`.
 

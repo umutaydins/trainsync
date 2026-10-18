@@ -10,7 +10,7 @@ produce plausible ones. The bot is single-user, so cost and abuse are small but 
 answer must be correct, not merely fluent.
 
 ## Decision
-Claude (Anthropic Python SDK, `ASSISTANT_MODEL`, default `claude-opus-5-5` at low effort) is
+Claude (Anthropic Python SDK, `ASSISTANT_MODEL`, default `claude-sonnet-5-5` at low effort) is
 used only to decide **which read-API calls to make** and to phrase the answer.
 - Four tools, mapped 1:1 to read endpoints: `get_summary`, `get_weekly`, `list_activities`,
   `get_sync_status`. Strict JSON schemas (`strict: true`, no extra properties); on our side every
