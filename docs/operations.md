@@ -458,7 +458,8 @@ that command on the Mac.
 
 Design: [ADR 0024](decisions/0024-encrypted-pg-dump-backups-with-a-restore-check.md).
 The `backup` service of `compose.prod.yml` takes one encrypted `pg_dump -Fc` a day after
-`BACKUP_TIME` (03:30 Europe/Istanbul by default), keeps 7 daily / 4 weekly / 6 monthly, and
+`BACKUP_TIME` (03:30 Europe/Istanbul by default), keeps 7 daily / 4 weekly / 6 monthly (the
+pre-deploy backups of `make deploy` are counted apart: the newest 3 always stay), and
 after the backup on `RESTORE_CHECK_WEEKDAY` (7 = Sunday) restores it into a scratch database
 and compares row counts. Failures and the weekly result go to Telegram when
 `TELEGRAM_BOT_TOKEN` and a chat are set.

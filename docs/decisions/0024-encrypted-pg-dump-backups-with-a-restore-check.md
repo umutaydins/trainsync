@@ -27,6 +27,10 @@ The machine is a 16 GB laptop: whatever runs nightly must be small.
   recent days that have a backup, per ISO week for 4 weeks, per month for 6 months; the newest
   is never deleted; unparsable names are never touched; future-dated files are kept. Buckets
   count days *with* a backup, so a two-week outage does not delete everything older.
+  Pre-deploy backups (`…-predeploy<sha7>`, P7.5) are outside these buckets: the newest 3 are
+  always kept and never stand in for a nightly backup. Before this (amended 2026-10-19) a
+  pre-deploy backup could take a day's bucket and push out that night's backup, and an old
+  one could be pruned while it was still the restore point of the last rollback.
 - Restore check (`backup.sh restore-check`, `scripts/restore-check.sh`, weekly in the loop):
   decrypt fully (age authenticates the file, so truncation or tampering fails here), restore into
   a scratch Postgres started inside the backup container, and compare every table's count with
