@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DELETE, GET, PATCH, POST, PUT } from "@/app/api/ts/[...path]/route";
 import { CSRF_COOKIE } from "@/lib/csrf-cookie";
-import { MAX_BODY_BYTES, allowedMethods } from "@/lib/upstream";
+import { BACKEND_UNREACHABLE, MAX_BODY_BYTES, allowedMethods } from "@/lib/upstream";
 import { TEST_API_KEY, jsonResponse, stubServerEnv } from "./support/env";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -367,7 +367,7 @@ describe("BFF mutations: upstream answers", () => {
     fetchMock.mockRejectedValueOnce(new TypeError(`fetch failed ${TEST_API_KEY}`));
     const response = await call("POST", "v1/training/workouts", { body: "{}" });
     expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({ error: "trainsync API unavailable" });
+    expect(await response.json()).toEqual({ error: BACKEND_UNREACHABLE });
   });
 
   it("never echoes the API key or upstream headers", async () => {

@@ -261,6 +261,9 @@ that command on the Mac.
 | 17 | Real Strava connected, backfill done (P7.7) | `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/sync/status"` after connecting (strava-setup.md §2) | PENDING | | |
 | 18 | Webhook subscription (P7.7) | `uv run python scripts/strava-subscription.py create` then `… view` (strava-setup.md §3) | PENDING | | |
 | 19 | A real webhook arrives (P7.7) | edit an activity title on strava.com, then `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/activities?limit=1"` | PENDING | | |
+| 20 | Vercel project and env (P7.6) | follow [deploy-vercel.md](deploy-vercel.md) §1–3; paste `vercel env ls` (or a screenshot list of names per environment, no values) | PENDING | | |
+| 21 | Production on Vercel shows real data (P7.6) | open `https://<project>.vercel.app`, log in; record the dashboard's activity count and `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/stats/summary"` count | PENDING | | |
+| 22 | Preview shows demo data, CSRF passes on Vercel (P7.6) | open a PR preview, log in with the demo password, log one set in /training (expect 403 "demo" from the read-only demo, not "cross-origin") | PENDING | | |
 
 ## Backups and restore
 

@@ -3,6 +3,7 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { NextResponse } from "next/server";
 
 import { CSRF_COOKIE, CSRF_HEADER } from "@/lib/csrf-cookie";
+import { originOf } from "@/lib/origins";
 import { SESSION_MAX_AGE_S } from "@/lib/session";
 
 // No `server-only` here: proxy.ts imports this module, like it imports lib/session.ts.
@@ -42,29 +43,21 @@ export type CsrfFailure = "origin" | "token";
 export function checkCsrf(
   headers: Headers,
   cookieToken: string | undefined,
-  publicOrigin: string,
+  allowed: string | readonly string[],
 ): CsrfFailure | null {
-  if (!sameOrigin(headers, publicOrigin)) return "origin";
+  if (!sameOrigin(headers, typeof allowed === "string" ? [allowed] : allowed)) return "origin";
   const headerToken = headers.get(CSRF_HEADER) ?? undefined;
   if (!isCsrfToken(cookieToken) || !isCsrfToken(headerToken)) return "token";
   return timingSafeEqual(Buffer.from(cookieToken), Buffer.from(headerToken)) ? null : "token";
 }
 
-function sameOrigin(headers: Headers, publicOrigin: string): boolean {
-  const expected = originOf(publicOrigin);
-  if (!expected) return false;
+function sameOrigin(headers: Headers, allowed: readonly string[]): boolean {
+  const expected = new Set(allowed.map(originOf).filter((o): o is string => o !== null));
+  if (expected.size === 0) return false;
   const origin = headers.get("origin");
   // `Origin: null` (sandboxed frames, some redirects) is a mismatch, not a missing header.
-  if (origin !== null) return origin === expected;
+  if (origin !== null) return expected.has(origin);
   const referer = headers.get("referer");
-  return referer !== null && originOf(referer) === expected;
-}
-
-function originOf(url: string): string | null {
-  try {
-    const { origin } = new URL(url);
-    return origin === "null" ? null : origin;
-  } catch {
-    return null;
-  }
+  const refererOrigin = referer === null ? null : originOf(referer);
+  return refererOrigin !== null && expected.has(refererOrigin);
 }

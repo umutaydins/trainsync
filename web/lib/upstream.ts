@@ -1,9 +1,13 @@
 import "server-only";
 
+import { BACKEND_UNREACHABLE_TEXT } from "@/lib/backend-copy";
 import { serverEnv } from "@/lib/env";
 
 export type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 export type MutationMethod = "POST" | "PUT" | "PATCH" | "DELETE";
+
+/** Shown when the API cannot be reached at all (network error or timeout). */
+export const BACKEND_UNREACHABLE = BACKEND_UNREACHABLE_TEXT;
 
 const READ: readonly Method[] = ["GET"];
 const READ_WRITE: readonly Method[] = ["GET", "POST", "PUT", "DELETE"];
@@ -35,7 +39,16 @@ export const RULES: readonly { pattern: RegExp; methods: readonly Method[] }[] =
 const SEGMENT = /^[A-Za-z0-9_~-][A-Za-z0-9_.~-]{0,127}$/;
 const MAX_SEGMENTS = 16;
 
-const TIMEOUT_MS = 10_000;
+/**
+ * Per-request budget for the API call. Below Vercel's default function limit (P7.6), so a Mac
+ * that is asleep or offline gives a friendly "backend unreachable" answer, not a platform timeout.
+ */
+export const DEFAULT_TIMEOUT_MS = 8_000;
+
+function timeoutMs(): number {
+  const value = Number(process.env.UPSTREAM_TIMEOUT_MS);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_TIMEOUT_MS;
+}
 
 /** Largest mutation body the BFF forwards to the API. */
 export const MAX_BODY_BYTES = 64 * 1024;
@@ -107,10 +120,10 @@ export async function upstreamRequest(
       headers,
       body,
       cache: "no-store",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs()),
     });
   } catch {
-    return { ok: false, status: 502, error: "trainsync API unavailable" };
+    return { ok: false, status: 502, error: BACKEND_UNREACHABLE };
   }
 
   const data: unknown = await response.json().catch(() => null);

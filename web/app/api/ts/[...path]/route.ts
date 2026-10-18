@@ -38,7 +38,7 @@ async function handle(method: Method, request: NextRequest, { params }: Context)
   const failure = checkCsrf(
     request.headers,
     request.cookies.get(CSRF_COOKIE)?.value,
-    serverEnv().publicWebUrl,
+    serverEnv().allowedOrigins,
   );
   if (failure === "origin") return error(403, "cross-origin request refused");
   if (failure === "token") return error(403, "missing or invalid CSRF token");

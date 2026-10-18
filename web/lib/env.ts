@@ -1,5 +1,6 @@
 import "server-only";
 
+import { allowedOrigins } from "@/lib/origins";
 import { cookieSecureFromEnv } from "@/lib/session";
 
 /** Server-only configuration. Read per call so tests and the runtime can change it. */
@@ -18,6 +19,8 @@ export interface ServerEnv {
    * send mutations through the BFF (CSRF check, ADR 0011).
    */
   publicWebUrl: string;
+  /** Origins whose mutations the BFF accepts: `publicWebUrl` plus this Vercel deployment's URLs. */
+  allowedOrigins: string[];
 }
 
 export class ConfigError extends Error {}
@@ -39,6 +42,7 @@ export function serverEnv(): ServerEnv {
   if (sessionSecret.length < MIN_SECRET_LENGTH) {
     throw new ConfigError(`DASHBOARD_SESSION_SECRET must be at least ${MIN_SECRET_LENGTH} characters`);
   }
+  const publicWebUrl = withoutTrailingSlash(process.env.WEB_PUBLIC_URL || "http://localhost:3000");
   return {
     apiUrl: withoutTrailingSlash(process.env.TRAINSYNC_API_URL || "http://localhost:8000"),
     apiKey: required("TRAINSYNC_API_KEY"),
@@ -48,6 +52,7 @@ export function serverEnv(): ServerEnv {
     publicApiUrl: withoutTrailingSlash(
       process.env.TRAINSYNC_PUBLIC_API_URL || "http://localhost:8000",
     ),
-    publicWebUrl: withoutTrailingSlash(process.env.WEB_PUBLIC_URL || "http://localhost:3000"),
+    publicWebUrl,
+    allowedOrigins: allowedOrigins(publicWebUrl, process.env),
   };
 }
