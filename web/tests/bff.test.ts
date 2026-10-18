@@ -71,8 +71,10 @@ describe("BFF /api/ts/[...path]", () => {
     ["PUT", PUT],
     ["PATCH", PATCH],
     ["DELETE", DELETE],
-  ])("rejects %s with 405", async (_method, handler) => {
-    const response = handler();
+  ])("rejects %s on read-only paths with 405", async (method, handler) => {
+    const path = "v1/sync/status";
+    const request = new NextRequest(`http://localhost:3000/api/ts/${path}`, { method });
+    const response = await handler(request, { params: Promise.resolve({ path: path.split("/") }) });
     expect(response.status).toBe(405);
     expect(response.headers.get("allow")).toBe("GET");
     expect(await response.json()).toEqual({ error: "method not allowed" });
@@ -115,7 +117,9 @@ describe("BFF /api/ts/[...path]", () => {
       await call("v1/activities"),
       await call("v1/activities"),
       await call("metrics"),
-      POST(),
+      await POST(new NextRequest("http://localhost:3000/api/ts/v1/sync/status", { method: "POST" }), {
+        params: Promise.resolve({ path: ["v1", "sync", "status"] }),
+      }),
     ];
     for (const response of responses) {
       expect(await text(response)).not.toContain(TEST_API_KEY);

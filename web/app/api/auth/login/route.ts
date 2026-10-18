@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { createCsrfToken, setCsrfCookie } from "@/lib/csrf";
 import { serverEnv } from "@/lib/env";
 import { clientIp, loginLimiter } from "@/lib/login-limit";
 import {
@@ -42,6 +43,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     path: "/",
     maxAge: SESSION_MAX_AGE_S,
   });
+  // A fresh CSRF token per session; proxy.ts re-issues it if the cookie goes missing.
+  setCsrfCookie(response, createCsrfToken(), env.cookieSecure);
   return response;
 }
 

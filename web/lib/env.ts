@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cookieSecureFromEnv } from "@/lib/session";
+
 /** Server-only configuration. Read per call so tests and the runtime can change it. */
 export interface ServerEnv {
   /** Base URL the server uses to reach the trainsync API (inside compose: http://api:8000). */
@@ -11,7 +13,10 @@ export interface ServerEnv {
   cookieSecure: boolean;
   /** Browser-facing base URL of the trainsync API (for the Connect Strava link). */
   publicApiUrl: string;
-  /** Browser-facing base URL of this web app (for the OAuth `return_to`). */
+  /**
+   * Browser-facing base URL of this web app: the OAuth `return_to`, and the only origin allowed to
+   * send mutations through the BFF (CSRF check, ADR 0011).
+   */
   publicWebUrl: string;
 }
 
@@ -34,15 +39,12 @@ export function serverEnv(): ServerEnv {
   if (sessionSecret.length < MIN_SECRET_LENGTH) {
     throw new ConfigError(`DASHBOARD_SESSION_SECRET must be at least ${MIN_SECRET_LENGTH} characters`);
   }
-  const secureOverride = process.env.DASHBOARD_COOKIE_SECURE;
   return {
     apiUrl: withoutTrailingSlash(process.env.TRAINSYNC_API_URL || "http://localhost:8000"),
     apiKey: required("TRAINSYNC_API_KEY"),
     dashboardPassword: required("DASHBOARD_PASSWORD"),
     sessionSecret,
-    cookieSecure: secureOverride
-      ? secureOverride === "true"
-      : process.env.NODE_ENV === "production",
+    cookieSecure: cookieSecureFromEnv(),
     publicApiUrl: withoutTrailingSlash(
       process.env.TRAINSYNC_PUBLIC_API_URL || "http://localhost:8000",
     ),

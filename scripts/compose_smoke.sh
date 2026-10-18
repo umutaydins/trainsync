@@ -65,7 +65,22 @@ case "$summary" in *'"totals"'*) ;; *) fail "unexpected BFF summary: $summary";;
 case "$summary" in *dev-key-1*) fail "BFF response contains the API key";; esac
 code=$(curl -sS -o /dev/null -w '%{http_code}' -b "$jar" -X POST "$WEB/api/ts/v1/sync/status")
 [ "$code" = "405" ] || fail "BFF POST: $code"
+# Writes: the login sets a readable ts_csrf cookie; without it, or from another origin, 403.
+csrf=$(awk '$6 == "ts_csrf" { print $7 }' "$jar")
+[ -n "$csrf" ] || fail "login did not set a ts_csrf cookie"
+grep -q '^#HttpOnly_.*ts_csrf' "$jar" && fail "ts_csrf must be readable by the page (not httpOnly)"
+write() {
+  curl -sS -o /dev/null -w '%{http_code}' -b "$jar" -X POST -d '{}' "$@" \
+    "$WEB/api/ts/v1/training/workouts"
+}
+json='Content-Type: application/json'
+code=$(write -H "$json" -H "Origin: $WEB")
+[ "$code" = "403" ] || fail "BFF write without a CSRF token: $code"
+code=$(write -H "$json" -H "Origin: http://evil.example" -H "X-CSRF-Token: $csrf")
+[ "$code" = "403" ] || fail "BFF write from another origin: $code"
+code=$(write -H 'Content-Type: text/plain' -H "Origin: $WEB" -H "X-CSRF-Token: $csrf")
+[ "$code" = "415" ] || fail "BFF write with a non-JSON body: $code"
 rm -rf "$web_dir"
-echo "  login gate, BFF and key isolation OK"
+echo "  login gate, BFF, CSRF and key isolation OK"
 
 echo "smoke: OK"

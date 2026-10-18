@@ -38,7 +38,7 @@ flowchart LR
         subgraph web["Web process (Next.js, web/)"]
             gate["proxy.ts<br/>session-cookie gate"]
             pages["server components<br/>dashboard · activities · sync"]
-            bff["BFF route /api/ts/v1/*<br/>GET, allowlisted paths"]
+            bff["BFF route /api/ts/v1/*<br/>method + path allowlist, CSRF on writes"]
             upstream["lib/upstream.ts<br/>adds X-API-Key"]
         end
 
@@ -869,8 +869,8 @@ sequenceDiagram
     Note over U,BFF: Client components ("Load more" on /activities, the 15 s refresh on /sync)
     U->>P: GET /api/ts/v1/activities?cursor=… (session cookie)
     P->>BFF: valid session
-    BFF->>BFF: isAllowedPath? (5 read paths, others 404, non-GET 405)
-    BFF->>UP: upstreamGet(path, query)
+    BFF->>BFF: allowedMethods(path)? (unknown path 404, wrong method 405)
+    BFF->>UP: upstreamRequest(GET, path, query)
     UP->>API: GET /v1/activities?cursor=… + X-API-Key
     alt 2xx
         API-->>UP: page
@@ -880,6 +880,17 @@ sequenceDiagram
         UP-->>BFF: status + short message (no upstream details, unreachable = 502)
         BFF-->>U: {error} with that status
     end
+
+    Note over U,BFF: Writes (lib/mutate.ts): training, nutrition, check-ins
+    U->>P: PUT /api/ts/v1/training/workouts/42/sets/<uuid> (session + ts_csrf cookies, X-CSRF-Token, JSON)
+    P->>BFF: valid session (proxy.ts sets ts_csrf if it is missing)
+    BFF->>BFF: allowlist (404/405) → Origin/Referer = WEB_PUBLIC_URL (403) → X-CSRF-Token = ts_csrf cookie (403)
+    BFF->>BFF: application/json (415), ≤ 64 KB read with a cap (413), parses as JSON (400)
+    BFF->>UP: upstreamRequest(PUT, path, query, body)
+    UP->>API: PUT /v1/training/... + X-API-Key (no browser cookies or headers)
+    API-->>UP: status + JSON
+    UP-->>BFF: data, or {error, detail}
+    BFF-->>U: same status, JSON only (no upstream headers)
 ```
 
 ## 12. Sequence — new activity → notification
