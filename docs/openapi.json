@@ -1027,7 +1027,7 @@
   "paths": {
     "/auth/strava/callback": {
       "get": {
-        "description": "Verifies `state`, requires the `activity:read_all` scope, exchanges the code for tokens, stores the athlete with encrypted tokens and enqueues the initial backfill.",
+        "description": "Verifies `state`, requires the `activity:read_all` scope, exchanges the code for tokens, stores the athlete with encrypted tokens and enqueues the initial backfill. If the login carried an allowlisted `return_to`, the browser is redirected (303) there with `connected=1`, or with `connect_error=<reason>` once the state itself is valid.",
         "operationId": "callback_auth_strava_callback_get",
         "parameters": [
           {
@@ -1094,6 +1094,9 @@
             },
             "description": "Successful Response"
           },
+          "303": {
+            "description": "Back to the allowlisted `return_to` (`connected=1` or `connect_error`)"
+          },
           "400": {
             "content": {
               "application/json": {
@@ -1123,11 +1126,44 @@
     },
     "/auth/strava/login": {
       "get": {
-        "description": "Redirects the browser to Strava's authorize page with a signed, expiring `state`.",
+        "description": "Redirects the browser to Strava's authorize page with a signed, expiring `state`. An optional `return_to` that exactly matches `OAUTH_RETURN_TO_ALLOWLIST` is signed into the state; after the callback the browser is sent there. Any other value is ignored.",
         "operationId": "login_auth_strava_login_get",
+        "parameters": [
+          {
+            "description": "Where to send the browser after connecting (allowlisted URLs only)",
+            "in": "query",
+            "name": "return_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Where to send the browser after connecting (allowlisted URLs only)",
+              "examples": [
+                "http://localhost:3000/sync"
+              ],
+              "title": "Return To"
+            }
+          }
+        ],
         "responses": {
           "302": {
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Start the Strava OAuth flow",

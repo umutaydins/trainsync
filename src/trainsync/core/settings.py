@@ -54,6 +54,17 @@ class Settings(BaseSettings):
             self.strava_oauth_public_base_url = self.strava_oauth_base_url
         return self
 
+    # Phase 5 (web): browser URLs the OAuth callback may redirect back to after connecting
+    # (`GET /auth/strava/login?return_to=`). Exact matches only; anything else is ignored.
+    oauth_return_to_allowlist: Annotated[list[str], NoDecode] = Field(default_factory=list)
+
+    @field_validator("oauth_return_to_allowlist", mode="before")
+    @classmethod
+    def _split_return_to(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [part.strip() for part in value.split(",") if part.strip()]
+        return value
+
     # ---------------------------------------------------------------- bot + notifications (P5.5+)
     # All optional: the API and the worker start without them.
     # Empty token = the bot idles (metrics only) and notifications go nowhere (NullNotifier).

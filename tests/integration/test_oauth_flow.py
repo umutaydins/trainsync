@@ -37,10 +37,12 @@ async def app(
         yield app
 
 
-async def _connect(app: FastAPI, fake: httpx.AsyncClient) -> httpx.Response:
+async def _connect(
+    app: FastAPI, fake: httpx.AsyncClient, login_params: dict[str, str] | None = None
+) -> httpx.Response:
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://api") as api:
-        login = await api.get("/auth/strava/login")
+        login = await api.get("/auth/strava/login", params=login_params)
         authorize_url = urlsplit(login.headers["location"])
         assert f"{authorize_url.scheme}://{authorize_url.netloc}" == "http://localhost:8001"
         # The browser would follow this to fake_strava; we replay it on the in-process fake.
@@ -136,3 +138,31 @@ async def test_rejected_code_writes_nothing(
     async with sessionmaker() as session:
         assert await session.scalar(select(func.count()).select_from(Athlete)) == 0
     assert await _queued(app) == []
+
+
+async def test_connect_with_return_to_lands_back_on_the_dashboard(
+    integration_settings: Settings,
+    fake_strava_client: httpx.AsyncClient,
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    settings = integration_settings.model_copy(
+        update={
+            "strava_oauth_base_url": f"{FAKE_STRAVA_BASE_URL}/oauth",
+            "strava_oauth_public_base_url": PUBLIC_OAUTH,
+            "oauth_return_to_allowlist": ["http://localhost:3000/sync"],
+        }
+    )
+    app = create_app(settings)
+    strava = StravaClient(fake_strava_client, settings)
+    app.dependency_overrides[deps.get_strava_client] = lambda: strava
+    async with LifespanManager(app):
+        response = await _connect(
+            app, fake_strava_client, {"return_to": "http://localhost:3000/sync"}
+        )
+        queued = await _queued(app)
+    assert len(queued) == 1
+    assert queued[0].startswith("backfill:")
+    assert response.status_code == 303
+    assert response.headers["location"] == "http://localhost:3000/sync?connected=1"
+    async with sessionmaker() as session:
+        assert await session.scalar(select(func.count()).select_from(Athlete)) == 1

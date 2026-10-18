@@ -27,6 +27,8 @@ being up or my rate-limit budget being available at read time.
   summary commands, chat allowlist. A client of the read API (HTTP + API key), never of the
   database (ADR 0012, ADR 0013). Optional natural-language questions: Claude chooses read-API
   calls through four validated tools, every number comes from the API (ADR 0014).
+- **Web dashboard** (`web/`, Next.js): server-side BFF that holds the API key and forwards
+  allowlisted GETs to the read API; the browser never sees the key (ADR 0011).
 - **fake_strava**: a small FastAPI app that mimics the endpoints we use, with configurable
   latency, error rate and rate-limit headers. Used for local dev, integration tests and load tests.
 
@@ -50,6 +52,8 @@ Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sp
 1. `GET /auth/strava/login` redirects to Strava authorize URL with `scope=read,activity:read_all` and a signed `state`.
 2. `GET /auth/strava/callback` verifies `state`, exchanges `code` for tokens, upserts athlete + encrypted tokens.
 3. Enqueues a `backfill` job.
+4. Optional `return_to` on step 1 (exact match against `OAUTH_RETURN_TO_ALLOWLIST`) is signed into
+   `state`; the callback then sends the browser back there with a 303 (ADR 0015).
 
 ### 2. Token refresh
 - Before each Strava call: if `expires_at - 5 min < now`, refresh.

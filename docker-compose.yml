@@ -70,7 +70,10 @@ services:
 
   api:
     <<: *trainsync-image
-    environment: *trainsync-env
+    environment:
+      <<: *trainsync-env
+      # Where the OAuth callback may send the browser back to (the web dashboard's sync page).
+      OAUTH_RETURN_TO_ALLOWLIST: http://localhost:3000/sync
     ports: ["8000:8000"]
     depends_on:
       migrate: { condition: service_completed_successfully }
@@ -112,6 +115,21 @@ services:
       TELEGRAM_ALLOWED_CHAT_IDS: ${TELEGRAM_ALLOWED_CHAT_IDS:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}  # empty = no natural-language questions
     ports: ["9101:9101"]  # bot /metrics (BOT_METRICS_PORT)
+    depends_on:
+      api: { condition: service_healthy }
+
+  # Web dashboard (web/). DEV-ONLY dummy password and session secret.
+  web:
+    build: ./web
+    image: trainsync-web:dev
+    environment:
+      TRAINSYNC_API_URL: http://api:8000
+      TRAINSYNC_API_KEY: dev-key-1
+      TRAINSYNC_PUBLIC_API_URL: http://localhost:8000
+      WEB_PUBLIC_URL: http://localhost:3000
+      DASHBOARD_PASSWORD: dev-only-dashboard-password
+      DASHBOARD_SESSION_SECRET: dev-only-dashboard-session-secret-not-for-real-use
+    ports: ["3000:3000"]
     depends_on:
       api: { condition: service_healthy }
 

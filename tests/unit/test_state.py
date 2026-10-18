@@ -96,3 +96,30 @@ def test_custom_max_age() -> None:
     state = sign_state(NOW, KEY)
     with pytest.raises(InvalidStateError, match="expired"):
         verify_state(state, NOW + timedelta(minutes=2), KEY, max_age=timedelta(minutes=1))
+
+
+def test_state_without_data_returns_empty_string() -> None:
+    assert verify_state(sign_state(NOW, KEY), NOW, KEY) == ""
+
+
+def test_state_carries_signed_data() -> None:
+    state = sign_state(NOW, KEY, data="http://localhost:3000/sync")
+    assert len(state.split(".")) == 4
+    assert verify_state(state, NOW, KEY) == "http://localhost:3000/sync"
+
+
+def test_state_data_cannot_be_swapped() -> None:
+    nonce, issued_at, _data, signature = sign_state(NOW, KEY, data="http://ok/sync").split(".")
+    forged = f"{nonce}.{issued_at}.{_b64encode(b'https://evil.example')}.{signature}"
+    with pytest.raises(InvalidStateError, match="signature"):
+        verify_state(forged, NOW, KEY)
+    # Dropping the data part does not verify either: the signature covers it.
+    with pytest.raises(InvalidStateError, match="signature"):
+        verify_state(f"{nonce}.{issued_at}.{signature}", NOW, KEY)
+
+
+def test_signed_undecodable_data_is_malformed() -> None:
+    issued_at = _b64encode(str(int(NOW.timestamp())).encode())
+    payload = f"{_b64encode(b'n')}.{issued_at}.{_b64encode(bytes([0xFF, 0xFE]))}"
+    with pytest.raises(InvalidStateError, match="data"):
+        verify_state(f"{payload}.{_signature(payload, KEY)}", NOW, KEY)
