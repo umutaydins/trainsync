@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from datetime import date, timedelta
 
 from trainsync.bot import formatting
+from trainsync.bot.messages import Key, Messages
 from trainsync.bot.read_api import ReadApi, ReadApiError
 from trainsync.bot.telegram import TelegramApi, TelegramError, TelegramUnavailableError, Update
 from trainsync.core.clock import Clock
@@ -31,15 +32,16 @@ _SPORT_ALIASES = {
     "walk": "Walk",
     "hike": "Hike",
 }
-API_DOWN = "Sorry, I can't reach the trainsync API right now. Try again in a minute."
-NO_ASSISTANT = "I only understand commands for now.\n\n" + formatting.HELP
-
 # (chat_id, text) → reply; the assistant plugs in here (P5.7).
 TextHandler = Callable[[int, str], Awaitable[str]]
 
 
 class UsageError(Exception):
-    """Bad command arguments; the message is shown to the user."""
+    """Bad command arguments; the dispatcher shows the usage message for `key`."""
+
+    def __init__(self, key: Key) -> None:
+        super().__init__(key)
+        self.key = key
 
 
 def parse_command(text: str) -> tuple[str | None, list[str]]:
@@ -60,7 +62,7 @@ def parse_stats_args(args: list[str]) -> tuple[str, str | None]:
         elif sport is None:
             sport = _SPORT_ALIASES.get(arg.lower(), arg[:1].upper() + arg[1:])
         else:
-            raise UsageError("Usage: /stats [4w|12w|52w] [sport], e.g. /stats 12w run")
+            raise UsageError(Key.USAGE_STATS)
     return period, sport
 
 
@@ -76,9 +78,10 @@ def period_range(today: date, weeks: int) -> tuple[date, date]:
 
 
 class Commands:
-    def __init__(self, api: ReadApi, clock: Clock) -> None:
+    def __init__(self, api: ReadApi, clock: Clock, msg: Messages) -> None:
         self._api = api
         self._clock = clock
+        self._msg = msg
 
     async def run(self, command: str, args: list[str]) -> str:
         if command == "week":
@@ -89,19 +92,19 @@ class Commands:
             return await self.stats(args)
         if command == "status":
             return await self.status()
-        return formatting.HELP  # start, help
+        return self._msg(Key.HELP)  # start, help
 
     async def week(self) -> str:
         now = self._clock()
         (this_from, this_to), (last_from, last_to) = week_ranges(now.date())
         this_week = await self._api.summary(this_from, this_to)
         last_week = await self._api.summary(last_from, last_to)
-        return formatting.format_week(this_week, last_week, now)
+        return formatting.format_week(this_week, last_week, now, self._msg)
 
     async def last(self) -> str:
         page = await self._api.activities(limit=1)
         latest = page.items[0] if page.items else None
-        return formatting.format_last(latest, page.last_synced_at, self._clock())
+        return formatting.format_last(latest, page.last_synced_at, self._clock(), self._msg)
 
     async def stats(self, args: list[str]) -> str:
         period, sport = parse_stats_args(args)
@@ -109,10 +112,10 @@ class Commands:
         start, end = period_range(now.date(), PERIODS[period])
         summary = await self._api.summary(start, end, sport)
         weekly = await self._api.weekly(start, end, sport)
-        return formatting.format_stats(summary, weekly.weeks, period, now)
+        return formatting.format_stats(summary, weekly.weeks, period, now, self._msg)
 
     async def status(self) -> str:
-        return formatting.format_status(await self._api.sync_status(), self._clock())
+        return formatting.format_status(await self._api.sync_status(), self._clock(), self._msg)
 
 
 class Dispatcher:
@@ -123,10 +126,12 @@ class Dispatcher:
         telegram: TelegramApi,
         commands: Commands,
         allowed_chat_ids: set[int],
+        msg: Messages,
         text_handler: TextHandler | None = None,
     ) -> None:
         self._telegram = telegram
         self._commands = commands
+        self._msg = msg
         self._allowed = allowed_chat_ids
         self._text_handler = text_handler
 
@@ -154,19 +159,20 @@ class Dispatcher:
     async def _reply(
         self, chat_id: int, command: str | None, args: list[str], text: str
     ) -> tuple[str, str]:
+        msg = self._msg
         try:
             if command is None:
                 if self._text_handler is None:
-                    return NO_ASSISTANT, "ok"
+                    return msg(Key.NO_ASSISTANT, help=msg(Key.HELP)), "ok"
                 return await self._text_handler(chat_id, text), "ok"
             if command not in COMMANDS:
-                return f"Unknown command /{command}.\n\n{formatting.HELP}", "unknown"
+                return msg(Key.UNKNOWN_COMMAND, command=command, help=msg(Key.HELP)), "unknown"
             return await self._commands.run(command, args), "ok"
         except UsageError as exc:
-            return str(exc), "usage"
+            return msg(exc.key), "usage"
         except ReadApiError as exc:
             log.warning("bot_read_api_failed", chat_id=chat_id, error=str(exc))
-            return API_DOWN, "error"
+            return msg(Key.API_DOWN), "error"
 
 
 def _label(command: str | None) -> str:

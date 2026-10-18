@@ -11,6 +11,7 @@ from typing import Any, ClassVar
 from arq.connections import ArqRedis, RedisSettings
 from prometheus_client import start_http_server
 
+from trainsync.bot.messages import messages_for
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.crypto import TokenCipher
 from trainsync.core.logging import configure_logging, get_logger
@@ -90,7 +91,12 @@ async def startup(ctx: dict[str, Any]) -> None:
     )
     notifier, chat_ref = build_notifier(settings, http, sleep)
     ctx[NOTIFY_CTX_KEY] = NotifyDeps(
-        sessionmaker, notifier, chat_ref, settings.dashboard_public_url, clock
+        sessionmaker,
+        notifier,
+        chat_ref,
+        settings.dashboard_public_url,
+        clock,
+        messages_for(settings),
     )
     log.info("worker_startup", env=settings.env, notifier=notifier.channel)
 

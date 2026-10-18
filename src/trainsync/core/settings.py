@@ -6,6 +6,10 @@ from typing import Annotated, Literal
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+# Wording of every bot reply, notification and assistant prompt (ADR 0016).
+BotTone = Literal["neutral", "hardcore"]
+BotLang = Literal["en", "tr"]
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -80,6 +84,9 @@ class Settings(BaseSettings):
     bot_metrics_port: int = Field(default=9101, ge=0, le=65535)
     # Base URL of the web dashboard; notifications link to `<url>/activities/<id>`. Empty = no link.
     dashboard_public_url: str = ""
+    # Message pack for bot replies, notifications and the assistant prompt (ADR 0016).
+    bot_tone: BotTone = "neutral"
+    bot_lang: BotLang = "en"
     # Natural-language questions in the bot (P5.7, ADR 0014); off while the key is empty.
     anthropic_api_key: SecretStr = SecretStr("")
     assistant_model: str = "claude-sonnet-5-5"

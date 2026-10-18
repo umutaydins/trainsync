@@ -1,0 +1,118 @@
+## help
+trainsync bot
+/week: this week vs last week
+/last: latest activity
+/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run
+/status: sync health
+
+## no assistant
+I only understand commands for now.
+
+trainsync bot
+/week: this week vs last week
+/last: latest activity
+/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run
+/status: sync health
+
+## unknown command
+Unknown command /foo.
+
+trainsync bot
+/week: this week vs last week
+/last: latest activity
+/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run
+/status: sync health
+
+## usage
+Usage: /stats [4w|12w|52w] [sport], e.g. /stats 12w run
+
+## api down
+Sorry, I can't reach the trainsync API right now. Try again in a minute.
+
+## week, 68% of last week
+This week (12-15 Oct)
+3 activities · 41.3 km · 2h 03m · ↑ 412 m
+🚴 Ride: 1 · 30.1 km · 1h 02m
+🏃 Run: 2 · 11.2 km · 1h 01m
+
+Last week (5-11 Oct)
+4 activities · 52.0 km · 3h 00m · ↑ 520 m
+
+Distance -10.7 km vs last week
+
+## week, nothing yet
+This week (12-15 Oct)
+No activities yet.
+
+Last week (5-11 Oct)
+4 activities · 52.0 km · 3h 00m · ↑ 520 m
+
+Distance -52.0 km vs last week
+⚠️ Data as of 10 Oct 08:00 UTC.
+
+## week, beat last week
+This week (5-11 Oct)
+4 activities · 52.0 km · 3h 00m · ↑ 520 m
+
+Last week (12-15 Oct)
+3 activities · 41.3 km · 2h 03m · ↑ 412 m
+
+Distance +10.7 km vs last week
+
+## week, two empty weeks
+This week (12-15 Oct)
+No activities yet.
+
+Last week (12-15 Oct)
+No activities.
+⚠️ Data as of 10 Oct 08:00 UTC.
+
+## last
+🏃 Morning Run
+Run · Wed 14 Oct 06:30 UTC
+10.0 km · 50m 00s · 5:00 /km · ↑ 42 m
+♥ 151 bpm avg
+
+## last, none
+No activities yet.
+⚠️ No data synced yet.
+
+## stats 12w run
+Last 12w · Run (27 Jul - 15 Oct)
+30 activities · 301.5 km · 27h 00m · ↑ 2100 m
+Best week: 14 Sep · 52.0 km · 4h 43m
+Longest: Long Run · 30.0 km (20 Sep)
+
+## stats, empty
+Last 4w (12-15 Oct)
+No activities.
+⚠️ Data as of 10 Oct 08:00 UTC.
+
+## status, healthy
+✅ synced 20 min ago · webhooks 0 pending / 0 failed / 0 dead · Strava circuit closed · rate limit 12%
+
+## status, degraded
+⚠️ synced 3 h ago · webhooks 2 pending / 1 failed / 0 dead · Strava circuit open
+
+## new activity
+New activity
+🚴 Evening Ride
+Ride · Tue 13 Oct 17:00 UTC
+30.1 km · 1h 02m · 29.1 km/h · ↑ 350 m
+https://dash.example/activities/10000000124
+
+## assistant, rate limited
+You've asked a lot this hour. Try again later, or use /week, /stats or /last.
+
+## assistant, timed out
+That took too long to work out. Try a simpler question, or /stats.
+
+## assistant, unavailable
+I can't answer questions right now. The commands still work: /week, /stats, /last.
+
+## assistant, too many calls
+I needed too many lookups for that one. Try narrowing the question.
+
+## assistant, refused
+I can't help with that one. Ask me about your training.
+

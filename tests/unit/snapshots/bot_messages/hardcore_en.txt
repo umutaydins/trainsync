@@ -1,0 +1,123 @@
+## help
+Coach here. Commands, no excuses.
+/week: this week vs last week
+/last: latest activity
+/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run
+/status: sync health
+
+## no assistant
+I don't do small talk. Commands only.
+
+Coach here. Commands, no excuses.
+/week: this week vs last week
+/last: latest activity
+/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run
+/status: sync health
+
+## unknown command
+/foo? Not a thing.
+
+Coach here. Commands, no excuses.
+/week: this week vs last week
+/last: latest activity
+/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run
+/status: sync health
+
+## usage
+Wrong. Usage: /stats [4w|12w|52w] [sport], e.g. /stats 12w run
+
+## api down
+The API is down. Go run while it sorts itself out. Try again in a minute.
+
+## week, 68% of last week
+This week (12-15 Oct)
+3 activities · 41.3 km · 2h 03m · ↑ 412 m
+🚴 Ride: 1 · 30.1 km · 1h 02m
+🏃 Run: 2 · 11.2 km · 1h 01m
+
+Last week (5-11 Oct)
+4 activities · 52.0 km · 3h 00m · ↑ 520 m
+
+Distance -10.7 km vs last week
+68% of last week's time. Close. Finish the job.
+
+## week, nothing yet
+This week (12-15 Oct)
+Zero so far. Your shoes are by the door.
+
+Last week (5-11 Oct)
+4 activities · 52.0 km · 3h 00m · ↑ 520 m
+
+Distance -52.0 km vs last week
+Only 0% of last week's time. Stop negotiating and go.
+⚠️ Data as of 10 Oct 08:00 UTC. Old news.
+
+## week, beat last week
+This week (5-11 Oct)
+4 activities · 52.0 km · 3h 00m · ↑ 520 m
+
+Last week (12-15 Oct)
+3 activities · 41.3 km · 2h 03m · ↑ 412 m
+
+Distance +10.7 km vs last week
+At least last week's time. Good. Next week, a little more.
+
+## week, two empty weeks
+This week (12-15 Oct)
+Nothing yet. The week won't run itself.
+
+Last week (12-15 Oct)
+Nothing.
+
+Two zero weeks in a row. Hurt, or taking a rest? Be straight with me.
+⚠️ Data as of 10 Oct 08:00 UTC. Old news.
+
+## last
+🏃 Morning Run
+Run · Wed 14 Oct 06:30 UTC
+10.0 km · 50m 00s · 5:00 /km · ↑ 42 m
+♥ 151 bpm avg
+
+## last, none
+No activities yet. Nothing to judge. Go make some.
+⚠️ Nothing synced yet. Connect Strava first.
+
+## stats 12w run
+Last 12w · Run (27 Jul - 15 Oct)
+30 activities · 301.5 km · 27h 00m · ↑ 2100 m
+Best week: 14 Sep · 52.0 km · 4h 43m. Beat it.
+Longest: Long Run · 30.0 km (20 Sep)
+
+## stats, empty
+Last 4w (12-15 Oct)
+Nothing in this range. Crap.
+⚠️ Data as of 10 Oct 08:00 UTC. Old news.
+
+## status, healthy
+✅ synced 20 min ago · webhooks 0 pending / 0 failed / 0 dead · Strava circuit closed · rate limit 12%
+
+## status, degraded
+⚠️ synced 3 h ago · webhooks 2 pending / 1 failed / 0 dead · Strava circuit open
+
+## new activity
+That counts. Recover, then go again.
+🚴 Evening Ride
+Ride · Tue 13 Oct 17:00 UTC
+30.1 km · 1h 02m · 29.1 km/h · ↑ 350 m
+https://dash.example/activities/10000000124
+
+## assistant, rate limited
+Enough questions for this hour. Go train. /week, /stats and /last still work.
+
+## assistant, timed out
+Too slow. Ask something simpler, or use /stats.
+
+## assistant, unavailable
+No questions right now. The commands still work: /week, /stats, /last.
+
+## assistant, too many calls
+Too many lookups for that one. Narrow it down.
+
+## assistant, refused
+Not my business. Ask about your training.
+

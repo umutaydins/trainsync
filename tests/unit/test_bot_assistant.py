@@ -20,17 +20,15 @@ from anthropic.types.beta import BetaMessage, BetaMessageParam, BetaToolParam
 from pydantic import SecretStr
 
 from tests.conftest import make_settings
+from tests.support.messages import NEUTRAL_EN as MSG
 from trainsync.bot import main as bot_main
 from trainsync.bot.assistant import (
-    RATE_LIMITED,
-    REFUSED,
-    TIMED_OUT,
-    TOO_MANY_CALLS,
     TOOLS,
-    UNAVAILABLE,
     AnthropicPlanner,
     Assistant,
+    system_prompt,
 )
+from trainsync.bot.messages import PACKS, Key, Messages
 from trainsync.bot.read_api import ReadApi
 
 API = "http://trainsync-api"
@@ -171,7 +169,14 @@ def api() -> respx.MockRouter:
 
 def assistant(http: httpx.AsyncClient, planner: ScriptedPlanner, **kwargs: Any) -> Assistant:
     read_api = ReadApi(http, API, SecretStr("bot-key"))
-    return Assistant(planner, read_api, kwargs.pop("limiter", AllowAll()), lambda: NOW, **kwargs)
+    return Assistant(
+        planner,
+        read_api,
+        kwargs.pop("limiter", AllowAll()),
+        lambda: NOW,
+        kwargs.pop("msg", MSG),
+        **kwargs,
+    )
 
 
 def answer_from_results(messages: list[BetaMessageParam]) -> BetaMessage:
@@ -299,7 +304,7 @@ async def test_tool_call_limit_is_enforced(http: httpx.AsyncClient, api: respx.M
 
     planner = ScriptedPlanner([always_another_call])
     reply = await assistant(http, planner, max_tool_calls=5).answer(42, "loop forever")
-    assert reply == TOO_MANY_CALLS
+    assert reply == MSG(Key.ASSISTANT_TOO_MANY_CALLS)
     assert api["status"].call_count == 5  # the sixth call was refused, not executed
     [refused] = tool_results(planner.requests[-1])
     assert refused["is_error"] is True
@@ -332,18 +337,44 @@ async def test_timeout_is_enforced(http: httpx.AsyncClient) -> None:
             raise AssertionError("unreachable")
 
     planner = Hanging([text("never")])
-    assert await assistant(http, planner, timeout_s=0.01).answer(42, "?") == TIMED_OUT
+    assert await assistant(http, planner, timeout_s=0.01).answer(42, "?") == MSG(
+        Key.ASSISTANT_TIMED_OUT
+    )
 
 
 async def test_rate_limited_chat_never_reaches_the_model(http: httpx.AsyncClient) -> None:
     planner = ScriptedPlanner([text("hello")])
-    assert await assistant(http, planner, limiter=DenyAll()).answer(42, "?") == RATE_LIMITED
+    assert await assistant(http, planner, limiter=DenyAll()).answer(42, "?") == MSG(
+        Key.ASSISTANT_RATE_LIMITED
+    )
     assert planner.requests == []
+
+
+async def test_tone_and_language_reach_the_prompt_and_the_canned_replies(
+    http: httpx.AsyncClient, api: respx.MockRouter
+) -> None:
+    coach = Messages(PACKS["hardcore", "tr"])
+    planner = ScriptedPlanner([text("Bu hafta 41.3 km.")])
+    assert await assistant(http, planner, msg=coach).answer(42, "?") == "Bu hafta 41.3 km."
+    system = planner.systems[0]
+    assert "Reply in Turkish." in system
+    assert "Koç" in system
+    assert "never comment on the athlete's body" in system
+    assert "Today is 2026-10-18 (Sunday)." in system
+    denied = await assistant(http, planner, limiter=DenyAll(), msg=coach).answer(42, "?")
+    assert denied == coach(Key.ASSISTANT_RATE_LIMITED)
+
+
+def test_neutral_prompt_has_no_persona() -> None:
+    prompt = system_prompt(NOW)
+    assert "Reply in English." in prompt
+    assert "Coach" not in prompt
+    assert system_prompt(NOW, "neutral", "tr").count("Reply in Turkish.") == 1
 
 
 async def test_refusal_and_api_errors(http: httpx.AsyncClient) -> None:
     refused = ScriptedPlanner([message([], "refusal")])
-    assert await assistant(http, refused).answer(42, "?") == REFUSED
+    assert await assistant(http, refused).answer(42, "?") == MSG(Key.ASSISTANT_REFUSED)
 
     class Broken(ScriptedPlanner):
         async def create(
@@ -351,9 +382,11 @@ async def test_refusal_and_api_errors(http: httpx.AsyncClient) -> None:
         ) -> BetaMessage:
             raise anthropic.APIConnectionError(request=httpx2.Request("POST", "https://x.invalid"))
 
-    assert await assistant(http, Broken([text("x")])).answer(42, "?") == UNAVAILABLE
+    assert await assistant(http, Broken([text("x")])).answer(42, "?") == MSG(
+        Key.ASSISTANT_UNAVAILABLE
+    )
     empty = ScriptedPlanner([message([], "end_turn")])
-    assert await assistant(http, empty).answer(42, "?") == UNAVAILABLE
+    assert await assistant(http, empty).answer(42, "?") == MSG(Key.ASSISTANT_UNAVAILABLE)
 
 
 def test_tool_schemas_are_strict() -> None:
@@ -399,8 +432,8 @@ async def test_anthropic_planner_request_shape() -> None:
 async def test_text_handler_is_off_without_a_key(http: httpx.AsyncClient) -> None:
     read_api = ReadApi(http, API, SecretStr("k"))
     async with AsyncExitStack() as stack:
-        off = await bot_main.text_handler(make_settings(), read_api, stack, clock=lambda: NOW)
+        off = await bot_main.text_handler(make_settings(), read_api, stack, MSG, clock=lambda: NOW)
         assert off is None
         settings = make_settings(anthropic_api_key="sk-test-not-real")
-        on = await bot_main.text_handler(settings, read_api, stack, clock=lambda: NOW)
+        on = await bot_main.text_handler(settings, read_api, stack, MSG, clock=lambda: NOW)
         assert on is not None

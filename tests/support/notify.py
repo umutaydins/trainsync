@@ -10,6 +10,7 @@ from pydantic import SecretStr
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from tests.support.messages import NEUTRAL_EN
 from tests.support.telegram import BOT_TOKEN, TELEGRAM, SleepRecorder
 from trainsync.bot.telegram import TelegramApi
 from trainsync.core.clock import utc_now
@@ -33,7 +34,9 @@ def telegram_notify_deps(
         sleep=sleep or SleepRecorder(),
         max_attempts=2,
     )
-    return NotifyDeps(sessionmaker, TelegramNotifier(api), str(CHAT_ID), DASHBOARD, utc_now)
+    return NotifyDeps(
+        sessionmaker, TelegramNotifier(api), str(CHAT_ID), DASHBOARD, utc_now, NEUTRAL_EN
+    )
 
 
 async def queued_notify_jobs(pool: ArqRedis) -> list[tuple[str, int]]:

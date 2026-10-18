@@ -1,0 +1,123 @@
+## help
+Koç burada. Komutlar var, bahane yok.
+/week: bu hafta ve geçen hafta
+/last: son aktivite
+/stats [4w|12w|52w] [spor]: toplamlar ve en iyi hafta, ör. /stats 12w run
+/status: senkron durumu
+
+## no assistant
+Sohbet yok, sadece komut.
+
+Koç burada. Komutlar var, bahane yok.
+/week: bu hafta ve geçen hafta
+/last: son aktivite
+/stats [4w|12w|52w] [spor]: toplamlar ve en iyi hafta, ör. /stats 12w run
+/status: senkron durumu
+
+## unknown command
+/foo diye bir şey yok lan.
+
+Koç burada. Komutlar var, bahane yok.
+/week: bu hafta ve geçen hafta
+/last: son aktivite
+/stats [4w|12w|52w] [spor]: toplamlar ve en iyi hafta, ör. /stats 12w run
+/status: senkron durumu
+
+## usage
+Yanlış. Kullanım: /stats [4w|12w|52w] [spor], ör. /stats 12w run
+
+## api down
+API çöktü ulan. Sen o arada koş. Bir dakika sonra dene.
+
+## week, 68% of last week
+Bu hafta (12-15 Eki)
+3 aktivite · 41.3 km · 2h 03m · ↑ 412 m
+🚴 Ride: 1 · 30.1 km · 1h 02m
+🏃 Run: 2 · 11.2 km · 1h 01m
+
+Geçen hafta (5-11 Eki)
+4 aktivite · 52.0 km · 3h 00m · ↑ 520 m
+
+Mesafe, geçen haftaya göre -10.7 km
+Geçen haftanın %68 kadarı. Yaklaştın. İşi bitir.
+
+## week, nothing yet
+Bu hafta (12-15 Eki)
+Şu ana kadar sıfır. Ayakkabılar kapının önünde.
+
+Geçen hafta (5-11 Eki)
+4 aktivite · 52.0 km · 3h 00m · ↑ 520 m
+
+Mesafe, geçen haftaya göre -52.0 km
+Geçen haftaya göre %0. Ulan, yarın değil, bugün.
+⚠️ Veriler 10 Eki 08:00 UTC itibarıyla. Bayat.
+
+## week, beat last week
+Bu hafta (5-11 Eki)
+4 aktivite · 52.0 km · 3h 00m · ↑ 520 m
+
+Geçen hafta (12-15 Eki)
+3 aktivite · 41.3 km · 2h 03m · ↑ 412 m
+
+Mesafe, geçen haftaya göre +10.7 km
+En az geçen hafta kadar. Aferin. Gelecek hafta biraz daha fazlası.
+
+## week, two empty weeks
+Bu hafta (12-15 Eki)
+Daha hiçbir şey yok. Hafta kendi kendine koşmaz.
+
+Geçen hafta (12-15 Eki)
+Hiçbir şey.
+
+Üst üste iki boş hafta. Sakatlık mı, dinlenme mi? Dürüst ol.
+⚠️ Veriler 10 Eki 08:00 UTC itibarıyla. Bayat.
+
+## last
+🏃 Morning Run
+Run · Çar 14 Eki 06:30 UTC
+10.0 km · 50m 00s · 5:00 /km · ↑ 42 m
+♥ ort. 151 bpm
+
+## last, none
+Daha aktivite yok. Yorumlayacak bir şey yok. Git bir tane yap.
+⚠️ Henüz senkron yok. Önce Strava'yı bağla.
+
+## stats 12w run
+Son 12w · Run (27 Tem - 15 Eki)
+30 aktivite · 301.5 km · 27h 00m · ↑ 2100 m
+En iyi hafta: 14 Eyl · 52.0 km · 4h 43m. Geç onu.
+En uzun: Long Run · 30.0 km (20 Eyl)
+
+## stats, empty
+Son 4w (12-15 Eki)
+Bu aralıkta hiçbir şey yok lan.
+⚠️ Veriler 10 Eki 08:00 UTC itibarıyla. Bayat.
+
+## status, healthy
+✅ son senkron 20 dk önce · webhook 0 bekleyen / 0 hatalı / 0 ölü · Strava devresi closed · rate limit %12
+
+## status, degraded
+⚠️ son senkron 3 sa önce · webhook 2 bekleyen / 1 hatalı / 0 ölü · Strava devresi open
+
+## new activity
+Bu sayılır. Dinlen, sonra yine.
+🚴 Evening Ride
+Ride · Sal 13 Eki 17:00 UTC
+30.1 km · 1h 02m · 29.1 km/h · ↑ 350 m
+https://dash.example/activities/10000000124
+
+## assistant, rate limited
+Bu saatlik soru hakkın bitti. Git antrenman yap. /week, /stats, /last çalışıyor.
+
+## assistant, timed out
+Çok uzun sürdü. Daha basit sor ya da /stats kullan.
+
+## assistant, unavailable
+Şu an soru yok. Komutlar çalışıyor: /week, /stats, /last.
+
+## assistant, too many calls
+Bunun için çok fazla sorgu lazım. Daralt.
+
+## assistant, refused
+O benim işim değil. Antrenmanını sor.
+

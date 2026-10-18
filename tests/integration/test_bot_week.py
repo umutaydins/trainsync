@@ -12,6 +12,7 @@ from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.support.factories import create_athlete, strava_activity
+from tests.support.messages import NEUTRAL_EN as MSG
 from trainsync.api.stats import StatsSummary
 from trainsync.bot import formatting
 from trainsync.bot.handlers import Commands, week_ranges
@@ -86,7 +87,7 @@ async def test_week_numbers_equal_stats_summary(
     api_app: FastAPI, read_api: ReadApi, sessionmaker: async_sessionmaker[AsyncSession]
 ) -> None:
     await _seed(sessionmaker)
-    text = await Commands(read_api, lambda: NOW).week()
+    text = await Commands(read_api, lambda: NOW, MSG).week()
 
     (this_from, this_to), (last_from, last_to) = week_ranges(NOW.date())
     this_week = await _summary(api_app, this_from, this_to)
@@ -98,12 +99,12 @@ async def test_week_numbers_equal_stats_summary(
 
     lines = text.splitlines()
     assert lines[0] == "This week (12-15 Oct)"
-    assert lines[1] == formatting.totals_line(this_week.totals)
+    assert lines[1] == formatting.totals_line(this_week.totals, MSG)
     assert lines[1] == "3 activities · 48.1 km · 2h 33m · ↑ 422 m"
     assert lines[lines.index("Last week (5-11 Oct)") + 1] == formatting.totals_line(
-        last_week.totals
+        last_week.totals, MSG
     )
     assert "🚴 Ride: 1 · 30.1 km · 1h 02m" in lines
     assert "🏃 Run: 2 · 18.0 km · 1h 31m" in lines
     assert lines[-1] == "Distance -1.9 km vs last week"
-    assert text == formatting.format_week(this_week, last_week, NOW)
+    assert text == formatting.format_week(this_week, last_week, NOW, MSG)

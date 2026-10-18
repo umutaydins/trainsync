@@ -1,14 +1,17 @@
 """Message formatting: pure functions from read-API models to plain-text Telegram messages.
 
 Plain text (no parse_mode), so activity names never need escaping. Metric units throughout;
-dates are UTC, like the API.
+dates are UTC, like the API. This module computes the numbers; the words around them come from
+the message pack in `msg` (ADR 0016).
 """
 
 from datetime import date, datetime, timedelta
+from enum import StrEnum
 
 from trainsync.api.activities import ActivityOut
 from trainsync.api.stats import StatsSummary, TotalsOut, Week
 from trainsync.api.sync_status import SyncStatusOut
+from trainsync.bot.messages import Key, Messages
 
 # Data older than this gets an explicit "as of" warning.
 STALE_AFTER = timedelta(hours=24)
@@ -34,14 +37,9 @@ _EMOJI = {
 }
 _PACE_SPORTS = {"Run", "TrailRun", "VirtualRun", "Walk", "Hike"}
 _SWIM_SPORTS = {"Swim"}
-
-HELP = (
-    "trainsync bot\n"
-    "/week: this week vs last week\n"
-    "/last: latest activity\n"
-    "/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run\n"
-    "/status: sync health"
-)
+# The coach's week verdict compares moving time, so mixed sports count fairly (ADR 0016).
+PUSH_BELOW = 0.5
+UP_FROM = 1.0
 
 
 def sport_emoji(sport_type: str) -> str:
@@ -81,33 +79,38 @@ def _min_sec(seconds: float) -> str:
     return f"{total // 60}:{total % 60:02d}"
 
 
-def totals_line(totals: TotalsOut) -> str:
-    noun = "activity" if totals.count == 1 else "activities"
-    return (
-        f"{totals.count} {noun} · {km(totals.distance_m)} · "
-        f"{duration(totals.moving_time_s)} · {elevation(totals.elevation_gain_m)}"
+def totals_line(totals: TotalsOut, msg: Messages) -> str:
+    return msg(
+        Key.TOTALS,
+        count=totals.count,
+        noun=msg(Key.ACTIVITY_ONE if totals.count == 1 else Key.ACTIVITY_MANY),
+        distance=km(totals.distance_m),
+        time=duration(totals.moving_time_s),
+        elevation=elevation(totals.elevation_gain_m),
     )
 
 
-def day_range(start: date, end: date) -> str:
+def day_range(start: date, end: date, msg: Messages) -> str:
     if start == end:
-        return start.strftime("%-d %b")
+        return msg.day(start)
     if start.month == end.month and start.year == end.year:
-        return f"{start.day}-{end.strftime('%-d %b')}"
-    return f"{start.strftime('%-d %b')} - {end.strftime('%-d %b')}"
+        return f"{start.day}-{msg.day(end)}"
+    return f"{msg.day(start)} - {msg.day(end)}"
 
 
-def freshness(last_synced_at: datetime | None, now: datetime) -> str | None:
+def freshness(last_synced_at: datetime | None, now: datetime, msg: Messages) -> str | None:
     """A warning line when the data is missing or stale, else None."""
     if last_synced_at is None:
-        return "⚠️ No data synced yet."
+        return msg(Key.FRESH_NEVER)
     if now - last_synced_at > STALE_AFTER:
-        return f"⚠️ Data as of {last_synced_at:%-d %b %H:%M} UTC."
+        return msg(Key.FRESH_STALE, when=msg.day_time(last_synced_at))
     return None
 
 
-def _with_freshness(lines: list[str], last_synced_at: datetime | None, now: datetime) -> str:
-    note = freshness(last_synced_at, now)
+def _with_freshness(
+    lines: list[str], last_synced_at: datetime | None, now: datetime, msg: Messages
+) -> str:
+    note = freshness(last_synced_at, now, msg)
     return "\n".join([*lines, note] if note else lines)
 
 
@@ -119,21 +122,62 @@ def _by_sport(summary: StatsSummary) -> list[str]:
     ]
 
 
-def format_week(this_week: StatsSummary, last_week: StatsSummary, now: datetime) -> str:
-    lines = [f"This week ({day_range(this_week.start, this_week.end)})"]
+class Verdict(StrEnum):
+    PUSH = "push"
+    STEADY = "steady"
+    UP = "up"
+    ZERO_STREAK = "zero_streak"
+
+
+_VERDICT_KEYS = {
+    Verdict.PUSH: Key.VERDICT_PUSH,
+    Verdict.STEADY: Key.VERDICT_STEADY,
+    Verdict.UP: Key.VERDICT_UP,
+    Verdict.ZERO_STREAK: Key.VERDICT_ZERO_STREAK,
+}
+
+
+def week_verdict(this_week: TotalsOut, last_week: TotalsOut) -> tuple[Verdict, int] | None:
+    """(verdict, this week's moving time as a % of last week's). Two empty weeks in a row ask
+    about injury or rest instead of pushing; below 50% pushes; 100% and up acknowledges and
+    raises the bar. None when there is nothing to compare (activities without moving time)."""
+    if not this_week.count and not last_week.count:
+        return Verdict.ZERO_STREAK, 0
+    if last_week.moving_time_s <= 0:
+        return (Verdict.UP, 100) if this_week.moving_time_s > 0 else None
+    ratio = this_week.moving_time_s / last_week.moving_time_s
+    if ratio < PUSH_BELOW:
+        return Verdict.PUSH, int(ratio * 100)  # floor: 49.6% still reads as under half
+    if ratio >= UP_FROM:
+        return Verdict.UP, round(ratio * 100)
+    return Verdict.STEADY, int(ratio * 100)
+
+
+def format_week(
+    this_week: StatsSummary, last_week: StatsSummary, now: datetime, msg: Messages
+) -> str:
+    lines = [msg(Key.WEEK_THIS, range=day_range(this_week.start, this_week.end, msg))]
     if this_week.totals.count:
-        lines.append(totals_line(this_week.totals))
+        lines.append(totals_line(this_week.totals, msg))
         lines.extend(_by_sport(this_week))
     else:
-        lines.append("No activities yet.")
+        lines.append(msg(Key.WEEK_NONE_YET))
     lines.append("")
-    lines.append(f"Last week ({day_range(last_week.start, last_week.end)})")
-    lines.append(totals_line(last_week.totals) if last_week.totals.count else "No activities.")
+    lines.append(msg(Key.WEEK_LAST, range=day_range(last_week.start, last_week.end, msg)))
+    lines.append(
+        totals_line(last_week.totals, msg) if last_week.totals.count else msg(Key.WEEK_NONE)
+    )
     delta = this_week.totals.distance_m - last_week.totals.distance_m
     if last_week.totals.count or this_week.totals.count:
         lines.append("")
-        lines.append(f"Distance {_signed_km(delta)} vs last week")
-    return _with_freshness(lines, this_week.last_synced_at, now)
+        lines.append(msg(Key.WEEK_DELTA, delta=_signed_km(delta)))
+    verdict = week_verdict(this_week.totals, last_week.totals)
+    if verdict is not None:
+        kind, percent = verdict
+        line = msg(_VERDICT_KEYS[kind], percent=percent)
+        if line:  # the neutral packs have no verdicts
+            lines.extend(["", line] if kind is Verdict.ZERO_STREAK else [line])
+    return _with_freshness(lines, this_week.last_synced_at, now, msg)
 
 
 def _signed_km(delta_m: float) -> str:
@@ -141,7 +185,7 @@ def _signed_km(delta_m: float) -> str:
     return f"{sign}{abs(delta_m) / 1000:.1f} km"
 
 
-def activity_lines(activity: ActivityOut) -> list[str]:
+def activity_lines(activity: ActivityOut, msg: Messages) -> list[str]:
     """Name, then one line of numbers: distance · time · pace/speed · elevation."""
     parts = [km(activity.distance_m), duration(activity.moving_time_s)]
     speed = pace_or_speed(activity.sport_type, activity.distance_m, activity.moving_time_s)
@@ -150,20 +194,22 @@ def activity_lines(activity: ActivityOut) -> list[str]:
     parts.append(elevation(activity.elevation_gain_m))
     return [
         f"{sport_emoji(activity.sport_type)} {activity.name}",
-        f"{activity.sport_type} · {activity.start_date:%a %-d %b %H:%M} UTC",
+        msg(
+            Key.ACTIVITY_WHEN, sport=activity.sport_type, when=msg.weekday_time(activity.start_date)
+        ),
         " · ".join(parts),
     ]
 
 
 def format_last(
-    activity: ActivityOut | None, last_synced_at: datetime | None, now: datetime
+    activity: ActivityOut | None, last_synced_at: datetime | None, now: datetime, msg: Messages
 ) -> str:
     if activity is None:
-        return _with_freshness(["No activities yet."], last_synced_at, now)
-    lines = activity_lines(activity)
+        return _with_freshness([msg(Key.LAST_NONE)], last_synced_at, now, msg)
+    lines = activity_lines(activity, msg)
     if activity.average_heartrate is not None:
-        lines.append(f"♥ {activity.average_heartrate:.0f} bpm avg")
-    return _with_freshness(lines, last_synced_at, now)
+        lines.append(msg(Key.LAST_HEARTRATE, bpm=f"{activity.average_heartrate:.0f}"))
+    return _with_freshness(lines, last_synced_at, now, msg)
 
 
 def best_week(weeks: list[Week]) -> Week | None:
@@ -175,41 +221,54 @@ def best_week(weeks: list[Week]) -> Week | None:
     return best
 
 
-def format_stats(summary: StatsSummary, weeks: list[Week], label: str, now: datetime) -> str:
+def format_stats(
+    summary: StatsSummary, weeks: list[Week], label: str, now: datetime, msg: Messages
+) -> str:
     sport = f" · {summary.sport_type}" if summary.sport_type else ""
-    lines = [f"Last {label}{sport} ({day_range(summary.start, summary.end)})"]
+    title = msg(
+        Key.STATS_TITLE, label=label, sport=sport, range=day_range(summary.start, summary.end, msg)
+    )
+    lines = [title]
     if not summary.totals.count:
-        lines.append("No activities.")
-        return _with_freshness(lines, summary.last_synced_at, now)
-    lines.append(totals_line(summary.totals))
+        lines.append(msg(Key.STATS_NONE))
+        return _with_freshness(lines, summary.last_synced_at, now, msg)
+    lines.append(totals_line(summary.totals, msg))
     if not summary.sport_type:
         lines.extend(_by_sport(summary))
     best = best_week(weeks)
     if best is not None:
         lines.append(
-            f"Best week: {best.week_start:%-d %b} · {km(best.distance_m)} · "
-            f"{duration(best.moving_time_s)}"
+            msg(
+                Key.STATS_BEST_WEEK,
+                day=msg.day(best.week_start),
+                distance=km(best.distance_m),
+                time=duration(best.moving_time_s),
+            )
         )
     if summary.longest is not None:
         lines.append(
-            f"Longest: {summary.longest.name} · {km(summary.longest.distance_m)} "
-            f"({summary.longest.start_date:%-d %b})"
+            msg(
+                Key.STATS_LONGEST,
+                name=summary.longest.name,
+                distance=km(summary.longest.distance_m),
+                day=msg.day(summary.longest.start_date),
+            )
         )
-    return _with_freshness(lines, summary.last_synced_at, now)
+    return _with_freshness(lines, summary.last_synced_at, now, msg)
 
 
-def ago(moment: datetime, now: datetime) -> str:
+def ago(moment: datetime, now: datetime, msg: Messages) -> str:
     seconds = max(int((now - moment).total_seconds()), 0)
     if seconds < 60:
-        return "just now"
+        return msg(Key.AGO_NOW)
     if seconds < 3600:
-        return f"{seconds // 60} min ago"
+        return msg(Key.AGO_MINUTES, n=seconds // 60)
     if seconds < 86400:
-        return f"{seconds // 3600} h ago"
-    return f"{seconds // 86400} d ago"
+        return msg(Key.AGO_HOURS, n=seconds // 3600)
+    return msg(Key.AGO_DAYS, n=seconds // 86400)
 
 
-def format_status(status: SyncStatusOut, now: datetime) -> str:
+def format_status(status: SyncStatusOut, now: datetime, msg: Messages) -> str:
     """One line: freshness, webhook backlog, breaker, rate-limit usage."""
     webhooks = status.webhooks
     healthy = (
@@ -220,24 +279,30 @@ def format_status(status: SyncStatusOut, now: datetime) -> str:
         and webhooks.dead_letters == 0
     )
     synced = (
-        "never synced"
+        msg(Key.STATUS_NEVER)
         if status.last_synced_at is None
-        else (f"synced {ago(status.last_synced_at, now)}")
+        else msg(Key.STATUS_SYNCED, ago=ago(status.last_synced_at, now, msg))
     )
     parts = [
         f"{'✅' if healthy else '⚠️'} {synced}",
-        f"webhooks {webhooks.pending} pending / {webhooks.failed} failed / "
-        f"{webhooks.dead_letters} dead",
-        f"Strava circuit {status.circuit.state}",
+        msg(
+            Key.STATUS_WEBHOOKS,
+            pending=webhooks.pending,
+            failed=webhooks.failed,
+            dead=webhooks.dead_letters,
+        ),
+        msg(Key.STATUS_CIRCUIT, state=status.circuit.state),
     ]
     if status.rate_limit is not None:
-        parts.append(f"rate limit {status.rate_limit.short_ratio:.0%}")
+        parts.append(
+            msg(Key.STATUS_RATE_LIMIT, percent=f"{status.rate_limit.short_ratio * 100:.0f}")
+        )
     return " · ".join(parts)
 
 
-def format_new_activity(activity: ActivityOut, dashboard_url: str) -> str:
+def format_new_activity(activity: ActivityOut, dashboard_url: str, msg: Messages) -> str:
     """The new-activity notification (P5.6)."""
-    lines = ["New activity", *activity_lines(activity)]
+    lines = [msg(Key.NEW_ACTIVITY), *activity_lines(activity, msg)]
     if dashboard_url:
         lines.append(f"{dashboard_url.rstrip('/')}/activities/{activity.id}")
     return "\n".join(lines)

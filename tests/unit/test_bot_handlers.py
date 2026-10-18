@@ -14,6 +14,7 @@ from prometheus_client import REGISTRY
 from pydantic import SecretStr
 
 from tests.conftest import make_settings
+from tests.support.messages import NEUTRAL_EN as MSG
 from tests.support.telegram import (
     BOT_TOKEN,
     BOT_URL,
@@ -25,10 +26,7 @@ from tests.support.telegram import (
     sent_messages,
 )
 from trainsync.bot import main as bot_main
-from trainsync.bot.formatting import HELP
 from trainsync.bot.handlers import (
-    API_DOWN,
-    NO_ASSISTANT,
     Commands,
     Dispatcher,
     UsageError,
@@ -37,6 +35,7 @@ from trainsync.bot.handlers import (
     period_range,
     week_ranges,
 )
+from trainsync.bot.messages import Key
 from trainsync.bot.polling import Poller
 from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import TelegramApi, Update
@@ -73,7 +72,7 @@ def telegram(http: httpx.AsyncClient, sleep: SleepRecorder) -> TelegramApi:
 @pytest.fixture
 def dispatcher(http: httpx.AsyncClient, telegram: TelegramApi) -> Dispatcher:
     read_api = ReadApi(http, API, SecretStr("bot-key"))
-    return Dispatcher(telegram, Commands(read_api, lambda: NOW), {ALLOWED})
+    return Dispatcher(telegram, Commands(read_api, lambda: NOW, MSG), {ALLOWED}, MSG)
 
 
 @pytest.fixture
@@ -162,12 +161,12 @@ async def test_poller_replies_to_allowlisted_updates_only_and_advances_offset(
 @pytest.mark.parametrize(
     ("text", "expected_start"),
     [
-        ("/start", HELP),
-        ("/help@trainsync_bot", HELP),
+        ("/start", MSG(Key.HELP)),
+        ("/help@trainsync_bot", MSG(Key.HELP)),
         ("/last", "🏃 Morning Run"),
         ("/stats 12w run", "Last 12w · Run (27 Jul - 15 Oct)"),
         ("/nope", "Unknown command /nope."),
-        ("how was my week?", NO_ASSISTANT),
+        ("how was my week?", MSG(Key.NO_ASSISTANT, help=MSG(Key.HELP))),
         ("/stats run ride", "Usage: /stats"),
     ],
 )
@@ -200,7 +199,7 @@ async def test_api_down_gets_a_friendly_reply(
     fake_api["activities"].mock(side_effect=httpx.ConnectError("down"))
     await dispatcher.handle(update(ALLOWED, "/status"))
     await dispatcher.handle(update(ALLOWED, "/last"))
-    assert [m["text"] for m in sent_messages(send)] == [API_DOWN, API_DOWN]
+    assert [m["text"] for m in sent_messages(send)] == [MSG(Key.API_DOWN), MSG(Key.API_DOWN)]
 
 
 async def test_failed_reply_is_logged_not_raised(
@@ -227,7 +226,9 @@ async def test_plain_text_goes_to_the_text_handler(
         return "42 km"
 
     read_api = ReadApi(http, API, SecretStr("k"))
-    dispatcher = Dispatcher(telegram, Commands(read_api, lambda: NOW), {ALLOWED}, assistant)
+    dispatcher = Dispatcher(
+        telegram, Commands(read_api, lambda: NOW, MSG), {ALLOWED}, MSG, assistant
+    )
     await dispatcher.handle(update(ALLOWED, "how far did I run?"))
     assert seen == [(ALLOWED, "how far did I run?")]
     assert sent_messages(send)[0]["text"] == "42 km"
@@ -336,4 +337,4 @@ async def test_main_with_token_polls_and_replies() -> None:
 
     send = respx.post(f"{BOT_URL}/sendMessage").mock(side_effect=reply)
     await asyncio.wait_for(bot_main.run(settings, stop, sleep=SleepRecorder()), timeout=5)
-    assert sent_messages(send)[0]["text"] == HELP
+    assert sent_messages(send)[0]["text"] == MSG(Key.HELP)

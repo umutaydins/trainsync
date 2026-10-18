@@ -16,6 +16,7 @@ from prometheus_client import start_http_server
 
 from trainsync.bot.assistant import TIMEOUT_S, AnthropicPlanner, Assistant, RedisRateLimiter
 from trainsync.bot.handlers import Commands, Dispatcher, TextHandler
+from trainsync.bot.messages import Messages, messages_for
 from trainsync.bot.polling import Poller
 from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import TelegramApi
@@ -53,19 +54,26 @@ async def run(
             http, settings.telegram_bot_token, base_url=settings.telegram_api_base_url, sleep=sleep
         )
         read_api = ReadApi(http, settings.bot_api_base_url, settings.bot_read_api_key())
+        msg = messages_for(settings)
         dispatcher = Dispatcher(
             telegram,
-            Commands(read_api, clock),
+            Commands(read_api, clock, msg),
             set(settings.telegram_allowed_chat_ids),
-            await text_handler(settings, read_api, stack, clock=clock),
+            msg,
+            await text_handler(settings, read_api, stack, msg, clock=clock),
         )
-        log.info("bot_startup", allowed_chats=len(settings.telegram_allowed_chat_ids))
+        log.info(
+            "bot_startup",
+            allowed_chats=len(settings.telegram_allowed_chat_ids),
+            tone=settings.bot_tone,
+            lang=settings.bot_lang,
+        )
         await Poller(telegram, dispatcher, sleep=sleep).run(stop)
     log.info("bot_shutdown")
 
 
 async def text_handler(
-    settings: Settings, read_api: ReadApi, stack: AsyncExitStack, *, clock: Clock
+    settings: Settings, read_api: ReadApi, stack: AsyncExitStack, msg: Messages, *, clock: Clock
 ) -> TextHandler | None:
     """The natural-language assistant (P5.7), or None without `ANTHROPIC_API_KEY`."""
     if not settings.assistant_enabled:
@@ -82,6 +90,7 @@ async def text_handler(
         read_api,
         RedisRateLimiter(redis, settings.assistant_rate_limit_per_hour, clock),
         clock,
+        msg,
     )
     log.info("assistant_enabled", model=settings.assistant_model)
     return assistant.answer
