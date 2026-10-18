@@ -24,6 +24,7 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [19. Sequence — log a set with retry](#19-sequence--log-a-set-with-retry)
 - [20. Sequence — rest timer and a backgrounded tab](#20-sequence--rest-timer-and-a-backgrounded-tab)
 - [21. Deployment — production on the MacBook (Phase 7)](#21-deployment--production-on-the-macbook-phase-7)
+- [22. Sequence — nightly backup and weekly restore check](#22-sequence--nightly-backup-and-weekly-restore-check-p74-adr-0024)
 
 ---
 
@@ -1232,4 +1233,31 @@ flowchart TB
     worker --> rd
     bot --> api
     agent -. "docker compose up" .-> dd
+```
+
+## 22. Sequence — nightly backup and weekly restore check (P7.4, ADR 0024)
+
+```mermaid
+sequenceDiagram
+    participant L as backup loop
+    participant PG as postgres
+    participant D as BACKUP_DIR (iCloud Drive)
+    participant S as scratch Postgres (in the backup container)
+    participant T as Telegram
+    loop every minute
+        L->>D: due? (slot passed, no backup since)
+    end
+    L->>PG: BEGIN REPEATABLE READ; pg_export_snapshot()
+    L->>PG: row counts of every table (same snapshot)
+    L->>PG: pg_dump -Fc --snapshot
+    L->>D: age -r recipient → .name.partial, then rename .counts.json and .dump.age
+    L->>D: retention (7 daily / 4 weekly / 6 monthly)
+    alt restore-check weekday and identity mounted
+        L->>S: age -d (authenticated) → pg_restore
+        L->>S: row counts
+        L->>L: compare with .counts.json
+        L->>T: passed / FAILED
+    else backup failed
+        L->>T: backup FAILED, retry in 1 h
+    end
 ```

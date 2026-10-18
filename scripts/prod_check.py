@@ -34,7 +34,11 @@ DUMMY_FERNET_KEY = base64.urlsafe_b64encode(b"dev-only-fernet-key-not-for-use!")
 
 
 def _env_file() -> Path:
+    # The backup service bind-mounts an existing directory; never the real iCloud folder here.
+    backups = Path(tempfile.mkdtemp(prefix="prodcheck-backups-"))
+    backups.chmod(0o777)  # written by the backup image's postgres user on Linux
     text = DUMMY_ENV.read_text(encoding="utf-8") + f"TOKEN_ENCRYPTION_KEY={DUMMY_FERNET_KEY}\n"
+    text += f"BACKUP_HOST_DIR={backups}\n"
     with tempfile.NamedTemporaryFile("w", suffix=".env", delete=False) as handle:
         handle.write(text)
     return Path(handle.name)
@@ -43,7 +47,7 @@ def _env_file() -> Path:
 ENV_FILE = _env_file()
 PROJECT = "trainsync-prodcheck"
 BASE = "http://127.0.0.1:18080"
-LONG_RUNNING = ("postgres", "redis", "api", "worker", "bot", "gateway")
+LONG_RUNNING = ("postgres", "redis", "api", "worker", "bot", "gateway", "backup")
 
 
 def fail(message: str) -> None:

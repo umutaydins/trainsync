@@ -123,6 +123,39 @@ services:
     depends_on:
       api: { condition: service_healthy }
 
+  # Nightly encrypted pg_dump + retention + weekly restore check (P7.4, ADR 0024). One-shot
+  # backup now (P7.5 pre-deploy): `docker compose ... run --rm backup now predeploy`.
+  backup:
+    build:
+      context: .
+      dockerfile: deploy/backup/Dockerfile
+    image: trainsync-backup:${TRAINSYNC_TAG:?set TRAINSYNC_TAG to the git SHA to run}
+    restart: unless-stopped
+    command: ["loop"]
+    environment:
+      PGHOST: postgres
+      PGUSER: trainsync
+      PGDATABASE: trainsync
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?set BACKUP_AGE_RECIPIENT in .env.prod}
+      BACKUP_TIME: ${BACKUP_TIME:-03:30}
+      BACKUP_TZ: ${BACKUP_TZ:-Europe/Istanbul}
+      RESTORE_CHECK_WEEKDAY: ${RESTORE_CHECK_WEEKDAY:-7}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_ALLOWED_CHAT_IDS: ${TELEGRAM_ALLOWED_CHAT_IDS:-}
+      TELEGRAM_NOTIFY_CHAT_ID: ${TELEGRAM_NOTIFY_CHAT_ID:-}
+    volumes:
+      # A bind mount that must already exist (no silent empty directory on a typo).
+      - type: bind
+        source: ${BACKUP_HOST_DIR:-${HOME}/Library/Mobile Documents/com~apple~CloudDocs/trainsync-backups}
+        target: /backups
+    secrets: [backup_identity]
+    # backend for Postgres; egress only for the Telegram alerts.
+    networks: [backend, egress]
+    mem_limit: 256m
+    depends_on:
+      postgres: { condition: service_healthy }
+
   gateway:
     build: deploy/gateway
     image: trainsync-gateway:${TRAINSYNC_TAG:?set TRAINSYNC_TAG to the git SHA to run}
@@ -145,3 +178,9 @@ networks:
 volumes:
   pgdata:
   redisdata:
+
+secrets:
+  # The age identity (private key) for the weekly restore check. Optional: the placeholder
+  # keeps nightly backups running and the weekly check reports itself skipped.
+  backup_identity:
+    file: ${BACKUP_AGE_IDENTITY_FILE:-./deploy/backup/no-identity.txt}

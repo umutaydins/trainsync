@@ -66,6 +66,19 @@ compose-smoke: ## Start the stack, run the OAuth smoke test, tear it down
 prod-check: ## Production compose with dummy secrets: private DB/Redis, gateway allowlist, fail-fast secrets
 	uv run python scripts/prod_check.py
 
+.PHONY: backup-now restore-check restore-check-ci
+
+PROD_COMPOSE := docker compose --env-file .env.prod -f compose.prod.yml
+
+backup-now: ## Production: one encrypted backup now + retention (LABEL=predeploy to tag it)
+	$(PROD_COMPOSE) run --rm backup now $(LABEL)
+
+restore-check: ## Production: restore the newest backup into a scratch DB and compare row counts
+	./scripts/restore-check.sh
+
+restore-check-ci: ## Backup image against a seeded DB: good backup restores, bad ones fail (Docker)
+	uv run python scripts/restore_check_ci.py
+
 loadtest: ## Compose stack + 5,000 activities, locust 50 users for 2 min, CSV + summary
 	./scripts/loadtest.sh
 
