@@ -1460,6 +1460,7 @@ export interface components {
          *           "created_at": "2026-10-14T07:12:03Z",
          *           "date": "2026-10-14",
          *           "fat_g": 5.6,
+         *           "food_group": "other",
          *           "food_id": 7,
          *           "food_name": "Rolled oats",
          *           "grams": 80,
@@ -1512,6 +1513,7 @@ export interface components {
          *       "exercise_unknown_count": 0,
          *       "expenditure_kcal": 3118.1,
          *       "fat_g": 80.4,
+         *       "free_sugars_g": 18,
          *       "intake_kcal": 2410.5,
          *       "kcal_remaining": 189.5,
          *       "kcal_target": 2600,
@@ -1583,6 +1585,12 @@ export interface components {
             expenditure_kcal: number | null;
             /** Fat G */
             fat_g: number;
+            /**
+             * Free Sugars G
+             * @description The part of sugars_g that counts toward the daily sugar limit: sweets, desserts, sugary drinks and NOVA 4 foods; never fruit, vegetables, plain dairy
+             * @default 0
+             */
+            free_sugars_g: number;
             /** Intake Kcal */
             intake_kcal: number;
             /**
@@ -1760,6 +1768,12 @@ export interface components {
             secondary_muscles?: components["schemas"]["Muscle"][] | null;
         };
         /**
+         * FoodGroup
+         * @description What decides whether a food's sugar is free sugar (ADR 0032); null = unknown.
+         * @enum {string}
+         */
+        FoodGroup: "sweets" | "dessert" | "sugary_drink" | "fruit" | "vegetable" | "plain_dairy" | "other";
+        /**
          * FoodIn
          * @example {
          *       "carbs_100g": 0,
@@ -1790,6 +1804,8 @@ export interface components {
              * @default false
              */
             favorite: boolean;
+            /** @description Decides whether the sugar is free sugar (sweets, dessert, sugary_drink count; fruit, vegetable, plain_dairy never do); null = unknown */
+            food_group?: components["schemas"]["FoodGroup"] | null;
             /**
              * Kcal 100G
              * @description kcal per 100 g
@@ -1823,6 +1839,7 @@ export interface components {
          *           "carbs_100g": 58.7,
          *           "fat_100g": 7,
          *           "favorite": true,
+         *           "food_group": "other",
          *           "id": 7,
          *           "kcal_100g": 372,
          *           "name": "Rolled oats",
@@ -1848,6 +1865,7 @@ export interface components {
          *           "carbs_100g": 58.7,
          *           "fat_100g": 7,
          *           "favorite": true,
+         *           "food_group": "other",
          *           "id": 7,
          *           "kcal_100g": 372,
          *           "name": "Rolled oats",
@@ -1878,6 +1896,7 @@ export interface components {
          *       "carbs_100g": 58.7,
          *       "fat_100g": 7,
          *       "favorite": true,
+         *       "food_group": "other",
          *       "id": 7,
          *       "kcal_100g": 372,
          *       "name": "Rolled oats",
@@ -1904,6 +1923,8 @@ export interface components {
             fat_100g: number | null;
             /** Favorite */
             favorite: boolean;
+            /** @description Decides whether the sugar is free sugar (sweets, dessert, sugary_drink count; fruit, vegetable, plain_dairy never do); null = unknown */
+            food_group?: components["schemas"]["FoodGroup"] | null;
             /** Id */
             id: number;
             /** Kcal 100G */
@@ -1949,6 +1970,8 @@ export interface components {
              * @description g per 100 g; null = unknown
              */
             fat_100g?: number | null;
+            /** @description Decides whether the sugar is free sugar (sweets, dessert, sugary_drink count; fruit, vegetable, plain_dairy never do); null = unknown */
+            food_group?: components["schemas"]["FoodGroup"] | null;
             /** Kcal 100G */
             kcal_100g?: number | null;
             /** Name */
@@ -2081,6 +2104,7 @@ export interface components {
          *       "created_at": "2026-10-14T07:12:03Z",
          *       "date": "2026-10-14",
          *       "fat_g": 5.6,
+         *       "food_group": "other",
          *       "food_id": 7,
          *       "food_name": "Rolled oats",
          *       "grams": 80,
@@ -2120,6 +2144,8 @@ export interface components {
              * @description null when the food's value is unknown
              */
             fat_g: number | null;
+            /** @description Decides whether the sugar is free sugar (sweets, dessert, sugary_drink count; fruit, vegetable, plain_dairy never do); null = unknown */
+            food_group?: components["schemas"]["FoodGroup"] | null;
             /** Food Id */
             food_id: number;
             /** Food Name */
@@ -2955,6 +2981,7 @@ export interface components {
          *           "exercise_unknown_count": 0,
          *           "expenditure_kcal": 3118.1,
          *           "fat_g": 80.4,
+         *           "free_sugars_g": 18,
          *           "intake_kcal": 2410.5,
          *           "kcal_remaining": 189.5,
          *           "kcal_target": 2600,

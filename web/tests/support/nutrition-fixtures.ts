@@ -45,6 +45,7 @@ export function daySummary(overrides: Partial<DaySummary> = {}): DaySummary {
     carbs_g: 201.2,
     fat_g: 61.3,
     sugars_g: 0,
+    free_sugars_g: 0,
     entry_count: 6,
     macros_complete: true,
     kcal_target: 2400,
