@@ -25,6 +25,7 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [20. Sequence — rest timer and a backgrounded tab](#20-sequence--rest-timer-and-a-backgrounded-tab)
 - [21. Deployment — production on the MacBook (Phase 7)](#21-deployment--production-on-the-macbook-phase-7)
 - [22. Sequence — nightly backup and weekly restore check](#22-sequence--nightly-backup-and-weekly-restore-check-p74-adr-0024)
+- [23. Activity — make deploy and make rollback](#23-activity--make-deploy-and-make-rollback-p75-adr-0026)
 
 ---
 
@@ -1260,4 +1261,33 @@ sequenceDiagram
     else backup failed
         L->>T: backup FAILED, retry in 1 h
     end
+```
+
+## 23. Activity — make deploy and make rollback (P7.5, ADR 0026)
+
+```mermaid
+flowchart TD
+    start(["make deploy"]) --> clean{"clean worktree, branch main,<br/>HEAD == origin/main after fetch?"}
+    clean -- no --> refuse(["refuse · deploys.log"])
+    clean -- yes --> ci{"gh run list --commit SHA --workflow ci<br/>completed success?"}
+    ci -- no --> refuse
+    ci -- yes --> build["build images, TRAINSYNC_TAG = SHA[:12]"]
+    build --> backup["backup now predeploy&lt;sha7&gt;"]
+    backup --> before["alembic current → rev_before"]
+    before --> migrate["one-shot migrate: alembic upgrade head → rev_after"]
+    migrate --> state["deploy-state: current = new, previous = old, rev_before"]
+    state --> up["up -d"]
+    up --> smoke{"smoke: /health/ready via gateway,<br/>/v1/sync/status with an API key, bot getMe"}
+    smoke -- ok --> done(["success · deploys.log · Telegram"])
+    smoke -- fail --> rb
+    build & backup & migrate -- fail --> abort(["abort: the old version keeps running · Telegram"])
+
+    rbstart(["make rollback"]) --> rb{"previous deploy recorded<br/>and its image present?"}
+    rb -- no --> rbrefuse(["refuse"])
+    rb -- yes --> crossed{"migrations between<br/>rev_before and rev_after?"}
+    crossed -- none --> old["up -d with the previous tag"]
+    crossed -- "all reversible = True" --> down["alembic downgrade rev_before<br/>(new image: it has the downgrade code)"]
+    down --> old
+    crossed -- "any reversible = False" --> restore(["refuse · print the restore steps<br/>(pre-deploy backup, then rollback --restored)"])
+    old --> rbdone(["smoke test · deploy-state: current = previous · Telegram"])
 ```

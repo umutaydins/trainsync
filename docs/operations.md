@@ -92,26 +92,85 @@ The LaunchAgent runs at login, so a reboot brings the stack back only once a use
 | What | Where |
 | --- | --- |
 | LaunchAgent (wait for Docker, `up` at login) | `~/Library/Logs/trainsync/stack.log` |
+| Deploys and rollbacks, one line each (P7.5) | `~/Library/Logs/trainsync/deploys.log` |
 | Containers (JSON lines, structlog) | `scripts/mac-prod.sh logs [service]` |
 | Gateway access log (JSON) | `scripts/mac-prod.sh logs gateway` |
 | Docker Desktop | `~/Library/Containers/com.docker.docker/Data/log/` |
 
 `stack.log` is appended to on every login and is small; delete it whenever you like.
 
-## Updating
+## Deploy and rollback
 
-Until `make deploy` (P7.5) exists:
+Design: [ADR 0026](decisions/0026-manual-make-deploy-instead-of-a-self-hosted-runner.md).
+Deploys are run by hand on the Mac; there is no self-hosted CI runner.
 
 ```
 git switch main && git pull --ff-only
-scripts/mac-prod.sh build      # images tagged with the new git SHA
-scripts/mac-prod.sh up         # migrations first, then recreate the changed containers
-scripts/mac-prod.sh doctor
+make deploy            # scripts/deploy.sh deploy
+make rollback          # scripts/deploy.sh rollback: back to the previous deploy
+scripts/deploy.sh status
+tail ~/Library/Logs/trainsync/deploys.log
 ```
 
-Rollback: `git switch --detach <previous sha>` and the same two commands (the old images are
-still there, so `build` is quick). A migration that is not backwards compatible needs a restore
-(Backups and restore) instead.
+`make deploy` refuses (nothing changes) unless:
+
+- the worktree is clean, the branch is `main` and `HEAD` equals `origin/main` after a fetch;
+- the `ci` workflow succeeded for that SHA: `gh run list --commit <sha> --workflow ci` shows
+  `completed` / `success` (`gh auth login` once on the Mac; read access is enough).
+
+Then, in this order:
+
+1. build the images tagged with the SHA (12 characters);
+2. pre-deploy backup `trainsync-…-predeploy<sha7>.dump.age` (Backups and restore below);
+3. record the database revision (`alembic current` in the migrate container);
+4. migrations as the one-shot `migrate` container (`alembic upgrade head`);
+5. `up -d` (containers whose image changed are recreated);
+6. smoke test through the gateway on `127.0.0.1:$GATEWAY_PORT`: `/health/ready` (up to 30
+   tries, 2 s apart), `GET /v1/sync/status` with the first key of `API_KEYS`, and Telegram
+   `getMe` when `TELEGRAM_BOT_TOKEN` is set.
+
+A failed build, backup or migration stops the deploy; the old containers keep running (a failed
+`alembic upgrade` runs in one transaction and leaves the old revision). A failed `up` or smoke
+test **rolls back automatically**. Every deploy and rollback appends one line (time, action, SHA,
+result) to `~/Library/Logs/trainsync/deploys.log` and, when Telegram is configured, sends the
+result to the notify chat. Secrets reach `curl` through a config on stdin, never as arguments.
+
+State: `~/Library/Application Support/trainsync/deploy-state` holds the current and previous
+SHA/tag, the revision to return to and the pre-deploy backup label. `scripts/mac-prod.sh` (and
+so the LaunchAgent at login) starts the current tag from it when `.env.prod` leaves
+`TRAINSYNC_TAG` empty.
+
+### Rollback
+
+`make rollback` goes back one deploy (a second rollback is refused):
+
+1. The previous image must still exist (`docker image ls trainsync`); if it was pruned, the
+   script prints the `git switch --detach <sha>` + `mac-prod.sh build` to recreate it.
+2. If the deploy crossed migrations, every one of them must declare `reversible = True`
+   (`scripts/migration_reversibility.py FROM TO` shows them). They are downgraded with the new
+   image (`alembic downgrade <previous revision>`; only the new image has that downgrade code),
+   then the previous images start, then the smoke test runs. Rows written since the deploy into
+   tables or columns those migrations added are lost.
+3. If any crossed migration is `reversible = False`, rollback refuses and prints the restore
+   procedure:
+   1. `docker compose --env-file .env.prod -f compose.prod.yml stop api worker bot`
+   2. find the pre-deploy backup `trainsync-…-predeploy<sha7>.dump.age` in `BACKUP_HOST_DIR`
+   3. `scripts/restore-check.sh PATH/…-predeploy<sha7>.dump.age`
+   4. restore it as in "Restoring for real" below (step 3 there)
+   5. `scripts/deploy.sh rollback --restored` — starts the previous images without touching
+      the database.
+
+The rollback reads the migration files of the checkout, so the checkout must be at the deployed
+SHA (the script refuses otherwise and says which `git switch --detach` to run).
+
+Writing a migration: set `reversible = True` only if `downgrade()` restores the previous schema
+and keeps every row the previous code can read; data migrations that cannot be undone, dropped
+columns or tables with data, and narrowing type changes are `reversible = False`. The Alembic
+template forces the choice; `tests/unit/test_migration_reversibility.py` checks every file and
+`tests/integration/test_migrations.py` steps every migration down and up again.
+
+Going back further than one deploy: `git switch --detach <sha>`, `scripts/mac-prod.sh build`,
+`scripts/mac-prod.sh up`, after checking the migrations in between the same way.
 
 ## Stopping for a while
 
@@ -195,6 +254,9 @@ that command on the Mac.
 | 10 | `PUBLIC_API_BASE_URL` set | put the value from `funnel.sh status` into `.env.prod`, `scripts/mac-prod.sh up` (recreates the containers with the new env; `restart` would not), then `grep PUBLIC_API_BASE_URL .env.prod` | PENDING | | |
 | 11 | Public check from outside (real URL) | `make public-check URL=https://<host>.<tailnet>.ts.net` | PENDING | | |
 | 12 | Scheduled public check | `gh variable set PUBLIC_CHECK_URL --body https://<host>.<tailnet>.ts.net && gh workflow run public-check.yml`, then `gh run list --workflow public-check.yml -L 1` | PENDING | | |
+| 13 | `gh` can read CI on the Mac | `gh auth status && gh run list --workflow ci -L 1` | PENDING | | |
+| 14 | First real deploy | `make deploy`, then `tail -n 1 ~/Library/Logs/trainsync/deploys.log && scripts/deploy.sh status` | PENDING | | |
+| 15 | Rollback drill | after a deploy with no migrations: `make rollback`, then `tail -n 2 ~/Library/Logs/trainsync/deploys.log && scripts/mac-prod.sh status`; then `make deploy` again | PENDING | | |
 
 ## Backups and restore
 
@@ -256,7 +318,9 @@ make restore-check-ci                # CI variant: seeded DB, throwaway key, bad
      --entrypoint bash backup -c \
      'age -d -i /run/key /restore/trainsync-….dump.age | pg_restore --clean --if-exists --no-owner --no-acl -d trainsync'
    ```
-4. Start again (`up -d`); migrations run forward from the restored revision (P7.5).
+4. Start again: `scripts/deploy.sh rollback --restored` after a failed deploy (Deploy and
+   rollback), otherwise `scripts/mac-prod.sh up` (migrations run forward from the restored
+   revision).
 
 ### Owner checks
 

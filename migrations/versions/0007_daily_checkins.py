@@ -14,6 +14,9 @@ revision: str = "0007"
 down_revision: str | None = "0006"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+# Rollback (ADR 0026): downgrade() restores the previous revision's schema; it drops only what
+# this revision added.
+reversible: bool = True
 
 KINDS_BEFORE = "kind IN ('new_activity')"
 KINDS_AFTER = "kind IN ('new_activity', 'checkin_prompt', 'checkin_reminder')"
