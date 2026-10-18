@@ -49,7 +49,6 @@ def main(argv: list[str] | None = None) -> int:
         if not args.argv:
             parser.error("exec needs a command")
         os.execvpe(args.argv[0], args.argv, {**os.environ, **generated_keys()})  # noqa: S606
-        return 0  # not reached: exec replaced this process
     settings = get_settings()
     configure_logging(settings)
     try:

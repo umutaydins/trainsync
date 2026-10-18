@@ -6,20 +6,33 @@ from cryptography.fernet import Fernet
 from trainsync.demo import __main__ as cli
 
 
+class ExecCalledError(Exception):
+    def __init__(self, file: str, argv: list[str], env: dict[str, str]) -> None:
+        self.file, self.argv, self.env = file, argv, env
+
+
+def _fake_exec(file: str, argv: list[str], env: dict[str, str]) -> None:
+    raise ExecCalledError(file, argv, env)  # like the real one, it never returns
+
+
+def _run(argv: list[str]) -> ExecCalledError:
+    with pytest.raises(ExecCalledError) as info:
+        cli.main(argv)
+    return info.value
+
+
 def test_exec_runs_the_command_with_fresh_keys(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[tuple[str, list[str], dict[str, str]]] = []
-    monkeypatch.setattr(cli.os, "execvpe", lambda f, a, e: calls.append((f, a, e)))
+    monkeypatch.setattr(cli.os, "execvpe", _fake_exec)
     monkeypatch.setenv("DEMO_MODE", "true")
 
-    cli.main(["exec", "uvicorn", "--port", "8000"])
-    cli.main(["exec", "uvicorn", "--port", "8000"])
+    first = _run(["exec", "uvicorn", "--port", "8000"])
+    second = _run(["exec", "uvicorn", "--port", "8000"])
 
-    (file, argv, env), (_, _, env2) = calls
-    assert (file, argv) == ("uvicorn", ["uvicorn", "--port", "8000"])
-    assert env["DEMO_MODE"] == "true"
-    Fernet(env["TOKEN_ENCRYPTION_KEY"])  # a valid key
-    assert len(env["STATE_SIGNING_KEY"]) >= 32
-    assert env["TOKEN_ENCRYPTION_KEY"] != env2["TOKEN_ENCRYPTION_KEY"]
+    assert (first.file, first.argv) == ("uvicorn", ["uvicorn", "--port", "8000"])
+    assert first.env["DEMO_MODE"] == "true"
+    Fernet(first.env["TOKEN_ENCRYPTION_KEY"])  # a valid key
+    assert len(first.env["STATE_SIGNING_KEY"]) >= 32
+    assert first.env["TOKEN_ENCRYPTION_KEY"] != second.env["TOKEN_ENCRYPTION_KEY"]
 
 
 def test_exec_needs_a_command() -> None:
