@@ -1,6 +1,9 @@
 """Stack-internal alerts (P7.8): for every condition, starting sends one alert, persisting sends
 nothing, clearing sends one recovery. Injected clock, in-memory state and a recording notifier."""
 
+# Turkish text: the dotless i (U+0131) is a letter here, not a confusable.
+# ruff: noqa: RUF001
+
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -8,12 +11,14 @@ from pathlib import Path
 import pytest
 
 from tests.conftest import make_settings
-from trainsync.core.settings import Settings
+from trainsync.core.settings import BotLang, Settings
 from trainsync.notify.alerts import (
+    DETAILS,
     Action,
     AlertDeps,
     AlertState,
     Condition,
+    Detail,
     Facts,
     Observation,
     Thresholds,
@@ -272,7 +277,7 @@ def test_thresholds_from_settings(settings: Settings) -> None:
 
 def test_observe_without_breaker_reports_is_unknown() -> None:
     found = observe(replace(HEALTHY, circuit=None), T0, Thresholds())
-    assert found[Condition.CIRCUIT_OPEN] == Observation(None, "no circuit breaker state reported")
+    assert found[Condition.CIRCUIT_OPEN] == Observation(None, Detail.CIRCUIT_UNKNOWN)
 
 
 def test_newest_backup_ignores_partials_and_strangers(tmp_path: Path) -> None:
@@ -289,3 +294,26 @@ def test_newest_backup_ignores_partials_and_strangers(tmp_path: Path) -> None:
     newest = newest_backup(tmp_path)
     assert newest is not None
     assert newest.name == "trainsync-20261017-120000-predeploy1a2b3c4.dump.age"
+
+
+async def test_alerts_follow_the_chat_language() -> None:
+    """P6.12: the language stored for the chat (`/lang`) is read at send time (ADR 0031)."""
+    h = Harness()
+    asked: list[str] = []
+
+    async def language(chat: str) -> BotLang | None:
+        asked.append(chat)
+        return "tr"
+
+    h.deps = replace(h.deps, language=language)
+    await h.tick(**h.keep_fresh(), circuit=BreakerState.OPEN)
+    fired = await h.tick(minutes=30, **h.keep_fresh())
+    assert fired == ["trainsync uyarısı: Strava devre kesicisi open, 30+ dk kapanmadı"]
+    resolved = await h.tick(**h.keep_fresh(), circuit=BreakerState.CLOSED)
+    assert resolved == ["trainsync düzeldi: Strava devre kesicisi yeniden kapandı (35 dk sonra)"]
+    assert asked == ["42", "42"]
+
+
+def test_every_alert_detail_exists_in_both_languages() -> None:
+    for lang in ("en", "tr"):
+        assert set(DETAILS[lang]) == set(Detail)

@@ -10,7 +10,17 @@ from trainsync.core.settings import Settings
 from trainsync.main import create_app
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TAGS = {"auth", "webhooks", "activities", "stats", "sync", "health", "training", "nutrition"}
+TAGS = {
+    "auth",
+    "webhooks",
+    "activities",
+    "stats",
+    "sync",
+    "health",
+    "training",
+    "nutrition",
+    "chats",
+}
 
 
 @pytest.fixture
@@ -66,6 +76,8 @@ def test_every_endpoint_is_documented(spec: dict[str, Any]) -> None:
         "GET /v1/stats/weekly",
         "GET /v1/stats/summary",
         "GET /v1/sync/status",
+        "GET /v1/chats/{chat_id}/settings",
+        "PUT /v1/chats/{chat_id}/settings",
         "GET /v1/checkins",
         "GET /v1/checkins/summary",
         "GET /v1/checkins/{day}",

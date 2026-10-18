@@ -25,7 +25,9 @@ PACK = MessagePack(
             "/log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)\n"
             "/done: finish the workout\n"
             "/plates 102.5: plates per side\n"
-            "/report: daily check-in\n/yumusak: soft coach for 24 h · /sert: back to normal",
+            "/report: daily check-in\n"
+            "/yumusak: soft coach for 24 h · /sert: back to normal\n"
+            "/lang: Türkçe / English",
         ),
         Key.NO_ASSISTANT: ("I don't do small talk. Commands only.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("/{command}? Not a thing.\n\n{help}",),
@@ -179,6 +181,9 @@ PACK = MessagePack(
         ),
         Key.COACH_SOFT_ON: ("Fine. Soft mode for 24 hours. /sert when you're ready.",),
         Key.COACH_SOFT_OFF: ("Soft mode off. Back to work.",),
+        Key.LANG_CHOOSE: ("Pick a language. Then get back to work.",),
+        Key.LANG_SET: ("English it is. Same rules, no excuses.",),
+        Key.LANG_USAGE: ("/lang, /lang en or /lang tr. Not that hard.",),
         Key.COACH_FACT_SESSION: NEUTRAL.texts[Key.COACH_FACT_SESSION],
         Key.COACH_FACT_UNDER: NEUTRAL.texts[Key.COACH_FACT_UNDER],
         Key.COACH_FACT_MISSING: NEUTRAL.texts[Key.COACH_FACT_MISSING],

@@ -45,10 +45,57 @@ def test_pain_injury_illness_is_recognised(text: str) -> None:
 
 @pytest.mark.parametrize(
     "text",
-    ["chest day bugün", "heart rate 150 civarı", "canım istemiyor", "broke my PR!", "80x5x3"],
+    [
+        "chest day bugün",
+        "heart rate 150 civarı",
+        "canım istemiyor",
+        "broke my PR!",
+        "80x5x3",
+        "antrenman açıldı",  # "acildi" is not "acil" (emergency)
+    ],
 )
 def test_training_talk_is_not_pain(text: str) -> None:
     assert not mentions_pain(text)
+
+
+# Regression lists (P6.12): each phrase as typed and without Turkish accents (a phone keyboard
+# without them). A missed pain message gets roasted, so when narrowing a pattern would break a
+# MUST_TRIGGER phrase, accept the false positive instead.
+ASCII = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
+MUST_TRIGGER = [
+    "acil",
+    "göğsüm ağrıyor",
+    "göğüs ağrısı",
+    "başım dönüyor",
+    "bayılacak gibiyim",
+    "dizim sakatlandı",
+    "belim tuttu",
+    "kramp girdi",
+    "nefes alamıyorum",
+    "hastayım",
+    "ateşim var",
+    "chest pain",
+    "I'm dizzy",
+    "pulled a muscle",
+    "I'm injured",
+    "I'm sick",
+]
+MUST_NOT_TRIGGER = ["antrenman açıldı", "acıktım", "acı biber"]
+
+
+def with_and_without_accents(phrases: list[str]) -> list[str]:
+    return sorted({variant for p in phrases for variant in (p, p.translate(ASCII))})
+
+
+@pytest.mark.parametrize("text", with_and_without_accents(MUST_TRIGGER))
+def test_regression_pain_always_triggers(text: str) -> None:
+    assert mentions_pain(text), text
+    assert mentions_pain(f"Bugün gelemem, {text}."), text  # inside a longer message too
+
+
+@pytest.mark.parametrize("text", with_and_without_accents(MUST_NOT_TRIGGER))
+def test_regression_everyday_words_never_trigger(text: str) -> None:
+    assert not mentions_pain(text), text
 
 
 @pytest.mark.parametrize(

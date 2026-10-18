@@ -1,8 +1,12 @@
-"""Savage lines: the built-in pack plus the owner's local file, rotation and punchlines.
+"""Savage lines: the built-in packs (one per language) plus the owner's local file, rotation and
+punchlines.
 
-- `load_pack` merges `config/messages.local.yaml` (optional, git-ignored; same categories as
-  `savage_tr.LINES`) into the built-in lines. Local lines are sent verbatim; a line that breaks a
-  guardrail (`guardrails.violations`) is dropped with a log line, never edited.
+- `load_packs` merges `config/messages.local.yaml` (optional, git-ignored) into the built-in
+  lines of each language. The file has a `tr:` and an `en:` section with the categories of
+  `savage_tr.LINES` / `savage_en.LINES`, and a top-level `punchline_en` list that goes into both
+  (ADR 0031); categories at the top level (the first format) count as Turkish. Local lines are
+  sent verbatim; a line that breaks a guardrail (`guardrails.violations`) is dropped with a log
+  line, never edited.
 - `pick` chooses a line at random among those not sent in the last `RECENT` sends of that
   category; with fewer lines than that, the least recently sent one. The history lives in Redis,
   so the bot and the worker rotate together and a restart forgets nothing.
@@ -19,15 +23,21 @@ from typing import Protocol
 import yaml
 from redis.asyncio import Redis
 
+from trainsync.coach import savage_en, savage_tr
 from trainsync.coach.categories import Category
 from trainsync.coach.guardrails import Violation, violations
-from trainsync.coach.savage_tr import LINES
 from trainsync.core.logging import get_logger
+from trainsync.core.settings import BotLang
 
 log = get_logger(__name__)
 
 RECENT = 10
 PUNCHLINE_CHANCE = 0.25
+SAVAGE: Mapping[BotLang, Mapping[Category, tuple[str, ...]]] = {
+    "tr": savage_tr.LINES,
+    "en": savage_en.LINES,
+}
+LocalLines = dict[str, list[str]]  # {category: [line, ...]}
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,20 +54,11 @@ class LinePack:
     local_count: int = 0
 
 
-def read_local(path: Path) -> dict[str, list[str]]:
-    """`{category: [line, ...]}` from the local YAML file; empty when it does not exist.
-    Anything that is not a list of strings under a known category is ignored (and logged)."""
-    if not path.is_file():
-        return {}
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except yaml.YAMLError as exc:
-        log.warning("coach_local_lines_unreadable", path=str(path), error=str(exc))
-        return {}
-    if not isinstance(data, dict):
-        return {}
+def _categories(data: Mapping[object, object]) -> LocalLines:
+    """The known categories of one section. Anything that is not a list of strings under a known
+    category is ignored (and logged)."""
     known = {c.value for c in Category}
-    result: dict[str, list[str]] = {}
+    result: LocalLines = {}
     for key, value in data.items():
         if str(key) not in known:
             log.warning("coach_local_lines_unknown_category", category=str(key))
@@ -70,7 +71,38 @@ def read_local(path: Path) -> dict[str, list[str]]:
     return result
 
 
+def read_local(path: Path) -> dict[BotLang, LocalLines]:
+    """`{lang: {category: [line, ...]}}` from the local YAML file; empty when it does not exist.
+    The top-level `punchline_en` goes into every language; other top-level categories (the
+    format before the language sections) count as Turkish."""
+    if not path.is_file():
+        return {}
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        log.warning("coach_local_lines_unreadable", path=str(path), error=str(exc))
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    sections = {lang: data.pop(lang, None) for lang in SAVAGE}
+    top = _categories(data)
+    punchlines = top.pop(Category.PUNCHLINE_EN.value, [])
+    result: dict[BotLang, LocalLines] = {}
+    for lang, section in sections.items():
+        lines = _categories(section) if isinstance(section, dict) else {}
+        if lang == "tr":
+            for category, texts in top.items():
+                lines[category] = [*lines.get(category, []), *texts]
+        if punchlines:
+            own = lines.get(Category.PUNCHLINE_EN.value, [])
+            lines[Category.PUNCHLINE_EN.value] = [*own, *punchlines]
+        if lines:
+            result[lang] = lines
+    return result
+
+
 def merge(base: Mapping[Category, tuple[str, ...]], local: Mapping[str, list[str]]) -> LinePack:
+    """One language's built-in lines plus its local lines (guardrail breakers dropped)."""
     lines = {category: list(texts) for category, texts in base.items()}
     dropped: list[DroppedLine] = []
     added = 0
@@ -93,9 +125,14 @@ def merge(base: Mapping[Category, tuple[str, ...]], local: Mapping[str, list[str
     return LinePack({c: tuple(t) for c, t in lines.items()}, tuple(dropped), added)
 
 
-def load_pack(local_file: Path | None) -> LinePack:
-    """The built-in savage lines with the owner's local lines merged in."""
-    return merge(LINES, read_local(local_file) if local_file else {})
+def load_packs(local_file: Path | None) -> dict[BotLang, LinePack]:
+    """The built-in savage lines of every language with the owner's local lines merged in."""
+    local = read_local(local_file) if local_file else {}
+    return {lang: merge(lines, local.get(lang, {})) for lang, lines in SAVAGE.items()}
+
+
+def load_pack(local_file: Path | None, lang: BotLang = "tr") -> LinePack:
+    return load_packs(local_file)[lang]
 
 
 def line_id(text: str) -> str:

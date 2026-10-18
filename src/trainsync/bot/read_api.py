@@ -15,6 +15,7 @@ import httpx
 from pydantic import BaseModel, SecretStr
 
 from trainsync.api.activities import ActivityDetail, ActivityPage
+from trainsync.api.chats import ChatSettingsIn, ChatSettingsOut
 from trainsync.api.checkins import CheckinIn, CheckinOut, CheckinSummary
 from trainsync.api.nutrition import DaySummary, FoodList, FoodLookup, LogIn, LogOut
 from trainsync.api.stats import StatsSummary, WeeklyStats
@@ -143,6 +144,15 @@ class ReadApi:
         return await self._get("/v1/checkins/summary", params, CheckinSummary)
 
     # ---------------------------------------------------------------- transport
+
+    # ---------------------------------------------------------------- chat settings (P6.12)
+
+    async def chat_settings(self, chat_id: int) -> ChatSettingsOut:
+        return await self._get(f"/v1/chats/{chat_id}/settings", {}, ChatSettingsOut)
+
+    async def put_chat_settings(self, chat_id: int, body: ChatSettingsIn) -> ChatSettingsOut:
+        path = f"/v1/chats/{chat_id}/settings"
+        return await self._send("PUT", path, body.model_dump(mode="json"), ChatSettingsOut)
 
     async def _get[M: BaseModel](self, path: str, params: dict[str, Any], model: type[M]) -> M:
         return await self._request("GET", path, model, params=params)

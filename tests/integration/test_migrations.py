@@ -31,6 +31,7 @@ TABLES = {
     "workouts",
     "workout_sets",
     "body_metrics",
+    "chat_settings",
     "foods",
     "food_logs",
     "nutrition_profile",

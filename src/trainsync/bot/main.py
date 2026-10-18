@@ -20,6 +20,7 @@ from trainsync.bot.checkin import CheckinFlow
 from trainsync.bot.coach import CoachFeature
 from trainsync.bot.common import Feature, RedisStateStore, StateStore
 from trainsync.bot.handlers import Commands, Dispatcher, TextHandler
+from trainsync.bot.language import LanguageFeature, LanguageStore
 from trainsync.bot.messages import Messages, messages_for
 from trainsync.bot.nutrition import NutritionCommands
 from trainsync.bot.polling import Poller
@@ -68,6 +69,7 @@ async def run(
         stack.push_async_callback(redis.aclose)
         voice = build_voice(settings, redis, msg)
         soft = RedisSoftModeStore(redis)
+        languages = LanguageStore(read_api)
         dispatcher = Dispatcher(
             telegram,
             Commands(read_api, clock, msg),
@@ -82,7 +84,9 @@ async def run(
                 clock=clock,
                 voice=voice,
                 soft=soft,
+                languages=languages,
             ),
+            languages=languages,
         )
         log.info(
             "bot_startup",
@@ -106,14 +110,17 @@ def features(
     clock: Clock,
     voice: CoachVoice | None = None,
     soft: SoftModeStore | None = None,
+    languages: LanguageStore | None = None,
 ) -> list[Feature]:
     """Check-in (P6.9; first, so a check-in answer is never taken for something else), the
-    coach (P6.11: pain guard, savage triggers, /yumusak, /sert), training and nutrition commands
-    (P6.8). "Today" is the local day in `CHECKIN_TZ`."""
+    coach (P6.11: pain guard, savage triggers, /yumusak, /sert), /lang (P6.12), training and
+    nutrition commands (P6.8). "Today" is the local day in `CHECKIN_TZ`."""
     zone = settings.checkin_zone
     coach: list[Feature] = []
     if voice is not None and soft is not None:
         coach = [CoachFeature(api, voice, soft, clock, zone, msg, settings.workout_reminder_time)]
+    if languages is not None:
+        coach.append(LanguageFeature(languages, msg, voice))
     return [
         CheckinFlow(api, store, clock, zone, msg, voice),
         *coach,

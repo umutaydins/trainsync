@@ -102,13 +102,13 @@ def test_quiet_hours_setting() -> None:
         make_settings(quiet_hours="late")
 
 
-def test_savage_needs_hardcore_and_turkish() -> None:
+def test_savage_needs_hardcore_in_either_language() -> None:
     assert not savage_configured(make_settings())
     assert not savage_configured(make_settings(bot_intensity="savage"))
-    assert not savage_configured(make_settings(bot_intensity="savage", bot_tone="hardcore"))
-    assert savage_configured(
-        make_settings(bot_intensity="savage", bot_tone="hardcore", bot_lang="tr")
-    )
+    for lang in ("en", "tr"):
+        assert savage_configured(
+            make_settings(bot_intensity="savage", bot_tone="hardcore", bot_lang=lang)
+        )
 
 
 async def test_soft_mode_turns_savage_off_until_hardened() -> None:

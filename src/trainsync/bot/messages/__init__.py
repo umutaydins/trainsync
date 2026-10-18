@@ -7,7 +7,7 @@ import random
 from trainsync.bot.messages import hardcore_en, hardcore_tr, neutral_en, neutral_tr
 from trainsync.bot.messages.keys import FIELDS, RESPECTFUL, Key
 from trainsync.bot.messages.neutral import NEUTRAL_FIELDS, NEUTRAL_TEXTS, NeutralKey
-from trainsync.bot.messages.pack import MessagePack, Messages
+from trainsync.bot.messages.pack import CURRENT_LANG, MessagePack, Messages, using_lang
 from trainsync.core.settings import BotLang, BotTone, Settings
 
 PACKS: dict[tuple[BotTone, BotLang], MessagePack] = {
@@ -16,12 +16,22 @@ PACKS: dict[tuple[BotTone, BotLang], MessagePack] = {
 }
 
 
+LANGUAGES: tuple[BotLang, ...] = ("en", "tr")
+
+
 def messages_for(settings: Settings, rng: random.Random | None = None) -> Messages:
-    return Messages(PACKS[settings.bot_tone, settings.bot_lang], rng)
+    """`BOT_TONE` in every language; `BOT_LANG` unless a chat chose another (ADR 0031)."""
+    return Messages(
+        PACKS[settings.bot_tone, settings.bot_lang],
+        rng,
+        languages={lang: PACKS[settings.bot_tone, lang] for lang in LANGUAGES},
+    )
 
 
 __all__ = [
+    "CURRENT_LANG",
     "FIELDS",
+    "LANGUAGES",
     "NEUTRAL_FIELDS",
     "NEUTRAL_TEXTS",
     "PACKS",
@@ -31,4 +41,5 @@ __all__ = [
     "Messages",
     "NeutralKey",
     "messages_for",
+    "using_lang",
 ]
