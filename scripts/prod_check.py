@@ -104,7 +104,15 @@ def check_config() -> None:
             fail(f"{name} must restart unless-stopped")
         if not services[name].get("mem_limit"):
             fail(f"{name} has no memory limit")
-    print("  config: private Postgres/Redis, gateway on 127.0.0.1 only, restarts, memory limits")
+    worker_mounts = services["worker"].get("volumes", [])
+    if not any(v.get("target") == "/backups" for v in worker_mounts) or not all(
+        v.get("read_only") for v in worker_mounts
+    ):
+        fail("the worker must see the backup folder at /backups, read-only (P7.8 alerts)")
+    print(
+        "  config: private Postgres/Redis, gateway on 127.0.0.1 only, restarts, memory limits,"
+        " read-only backup folder in the worker"
+    )
 
 
 def check_missing_secret() -> None:

@@ -227,6 +227,18 @@ class Settings(BaseSettings):
         enabled = self.bot_enabled if self.checkin_enabled is None else self.checkin_enabled
         return enabled and self.bot_enabled and self.notify_chat_id() is not None
 
+    # ---------------------------------------------------------------- stack alerts (P7.8)
+    # The worker checks these every 5 minutes and sends one Telegram message when a condition
+    # starts and one when it clears (ADR 0027). Off while no bot token and chat are set.
+    # Strava circuit breaker not closed for this long.
+    alert_circuit_open_minutes: int = Field(default=30, ge=1, le=1440)
+    # Newest `trainsync-*.dump.age` in BACKUP_DIR older than this. Empty BACKUP_DIR = not checked
+    # (compose.prod.yml mounts the backup folder read-only into the worker).
+    alert_backup_max_age_hours: float = Field(default=36.0, gt=0, le=24 * 30)
+    backup_dir: str = ""
+    # No successful sync for this long while an athlete is connected.
+    alert_sync_stale_hours: float = Field(default=2.0, gt=0, le=24 * 7)
+
 
 @lru_cache
 def get_settings() -> Settings:
