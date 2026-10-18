@@ -17,7 +17,6 @@ from tests.support.openfoodfacts import (
     product_url,
     search_results,
 )
-from trainsync.db.models import FoodGroup
 from trainsync.nutrition.off_client import (
     OffProduct,
     OpenFoodFactsClient,
@@ -165,11 +164,11 @@ def test_parse_product_reads_sugar_and_nova() -> None:
     assert parse_product({**product(), "nova_group": "3"}).nova_group == 3  # type: ignore[union-attr]
 
 
-def test_parse_product_reads_the_food_group_from_categories() -> None:
-    cola = parse_product({**product(sugars_100g=10.6), "categories_tags": ["en:sodas"]})
+def test_parse_product_reads_the_categories() -> None:
+    cola = parse_product({**product(sugars_100g=10.6), "categories_tags": ["en:sodas", 1]})
     assert cola is not None
-    assert cola.food_group == FoodGroup.SUGARY_DRINK
-    for tags in (None, "en:sodas", [1, None], ["en:cereals"]):
+    assert cola.categories == ("en:sodas",)
+    for tags in (None, "en:sodas"):
         other = parse_product({**product(), "categories_tags": tags})
         assert other is not None
-        assert other.food_group is None
+        assert other.categories == ()

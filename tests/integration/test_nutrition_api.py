@@ -387,6 +387,17 @@ async def test_barcode_lookup_caches_then_answers_locally(api: httpx.AsyncClient
 
 
 @respx.mock
+async def test_a_cached_product_gets_its_food_group_from_the_categories(
+    api: httpx.AsyncClient,
+) -> None:
+    barcode = "5449000000996"
+    cola = {**product(code=barcode, name="Cola"), "categories_tags": ["en:beverages", "en:sodas"]}
+    respx.get(product_url(barcode)).mock(return_value=found(cola))
+    body = await _ok(await api.get(f"{BASE}/foods/lookup", params={"barcode": barcode}))
+    assert body["items"][0]["food_group"] == "sugary_drink"
+
+
+@respx.mock
 async def test_lookup_degrades_gracefully_on_timeout(api: httpx.AsyncClient) -> None:
     await _food(api, name="Oat bar", kcal_100g=410)
     respx.get(SEARCH).mock(side_effect=httpx.ReadTimeout("slow"))

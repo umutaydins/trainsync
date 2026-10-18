@@ -20,6 +20,7 @@ from trainsync.db.models import (
 )
 from trainsync.db.repositories.reads import ActivityFilter
 from trainsync.nutrition.off_client import OffProduct
+from trainsync.nutrition.sugar import food_group_from_categories
 
 MEAL_ORDER = case({m.value: i for i, m in enumerate(Meal)}, value=FoodLog.meal)
 
@@ -101,7 +102,7 @@ class NutritionRepository:
                 "fat_100g": p.fat_100g,
                 "sugars_100g": p.sugars_100g,
                 "nova_group": p.nova_group,
-                "food_group": p.food_group,
+                "food_group": food_group_from_categories(p.categories),
                 "source": FoodSource.OPENFOODFACTS.value,
             }
             for p in unique.values()
