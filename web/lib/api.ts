@@ -28,7 +28,7 @@ function rangeQuery(from?: string, to?: string, sportType?: string): RangeQuery 
   return { from, to, sport_type: sportType };
 }
 
-async function getJson<T>(path: string, query: object = {}): Promise<T> {
+export async function getJson<T>(path: string, query: object = {}): Promise<T> {
   const result = await upstreamGet(path, toSearchParams(query));
   if (!result.ok) throw new ApiError(result.status, result.error);
   return result.data as T;

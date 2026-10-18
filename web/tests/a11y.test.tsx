@@ -13,8 +13,14 @@ import { SportBreakdown } from "@/components/dashboard/sport-breakdown";
 import { WeeklyChart } from "@/components/dashboard/weekly-chart";
 import { LoginForm } from "@/components/login-form";
 import { SyncStatusView } from "@/components/sync/sync-status-view";
+import { PlateBar } from "@/components/training/plate-bar";
+import { ProgramBuilder } from "@/components/training/program-builder";
+import { RestTimerPanel } from "@/components/training/rest-timer";
+import { WorkoutScreen } from "@/components/training/workout-screen";
+import { WorkoutSummaryCard } from "@/components/training/workout-summary";
 import { ErrorState } from "@/components/ui";
 import { activity, page, summary, syncStatus, week } from "./support/fixtures";
+import { BENCH, CURL, PLATES_MIXED, memoryStore, workout } from "./support/training-fixtures";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -46,6 +52,14 @@ describe("accessibility (axe)", () => {
     ["error state", <ErrorState key="e" message="boom" />],
     ["sync status", <SyncStatusView key="ss" initial={syncStatus()} />],
     ["sync status (empty)", <SyncStatusView key="se" initial={syncStatus({ athletes: [], rate_limit: null })} />],
+    ["workout screen", <WorkoutScreen key="ws" initial={workout()} exercises={[BENCH, CURL]} store={memoryStore()} />],
+    [
+      "rest timer",
+      <RestTimerPanel key="rt" rest={{ endsAt: 90_000, durationS: 90, label: "Bench Press · set 1", alerted: false }} now={30_000} onAdjust={() => undefined} onSkip={() => undefined} />,
+    ],
+    ["plate drawing", <PlateBar key="pb" answer={PLATES_MIXED} />],
+    ["workout summary", <WorkoutSummaryCard key="sum" workout={workout({ ended_at: "2026-10-18T18:35:00Z" })} />],
+    ["program builder", <ProgramBuilder key="pbld" initial={[]} exercises={[BENCH, CURL]} />],
   ])("%s has no violations", async (_name, ui) => {
     expect(await violations(ui)).toEqual([]);
   });
