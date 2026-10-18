@@ -28,8 +28,11 @@ src/trainsync/
   sync/           # backfill, incremental sync, webhook processing (job functions)
   db/             # SQLAlchemy models, session, repositories
   core/           # settings, logging, metrics, crypto
+  bot/            # Telegram bot process (long polling, commands, Claude assistant over the read API)
+  notify/         # Notifier interface (Telegram, Null) and the new-activity notification job
   worker.py       # arq WorkerSettings
   main.py         # FastAPI app factory
+web/              # Next.js dashboard (App Router) with a server-side BFF; pnpm, Vitest, Playwright e2e
 fake_strava/      # standalone FastAPI app that imitates the Strava API (dev + tests + load tests)
 tests/
   unit/
