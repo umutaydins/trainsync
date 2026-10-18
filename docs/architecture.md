@@ -26,7 +26,9 @@ being up or my rate-limit budget being available at read time.
 - **Bot process** (`python -m trainsync.bot`, Phase 5): Telegram long polling, deterministic
   summary commands, chat allowlist. A client of the read API (HTTP + API key), never of the
   database (ADR 0012, ADR 0013). Optional natural-language questions: Claude chooses read-API
-  calls through four validated tools, every number comes from the API (ADR 0014).
+  calls through four validated tools, every number comes from the API (ADR 0014). All wording
+  (replies, notifications, the assistant's persona) comes from a message pack chosen by
+  `BOT_TONE` × `BOT_LANG` (ADR 0016).
 - **Web dashboard** (`web/`, Next.js): server-side BFF that holds the API key and forwards
   allowlisted GETs to the read API; the browser never sees the key (ADR 0011).
 - **fake_strava**: a small FastAPI app that mimics the endpoints we use, with configurable

@@ -189,6 +189,7 @@ optional for the API and the worker; the web app needs its three required ones (
 | `ANTHROPIC_API_KEY` | bot | empty | Enables natural-language questions; empty = off |
 | `ASSISTANT_MODEL` | bot | `claude-sonnet-5-5` | Claude model for questions |
 | `ASSISTANT_RATE_LIMIT_PER_HOUR` | bot | `20` | Questions per chat per hour (counted in Redis) |
+| `BOT_TONE`, `BOT_LANG` | bot, worker | `neutral`, `en` | Wording of replies, notifications and the assistant: `neutral` or `hardcore` (a blunt coach, mild profanity, pushes on effort only), `en` or `tr`; compose passes both through ([ADR 0016](docs/decisions/0016-bot-message-packs-and-tone.md)) |
 
 In compose, the `bot` service takes `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_CHAT_IDS`,
 `ANTHROPIC_API_KEY` and `ASSISTANT_MODEL` from your shell or `.env`, and the `worker` takes the Telegram variables and
@@ -291,6 +292,7 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 | [0013](docs/decisions/0013-plain-httpx-for-the-telegram-bot.md) | Plain httpx for the Telegram bot, not aiogram |
 | [0014](docs/decisions/0014-llm-as-a-planner-over-the-read-api.md) | LLM as a planner over the read API, never as a data source |
 | [0015](docs/decisions/0015-signed-oauth-return-to.md) | Allowlisted `return_to` signed into the OAuth state |
+| [0016](docs/decisions/0016-bot-message-packs-and-tone.md) | Bot wording in message packs per tone and language |
 
 ## Status
 - [x] Phase 1 — Foundation, OAuth, Strava client
