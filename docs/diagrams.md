@@ -1193,3 +1193,30 @@ sequenceDiagram
     UI->>LS: read state for workout 42
     LS-->>UI: endsAt, alerted (timer restored, no repeated alert)
 ```
+
+## 21. Sequence — nightly backup and weekly restore check (P7.4, ADR 0024)
+
+```mermaid
+sequenceDiagram
+    participant L as backup loop
+    participant PG as postgres
+    participant D as BACKUP_DIR (iCloud Drive)
+    participant S as scratch Postgres (in the backup container)
+    participant T as Telegram
+    loop every minute
+        L->>D: due? (slot passed, no backup since)
+    end
+    L->>PG: BEGIN REPEATABLE READ; pg_export_snapshot()
+    L->>PG: row counts of every table (same snapshot)
+    L->>PG: pg_dump -Fc --snapshot
+    L->>D: age -r recipient → .name.partial, then rename .counts.json and .dump.age
+    L->>D: retention (7 daily / 4 weekly / 6 monthly)
+    alt restore-check weekday and identity mounted
+        L->>S: age -d (authenticated) → pg_restore
+        L->>S: row counts
+        L->>L: compare with .counts.json
+        L->>T: passed / FAILED
+    else backup failed
+        L->>T: backup FAILED, retry in 1 h
+    end
+```

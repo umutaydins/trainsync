@@ -1,0 +1,3 @@
+# Placeholder mounted as the backup container's age identity while BACKUP_AGE_IDENTITY_FILE is
+# unset in .env.prod. With it, nightly backups still run; the weekly restore check is skipped
+# (and says so on Telegram). Never put a real identity in the repository.
