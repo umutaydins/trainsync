@@ -3,10 +3,11 @@ import "server-only";
 import { serverEnv } from "@/lib/env";
 
 export type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-export type MutationMethod = "POST" | "PUT" | "DELETE";
+export type MutationMethod = "POST" | "PUT" | "PATCH" | "DELETE";
 
 const READ: readonly Method[] = ["GET"];
 const READ_WRITE: readonly Method[] = ["GET", "POST", "PUT", "DELETE"];
+const READ_WRITE_PATCH: readonly Method[] = [...READ_WRITE, "PATCH"];
 
 /**
  * The only API paths and methods the web app may use (ADR 0011). A path that matches no rule is
@@ -19,6 +20,10 @@ export const RULES: readonly { pattern: RegExp; methods: readonly Method[] }[] =
   { pattern: /^\/v1\/stats\/weekly$/, methods: READ },
   { pattern: /^\/v1\/stats\/summary$/, methods: READ },
   { pattern: /^\/v1\/sync\/status$/, methods: READ },
+  // Partial updates of a food (P6.4) or a custom exercise (P6.2) are the only PATCHes; the first
+  // matching rule wins.
+  { pattern: /^\/v1\/nutrition\/foods\/\d{1,20}$/, methods: READ_WRITE_PATCH },
+  { pattern: /^\/v1\/training\/exercises\/\d{1,20}$/, methods: READ_WRITE_PATCH },
   // `/v1/training/**`, `/v1/nutrition/**`, `/v1/checkins/**` (the roots included).
   { pattern: /^\/v1\/(?:training|nutrition|checkins)(?:\/[^/]+)*$/, methods: READ_WRITE },
 ];

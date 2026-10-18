@@ -73,7 +73,9 @@ describe("BFF allowlist (method × path)", () => {
     ["DELETE", "v1/nutrition/log/abc-123", 200],
     ["PUT", "v1/checkins/2026-10-18", 200],
     ["PATCH", "v1/training/workouts/42", 405],
-    ["PATCH", "v1/nutrition/foods/1", 405],
+    ["PATCH", "v1/nutrition/foods/1", 200],
+    ["PATCH", "v1/nutrition/log/abc-123", 405],
+    ["PATCH", "v1/training/exercises/12", 200],
     ["POST", "v1/activities", 405],
     ["PUT", "v1/activities/123", 405],
     ["DELETE", "v1/activities/123", 405],
@@ -91,7 +93,7 @@ describe("BFF allowlist (method × path)", () => {
   ];
 
   it.each(TABLE)("%s %s → %i", async (method, path, status) => {
-    const body = method === "POST" || method === "PUT" ? SET_BODY : undefined;
+    const body = method === "POST" || method === "PUT" || method === "PATCH" ? SET_BODY : undefined;
     const response = await call(method, path, { body });
     expect(response.status).toBe(status);
     expect(fetchMock).toHaveBeenCalledTimes(status === 200 ? 1 : 0);

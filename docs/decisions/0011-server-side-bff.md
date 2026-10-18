@@ -52,7 +52,7 @@ part needs no BFF change.
 - **Rejections, in this order** (all `{error}` JSON, `Cache-Control: no-store`, nothing forwarded):
   1. no valid session → `401` (proxy.ts, unchanged);
   2. path matches no rule → `404` (unchanged for reads); path matches with another method
-     (e.g. `PATCH` anywhere, `POST /v1/sync/status`) → `405` with `Allow`;
+     (e.g. `PATCH` outside `/v1/nutrition/foods/{id}` and `/v1/training/exercises/{id}`, `POST /v1/sync/status`) → `405` with `Allow`;
   3. mutation whose `Origin` (or, without one, `Referer`) is not the dashboard's origin → `403`;
   4. mutation without a valid `X-CSRF-Token` equal to the `ts_csrf` cookie → `403`;
   5. `POST`/`PUT` without `Content-Type: application/json` (a `DELETE` may have no body; if it has
@@ -109,7 +109,7 @@ part needs no BFF change.
 - Every browser read costs one extra hop (web → API) inside the same network; negligible here.
 - New read endpoints must be added to the allowlist in `lib/upstream.ts` deliberately. Anything
   new under `/v1/training`, `/v1/nutrition` or `/v1/checkins` is reachable (GET/POST/PUT/DELETE)
-  without a BFF change; other prefixes and `PATCH` need a new row in `RULES`.
+  without a BFF change; other prefixes need a new row in `RULES`. `PATCH` is allowed only on `/v1/nutrition/foods/{id}` and `/v1/training/exercises/{id}` (partial updates).
 - Writes only work when the dashboard is opened at exactly `WEB_PUBLIC_URL` (scheme, host and
   port): `http://127.0.0.1:3000` against `http://localhost:3000` gets 403 on every write.
 - The dashboard password is the only secret between the internet and the data if `web` is exposed:

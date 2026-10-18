@@ -6,7 +6,7 @@ import { CSRF_HEADER, readCsrfCookie } from "@/lib/csrf-cookie";
  * Never throws for HTTP or network errors; callers branch on `ok`.
  */
 
-export type MutationMethod = "POST" | "PUT" | "DELETE";
+export type MutationMethod = "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type MutationResult<T> =
   | { ok: true; status: number; data: T | null }
@@ -71,6 +71,9 @@ export const post = <T>(path: string, body?: unknown, options?: MutateOptions) =
 
 export const put = <T>(path: string, body?: unknown, options?: MutateOptions) =>
   mutate<T>("PUT", path, body, options);
+
+export const patch = <T>(path: string, body?: unknown, options?: MutateOptions) =>
+  mutate<T>("PATCH", path, body, options);
 
 export const del = <T = null>(path: string, options?: MutateOptions) =>
   mutate<T>("DELETE", path, undefined, options);
