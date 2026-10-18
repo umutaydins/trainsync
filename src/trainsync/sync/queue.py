@@ -13,6 +13,17 @@ class JobQueue(Protocol):
     async def enqueue_webhook_event(self, event_id: int) -> bool: ...
 
 
+class CoachEvents(Protocol):
+    """Workout events the worker's coach reacts to (P6.11, ADR 0030)."""
+
+    async def coach_event(self, job: str, object_id: int) -> None: ...
+
+
+COACH_EVENT_JOBS = frozenset(
+    {"coach_workout_started", "coach_set_logged", "coach_workout_finished"}
+)
+
+
 def backfill_job_id(athlete_id: int) -> str:
     return f"backfill:{athlete_id}"
 
@@ -50,6 +61,13 @@ class ArqJobQueue:
             "process_webhook_event", event_id, _job_id=webhook_job_id(event_id)
         )
         return job is not None
+
+    async def coach_event(self, job: str, object_id: int) -> None:
+        """Queue a coach job once per object (the job id dedupes; the worker's `notifications`
+        claim dedupes the message itself)."""
+        if job not in COACH_EVENT_JOBS:
+            raise ValueError(f"unknown coach job {job!r}")
+        await self.pool.enqueue_job(job, object_id, _job_id=f"{job}:{object_id}")
 
 
 def redis_settings(settings: Settings) -> RedisSettings:

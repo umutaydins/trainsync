@@ -40,6 +40,17 @@ def is_dev_default(value: str) -> bool:
 # Wording of every bot reply, notification and assistant prompt (ADR 0016).
 BotTone = Literal["neutral", "hardcore"]
 BotLang = Literal["en", "tr"]
+# How hard the hardcore coach gets (ADR 0030): `savage` is an explicit opt-in.
+BotIntensity = Literal["normal", "savage"]
+
+
+def parse_quiet_hours(value: str) -> tuple[time, time]:
+    """`"23:00-07:00"` → (23:00, 07:00); an empty window ("00:00-00:00") means never quiet."""
+    try:
+        start, end = (time.fromisoformat(part.strip()) for part in value.split("-"))
+    except ValueError as exc:
+        raise ValueError(f"QUIET_HOURS must look like 23:00-07:00, got {value!r}") from exc
+    return start, end
 
 
 class Settings(BaseSettings):
@@ -241,6 +252,42 @@ class Settings(BaseSettings):
     backup_dir: str = ""
     # No successful sync for this long while an athlete is connected.
     alert_sync_stale_hours: float = Field(default=2.0, gt=0, le=24 * 7)
+
+    # ---------------------------------------------------------------- coach (P6.11, ADR 0030)
+    # `savage` is the owner's explicit opt-in to an unrestricted, roasting coach (with
+    # BOT_TONE=hardcore and BOT_LANG=tr); the guardrails hold in every intensity.
+    bot_intensity: BotIntensity = "normal"
+    # Timed coach messages (reminders, rest over, verdicts): on with a bot token and a chat.
+    coach_messages_enabled: bool | None = None
+    # Start time of a program day that has none of its own (local time, CHECKIN_TZ).
+    workout_reminder_time: time = time(18, 0)
+    # No proactive coach message in this local window ("HH:MM-HH:MM", may wrap midnight).
+    quiet_hours: str = "23:00-07:00"
+    # The owner's own extra lines, merged into the savage pack (git-ignored; optional).
+    coach_messages_file: str = "config/messages.local.yaml"
+
+    @field_validator("coach_messages_enabled", mode="before")
+    @classmethod
+    def _empty_coach_bool_as_none(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @field_validator("quiet_hours")
+    @classmethod
+    def _valid_quiet_hours(cls, value: str) -> str:
+        parse_quiet_hours(value)
+        return value
+
+    @property
+    def quiet_window(self) -> tuple[time, time]:
+        return parse_quiet_hours(self.quiet_hours)
+
+    @property
+    def coach_active(self) -> bool:
+        """Timed coach messages go out: a bot token, a target chat, and not switched off."""
+        enabled = (
+            self.bot_enabled if self.coach_messages_enabled is None else self.coach_messages_enabled
+        )
+        return enabled and self.bot_enabled and self.notify_chat_id() is not None
 
 
 @lru_cache

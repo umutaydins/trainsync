@@ -1,0 +1,27 @@
+# Copy to config/messages.local.yaml (git-ignored) and add your own lines. They are merged into
+# the savage pack (BOT_INTENSITY=savage, BOT_TONE=hardcore, BOT_LANG=tr) and sent verbatim.
+# Same categories as src/trainsync/coach/savage_tr.py; any category may be left out. A line that
+# breaks a guardrail (body/weight/appearance, slurs, calorie punishment) is dropped at startup
+# and logged as `coach_local_line_dropped`. Profanity is fine.
+excuse:
+  - "Bahaneni duydum. Şimdi ayakkabını giy."
+missed_workout:
+  - "Bugün yoktun. Yarın iki kere hatırlatacağım."
+under_target:
+  - "Eksik kaldı. Sıradaki seti tam yap."
+workout_start:
+  - "Başladık. Sadece işini yap."
+rest_over:
+  - "Kalk, sıradaki set."
+workout_done_good:
+  - "Temiz iş."
+workout_done_bad:
+  - "Yarım kaldı. Bir dahakine bitir."
+reminder_before:
+  - "Yarım saat var. Hazırlan."
+reminder_now:
+  - "Saat geldi."
+escalation:
+  - "Hâlâ bekliyorum."
+punchline_en:
+  - "Do it anyway."

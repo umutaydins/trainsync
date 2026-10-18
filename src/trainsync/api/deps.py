@@ -12,7 +12,7 @@ from trainsync.core.clock import Clock
 from trainsync.core.crypto import TokenCipher
 from trainsync.core.settings import Settings
 from trainsync.strava.client import StravaClient
-from trainsync.sync.queue import JobQueue
+from trainsync.sync.queue import CoachEvents, JobQueue
 
 
 def get_settings_dep(request: Request) -> Settings:
@@ -43,6 +43,11 @@ def get_strava_client(request: Request) -> StravaClient:
 def get_redis(request: Request) -> Redis:
     redis: Redis = request.app.state.redis
     return redis
+
+
+def get_coach_events(request: Request) -> CoachEvents:
+    events: CoachEvents = request.app.state.job_queue
+    return events
 
 
 def get_job_queue(request: Request) -> JobQueue:
@@ -80,4 +85,5 @@ SessionmakerDep = Annotated[async_sessionmaker[AsyncSession], Depends(get_sessio
 CipherDep = Annotated[TokenCipher, Depends(get_cipher)]
 StravaDep = Annotated[StravaClient, Depends(get_strava_client)]
 JobQueueDep = Annotated[JobQueue, Depends(get_job_queue)]
+CoachEventsDep = Annotated[CoachEvents, Depends(get_coach_events)]
 RedisDep = Annotated[Redis, Depends(get_redis)]

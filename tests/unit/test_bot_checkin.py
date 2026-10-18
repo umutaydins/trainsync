@@ -1,6 +1,9 @@
 """P6.9: every path of the check-in conversation, against the fake Telegram API and the stubbed
 trainsync API (both respx), with the state store in memory."""
 
+# Turkish text: the dotless i (U+0131) is a letter here, not a confusable.
+# ruff: noqa: RUF001
+
 import json
 import random
 from collections.abc import AsyncIterator, Iterator
@@ -27,10 +30,15 @@ from trainsync.bot.checkin import (
     workout_client_id,
 )
 from trainsync.bot.handlers import Commands, Dispatcher
-from trainsync.bot.messages import PACKS, Key, Messages
+from trainsync.bot.messages import PACKS, Key, Messages, NeutralKey
 from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import TelegramApi, Update
 from trainsync.bot.training import TrainingCommands
+from trainsync.coach.categories import Category
+from trainsync.coach.lines import MemoryRecentStore, load_pack
+from trainsync.coach.mode import CoachMode, MemorySoftModeStore
+from trainsync.coach.savage_tr import LINES
+from trainsync.coach.voice import CoachVoice
 
 NOW = datetime(2026, 10, 18, 18, 5, tzinfo=UTC)  # 21:05 in Istanbul
 DAY = "2026-10-18"
@@ -123,7 +131,11 @@ class Chat:
 
 
 def make_chat(
-    http: httpx.AsyncClient, router: respx.MockRouter, store: MemoryStateStore, msg: Messages = MSG
+    http: httpx.AsyncClient,
+    router: respx.MockRouter,
+    store: MemoryStateStore,
+    msg: Messages = MSG,
+    voice: CoachVoice | None = None,
 ) -> Chat:
     telegram = TelegramApi(http, SecretStr(BOT_TOKEN), base_url=TELEGRAM)
     api = ReadApi(http, API, SecretStr("bot-key"))
@@ -134,7 +146,7 @@ def make_chat(
         {CHAT},
         msg,
         features=[
-            CheckinFlow(api, store, clock, ZONE, msg),
+            CheckinFlow(api, store, clock, ZONE, msg, voice),
             TrainingCommands(api, store, clock, ZONE, msg),
         ],
     )
@@ -358,6 +370,51 @@ async def test_hardcore_pushes_only_on_a_skip_without_reason(
     first_line = reply.splitlines()[0]
     assert first_line in pack.texts[Key.CHECKIN_SKIPPED_NO_REASON]
     assert first_line != PACKS["neutral", "en"].texts[Key.CHECKIN_SKIPPED_NO_REASON][0]
+
+
+def savage_voice(msg: Messages) -> CoachVoice:
+    return CoachVoice(
+        msg=msg,
+        mode=CoachMode(configured=True, soft=MemorySoftModeStore()),
+        pack=load_pack(None),
+        recent=MemoryRecentStore(),
+        rng=random.Random(2),
+    )
+
+
+async def test_savage_roasts_a_skip_without_a_reason(
+    http: httpx.AsyncClient, router: respx.MockRouter, fake: FakeApi
+) -> None:
+    msg = Messages(PACKS["hardcore", "tr"], random.Random(3))
+    chat = make_chat(http, router, MemoryStateStore(), msg, savage_voice(msg))
+    await chat.say("/report")
+    await chat.tap("❌ Atladım")
+    reply = await chat.tap("Geç")
+    assert any(reply.startswith(line) for line in LINES[Category.MISSED_WORKOUT]), reply
+
+
+async def test_savage_roasts_an_excuse_given_as_the_reason(
+    http: httpx.AsyncClient, router: respx.MockRouter, fake: FakeApi
+) -> None:
+    msg = Messages(PACKS["hardcore", "tr"], random.Random(3))
+    chat = make_chat(http, router, MemoryStateStore(), msg, savage_voice(msg))
+    await chat.say("/report")
+    await chat.tap("❌ Atladım")
+    reply = await chat.say("canım istemedi")
+    assert any(reply.startswith(line) for line in LINES[Category.EXCUSE]), reply
+
+
+async def test_a_pain_reason_is_never_roasted_even_in_savage(
+    http: httpx.AsyncClient, router: respx.MockRouter, fake: FakeApi
+) -> None:
+    msg = Messages(PACKS["hardcore", "tr"], random.Random(3))
+    chat = make_chat(http, router, MemoryStateStore(), msg, savage_voice(msg))
+    await chat.say("/report")
+    await chat.tap("❌ Atladım")
+    reply = await chat.say("dizim ağrıyor, canım istemedi")
+    assert reply.startswith(msg(Key.CHECKIN_SICK_SAVED))
+    assert msg.neutral(NeutralKey.SAFETY_PAIN) in reply
+    assert not any(line in reply for c in Category for line in LINES[c])
 
 
 @pytest.mark.parametrize(

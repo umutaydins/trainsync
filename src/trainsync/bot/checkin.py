@@ -54,6 +54,9 @@ from trainsync.bot.parsing import (
 from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import Button, Keyboard
 from trainsync.bot.training import plan_text, record_lines, suggested_load, todays_workout
+from trainsync.coach.categories import Category
+from trainsync.coach.guardrails import Trigger, excuse_kind, mentions_pain
+from trainsync.coach.voice import CoachVoice
 from trainsync.core.clock import Clock
 from trainsync.core.localtime import local_today
 from trainsync.db.models import CheckinStatus, Equipment
@@ -166,13 +169,21 @@ class CheckinFlow:
     commands = frozenset({"report"})
 
     def __init__(
-        self, api: ReadApi, store: StateStore, clock: Clock, zone: ZoneInfo, msg: Messages
+        self,
+        api: ReadApi,
+        store: StateStore,
+        clock: Clock,
+        zone: ZoneInfo,
+        msg: Messages,
+        voice: CoachVoice | None = None,
     ) -> None:
         self._api = api
         self._store = store
         self._clock = clock
         self._zone = zone
         self._msg = msg
+        # Savage roasts for a skip (P6.11, ADR 0030); None = the tone packs only.
+        self._voice = voice
 
     # ---------------------------------------------------------------- Feature
 
@@ -337,7 +348,7 @@ class CheckinFlow:
             return await self._freeform(chat_id, day, state, text)
         if state.step == "reason":
             state.reason = text[:500] or None
-            return await self._ask(chat_id, day, state, "scale", [msg(Key.CHECKIN_REASON_SAVED)])
+            return await self._ask(chat_id, day, state, "scale", await self._reason_reply(text))
         return await self._quick_answer(chat_id, day, state, text)
 
     async def _freeform(self, chat_id: int, day: date, state: FlowState, text: str) -> Reply:
@@ -404,9 +415,21 @@ class CheckinFlow:
     ) -> Reply:
         return await self._ask(chat_id, day, state, "scale", lines)
 
+    async def _reason_reply(self, reason: str) -> list[str]:
+        """Pain or illness: calm, in every tone (ADR 0030). An excuse in savage: roasted.
+        Anything else: noted."""
+        if mentions_pain(reason):
+            return [self._msg(Key.CHECKIN_SICK_SAVED), self._msg.neutral(NeutralKey.SAFETY_PAIN)]
+        if self._voice and await self._voice.savage() and excuse_kind(reason) is Trigger.EXCUSE:
+            return [await self._voice.roast(Category.EXCUSE)]
+        return [self._msg(Key.CHECKIN_REASON_SAVED)]
+
     async def _skip_question(self, chat_id: int, day: date, state: FlowState) -> Reply:
         if state.step == "reason":
-            lines = [self._msg(Key.CHECKIN_SKIPPED_NO_REASON)]
+            if self._voice and await self._voice.savage():
+                lines = [await self._voice.roast(Category.MISSED_WORKOUT)]
+            else:
+                lines = [self._msg(Key.CHECKIN_SKIPPED_NO_REASON)]
             return await self._ask(chat_id, day, state, "scale", lines)
         return await self._advance_quick(chat_id, day, state, [])
 

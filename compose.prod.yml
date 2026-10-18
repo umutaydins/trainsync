@@ -29,6 +29,11 @@ x-app-env: &app-env
   TELEGRAM_NOTIFY_CHAT_ID: ${TELEGRAM_NOTIFY_CHAT_ID:-}
   BOT_TONE: ${BOT_TONE:-neutral}
   BOT_LANG: ${BOT_LANG:-en}
+  # Coach (P6.11, ADR 0030): `savage` is the owner's explicit opt-in.
+  BOT_INTENSITY: ${BOT_INTENSITY:-normal}
+  COACH_MESSAGES_ENABLED: ${COACH_MESSAGES_ENABLED:-}
+  WORKOUT_REMINDER_TIME: ${WORKOUT_REMINDER_TIME:-18:00}
+  QUIET_HOURS: ${QUIET_HOURS:-23:00-07:00}
   CHECKIN_ENABLED: ${CHECKIN_ENABLED:-}
   CHECKIN_TIME: ${CHECKIN_TIME:-21:00}
   CHECKIN_TZ: ${CHECKIN_TZ:-Europe/Istanbul}
@@ -116,6 +121,8 @@ services:
         source: ${BACKUP_HOST_DIR:-${HOME}/Library/Mobile Documents/com~apple~CloudDocs/trainsync-backups}
         target: /backups
         read_only: true
+      # The owner's own coach lines (config/messages.local.yaml, git-ignored; optional).
+      - ./config:/app/config:ro
     mem_limit: 512m
     depends_on:
       postgres: { condition: service_healthy }
@@ -130,6 +137,8 @@ services:
       BOT_API_BASE_URL: http://api:8000
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ASSISTANT_MODEL: ${ASSISTANT_MODEL:-claude-sonnet-5-5}
+    volumes:
+      - ./config:/app/config:ro  # the owner's own coach lines (optional)
     mem_limit: 256m
     depends_on:
       api: { condition: service_healthy }

@@ -9,6 +9,7 @@ trainsync bot
 /done: finish the workout
 /plates 102.5: plates per side
 /report: daily check-in
+/yumusak: soft coach for 24 h · /sert: back to normal
 /eat <food> <grams>: log food, e.g. /eat oats 60
 /kcal: today's intake and macros
 /weight 78.4: today's scale reading
@@ -26,6 +27,7 @@ trainsync bot
 /done: finish the workout
 /plates 102.5: plates per side
 /report: daily check-in
+/yumusak: soft coach for 24 h · /sert: back to normal
 /eat <food> <grams>: log food, e.g. /eat oats 60
 /kcal: today's intake and macros
 /weight 78.4: today's scale reading
@@ -43,6 +45,7 @@ trainsync bot
 /done: finish the workout
 /plates 102.5: plates per side
 /report: daily check-in
+/yumusak: soft coach for 24 h · /sert: back to normal
 /eat <food> <grams>: log food, e.g. /eat oats 60
 /kcal: today's intake and macros
 /weight 78.4: today's scale reading

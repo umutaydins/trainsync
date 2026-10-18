@@ -174,6 +174,7 @@ NON_STRAVA_HTTP_CLIENTS = {
     "bot/read_api.py",
     "notify/jobs.py",
     "notify/checkin.py",
+    "notify/coach.py",
     "nutrition/off_client.py",
 }
 

@@ -9,7 +9,13 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from trainsync.api.activities import as_utc
-from trainsync.api.deps import ClockDep, SessionmakerDep, SettingsDep, require_api_key
+from trainsync.api.deps import (
+    ClockDep,
+    CoachEventsDep,
+    SessionmakerDep,
+    SettingsDep,
+    require_api_key,
+)
 from trainsync.api.errors import UNAUTHORIZED, error
 from trainsync.api.training.common import (
     EXERCISE_EXAMPLE,
@@ -25,6 +31,7 @@ from trainsync.api.training.common import (
     encode_cursor,
     entry,
 )
+from trainsync.core.logging import get_logger
 from trainsync.core.settings import Settings
 from trainsync.db.models import LOWER_BODY, Workout, WorkoutSet
 from trainsync.db.models import Progression as ProgressionKind
@@ -35,8 +42,11 @@ from trainsync.db.repositories.training import (
     WorkoutKeyset,
     WorkoutRepository,
 )
+from trainsync.sync.queue import CoachEvents
 from trainsync.training.math import detect_prs, volume
 from trainsync.training.progression import Action, Rules, Suggestion, suggest
+
+log = get_logger(__name__)
 
 router = APIRouter(
     prefix="/v1/training", tags=["training"], dependencies=[Depends(require_api_key)]
@@ -302,6 +312,14 @@ def progression_rules(settings: Settings) -> Rules:
     )
 
 
+async def coach_event(events: CoachEvents, job: str, object_id: int) -> None:
+    """Best effort (ADR 0030): a queue problem is logged, never fails the write it follows."""
+    try:
+        await events.coach_event(job, object_id)
+    except Exception as exc:
+        log.warning("coach_event_not_queued", job=job, object_id=object_id, error=str(exc))
+
+
 async def workout_detail(session: AsyncSession, workout: Workout, rules: Rules) -> WorkoutDetail:
     repo = WorkoutRepository(session)
     sets = await repo.sets([workout.id])
@@ -353,6 +371,7 @@ async def start_workout(
     sessionmaker: SessionmakerDep,
     settings: SettingsDep,
     clock: ClockDep,
+    events: CoachEventsDep,
     response: Response,
     client_id: Annotated[uuid.UUID, Path(examples=[SUMMARY_EXAMPLE["client_id"]])],
     body: Annotated[
@@ -376,7 +395,10 @@ async def start_workout(
             client_id, as_utc(body.started_at) or clock(), body.program_day_id, body.notes
         )
         response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-        return await workout_detail(session, workout, progression_rules(settings))
+        detail = await workout_detail(session, workout, progression_rules(settings))
+    if created:
+        await coach_event(events, "coach_workout_started", detail.id)
+    return detail
 
 
 @router.get(
@@ -444,6 +466,7 @@ async def finish_workout(
     sessionmaker: SessionmakerDep,
     settings: SettingsDep,
     clock: ClockDep,
+    events: CoachEventsDep,
     workout_id: Annotated[int, Path(examples=[42])],
     body: Annotated[
         WorkoutFinish | None,
@@ -463,7 +486,9 @@ async def finish_workout(
         if body.notes is not None:
             workout.notes = body.notes
         await session.flush()
-        return await workout_detail(session, workout, progression_rules(settings))
+        detail = await workout_detail(session, workout, progression_rules(settings))
+    await coach_event(events, "coach_workout_finished", detail.id)
+    return detail
 
 
 @router.delete(
@@ -503,6 +528,7 @@ async def delete_workout(
 )
 async def put_set(
     sessionmaker: SessionmakerDep,
+    events: CoachEventsDep,
     response: Response,
     workout_id: Annotated[int, Path(examples=[42])],
     client_id: Annotated[uuid.UUID, Path(examples=[SET_EXAMPLE["client_id"]])],
@@ -528,6 +554,8 @@ async def put_set(
         row, created = result
         out = SetOut.from_row(row)
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+    if created:
+        await coach_event(events, "coach_set_logged", row.id)
     return out
 
 

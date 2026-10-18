@@ -2447,7 +2447,9 @@
               }
             ],
             "program_id": 3,
-            "program_name": "Upper/Lower"
+            "program_name": "Upper/Lower",
+            "start_time": "18:00:00",
+            "weekday": 0
           }
         ],
         "properties": {
@@ -2490,6 +2492,31 @@
           "program_name": {
             "title": "Program Name",
             "type": "string"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Local start time; null = WORKOUT_REMINDER_TIME",
+            "title": "Start Time"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "0 = Monday; null = default spread (ADR 0030)",
+            "title": "Weekday"
           }
         },
         "required": [
@@ -3206,6 +3233,33 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Local start time (CHECKIN_TZ). Null: WORKOUT_REMINDER_TIME",
+            "title": "Start Time"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "maximum": 6.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "0 = Monday. Null: the default spread by days per week (ADR 0030)",
+            "title": "Weekday"
           }
         },
         "required": [
@@ -3230,6 +3284,33 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Local start time (CHECKIN_TZ). Null: WORKOUT_REMINDER_TIME",
+            "title": "Start Time"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "maximum": 6.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "0 = Monday. Null: the default spread by days per week (ADR 0030)",
+            "title": "Weekday"
           }
         },
         "required": [
@@ -3259,6 +3340,31 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Local start time; null = default",
+            "title": "Start Time"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "0 = Monday; null = default spread",
+            "title": "Weekday"
           }
         },
         "required": [
@@ -3492,7 +3598,9 @@
                   }
                 ],
                 "id": 11,
-                "name": "Upper A"
+                "name": "Upper A",
+                "start_time": "18:00:00",
+                "weekday": 0
               }
             ],
             "days_per_week": 4,

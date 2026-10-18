@@ -110,6 +110,25 @@ class Key(StrEnum):
     CHECKIN_SUMMARY_STREAK = "checkin.summary.streak"
     CHECKIN_STALE = "checkin.stale"
 
+    # Coach (P6.11, ADR 0030): timed messages and their facts, in normal intensity.
+    COACH_REMINDER_BEFORE = "coach.reminder_before"
+    COACH_REMINDER_NOW = "coach.reminder_now"
+    COACH_NUDGE = "coach.nudge"
+    COACH_MISSED = "coach.missed"
+    COACH_WORKOUT_START = "coach.workout_start"
+    COACH_REST_OVER = "coach.rest_over"
+    COACH_UNDER_TARGET = "coach.under_target"
+    COACH_DONE_GOOD = "coach.done_good"
+    COACH_DONE_BAD = "coach.done_bad"
+    COACH_SOFT_ON = "coach.soft_on"
+    COACH_SOFT_OFF = "coach.soft_off"
+    COACH_FACT_SESSION = "coach.fact.session"
+    COACH_FACT_UNDER = "coach.fact.under"
+    COACH_FACT_MISSING = "coach.fact.missing"
+    COACH_ACTION_PLANNED = "coach.action.planned"
+    COACH_ACTION_FALLBACK = "coach.action.fallback"
+    COACH_FREE_WORKOUT = "coach.free_workout"
+
 
 def _fields(*names: str) -> frozenset[str]:
     return frozenset(names)
@@ -203,6 +222,23 @@ FIELDS: Mapping[Key, frozenset[str]] = {
     Key.CHECKIN_SUMMARY_WORKOUT: _fields("count", "volume"),
     Key.CHECKIN_SUMMARY_STREAK: _fields("days"),
     Key.CHECKIN_STALE: _fields(),
+    Key.COACH_REMINDER_BEFORE: _fields("day", "time"),
+    Key.COACH_REMINDER_NOW: _fields("day", "time"),
+    Key.COACH_NUDGE: _fields("day", "time"),
+    Key.COACH_MISSED: _fields("day"),
+    Key.COACH_WORKOUT_START: _fields("day"),
+    Key.COACH_REST_OVER: _fields(),
+    Key.COACH_UNDER_TARGET: _fields("exercise", "done", "target"),
+    Key.COACH_DONE_GOOD: _fields(),
+    Key.COACH_DONE_BAD: _fields("missing"),
+    Key.COACH_SOFT_ON: _fields(),
+    Key.COACH_SOFT_OFF: _fields(),
+    Key.COACH_FACT_SESSION: _fields("day", "time"),
+    Key.COACH_FACT_UNDER: _fields("exercise", "done", "target"),
+    Key.COACH_FACT_MISSING: _fields("missing"),
+    Key.COACH_ACTION_PLANNED: _fields("day", "time"),
+    Key.COACH_ACTION_FALLBACK: _fields(),
+    Key.COACH_FREE_WORKOUT: _fields(),
 }
 
 # Answers that stay calm in every tone: no pushing on rest or on being sick or injured

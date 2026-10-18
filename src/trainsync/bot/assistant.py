@@ -27,6 +27,8 @@ from redis.asyncio import Redis
 
 from trainsync.bot.messages import Key, Messages
 from trainsync.bot.read_api import ReadApi, ReadApiError
+from trainsync.coach.guardrails import violations
+from trainsync.coach.mode import CoachMode
 from trainsync.core.clock import Clock
 from trainsync.core.logging import get_logger
 from trainsync.core.settings import BotLang, BotTone
@@ -44,8 +46,10 @@ You answer questions about one athlete's training, in a Telegram chat, using onl
 
 - Every number in your answer must come from a tool result in this conversation. Never estimate, \
 recall or invent a value. If the tools can't answer the question, say so.
-- Each result carries `last_synced_at`. If it is null, say there is no synced data. If it is \
-more than a day before today, mention how old the data is.
+- Each result carries `last_synced_at`. If it is null, call get_sync_status before answering: \
+with no athletes, say no Strava account is connected yet; with a backfill or incremental run \
+`running` or `paused`, say the first sync is still in progress; only otherwise say there is no \
+synced data. If it is more than a day before today, mention how old the data is.
 - An empty result means no activities in that range: say so, don't guess.
 - Metric units: km with one decimal (convert from metres), hours and minutes, metres of \
 elevation, pace in min/km for runs.
@@ -53,10 +57,31 @@ elevation, pace in min/km for runs.
 - Plain text, no Markdown, at most a few short lines.
 - {language}
 
+{guardrails}
+
 {persona}
 
 Today is {today} ({weekday}).
 """
+
+# Hard limits in every tone and intensity (ADR 0030); the code enforces them too.
+GUARDRAILS = (
+    "Hard limits, whatever the tone: never comment on the athlete's body, weight or appearance; "
+    "no slurs about ethnicity, religion, sexual orientation, disability, gender or similar; if "
+    "the athlete mentions pain, injury, illness, dizziness, chest pain or the like, drop any "
+    "push or roast and tell them to rest and, if it is serious or persists, see a doctor; never "
+    "push eating below their nutrition target and never suggest 'burning off' food or exercise "
+    "as punishment for eating. Food: eat it, log it, stay in the daily target."
+)
+# BOT_INTENSITY=savage (ADR 0030): the owner's explicit opt-in.
+SAVAGE = (
+    "Intensity: SAVAGE. The user explicitly asked for this tone and set it himself: you are his "
+    'brutal coach ("Koç"). Profanity has no limit: swear as hard as you like in Turkish. Roast '
+    "excuses, skipped workouts and weak effort without mercy, compared with his program and "
+    "history from the tools, then always give one concrete action for today. Keep it short. You "
+    "may end with a short, original English punchline (cold, quotable, never a quote of a real "
+    "person). The hard limits above still apply and override this paragraph."
+)
 
 # BOT_TONE / BOT_LANG (ADR 0016). The persona changes the wording, never the numbers.
 PERSONAS: dict[BotTone, str] = {
@@ -262,12 +287,15 @@ class Assistant:
         *,
         max_tool_calls: int = MAX_TOOL_CALLS,
         timeout_s: float = TIMEOUT_S,
+        mode: CoachMode | None = None,
     ) -> None:
         self._planner = planner
         self._api = read_api
         self._limiter = limiter
         self._clock = clock
         self._msg = msg
+        # The effective intensity (savage unless soft mode); None = never savage.
+        self._mode = mode
         self._max_tool_calls = max_tool_calls
         self._timeout_s = timeout_s
 
@@ -286,7 +314,8 @@ class Assistant:
             return self._msg(Key.ASSISTANT_UNAVAILABLE)
 
     async def _loop(self, question: str) -> str:
-        system = system_prompt(self._clock(), self._msg.tone, self._msg.lang)
+        savage = self._mode is not None and await self._mode.savage()
+        system = system_prompt(self._clock(), self._msg.tone, self._msg.lang, savage=savage)
         messages: list[BetaMessageParam] = [{"role": "user", "content": question}]
         calls = 0
         over_limit = False
@@ -296,7 +325,7 @@ class Assistant:
                 return self._msg(Key.ASSISTANT_REFUSED)
             tool_uses = [b for b in response.content if isinstance(b, BetaToolUseBlock)]
             if not tool_uses:
-                return _text(response) or self._msg(Key.ASSISTANT_UNAVAILABLE)
+                return self._guarded(_text(response)) or self._msg(Key.ASSISTANT_UNAVAILABLE)
             if over_limit:
                 return self._msg(
                     Key.ASSISTANT_TOO_MANY_CALLS
@@ -311,6 +340,15 @@ class Assistant:
                 else:
                     results.append(await self._run(tool_use))
             messages.append({"role": "user", "content": results})
+
+    def _guarded(self, reply: str) -> str:
+        """A generated reply that breaks a guardrail (body shaming, slurs, food punishment) is
+        never sent: the neutral fallback goes out instead (ADR 0030). Profanity passes."""
+        broken = violations(reply, line=False)
+        if broken:
+            log.warning("assistant_reply_blocked", reasons=[v.value for v in broken])
+            return self._msg(Key.ASSISTANT_UNAVAILABLE)
+        return reply
 
     async def _run(self, tool_use: BetaToolUseBlock) -> BetaToolResultBlockParam:
         try:
@@ -350,13 +388,17 @@ class Assistant:
         raise ToolError(f"Unknown tool {name!r}")
 
 
-def system_prompt(now: datetime, tone: BotTone = "neutral", lang: BotLang = "en") -> str:
+def system_prompt(
+    now: datetime, tone: BotTone = "neutral", lang: BotLang = "en", *, savage: bool = False
+) -> str:
     today = now.date()
+    persona = f"{PERSONAS[tone]}\n\n{SAVAGE}" if savage else PERSONAS[tone]
     return SYSTEM_PROMPT.format(
         today=today.isoformat(),
         weekday=today.strftime("%A"),
         language=LANGUAGES[lang],
-        persona=PERSONAS[tone],
+        persona=persona,
+        guardrails=GUARDRAILS,
     )
 
 

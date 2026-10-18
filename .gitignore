@@ -31,3 +31,6 @@ loadtest/results/*
 .vscode/
 coverage.xml
 QUESTIONS.md
+
+# The owner's own coach lines (P6.11): local only.
+config/messages.local.yaml
