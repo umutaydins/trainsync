@@ -81,6 +81,18 @@ jobs:
           docker image inspect trainsync:ci --format '{{.Size}}' \
             | awk '{printf "image size: %.0f MB\n", $1/1e6}'
 
+  prod-check:
+    # compose.prod.yml with dummy secrets (P7.1): private DB/Redis, gateway allowlist, fail-fast.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: make prod-check
+
   compose:
     runs-on: ubuntu-latest
     timeout-minutes: 20

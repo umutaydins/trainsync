@@ -1,0 +1,47 @@
+# The only paths the public gateway forwards to the API (P7.1). Everything else is 404.
+# This file is the single place to change the public surface: `scripts/render_gateway.py` renders
+# deploy/gateway/Caddyfile from it, `make prod-check` builds its curl matrix from it, and
+# tests/unit/test_gateway_routes.py checks both. Later phases add exceptions here (e.g. the
+# Phase 8 import upload with a larger body limit).
+#
+# path        Caddy path matcher; a trailing `*` is a prefix match.
+# max_body    request body limit (Caddy size, e.g. 64KB).
+# rate_limit  optional per-client-IP limit: `<events>/<window>` (window in Caddy duration units).
+# probe       a path `make prod-check` requests to prove the route is forwarded.
+# when_env    optional: only routed when this env var is "true" in the gateway container.
+
+[[route]]
+name = "webhooks"
+paths = ["/webhooks/strava", "/webhooks/strava/*"]
+max_body = "64KB"
+probe = "/webhooks/strava"
+
+[[route]]
+name = "auth"
+paths = ["/auth/strava/*"]
+max_body = "16KB"
+rate_limit = "20/1m"
+probe = "/auth/strava/login"
+
+[[route]]
+name = "api"
+paths = ["/v1/*"]
+max_body = "1MB"
+probe = "/v1/sync/status"
+
+[[route]]
+name = "health"
+paths = ["/health/*"]
+max_body = "1KB"
+probe = "/health/live"
+
+[[route]]
+name = "docs"
+paths = ["/docs", "/docs/*", "/openapi.json"]
+max_body = "1KB"
+probe = "/openapi.json"
+when_env = "EXPOSE_DOCS"
+
+# Paths `make prod-check` expects to be 404 (with EXPOSE_DOCS unset).
+[blocked]
+probes = ["/", "/metrics", "/docs", "/openapi.json", "/redoc", "/webhooks", "/auth", "/v2/x", "/healthz", "/v1"]

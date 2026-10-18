@@ -8,7 +8,7 @@ from functools import lru_cache
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic import Field, SecretStr, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from trainsync.training.plates import DEFAULT_INVENTORY, parse_inventory
@@ -230,4 +230,22 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()  # type: ignore[call-arg]  # required fields come from the environment
+    try:
+        return Settings()  # type: ignore[call-arg]  # required fields come from the environment
+    except ValidationError as exc:
+        # Fail fast with the variable names, not a pydantic traceback (and never the values).
+        raise SystemExit(settings_error(exc)) from None
+
+
+def settings_error(exc: ValidationError) -> str:
+    """`trainsync: missing or invalid settings: TOKEN_ENCRYPTION_KEY (missing), ...`"""
+    problems = []
+    for error in exc.errors():
+        name = "_".join(str(part) for part in error["loc"][:1]).upper() or "SETTINGS"
+        reason = "missing" if error["type"] == "missing" else "invalid"
+        problems.append(f"{name} ({reason})")
+    return (
+        "trainsync: missing or invalid settings: "
+        + ", ".join(dict.fromkeys(problems))
+        + ". Set them in the environment (production: .env.prod, see .env.prod.example)."
+    )

@@ -5,7 +5,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 UV ?= uv
 
-.PHONY: help install lint format typecheck test-unit test-integration test-fault coverage audit verify \
+.PHONY: help install lint format typecheck test-unit test-integration test-fault coverage audit verify prod-check \
         compose-up compose-down compose-smoke loadtest
 
 help: ## Show targets
@@ -62,6 +62,9 @@ compose-down: ## Stop the local stack and drop volumes
 
 compose-smoke: ## Start the stack, run the OAuth smoke test, tear it down
 	./scripts/compose_smoke.sh
+
+prod-check: ## Production compose with dummy secrets: private DB/Redis, gateway allowlist, fail-fast secrets
+	uv run python scripts/prod_check.py
 
 loadtest: ## Compose stack + 5,000 activities, locust 50 users for 2 min, CSV + summary
 	./scripts/loadtest.sh
