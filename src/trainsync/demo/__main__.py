@@ -1,8 +1,20 @@
-"""`python -m trainsync.demo reset`: wipe the demo database and seed it again (DEMO_MODE only)."""
+"""Demo commands (P7.9, ADR 0028).
+
+    python -m trainsync.demo reset          wipe the database and seed it again (DEMO_MODE only)
+    python -m trainsync.demo exec CMD ...   run CMD with per-process random signing/encryption keys
+
+`exec` is how compose.demo.yml starts the API and the worker: the demo stores no tokens and
+signs no OAuth state (both are refused in demo mode), so a fresh random key per process start is
+enough, and no key-shaped string has to live in the repository or in `.env.demo`.
+"""
 
 import argparse
 import asyncio
+import os
+import secrets
 import sys
+
+from cryptography.fernet import Fernet
 
 from trainsync.core.clock import utc_now
 from trainsync.core.logging import configure_logging
@@ -19,10 +31,25 @@ async def run_reset(settings: Settings) -> ResetSummary:
         await engine.dispose()
 
 
+def generated_keys() -> dict[str, str]:
+    return {
+        "TOKEN_ENCRYPTION_KEY": Fernet.generate_key().decode(),
+        "STATE_SIGNING_KEY": secrets.token_urlsafe(32),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m trainsync.demo", description=__doc__)
-    parser.add_argument("command", choices=["reset"])
-    parser.parse_args(argv)
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("reset", help="wipe and re-seed the demo database")
+    run = commands.add_parser("exec", help="run a command with generated demo keys")
+    run.add_argument("argv", nargs=argparse.REMAINDER)
+    args = parser.parse_args(argv)
+    if args.command == "exec":
+        if not args.argv:
+            parser.error("exec needs a command")
+        os.execvpe(args.argv[0], args.argv, {**os.environ, **generated_keys()})  # noqa: S606
+        return 0  # not reached: exec replaced this process
     settings = get_settings()
     configure_logging(settings)
     try:

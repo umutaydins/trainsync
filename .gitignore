@@ -19,6 +19,7 @@ build/
 .env.*
 !.env.example
 !.env.prod.example
+!.env.demo.example
 
 # Load test output
 loadtest/results/*
