@@ -48,6 +48,21 @@ being up or my rate-limit budget being available at read time.
 Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sport_type, start_date)`,
 `webhook_events (status, received_at)`.
 
+Training (Phase 6, single user, no `athlete_id`):
+
+| Table | Key columns | Notes |
+|---|---|---|
+| `exercises` | `id`, `slug` (unique), `name`, `primary_muscle`, `secondary_muscles` (text[]), `equipment`, `movement_pattern` (nullable), `is_custom`, `created_at` | ~70 built-in rows seeded by migration 0005 from `training/seed_exercises.json`; `movement_pattern` feeds the program generator |
+| `programs` | `id`, `name`, `goal` (strength / hypertrophy / general), `days_per_week`, `weeks`, `active`, `created_at` | partial unique index: at most one active program |
+| `program_days` | `id`, `program_id` (FK cascade), `day_index`, `name`; unique (`program_id`, `day_index`) | |
+| `program_exercises` | `id`, `program_day_id` (FK cascade), `exercise_id`, `position`, `sets`, `rep_min`, `rep_max`, `rest_seconds`, `start_weight_kg`, `progression` | |
+| `workouts` | `id`, `program_day_id` (nullable, set null), `started_at`, `ended_at`, `notes`, `strava_activity_id` (link, no FK) | |
+| `workout_sets` | `id`, `client_id` (uuid, unique), `workout_id` (FK cascade), `exercise_id`, `set_index`, `reps`, `weight_kg` numeric(6,2), `rpe`, `is_warmup`, `completed_at`, `rest_seconds` | upsert on `client_id`: a retried log is one row |
+| `body_metrics` | `date` (PK), `weight_kg` | only what the user enters |
+
+Training math (`training/math.py`): volume = reps × weight without warm-ups; Epley e1RM for 1–12
+reps (none above); records per exercise for weight at a rep count, e1RM and session volume.
+
 ## Flows
 
 ### 1. OAuth connect

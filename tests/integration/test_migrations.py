@@ -20,6 +20,13 @@ TABLES = {
     "sync_runs",
     "webhook_events",
     "notifications",
+    "exercises",
+    "programs",
+    "program_days",
+    "program_exercises",
+    "workouts",
+    "workout_sets",
+    "body_metrics",
 }
 
 

@@ -1,0 +1,75 @@
+{
+  "_comment": "Hand-computed. Epley e1RM = w * (1 + reps/30), rounded to 0.01 kg half up; warm-ups never count.",
+  "e1rm": [
+    {"weight_kg": "100", "reps": 1, "expected": "100.00"},
+    {"weight_kg": "100", "reps": 4, "expected": "113.33"},
+    {"weight_kg": "100", "reps": 5, "expected": "116.67"},
+    {"weight_kg": "102.5", "reps": 3, "expected": "112.75"},
+    {"weight_kg": "102.5", "reps": 5, "expected": "119.58"},
+    {"weight_kg": "60", "reps": 12, "expected": "84.00"},
+    {"weight_kg": "60", "reps": 13, "expected": null},
+    {"weight_kg": "60", "reps": 0, "expected": null}
+  ],
+  "exercises": {"1": "chest", "2": "quads"},
+  "sessions": [
+    {
+      "id": "w1",
+      "date": "2026-10-12",
+      "sets": [
+        {"exercise_id": 1, "reps": 10, "weight_kg": "40", "is_warmup": true},
+        {"exercise_id": 1, "reps": 5, "weight_kg": "100"},
+        {"exercise_id": 1, "reps": 5, "weight_kg": "100"},
+        {"exercise_id": 1, "reps": 4, "weight_kg": "100"},
+        {"exercise_id": 2, "reps": 5, "weight_kg": "60", "is_warmup": true},
+        {"exercise_id": 2, "reps": 5, "weight_kg": "140"},
+        {"exercise_id": 2, "reps": 5, "weight_kg": "140"},
+        {"exercise_id": 2, "reps": 5, "weight_kg": "140"}
+      ],
+      "volume": "3500.00",
+      "prs": [
+        {"exercise_id": 1, "kind": "weight_for_reps", "reps": 4, "value": "100", "previous": null},
+        {"exercise_id": 1, "kind": "weight_for_reps", "reps": 5, "value": "100", "previous": null},
+        {"exercise_id": 1, "kind": "e1rm", "reps": null, "value": "116.67", "previous": null},
+        {"exercise_id": 1, "kind": "session_volume", "reps": null, "value": "1400.00", "previous": null},
+        {"exercise_id": 2, "kind": "weight_for_reps", "reps": 5, "value": "140", "previous": null},
+        {"exercise_id": 2, "kind": "e1rm", "reps": null, "value": "163.33", "previous": null},
+        {"exercise_id": 2, "kind": "session_volume", "reps": null, "value": "2100.00", "previous": null}
+      ]
+    },
+    {
+      "id": "w2",
+      "date": "2026-10-15",
+      "sets": [
+        {"exercise_id": 1, "reps": 3, "weight_kg": "102.5"},
+        {"exercise_id": 1, "reps": 3, "weight_kg": "102.5"},
+        {"exercise_id": 1, "reps": 8, "weight_kg": "80"}
+      ],
+      "volume": "1255.00",
+      "prs": [
+        {"exercise_id": 1, "kind": "weight_for_reps", "reps": 3, "value": "102.5", "previous": null},
+        {"exercise_id": 1, "kind": "weight_for_reps", "reps": 8, "value": "80", "previous": null}
+      ]
+    },
+    {
+      "id": "w3",
+      "date": "2026-10-19",
+      "sets": [
+        {"exercise_id": 1, "reps": 5, "weight_kg": "102.5"},
+        {"exercise_id": 1, "reps": 5, "weight_kg": "102.5"},
+        {"exercise_id": 1, "reps": 5, "weight_kg": "102.5"}
+      ],
+      "volume": "1537.50",
+      "prs": [
+        {"exercise_id": 1, "kind": "weight_for_reps", "reps": 5, "value": "102.5", "previous": "100"},
+        {"exercise_id": 1, "kind": "e1rm", "reps": null, "value": "119.58", "previous": "116.67"},
+        {"exercise_id": 1, "kind": "session_volume", "reps": null, "value": "1537.50", "previous": "1400.00"}
+      ]
+    }
+  ],
+  "best_weight_per_reps": {"1": {"3": "102.5", "4": "100", "5": "102.5", "8": "80"}},
+  "weekly_muscle_volume": [
+    {"week": "2026-10-12", "muscle": "chest", "sets": 6, "volume_kg": "2655.00"},
+    {"week": "2026-10-12", "muscle": "quads", "sets": 3, "volume_kg": "2100.00"},
+    {"week": "2026-10-19", "muscle": "chest", "sets": 3, "volume_kg": "1537.50"}
+  ]
+}
