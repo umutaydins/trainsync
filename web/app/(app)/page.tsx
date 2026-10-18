@@ -10,7 +10,9 @@ import {
   WeeklyBlock,
   WeeklySkeleton,
 } from "@/components/dashboard/blocks";
+import { CheckinTilesBlock } from "@/components/checkins/tiles";
 import { DashboardFilters } from "@/components/dashboard/filters";
+import { TrainingTilesBlock, TrainingTilesSkeleton } from "@/components/dashboard/training-tiles";
 import { PageHeader } from "@/components/ui";
 import { formatDay, sportLabel } from "@/lib/format";
 import { parseRange } from "@/lib/range";
@@ -47,6 +49,9 @@ export default async function DashboardPage({
         <Suspense key={`kpi-${key}`} fallback={<KpiSkeleton />}>
           <KpiBlock range={range} />
         </Suspense>
+        <Suspense fallback={<TrainingTilesSkeleton />}>
+          <TrainingTilesBlock />
+        </Suspense>
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <Suspense key={`weekly-${key}`} fallback={<WeeklySkeleton />}>
@@ -59,6 +64,9 @@ export default async function DashboardPage({
             </Suspense>
             <Suspense key={`longest-${key}`} fallback={<CardSkeleton title="Longest activity" rows={2} />}>
               <LongestBlock range={range} />
+            </Suspense>
+            <Suspense fallback={<CardSkeleton title="Check-ins" rows={2} />}>
+              <CheckinTilesBlock />
             </Suspense>
           </div>
         </div>

@@ -11,12 +11,14 @@ from typing import Any, ClassVar
 from arq.connections import ArqRedis, RedisSettings
 from prometheus_client import start_http_server
 
+from trainsync.bot.messages import messages_for
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.crypto import TokenCipher
 from trainsync.core.logging import configure_logging, get_logger
 from trainsync.core.settings import Settings, get_settings
 from trainsync.db.repositories.tokens import SqlTokenStore
 from trainsync.db.session import create_engine, create_sessionmaker
+from trainsync.notify.checkin import CHECKIN_CTX_KEY, build_checkin_deps, checkin_cron
 from trainsync.notify.jobs import (
     NOTIFY_CTX_KEY,
     NotifyDeps,
@@ -90,9 +92,22 @@ async def startup(ctx: dict[str, Any]) -> None:
     )
     notifier, chat_ref = build_notifier(settings, http, sleep)
     ctx[NOTIFY_CTX_KEY] = NotifyDeps(
-        sessionmaker, notifier, chat_ref, settings.dashboard_public_url, clock
+        sessionmaker,
+        notifier,
+        chat_ref,
+        settings.dashboard_public_url,
+        clock,
+        messages_for(settings),
     )
-    log.info("worker_startup", env=settings.env, notifier=notifier.channel)
+    ctx[CHECKIN_CTX_KEY] = build_checkin_deps(
+        settings, sessionmaker, http, clock, sleep, messages_for(settings)
+    )
+    log.info(
+        "worker_startup",
+        env=settings.env,
+        notifier=notifier.channel,
+        checkin=settings.checkin_active,
+    )
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
@@ -114,7 +129,7 @@ class WorkerSettings:
         process_webhook_event_job,
         notify_new_activity_job,
     ]
-    cron_jobs: ClassVar[list[Any]] = [incremental_cron, retry_webhooks_cron]
+    cron_jobs: ClassVar[list[Any]] = [incremental_cron, retry_webhooks_cron, checkin_cron]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(os.environ.get("REDIS_URL", _DEFAULT_REDIS_URL))

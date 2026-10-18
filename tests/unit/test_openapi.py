@@ -10,7 +10,7 @@ from trainsync.core.settings import Settings
 from trainsync.main import create_app
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TAGS = {"auth", "webhooks", "activities", "stats", "sync", "health"}
+TAGS = {"auth", "webhooks", "activities", "stats", "sync", "health", "training", "nutrition"}
 
 
 @pytest.fixture
@@ -66,6 +66,48 @@ def test_every_endpoint_is_documented(spec: dict[str, Any]) -> None:
         "GET /v1/stats/weekly",
         "GET /v1/stats/summary",
         "GET /v1/sync/status",
+        "GET /v1/checkins",
+        "GET /v1/checkins/summary",
+        "GET /v1/checkins/{day}",
+        "PUT /v1/checkins/{day}",
+        "GET /v1/training/body-metrics",
+        "PUT /v1/training/body-metrics/{day}",
+        "GET /v1/training/exercises",
+        "POST /v1/training/exercises",
+        "PATCH /v1/training/exercises/{exercise_id}",
+        "GET /v1/training/exercises/{exercise_id}/progress",
+        "GET /v1/training/programs",
+        "POST /v1/training/programs",
+        "GET /v1/training/programs/active",
+        "GET /v1/training/programs/active/next-day",
+        "DELETE /v1/training/programs/{program_id}",
+        "GET /v1/training/programs/{program_id}",
+        "PUT /v1/training/programs/{program_id}",
+        "POST /v1/training/programs/{program_id}/activate",
+        "GET /v1/training/plates",
+        "POST /v1/training/programs/generate",
+        "GET /v1/training/prs",
+        "GET /v1/training/volume/weekly",
+        "GET /v1/training/workouts",
+        "PUT /v1/training/workouts/{client_id}",
+        "DELETE /v1/training/workouts/{workout_id}",
+        "GET /v1/training/workouts/{workout_id}",
+        "POST /v1/training/workouts/{workout_id}/finish",
+        "DELETE /v1/training/workouts/{workout_id}/sets/{client_id}",
+        "PUT /v1/training/workouts/{workout_id}/sets/{client_id}",
+        "GET /v1/nutrition/foods",
+        "POST /v1/nutrition/foods",
+        "GET /v1/nutrition/foods/lookup",
+        "PATCH /v1/nutrition/foods/{food_id}",
+        "PUT /v1/nutrition/foods/{food_id}/favorite",
+        "DELETE /v1/nutrition/foods/{food_id}/favorite",
+        "GET /v1/nutrition/log",
+        "PUT /v1/nutrition/log/{client_id}",
+        "DELETE /v1/nutrition/log/{client_id}",
+        "GET /v1/nutrition/profile",
+        "PUT /v1/nutrition/profile",
+        "GET /v1/nutrition/summary",
+        "GET /v1/nutrition/summary/weekly",
     }
 
 

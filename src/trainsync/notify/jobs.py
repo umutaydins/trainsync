@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from trainsync.api.activities import ActivityOut
 from trainsync.bot.formatting import format_new_activity
+from trainsync.bot.messages import Messages
 from trainsync.bot.telegram import TelegramApi
 from trainsync.core.clock import Clock, Sleep
 from trainsync.core.logging import get_logger
@@ -47,6 +48,7 @@ class NotifyDeps:
     chat_ref: str | None
     dashboard_url: str
     clock: Clock
+    msg: Messages  # BOT_TONE / BOT_LANG wording (ADR 0016)
 
 
 def build_notifier(
@@ -81,7 +83,8 @@ async def send_new_activity(deps: NotifyDeps, strava_activity_id: int) -> str:
         row = await reads.activity(strava_activity_id, await reads.active_athlete_ids())
         if row is None:
             return _count(deps, "skipped")  # deleted, or the athlete left, before we got here
-        text = format_new_activity(ActivityOut.from_row(row, include_raw=False), deps.dashboard_url)
+        activity = ActivityOut.from_row(row, include_raw=False)
+        text = format_new_activity(activity, deps.dashboard_url, deps.msg)
 
     kind = NotificationKind.NEW_ACTIVITY
     async with deps.sessionmaker.begin() as session:

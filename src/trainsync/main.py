@@ -12,7 +12,17 @@ from fastapi import FastAPI, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from trainsync import __version__
-from trainsync.api import activities, auth, health, stats, sync_status, webhooks
+from trainsync.api import (
+    activities,
+    auth,
+    checkins,
+    health,
+    nutrition,
+    stats,
+    sync_status,
+    training,
+    webhooks,
+)
 from trainsync.api.errors import VALIDATION_ERROR_EXAMPLE
 from trainsync.api.middleware import MetricsMiddleware, RequestIdMiddleware
 from trainsync.core.clock import utc_now
@@ -21,6 +31,7 @@ from trainsync.core.logging import configure_logging, get_logger
 from trainsync.core.redis import create_redis
 from trainsync.core.settings import Settings, get_settings
 from trainsync.db.session import create_engine, create_sessionmaker
+from trainsync.nutrition.off_client import OpenFoodFactsClient
 from trainsync.strava.breaker_status import RedisBreakerPublisher, process_name
 from trainsync.strava.client import StravaClient
 from trainsync.strava.http import build_http_client
@@ -55,6 +66,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 settings,
                 breaker_listener=RedisBreakerPublisher(redis, process_name("api")),
             )
+            # Food lookup (P6.4): the same shared client, its own timeout per request.
+            app.state.openfoodfacts = OpenFoodFactsClient(http, settings)
             log.info("app_startup", env=settings.env)
             yield
             log.info("app_shutdown")
@@ -71,6 +84,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(activities.router)
     app.include_router(stats.router)
     app.include_router(sync_status.router)
+    for router in training.ROUTERS:
+        app.include_router(router)
+    app.include_router(nutrition.router)
+    app.include_router(checkins.router)
     _document_validation_errors(app)
 
     @app.get("/metrics", include_in_schema=False)

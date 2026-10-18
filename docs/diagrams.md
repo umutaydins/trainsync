@@ -19,6 +19,10 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [14. State — webhook event](#14-state--webhook-event)
 - [15. State — sync run](#15-state--sync-run)
 - [16. Activity — rate-limit budget decision](#16-activity--rate-limit-budget-decision)
+- [17. State — daily check-in conversation](#17-state--daily-check-in-conversation)
+- [18. Sequence — evening check-in prompt](#18-sequence--evening-check-in-prompt)
+- [19. Sequence — log a set with retry](#19-sequence--log-a-set-with-retry)
+- [20. Sequence — rest timer and a backgrounded tab](#20-sequence--rest-timer-and-a-backgrounded-tab)
 
 ---
 
@@ -37,8 +41,8 @@ flowchart LR
         direction LR
         subgraph web["Web process (Next.js, web/)"]
             gate["proxy.ts<br/>session-cookie gate"]
-            pages["server components<br/>dashboard · activities · sync"]
-            bff["BFF route /api/ts/v1/*<br/>GET, allowlisted paths"]
+            pages["server components<br/>dashboard · activities · sync<br/>training · nutrition (PWA)"]
+            bff["BFF route /api/ts/v1/*<br/>method + path allowlist, CSRF on writes"]
             upstream["lib/upstream.ts<br/>adds X-API-Key"]
         end
 
@@ -237,10 +241,143 @@ erDiagram
         bigint object_id "strava_activity_id, UK with kind"
         timestamptz sent_at
     }
+
+    foods ||--o{ food_logs : "logged as"
+    foods {
+        bigint id PK
+        text name
+        text brand "nullable"
+        varchar barcode UK "nullable"
+        numeric kcal_100g
+        numeric protein_100g "nullable = unknown"
+        numeric carbs_100g "nullable = unknown"
+        numeric fat_100g "nullable = unknown"
+        text source "manual | openfoodfacts"
+        boolean favorite
+        timestamptz created_at
+    }
+    food_logs {
+        bigint id PK
+        uuid client_id UK "idempotent PUT"
+        date date
+        text meal "breakfast | lunch | dinner | snack"
+        bigint food_id FK
+        numeric grams
+        numeric kcal_100g "snapshot at log time"
+        numeric protein_100g "snapshot, nullable"
+        numeric carbs_100g "snapshot, nullable"
+        numeric fat_100g "snapshot, nullable"
+        timestamptz created_at
+    }
+    nutrition_profile {
+        int id PK "always 1"
+        text sex
+        int birth_year
+        numeric height_cm
+        text activity_baseline "sedentary | light | moderate"
+        int kcal_target "nullable"
+        int protein_target_g "nullable"
+        timestamptz updated_at
+    }
 ```
+
+Nutrition (P6.4, ADR 0019) is single-user: no `athlete_id`. Body weight for the BMR estimate comes
+from `body_metrics` (training), exercise energy from `activities.raw`.
 
 `notifications` has no foreign key: a row is the idempotency claim for one message (ADR 0012),
 kept even if the activity is deleted later.
+
+### Training (Phase 6)
+
+Single user, so no `athlete_id`. `workouts.strava_activity_id` is a link, not a foreign key.
+
+```mermaid
+erDiagram
+    programs ||--o{ program_days : "has"
+    program_days ||--o{ program_exercises : "plans"
+    exercises ||--o{ program_exercises : "used in"
+    program_days |o--o{ workouts : "followed by"
+    workouts ||--o{ workout_sets : "logs"
+    exercises ||--o{ workout_sets : "of"
+    workouts |o--o{ daily_checkins : "reported by"
+
+    exercises {
+        int id PK
+        text slug UK
+        text name
+        text primary_muscle
+        text_array secondary_muscles
+        text equipment
+        text movement_pattern "nullable"
+        boolean is_custom
+        timestamptz created_at
+    }
+    programs {
+        bigint id PK
+        text name
+        text goal "strength | hypertrophy | general"
+        int days_per_week
+        int weeks
+        boolean active "at most one true"
+        timestamptz created_at
+    }
+    program_days {
+        bigint id PK
+        bigint program_id FK
+        int day_index "UK with program_id"
+        text name
+    }
+    program_exercises {
+        bigint id PK
+        bigint program_day_id FK
+        int exercise_id FK
+        int position
+        int sets
+        int rep_min
+        int rep_max
+        int rest_seconds
+        numeric start_weight_kg "nullable"
+        text progression "double | none"
+    }
+    workouts {
+        bigint id PK
+        uuid client_id UK "client-generated start"
+        bigint program_day_id FK "nullable"
+        timestamptz started_at
+        timestamptz ended_at "nullable"
+        text notes
+        bigint strava_activity_id "nullable, no FK"
+    }
+    workout_sets {
+        bigint id PK
+        uuid client_id UK "client-generated"
+        bigint workout_id FK
+        int exercise_id FK
+        int set_index
+        int reps
+        numeric weight_kg
+        numeric rpe "nullable"
+        boolean is_warmup
+        timestamptz completed_at
+        int rest_seconds "nullable, actual rest"
+    }
+    body_metrics {
+        date date PK
+        numeric weight_kg
+    }
+    daily_checkins {
+        bigint id PK
+        date date UK "local day (CHECKIN_TZ)"
+        text status "done | partial | skipped | rest | sick_or_injured"
+        bigint workout_id FK "nullable, set null"
+        text reason_note "nullable"
+        numeric sleep_hours "nullable"
+        int energy_1_5 "nullable"
+        numeric body_weight_kg "nullable, also in body_metrics"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
 
 ## 4. Class diagram — core modules
 
@@ -791,8 +928,8 @@ sequenceDiagram
     Note over U,BFF: Client components ("Load more" on /activities, the 15 s refresh on /sync)
     U->>P: GET /api/ts/v1/activities?cursor=… (session cookie)
     P->>BFF: valid session
-    BFF->>BFF: isAllowedPath? (5 read paths, others 404, non-GET 405)
-    BFF->>UP: upstreamGet(path, query)
+    BFF->>BFF: allowedMethods(path)? (unknown path 404, wrong method 405)
+    BFF->>UP: upstreamRequest(GET, path, query)
     UP->>API: GET /v1/activities?cursor=… + X-API-Key
     alt 2xx
         API-->>UP: page
@@ -802,6 +939,17 @@ sequenceDiagram
         UP-->>BFF: status + short message (no upstream details, unreachable = 502)
         BFF-->>U: {error} with that status
     end
+
+    Note over U,BFF: Writes (lib/mutate.ts): training, nutrition, check-ins
+    U->>P: PUT /api/ts/v1/training/workouts/42/sets/<uuid> (session + ts_csrf cookies, X-CSRF-Token, JSON)
+    P->>BFF: valid session (proxy.ts sets ts_csrf if it is missing)
+    BFF->>BFF: allowlist (404/405) → Origin/Referer = WEB_PUBLIC_URL (403) → X-CSRF-Token = ts_csrf cookie (403)
+    BFF->>BFF: application/json (415), ≤ 64 KB read with a cap (413), parses as JSON (400)
+    BFF->>UP: upstreamRequest(PUT, path, query, body)
+    UP->>API: PUT /v1/training/... + X-API-Key (no browser cookies or headers)
+    API-->>UP: status + JSON
+    UP-->>BFF: data, or {error, detail}
+    BFF-->>U: same status, JSON only (no upstream headers)
 ```
 
 ## 12. Sequence — new activity → notification
@@ -917,4 +1065,131 @@ flowchart TD
     is429 -- yes --> setblk["set blocked_until = next quarter hour"]
     is429 -- no --> done([done])
     setblk --> done
+```
+
+## 17. State — daily check-in conversation
+
+State in Redis (`checkin:{chat}:{yyyymmdd}`, 6 h TTL). Every transition raises `seq`; buttons carry
+`ci:{yyyymmdd}:{seq}:{action}`, so a button from an older message, a double tap or a redelivered
+press no longer matches and gets a polite "earlier question" toast. A redelivered text answer has
+an `update_id` the state already saw and is ignored (ADR 0020).
+
+```mermaid
+stateDiagram-v2
+    [*] --> status : /report, "rapor", or the worker's prompt (seq 0)
+    status --> exercise : Done / Partly, active program<br/>(PUT check-in, start or reuse today's workout)
+    status --> freeform : Done / Partly, no program
+    status --> reason : Skipped
+    status --> scale : Rest / Sick (stored, no pushing)
+    exercise --> exercise : As planned / ±2.5 kg / typed sets / Skip exercise<br/>(PUT sets, next exercise)
+    exercise --> exercise : invalid input → re-prompt
+    exercise --> scale : last exercise
+    freeform --> freeform : "bench 80x5x3" (PUT sets) / numbered choice
+    freeform --> scale : Finish / "done"
+    reason --> scale : text, or Skip (hardcore may push here only)
+    scale --> sleep : number or Skip
+    sleep --> energy : number or Skip
+    energy --> done : 1-5 or Skip<br/>(PUT check-in, summary with volume, PRs, streak)
+    done --> status : Edit (same client ids: overwrite, never duplicate)
+    done --> [*] : TTL 6 h
+```
+
+## 18. Sequence — evening check-in prompt
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Cron as worker cron (every 5 min)
+    participant DB as Postgres
+    participant TG as Telegram
+    participant Bot as bot process
+    participant API as API
+    Cron->>DB: check-in for local today? prompt / reminder claimed?
+    alt before CHECKIN_TIME, or answered
+        Cron-->>Cron: nothing
+    else due and not sent yet
+        Cron->>DB: claim (checkin_prompt, yyyymmdd) — ON CONFLICT DO NOTHING
+        Cron->>TG: sendMessage + 5 status buttons (seq 0)
+        Note over Cron,DB: failure → release, next tick retries;<br/>unknown outcome → keep the claim
+    else prompt sent ≥ CHECKIN_REMINDER_MINUTES ago, unanswered
+        Cron->>DB: claim (checkin_reminder, yyyymmdd)
+        Cron->>TG: one reminder
+    end
+    TG-->>Bot: callback_query (getUpdates)
+    Bot->>API: PUT /v1/checkins/{date} (status)
+    Bot->>TG: answerCallbackQuery, remove buttons, next question
+```
+
+## 19. Sequence — log a set with retry
+
+The client id is created once per set row, so a double tap, a retry and a replay from the queue
+are the same `PUT` (ADR 0017). Gym Wi-Fi drops the answer, not the request, in the second case.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Workout screen
+    participant Q as Retry queue (localStorage)
+    participant BFF as BFF /api/ts
+    participant API as API
+    participant DB as Postgres
+
+    Note over UI,API: the workout itself was started the same way: PUT /v1/training/workouts/{uuid W}
+    UI->>UI: tap ✓ (row already has client_id = uuid A)
+    UI->>BFF: PUT /v1/training/workouts/42/sets/A (CSRF token, JSON)
+    BFF->>API: PUT … + X-API-Key
+    API->>DB: INSERT … ON CONFLICT (client_id) DO UPDATE … RETURNING xmax = 0
+    DB-->>API: row, created
+    API-->>UI: 201 set
+    UI->>UI: second tap on the same row: same uuid A
+    UI->>BFF: PUT …/sets/A
+    BFF->>API: PUT …/sets/A
+    API->>DB: upsert, conflict → update
+    API-->>UI: 200, same body (still one row)
+    UI->>BFF: PUT …/sets/B (next set)
+    BFF->>API: PUT …/sets/B
+    API->>DB: upsert (stored)
+    API--xUI: answer lost (Wi-Fi drop, status 0)
+    UI->>Q: keep {path …/sets/B, body}
+    Note over UI,Q: browser fires `online`, or the next write succeeds
+    Q->>BFF: PUT …/sets/B (same path, same body)
+    BFF->>API: PUT …/sets/B
+    API->>DB: upsert, conflict → update
+    API-->>Q: 200, entry leaves the queue (still one row)
+    Note over Q,API: a 4xx answer is final: the entry is dropped and shown as an error
+```
+
+## 20. Sequence — rest timer and a backgrounded tab
+
+Timers store absolute times and render `endsAt − now()`, so frozen intervals in a backgrounded
+tab or behind a locked screen do not matter (ADR 0021).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as Lifter
+    participant UI as Workout screen
+    participant LS as localStorage
+    participant OS as Browser / phone
+
+    U->>UI: log set 2 of Bench Press (rest 90 s)
+    UI->>LS: save {endsAt: now + 90 000, alerted: false}
+    loop every 250 ms while visible
+        UI->>UI: render ceil((endsAt − now) / 1000)
+    end
+    U->>OS: lock the screen
+    OS-->>UI: intervals throttled or frozen
+    Note over UI: 3 minutes pass, nothing renders
+    U->>OS: unlock
+    OS-->>UI: visibilitychange / next tick
+    UI->>UI: remaining = max(0, endsAt − now) = 0 → 0:00
+    alt zero passed less than 60 s ago and not alerted
+        UI->>OS: vibrate, beep, optional Notification
+        UI->>LS: alerted = true
+    else asleep long past zero
+        UI->>LS: alerted = true (no late alarm)
+    end
+    U->>UI: reload the page
+    UI->>LS: read state for workout 42
+    LS-->>UI: endsAt, alerted (timer restored, no repeated alert)
 ```

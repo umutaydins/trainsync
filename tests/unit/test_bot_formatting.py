@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from tests.support.messages import NEUTRAL_EN as MSG
 from trainsync.api.activities import ActivityOut
 from trainsync.api.stats import StatsSummary, WeeklyStats
 from trainsync.api.sync_status import SyncStatusOut
@@ -58,7 +59,9 @@ def test_units() -> None:
 
 
 def test_week_with_activities() -> None:
-    text = formatting.format_week(summary("summary_this_week"), summary("summary_last_week"), NOW)
+    text = formatting.format_week(
+        summary("summary_this_week"), summary("summary_last_week"), NOW, MSG
+    )
     assert text == (
         "This week (12-15 Oct)\n"
         "3 activities · 41.3 km · 2h 03m · ↑ 412 m\n"
@@ -73,7 +76,9 @@ def test_week_with_activities() -> None:
 
 
 def test_empty_week_and_stale_data() -> None:
-    text = formatting.format_week(summary("summary_empty_week"), summary("summary_last_week"), NOW)
+    text = formatting.format_week(
+        summary("summary_empty_week"), summary("summary_last_week"), NOW, MSG
+    )
     assert text == (
         "This week (12-15 Oct)\n"
         "No activities yet.\n"
@@ -89,13 +94,13 @@ def test_empty_week_and_stale_data() -> None:
 def test_two_empty_weeks_have_no_comparison() -> None:
     empty = summary("summary_empty_week")
     last = empty.model_copy(update={"last_synced_at": None})
-    text = formatting.format_week(last, empty, NOW)
+    text = formatting.format_week(last, empty, NOW, MSG)
     assert "Distance" not in text
     assert text.endswith("No activities.\n⚠️ No data synced yet.")
 
 
 def test_last_activity() -> None:
-    text = formatting.format_last(activity("activity_run"), NOW, NOW)
+    text = formatting.format_last(activity("activity_run"), NOW, NOW, MSG)
     assert text == (
         "🏃 Morning Run\n"
         "Run · Wed 14 Oct 06:30 UTC\n"
@@ -105,7 +110,7 @@ def test_last_activity() -> None:
 
 
 def test_last_ride_shows_speed_and_no_heartrate() -> None:
-    text = formatting.format_last(activity("activity_ride"), NOW, NOW)
+    text = formatting.format_last(activity("activity_ride"), NOW, NOW, MSG)
     assert text.splitlines()[1:] == [
         "Ride · Tue 13 Oct 17:00 UTC",
         "30.1 km · 1h 02m · 29.1 km/h · ↑ 350 m",
@@ -113,12 +118,14 @@ def test_last_ride_shows_speed_and_no_heartrate() -> None:
 
 
 def test_last_without_activities() -> None:
-    assert formatting.format_last(None, None, NOW) == "No activities yet.\n⚠️ No data synced yet."
+    assert (
+        formatting.format_last(None, None, NOW, MSG) == "No activities yet.\n⚠️ No data synced yet."
+    )
 
 
 def test_stats_with_best_week_and_longest() -> None:
     weekly = WeeklyStats.model_validate(FIXTURE["weekly_12w_run"])
-    text = formatting.format_stats(summary("summary_12w_run"), weekly.weeks, "12w", NOW)
+    text = formatting.format_stats(summary("summary_12w_run"), weekly.weeks, "12w", NOW, MSG)
     assert text == (
         "Last 12w · Run (27 Jul - 15 Oct)\n"
         "30 activities · 301.5 km · 27h 00m · ↑ 2100 m\n"
@@ -128,7 +135,7 @@ def test_stats_with_best_week_and_longest() -> None:
 
 
 def test_stats_all_sports_lists_each_sport() -> None:
-    text = formatting.format_stats(summary("summary_this_week"), [], "4w", NOW)
+    text = formatting.format_stats(summary("summary_this_week"), [], "4w", NOW, MSG)
     assert text.splitlines() == [
         "Last 4w (12-15 Oct)",
         "3 activities · 41.3 km · 2h 03m · ↑ 412 m",
@@ -138,7 +145,7 @@ def test_stats_all_sports_lists_each_sport() -> None:
 
 
 def test_stats_empty_range() -> None:
-    text = formatting.format_stats(summary("summary_empty_week"), [], "4w", NOW)
+    text = formatting.format_stats(summary("summary_empty_week"), [], "4w", NOW, MSG)
     assert text.splitlines()[:2] == ["Last 4w (12-15 Oct)", "No activities."]
 
 
@@ -154,15 +161,15 @@ def test_best_week_prefers_latest_on_tie_and_skips_empty() -> None:
 def test_status_lines() -> None:
     healthy = SyncStatusOut.model_validate(FIXTURE["sync_status_healthy"])
     degraded = SyncStatusOut.model_validate(FIXTURE["sync_status_degraded"])
-    assert formatting.format_status(healthy, NOW) == (
+    assert formatting.format_status(healthy, NOW, MSG) == (
         "✅ synced 20 min ago · webhooks 0 pending / 0 failed / 0 dead · "
         "Strava circuit closed · rate limit 12%"
     )
-    assert formatting.format_status(degraded, NOW) == (
+    assert formatting.format_status(degraded, NOW, MSG) == (
         "⚠️ synced 3 h ago · webhooks 2 pending / 1 failed / 0 dead · Strava circuit open"
     )
     never = degraded.model_copy(update={"last_synced_at": None})
-    assert formatting.format_status(never, NOW).startswith("⚠️ never synced")
+    assert formatting.format_status(never, NOW, MSG).startswith("⚠️ never synced")
 
 
 @pytest.mark.parametrize(
@@ -171,18 +178,18 @@ def test_status_lines() -> None:
 )
 def test_ago(seconds: int, expected: str) -> None:
     moment = datetime(2026, 10, 15, tzinfo=UTC)
-    assert formatting.ago(moment, moment.fromtimestamp(moment.timestamp() + seconds, UTC)) == (
+    assert formatting.ago(moment, moment.fromtimestamp(moment.timestamp() + seconds, UTC), MSG) == (
         expected
     )
 
 
 def test_day_range_across_months_and_single_day() -> None:
     first = summary("summary_12w_run")
-    assert formatting.day_range(first.start, first.start) == "27 Jul"
+    assert formatting.day_range(first.start, first.start, MSG) == "27 Jul"
 
 
 def test_new_activity_message() -> None:
-    text = formatting.format_new_activity(activity("activity_run"), "https://dash.example/")
+    text = formatting.format_new_activity(activity("activity_run"), "https://dash.example/", MSG)
     assert text == (
         "New activity\n"
         "🏃 Morning Run\n"
@@ -190,4 +197,4 @@ def test_new_activity_message() -> None:
         "10.0 km · 50m 00s · 5:00 /km · ↑ 42 m\n"
         "https://dash.example/activities/10000000123"
     )
-    assert "http" not in formatting.format_new_activity(activity("activity_run"), "")
+    assert "http" not in formatting.format_new_activity(activity("activity_run"), "", MSG)

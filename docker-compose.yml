@@ -74,6 +74,13 @@ services:
       <<: *trainsync-env
       # Where the OAuth callback may send the browser back to (the web dashboard's sync page).
       OAUTH_RETURN_TO_ALLOWLIST: http://localhost:3000/sync
+      # Plate calculator and double progression (P6.3, ADR 0018).
+      GYM_BAR_KG: ${GYM_BAR_KG:-20}
+      GYM_PLATES: ${GYM_PLATES:-25x2,20x2,15x2,10x2,5x2,2.5x2,1.25x2}
+      PROGRESSION_INCREMENT_KG: ${PROGRESSION_INCREMENT_KG:-2.5}
+      PROGRESSION_LOWER_BODY_INCREMENT_KG: ${PROGRESSION_LOWER_BODY_INCREMENT_KG:-5}
+      # Food lookups (P6.4, ADR 0019); `make web-e2e` sets false so the stack never reaches the internet.
+      OPENFOODFACTS_ENABLED: ${OPENFOODFACTS_ENABLED:-true}
     ports: ["8000:8000"]
     depends_on:
       migrate: { condition: service_completed_successfully }
@@ -96,6 +103,13 @@ services:
       TELEGRAM_ALLOWED_CHAT_IDS: ${TELEGRAM_ALLOWED_CHAT_IDS:-}
       TELEGRAM_NOTIFY_CHAT_ID: ${TELEGRAM_NOTIFY_CHAT_ID:-}
       DASHBOARD_PUBLIC_URL: ${DASHBOARD_PUBLIC_URL:-http://localhost:3000}
+      BOT_TONE: ${BOT_TONE:-neutral}  # notification wording (ADR 0016)
+      BOT_LANG: ${BOT_LANG:-en}
+      # Daily check-in prompt (P6.9, ADR 0020); empty CHECKIN_ENABLED = on with a bot token.
+      CHECKIN_ENABLED: ${CHECKIN_ENABLED:-}
+      CHECKIN_TIME: ${CHECKIN_TIME:-21:00}
+      CHECKIN_TZ: ${CHECKIN_TZ:-Europe/Istanbul}
+      CHECKIN_REMINDER_MINUTES: ${CHECKIN_REMINDER_MINUTES:-90}
     ports: ["9100:9100"]  # worker /metrics (WORKER_METRICS_PORT)
     depends_on:
       migrate: { condition: service_completed_successfully }
@@ -115,6 +129,13 @@ services:
       TELEGRAM_ALLOWED_CHAT_IDS: ${TELEGRAM_ALLOWED_CHAT_IDS:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}  # empty = no natural-language questions
       ASSISTANT_MODEL: ${ASSISTANT_MODEL:-claude-sonnet-5-5}
+      BOT_TONE: ${BOT_TONE:-neutral}  # reply wording and assistant persona (ADR 0016)
+      BOT_LANG: ${BOT_LANG:-en}
+      # The bot's "today" (P6.8) and the check-in conversation (P6.9).
+      CHECKIN_ENABLED: ${CHECKIN_ENABLED:-}
+      CHECKIN_TIME: ${CHECKIN_TIME:-21:00}
+      CHECKIN_TZ: ${CHECKIN_TZ:-Europe/Istanbul}
+      CHECKIN_REMINDER_MINUTES: ${CHECKIN_REMINDER_MINUTES:-90}
     ports: ["9101:9101"]  # bot /metrics (BOT_METRICS_PORT)
     depends_on:
       api: { condition: service_healthy }

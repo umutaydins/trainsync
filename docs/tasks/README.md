@@ -15,6 +15,7 @@ is green.
 | 3 — Webhooks and read API | P3.1 – P3.7 |
 | 4 — Observability, load test, CI, README | P4.1 – P4.5 |
 | 5 — Web dashboard and Telegram bot | P5.1 – P5.8 |
+| 6 — Strength training, programs and nutrition | P6.1 – P6.10 |
 
 Dependency graph:
 
@@ -33,4 +34,10 @@ flowchart LR
     P4.5 --> P5.1 --> P5.2 --> P5.3 --> P5.4
     P5.1 --> P5.5 --> P5.6 & P5.7
     P5.4 & P5.6 & P5.7 --> P5.8
+    P5.8 --> P6.1 --> P6.2 --> P6.3
+    P6.1 --> P6.4 & P6.5
+    P6.3 & P6.5 --> P6.6
+    P6.4 & P6.6 --> P6.7
+    P6.3 & P6.4 --> P6.8 --> P6.9
+    P6.7 & P6.9 --> P6.10
 ```

@@ -25,9 +25,11 @@ from anthropic.types.beta import (
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationError, model_validator
 from redis.asyncio import Redis
 
+from trainsync.bot.messages import Key, Messages
 from trainsync.bot.read_api import ReadApi, ReadApiError
 from trainsync.core.clock import Clock
 from trainsync.core.logging import get_logger
+from trainsync.core.settings import BotLang, BotTone
 
 log = get_logger(__name__)
 
@@ -36,12 +38,6 @@ TIMEOUT_S = 20.0
 MAX_TOKENS = 4096
 MAX_RANGE_DAYS = 3660  # ten years
 MAX_LIST_LIMIT = 50
-
-RATE_LIMITED = "You've asked a lot this hour. Try again later, or use /week, /stats or /last."
-TIMED_OUT = "That took too long to work out. Try a simpler question, or /stats."
-UNAVAILABLE = "I can't answer questions right now. The commands still work: /week, /stats, /last."
-TOO_MANY_CALLS = "I needed too many lookups for that one. Try narrowing the question."
-REFUSED = "I can't help with that one. Ask me about your training."
 
 SYSTEM_PROMPT = """\
 You answer questions about one athlete's training, in a Telegram chat, using only the tools.
@@ -54,10 +50,33 @@ more than a day before today, mention how old the data is.
 - Metric units: km with one decimal (convert from metres), hours and minutes, metres of \
 elevation, pace in min/km for runs.
 - Dates are UTC calendar days; ranges are inclusive. A month is its first to its last day.
-- Reply in the language the user wrote in. Plain text, no Markdown, at most a few short lines.
+- Plain text, no Markdown, at most a few short lines.
+- {language}
+
+{persona}
 
 Today is {today} ({weekday}).
 """
+
+# BOT_TONE / BOT_LANG (ADR 0016). The persona changes the wording, never the numbers.
+PERSONAS: dict[BotTone, str] = {
+    "neutral": "Tone: friendly, factual and brief.",
+    "hardcore": (
+        'Tone: you are Coach ("Koç" in Turkish), an original tough-love running coach. Short, '
+        "blunt sentences. Mild profanity is allowed, and only these words: damn, hell, crap in "
+        "English; lan, ulan, hassiktir in Turkish. Use it sparingly. Judge only effort and "
+        "consistency: never comment on the athlete's body, weight, appearance or identity, and "
+        "never insult them. Do not name, quote or imitate any real person. If this week's "
+        "training time is under half of last week's, push hard; at or above last week's, "
+        "acknowledge it, then raise the bar. If the last two weeks are both empty, ask whether "
+        "it is injury or rest instead of pushing. The rules above still hold: every number "
+        "comes from a tool result."
+    ),
+}
+LANGUAGES: dict[BotLang, str] = {
+    "en": "Reply in English.",
+    "tr": "Reply in Turkish.",
+}
 
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -239,6 +258,7 @@ class Assistant:
         read_api: ReadApi,
         limiter: RateLimiter,
         clock: Clock,
+        msg: Messages,
         *,
         max_tool_calls: int = MAX_TOOL_CALLS,
         timeout_s: float = TIMEOUT_S,
@@ -247,37 +267,40 @@ class Assistant:
         self._api = read_api
         self._limiter = limiter
         self._clock = clock
+        self._msg = msg
         self._max_tool_calls = max_tool_calls
         self._timeout_s = timeout_s
 
     async def answer(self, chat_id: int, question: str) -> str:
         if not await self._limiter.allow(chat_id):
             log.info("assistant_rate_limited", chat_id=chat_id)
-            return RATE_LIMITED
+            return self._msg(Key.ASSISTANT_RATE_LIMITED)
         try:
             async with asyncio.timeout(self._timeout_s):
                 return await self._loop(question)
         except TimeoutError:
             log.warning("assistant_timeout", chat_id=chat_id)
-            return TIMED_OUT
+            return self._msg(Key.ASSISTANT_TIMED_OUT)
         except anthropic.APIError as exc:
             log.warning("assistant_api_error", chat_id=chat_id, error=type(exc).__name__)
-            return UNAVAILABLE
+            return self._msg(Key.ASSISTANT_UNAVAILABLE)
 
     async def _loop(self, question: str) -> str:
-        system = system_prompt(self._clock())
+        system = system_prompt(self._clock(), self._msg.tone, self._msg.lang)
         messages: list[BetaMessageParam] = [{"role": "user", "content": question}]
         calls = 0
         over_limit = False
         while True:  # every round adds a tool call, and over the limit it ends: bounded
             response = await self._planner.create(system=system, tools=TOOLS, messages=messages)
             if response.stop_reason == "refusal":
-                return REFUSED
+                return self._msg(Key.ASSISTANT_REFUSED)
             tool_uses = [b for b in response.content if isinstance(b, BetaToolUseBlock)]
             if not tool_uses:
-                return _text(response) or UNAVAILABLE
+                return _text(response) or self._msg(Key.ASSISTANT_UNAVAILABLE)
             if over_limit:
-                return TOO_MANY_CALLS  # told to answer without tools, asked for more anyway
+                return self._msg(
+                    Key.ASSISTANT_TOO_MANY_CALLS
+                )  # told to answer without tools, asked for more anyway
             messages.append({"role": "assistant", "content": response.content})
             results: list[BetaToolResultBlockParam] = []
             for tool_use in tool_uses:
@@ -327,9 +350,14 @@ class Assistant:
         raise ToolError(f"Unknown tool {name!r}")
 
 
-def system_prompt(now: datetime) -> str:
+def system_prompt(now: datetime, tone: BotTone = "neutral", lang: BotLang = "en") -> str:
     today = now.date()
-    return SYSTEM_PROMPT.format(today=today.isoformat(), weekday=today.strftime("%A"))
+    return SYSTEM_PROMPT.format(
+        today=today.isoformat(),
+        weekday=today.strftime("%A"),
+        language=LANGUAGES[lang],
+        persona=PERSONAS[tone],
+    )
 
 
 def _text(response: BetaMessage) -> str:

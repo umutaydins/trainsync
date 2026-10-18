@@ -1,10 +1,13 @@
-// Fails if a server secret that was set at build time appears in any browser-served file.
+// Fails if a server secret that was set at build time appears in any browser-served file, or if
+// code that sends the API key (the `X-API-Key` header name, lib/upstream.ts) was bundled for the
+// browser: that would mean a client module reaches the upstream call path (ADR 0011).
 // Usage (after `pnpm build` with the same env): node scripts/check-bundle.mjs
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const SECRETS = ["TRAINSYNC_API_KEY", "DASHBOARD_PASSWORD", "DASHBOARD_SESSION_SECRET"];
 const ROOTS = [".next/static", "public"];
+const SERVER_MARKERS = [/x-api-key/i];
 
 const values = SECRETS.map((name) => [name, process.env[name] ?? ""]);
 const missing = values.filter(([, value]) => value.length < 8).map(([name]) => name);
@@ -40,6 +43,10 @@ for (const root of ROOTS) {
     for (const [name, value] of values) {
       if (content.includes(value)) leaks.push(`${name} in ${path}`);
     }
+    const text = content.toString("latin1");
+    for (const marker of SERVER_MARKERS) {
+      if (marker.test(text)) leaks.push(`server-only code (${marker}) in ${path}`);
+    }
   }
 }
 
@@ -51,4 +58,4 @@ if (leaks.length > 0) {
   console.error(`check-bundle: server secrets found in client files:\n  ${leaks.join("\n  ")}`);
   process.exit(1);
 }
-console.log(`check-bundle: OK (${scanned} client files, no server secrets)`);
+console.log(`check-bundle: OK (${scanned} client files, no server secrets or API-key code)`);

@@ -1,0 +1,4 @@
+# test canary used by the web bundle check, not a real key
+98ef2a6d601a01c600d7c30ba5a065c0173afa17:web/tests/support/env.ts:generic-api-key:3
+# dev-only Fernet key in docker-compose.yml; real deployments set TOKEN_ENCRYPTION_KEY via .env / .env.prod
+41b9efc03338f236a3f1a363adbe9745131146d7:docker-compose.yml:generic-api-key:17

@@ -54,12 +54,19 @@ def redis_url() -> Iterator[str]:
         yield f"redis://{host}:{port}/0"
 
 
+SEEDED = frozenset({"exercises"})
+
+
 async def _reset_state(pg_url: str, redis_url: str) -> None:
     engine = create_async_engine(pg_url, poolclass=NullPool)
     try:
-        tables = ", ".join(table.name for table in Base.metadata.sorted_tables)
+        # The seeded exercise library (migration 0005) stays; custom exercises go.
+        tables = ", ".join(
+            table.name for table in Base.metadata.sorted_tables if table.name not in SEEDED
+        )
         async with engine.begin() as conn:
             await conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
+            await conn.execute(text("DELETE FROM exercises WHERE is_custom"))
     finally:
         await engine.dispose()
     redis = Redis.from_url(redis_url)

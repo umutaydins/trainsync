@@ -1,10 +1,19 @@
 """Typed application settings, loaded from environment variables (and `.env`)."""
 
+from datetime import time
+from decimal import Decimal
 from functools import lru_cache
 from typing import Annotated, Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+from trainsync.training.plates import DEFAULT_INVENTORY, parse_inventory
+
+# Wording of every bot reply, notification and assistant prompt (ADR 0016).
+BotTone = Literal["neutral", "hardcore"]
+BotLang = Literal["en", "tr"]
 
 
 class Settings(BaseSettings):
@@ -80,6 +89,9 @@ class Settings(BaseSettings):
     bot_metrics_port: int = Field(default=9101, ge=0, le=65535)
     # Base URL of the web dashboard; notifications link to `<url>/activities/<id>`. Empty = no link.
     dashboard_public_url: str = ""
+    # Message pack for bot replies, notifications and the assistant prompt (ADR 0016).
+    bot_tone: BotTone = "neutral"
+    bot_lang: BotLang = "en"
     # Natural-language questions in the bot (P5.7, ADR 0014); off while the key is empty.
     anthropic_api_key: SecretStr = SecretStr("")
     assistant_model: str = "claude-sonnet-5-5"
@@ -112,6 +124,63 @@ class Settings(BaseSettings):
         if self.telegram_notify_chat_id is not None:
             return self.telegram_notify_chat_id
         return self.telegram_allowed_chat_ids[0] if self.telegram_allowed_chat_ids else None
+
+    # ---------------------------------------------------------------- nutrition (P6.4, ADR 0019)
+    # Open Food Facts lookup (public API, no key). Off = only the local food list is searched.
+    openfoodfacts_enabled: bool = True
+    openfoodfacts_base_url: str = "https://world.openfoodfacts.org"
+    # OFF asks every client to identify itself: app name, version and a contact URL.
+    openfoodfacts_user_agent: str = "trainsync/0.1 (+https://github.com/umutaydins/trainsync)"
+    # Whole-request budget; on a timeout the endpoint answers with local results only.
+    openfoodfacts_timeout_s: float = Field(default=3.0, gt=0, le=30)
+
+    # ---------------------------------------------------------------- training (P6.3)
+    # Plate calculator: bar weight and plates as `<kg>x<pairs>` (pairs = one plate per side).
+    gym_bar_kg: Decimal = Field(default=Decimal(20), gt=0, le=100)
+    gym_plates: Annotated[dict[Decimal, int], NoDecode] = Field(
+        default_factory=lambda: dict(DEFAULT_INVENTORY)
+    )
+    # Double progression step when every set hit the top of the rep range (ADR 0018).
+    progression_increment_kg: Decimal = Field(default=Decimal("2.5"), gt=0, le=20)
+    progression_lower_body_increment_kg: Decimal = Field(default=Decimal(5), gt=0, le=20)
+
+    @field_validator("gym_plates", mode="before")
+    @classmethod
+    def _parse_plates(cls, value: object) -> object:
+        return parse_inventory(value) if isinstance(value, str) else value
+
+    # ---------------------------------------------------------------- daily check-in (P6.9)
+    # The evening "did you train?" prompt in Telegram (ADR 0020). Empty CHECKIN_ENABLED = on when a
+    # bot token is set. CHECKIN_TZ is also the bot's "today" for /log, /eat, /kcal and /weight.
+    checkin_enabled: bool | None = None
+    checkin_time: time = time(21, 0)
+    checkin_tz: str = "Europe/Istanbul"
+    # One reminder this many minutes after the prompt when nothing was answered; 0 = none.
+    checkin_reminder_minutes: int = Field(default=90, ge=0, le=720)
+
+    @field_validator("checkin_enabled", mode="before")
+    @classmethod
+    def _empty_bool_as_none(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @field_validator("checkin_tz")
+    @classmethod
+    def _known_zone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise ValueError(f"unknown time zone {value!r}") from exc
+        return value
+
+    @property
+    def checkin_zone(self) -> ZoneInfo:
+        return ZoneInfo(self.checkin_tz)
+
+    @property
+    def checkin_active(self) -> bool:
+        """The scheduler sends prompts: a bot token, a target chat, and not switched off."""
+        enabled = self.bot_enabled if self.checkin_enabled is None else self.checkin_enabled
+        return enabled and self.bot_enabled and self.notify_chat_id() is not None
 
 
 @lru_cache

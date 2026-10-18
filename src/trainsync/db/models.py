@@ -1,12 +1,16 @@
 """SQLAlchemy models for every table in docs/architecture.md → Data model."""
 
-from datetime import datetime
+import uuid
+from datetime import date, datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any, ClassVar
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -14,13 +18,14 @@ from sqlalchemy import (
     Integer,
     LargeBinary,
     MetaData,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 NAMING_CONVENTION = {
@@ -53,6 +58,103 @@ class WebhookStatus(StrEnum):
 
 class NotificationKind(StrEnum):
     NEW_ACTIVITY = "new_activity"
+    # Daily check-in (P6.9, ADR 0020); object_id is the local date as yyyymmdd.
+    CHECKIN_PROMPT = "checkin_prompt"
+    CHECKIN_REMINDER = "checkin_reminder"
+
+
+class CheckinStatus(StrEnum):
+    DONE = "done"
+    PARTIAL = "partial"
+    SKIPPED = "skipped"
+    REST = "rest"
+    SICK_OR_INJURED = "sick_or_injured"
+
+
+class Equipment(StrEnum):
+    BARBELL = "barbell"
+    DUMBBELL = "dumbbell"
+    MACHINE = "machine"
+    CABLE = "cable"
+    BODYWEIGHT = "bodyweight"
+    KETTLEBELL = "kettlebell"
+    BAND = "band"
+
+
+class Muscle(StrEnum):
+    CHEST = "chest"
+    BACK = "back"
+    SHOULDERS = "shoulders"
+    BICEPS = "biceps"
+    TRICEPS = "triceps"
+    FOREARMS = "forearms"
+    QUADS = "quads"
+    HAMSTRINGS = "hamstrings"
+    GLUTES = "glutes"
+    CALVES = "calves"
+    CORE = "core"
+
+
+LOWER_BODY = frozenset({Muscle.QUADS, Muscle.HAMSTRINGS, Muscle.GLUTES, Muscle.CALVES})
+
+
+class MovementPattern(StrEnum):
+    """What the program generator (P6.3) picks exercises by; null for custom exercises."""
+
+    SQUAT = "squat"
+    HINGE = "hinge"
+    LUNGE = "lunge"
+    HORIZONTAL_PUSH = "horizontal_push"
+    VERTICAL_PUSH = "vertical_push"
+    HORIZONTAL_PULL = "horizontal_pull"
+    VERTICAL_PULL = "vertical_pull"
+    CHEST_FLY = "chest_fly"
+    LATERAL_RAISE = "lateral_raise"
+    REAR_DELT = "rear_delt"
+    BICEPS = "biceps"
+    TRICEPS = "triceps"
+    KNEE_EXTENSION = "knee_extension"
+    KNEE_FLEXION = "knee_flexion"
+    CALF_RAISE = "calf_raise"
+    CORE = "core"
+
+
+class ProgramGoal(StrEnum):
+    STRENGTH = "strength"
+    HYPERTROPHY = "hypertrophy"
+    GENERAL = "general"
+
+
+class Progression(StrEnum):
+    DOUBLE = "double"  # add weight once every set hits rep_max (P6.3)
+    NONE = "none"
+
+
+class FoodSource(StrEnum):
+    MANUAL = "manual"
+    OPENFOODFACTS = "openfoodfacts"
+
+
+class Meal(StrEnum):
+    BREAKFAST = "breakfast"
+    LUNCH = "lunch"
+    DINNER = "dinner"
+    SNACK = "snack"
+
+
+class Sex(StrEnum):
+    """Only what the Mifflin-St Jeor equation distinguishes."""
+
+    MALE = "male"
+    FEMALE = "female"
+
+
+class ActivityBaseline(StrEnum):
+    """Everyday activity outside logged exercise; picks the BMR multiplier (P6.4)."""
+
+    SEDENTARY = "sedentary"
+    LIGHT = "light"
+    MODERATE = "moderate"
 
 
 def _check_in(column: str, enum: type[StrEnum]) -> str:
@@ -174,3 +276,259 @@ class Notification(Base):
     kind: Mapped[str] = mapped_column(String(32))
     object_id: Mapped[int] = mapped_column(BigInteger)
     sent_at: Mapped[datetime] = _utc_timestamp(default_now=True)
+
+
+# ---------------------------------------------------------------- training (Phase 6)
+# Single-user like the rest of the personal data: no athlete_id on these tables.
+
+
+class Exercise(Base):
+    __tablename__ = "exercises"
+    __table_args__ = (
+        CheckConstraint(_check_in("primary_muscle", Muscle), name="primary_muscle"),
+        CheckConstraint(_check_in("equipment", Equipment), name="equipment"),
+        CheckConstraint(
+            f"movement_pattern IS NULL OR {_check_in('movement_pattern', MovementPattern)}",
+            name="movement_pattern",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    slug: Mapped[str] = mapped_column(String(64), unique=True)
+    name: Mapped[str] = mapped_column(Text)
+    primary_muscle: Mapped[str] = mapped_column(String(16))
+    secondary_muscles: Mapped[list[str]] = mapped_column(
+        ARRAY(String(16)), server_default=text("'{}'")
+    )
+    equipment: Mapped[str] = mapped_column(String(16))
+    movement_pattern: Mapped[str | None] = mapped_column(String(32))
+    is_custom: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    created_at: Mapped[datetime] = _utc_timestamp(default_now=True)
+
+
+class Program(Base):
+    __tablename__ = "programs"
+    __table_args__ = (
+        CheckConstraint(_check_in("goal", ProgramGoal), name="goal"),
+        CheckConstraint("days_per_week BETWEEN 1 AND 7", name="days_per_week"),
+        CheckConstraint("weeks >= 1", name="weeks"),
+        # At most one active program.
+        Index("uq_programs_active", "active", unique=True, postgresql_where=text("active")),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(Text)
+    goal: Mapped[str] = mapped_column(String(16))
+    days_per_week: Mapped[int] = mapped_column(Integer)
+    weeks: Mapped[int] = mapped_column(Integer)
+    active: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    created_at: Mapped[datetime] = _utc_timestamp(default_now=True)
+
+
+class ProgramDay(Base):
+    __tablename__ = "program_days"
+    __table_args__ = (UniqueConstraint("program_id", "day_index"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    program_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("programs.id", ondelete="CASCADE")
+    )
+    day_index: Mapped[int] = mapped_column(Integer)
+    name: Mapped[str] = mapped_column(Text)
+
+
+class ProgramExercise(Base):
+    __tablename__ = "program_exercises"
+    __table_args__ = (
+        CheckConstraint(_check_in("progression", Progression), name="progression"),
+        CheckConstraint("sets >= 1 AND rep_min >= 1 AND rep_max >= rep_min", name="sets_reps"),
+        CheckConstraint("rest_seconds >= 0", name="rest_seconds"),
+        Index("ix_program_exercises_day_position", "program_day_id", "position"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    program_day_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("program_days.id", ondelete="CASCADE")
+    )
+    exercise_id: Mapped[int] = mapped_column(Integer, ForeignKey("exercises.id"))
+    position: Mapped[int] = mapped_column(Integer)
+    sets: Mapped[int] = mapped_column(Integer)
+    rep_min: Mapped[int] = mapped_column(Integer)
+    rep_max: Mapped[int] = mapped_column(Integer)
+    rest_seconds: Mapped[int] = mapped_column(Integer)
+    start_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
+    progression: Mapped[str] = mapped_column(String(16), server_default=text("'double'"))
+
+
+class Workout(Base):
+    __tablename__ = "workouts"
+    __table_args__ = (Index("ix_workouts_started_at", text("started_at DESC"), "id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    # Client-generated, so a retried or double-tapped start is one workout (ADR 0017).
+    client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
+    program_day_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("program_days.id", ondelete="SET NULL")
+    )
+    started_at: Mapped[datetime] = _utc_timestamp()
+    ended_at: Mapped[datetime | None] = _utc_timestamp(nullable=True)
+    notes: Mapped[str] = mapped_column(Text, server_default=text("''"))
+    # A link to a synced activity, not a foreign key: activities can be deleted and re-synced.
+    strava_activity_id: Mapped[int | None] = mapped_column(BigInteger)
+
+
+class WorkoutSet(Base):
+    """`client_id` is generated by the client, so a retried or double-tapped log is one row."""
+
+    __tablename__ = "workout_sets"
+    __table_args__ = (
+        CheckConstraint("reps BETWEEN 0 AND 100", name="reps"),
+        CheckConstraint("weight_kg BETWEEN 0 AND 500", name="weight_kg"),
+        CheckConstraint("rpe IS NULL OR rpe BETWEEN 1 AND 10", name="rpe"),
+        CheckConstraint("rest_seconds IS NULL OR rest_seconds >= 0", name="rest_seconds"),
+        Index("ix_workout_sets_workout_id", "workout_id", "exercise_id", "set_index"),
+        Index("ix_workout_sets_exercise_completed_at", "exercise_id", "completed_at"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
+    workout_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("workouts.id", ondelete="CASCADE")
+    )
+    exercise_id: Mapped[int] = mapped_column(Integer, ForeignKey("exercises.id"))
+    set_index: Mapped[int] = mapped_column(Integer)
+    reps: Mapped[int] = mapped_column(Integer)
+    weight_kg: Mapped[Decimal] = mapped_column(Numeric(6, 2))
+    rpe: Mapped[Decimal | None] = mapped_column(Numeric(3, 1))
+    is_warmup: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    completed_at: Mapped[datetime] = _utc_timestamp()
+    # Actual rest before this set, as measured by the client.
+    rest_seconds: Mapped[int | None] = mapped_column(Integer)
+
+
+class BodyMetric(Base):
+    """Only what the user enters; nothing is derived or estimated."""
+
+    __tablename__ = "body_metrics"
+    __table_args__ = (CheckConstraint("weight_kg > 0 AND weight_kg < 500", name="weight_kg"),)
+
+    date: Mapped[date] = mapped_column(Date, primary_key=True)
+    weight_kg: Mapped[Decimal] = mapped_column(Numeric(5, 2))
+
+
+class DailyCheckin(Base):
+    """The evening report of one local day (P6.9, ADR 0020): did the owner train, and how it
+    went. One row per date; `PUT /v1/checkins/{date}` upserts it."""
+
+    __tablename__ = "daily_checkins"
+    __table_args__ = (
+        CheckConstraint(_check_in("status", CheckinStatus), name="status"),
+        CheckConstraint("sleep_hours IS NULL OR sleep_hours BETWEEN 0 AND 24", name="sleep_hours"),
+        CheckConstraint("energy_1_5 IS NULL OR energy_1_5 BETWEEN 1 AND 5", name="energy_1_5"),
+        CheckConstraint(
+            "body_weight_kg IS NULL OR (body_weight_kg > 0 AND body_weight_kg < 500)",
+            name="body_weight_kg",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    date: Mapped[date] = mapped_column(Date, unique=True)
+    status: Mapped[str] = mapped_column(String(16))
+    workout_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("workouts.id", ondelete="SET NULL")
+    )
+    reason_note: Mapped[str | None] = mapped_column(Text)
+    sleep_hours: Mapped[Decimal | None] = mapped_column(Numeric(3, 1))
+    energy_1_5: Mapped[int | None] = mapped_column(Integer)
+    body_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    created_at: Mapped[datetime] = _utc_timestamp(default_now=True)
+    updated_at: Mapped[datetime] = _utc_timestamp(default_now=True)
+
+
+# ---------------------------------------------------------------- nutrition (Phase 6)
+# Single user, like training. Energy-balance math lives in trainsync.nutrition.energy (ADR 0019).
+
+
+class Food(Base):
+    """Per-100 g values. Open Food Facts results are cached here (`source=openfoodfacts`,
+    unique `barcode`); macros can be unknown (null), kcal cannot."""
+
+    __tablename__ = "foods"
+    __table_args__ = (
+        CheckConstraint(_check_in("source", FoodSource), name="source"),
+        CheckConstraint("kcal_100g >= 0 AND kcal_100g <= 1000", name="kcal_100g"),
+        CheckConstraint(
+            "(protein_100g IS NULL OR protein_100g BETWEEN 0 AND 100)"
+            " AND (carbs_100g IS NULL OR carbs_100g BETWEEN 0 AND 100)"
+            " AND (fat_100g IS NULL OR fat_100g BETWEEN 0 AND 100)",
+            name="macros_100g",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(Text)
+    brand: Mapped[str | None] = mapped_column(Text)
+    barcode: Mapped[str | None] = mapped_column(String(14), unique=True)
+    kcal_100g: Mapped[Decimal] = mapped_column(Numeric(6, 1))
+    protein_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    carbs_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    fat_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    source: Mapped[str] = mapped_column(String(16), server_default=text("'manual'"))
+    favorite: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    created_at: Mapped[datetime] = _utc_timestamp(default_now=True)
+
+
+class FoodLog(Base):
+    """`client_id` is generated by the client, so a retried log is one row (like sets).
+
+    The food's per-100 g values are copied in at log time, so editing a food later does not
+    change past days (summaries read these columns, never the food's current values).
+    """
+
+    __tablename__ = "food_logs"
+    __table_args__ = (
+        CheckConstraint(_check_in("meal", Meal), name="meal"),
+        CheckConstraint("grams > 0 AND grams <= 5000", name="grams"),
+        Index("ix_food_logs_date", "date", "meal"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
+    date: Mapped[date] = mapped_column(Date)
+    meal: Mapped[str] = mapped_column(String(16))
+    food_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("foods.id"))
+    grams: Mapped[Decimal] = mapped_column(Numeric(6, 1))
+    kcal_100g: Mapped[Decimal] = mapped_column(Numeric(6, 1))
+    protein_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    carbs_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    fat_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    created_at: Mapped[datetime] = _utc_timestamp(default_now=True)
+
+
+class NutritionProfile(Base):
+    """The single profile row (`id` is always 1). Body weight is not here: it comes from
+    `body_metrics`, the latest entry on or before the day being estimated."""
+
+    __tablename__ = "nutrition_profile"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="single_row"),
+        CheckConstraint(_check_in("sex", Sex), name="sex"),
+        CheckConstraint(_check_in("activity_baseline", ActivityBaseline), name="activity_baseline"),
+        CheckConstraint("birth_year BETWEEN 1900 AND 2100", name="birth_year"),
+        CheckConstraint("height_cm BETWEEN 100 AND 250", name="height_cm"),
+        CheckConstraint("kcal_target IS NULL OR kcal_target > 0", name="kcal_target"),
+        CheckConstraint(
+            "protein_target_g IS NULL OR protein_target_g >= 0", name="protein_target_g"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=False, server_default=text("1")
+    )
+    sex: Mapped[str] = mapped_column(String(8))
+    birth_year: Mapped[int] = mapped_column(Integer)
+    height_cm: Mapped[Decimal] = mapped_column(Numeric(4, 1))
+    activity_baseline: Mapped[str] = mapped_column(String(16))
+    kcal_target: Mapped[int | None] = mapped_column(Integer)
+    protein_target_g: Mapped[int | None] = mapped_column(Integer)
+    updated_at: Mapped[datetime] = _utc_timestamp(default_now=True)

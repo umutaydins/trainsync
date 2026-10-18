@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +27,14 @@ class NotificationRepository:
         """Undo a claim after a failed send, so a retry can claim it again."""
         await self._session.execute(
             delete(Notification).where(
+                Notification.kind == kind.value, Notification.object_id == object_id
+            )
+        )
+
+    async def sent_at(self, kind: NotificationKind, object_id: int) -> datetime | None:
+        """When this notification was claimed, or None if it never was."""
+        return await self._session.scalar(
+            select(Notification.sent_at).where(
                 Notification.kind == kind.value, Notification.object_id == object_id
             )
         )

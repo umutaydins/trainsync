@@ -27,6 +27,8 @@ TEST_ENV = {
     "STATE_SIGNING_KEY": "state-signing-key-value",
     "API_KEYS": "test-api-key",
     "WORKER_METRICS_PORT": "0",
+    # Never the real Open Food Facts: tests mock this host with respx.
+    "OPENFOODFACTS_BASE_URL": "http://openfoodfacts.invalid",
 }
 
 
