@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -29,7 +29,7 @@ jobs:
           if-no-files-found: ignore
 
   audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -39,7 +39,7 @@ jobs:
       - run: make audit
 
   fault:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -51,7 +51,7 @@ jobs:
       - run: make test-fault
 
   docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -83,7 +83,7 @@ jobs:
 
   prod-check:
     # compose.prod.yml with dummy secrets (P7.1): private DB/Redis, gateway allowlist, fail-fast.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -95,7 +95,7 @@ jobs:
 
   demo-check:
     # compose.demo.yml (P7.9): own project, DEMO_MODE, seeded reads and 403 writes via the gateway.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -107,7 +107,7 @@ jobs:
 
   shellcheck:
     # Every scripts/ and deploy/ shell script, with the pinned koalaman/shellcheck image.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -116,7 +116,7 @@ jobs:
   restore-check:
     # Backup image (P7.4): backup of a seeded DB restores with matching counts; truncated,
     # altered, wrong-key and count-mismatch backups fail; the loop and retention run.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -128,14 +128,14 @@ jobs:
       - run: make restore-check-ci
 
   compose:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - run: make compose-smoke
 
   web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -151,7 +151,7 @@ jobs:
 
   e2e:
     needs: compose
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
