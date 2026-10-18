@@ -28,7 +28,7 @@ PACK = MessagePack(
             "/log bench 80x5x3: set kaydet (80x5,5,4 ya da bw x12x3 de olur)\n"
             "/done: antrenmanı bitir\n"
             "/plates 102.5: bir tarafa takılacak plakalar\n"
-            "/report: günlük rapor",
+            "/report: günlük rapor\n/yumusak: 24 saat yumuşak koç · /sert: normale dön",
         ),
         Key.NO_ASSISTANT: ("Sohbet yok, sadece komut.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("/{command} diye bir şey yok lan.\n\n{help}",),
@@ -164,5 +164,23 @@ PACK = MessagePack(
         Key.CHECKIN_SUMMARY_WORKOUT: NEUTRAL.texts[Key.CHECKIN_SUMMARY_WORKOUT],
         Key.CHECKIN_SUMMARY_STREAK: ("Rapor serisi: {days} gün. Bozma.",),
         Key.CHECKIN_STALE: NEUTRAL.texts[Key.CHECKIN_STALE],
+        # Coach (P6.11, ADR 0030).
+        Key.COACH_REMINDER_BEFORE: ("30 dakika sonra {day} ({time}). Çantayı hazırla.",),
+        Key.COACH_REMINDER_NOW: ("{day}. Saat {time}. Başla.",),
+        Key.COACH_NUDGE: ("{day}, saat {time}. Hâlâ yok. Ulan, kalk.",),
+        Key.COACH_MISSED: ("{day} bugündü. Olmadı. Yarın oradasın.",),
+        Key.COACH_WORKOUT_START: ("{day} başladı. Telefon yok, set var.",),
+        Key.COACH_REST_OVER: ("Dinlenme bitti. Sıradaki set.",),
+        Key.COACH_UNDER_TARGET: ("{exercise}: {done}, hedef {target}. Sıradakinde düzelt.",),
+        Key.COACH_DONE_GOOD: ("Bütün setler tamam. İş bu. Bir dahakine yine.",),
+        Key.COACH_DONE_BAD: ("{missing} planlı set yapılmadı. Lan, bir dahakine bitir.",),
+        Key.COACH_SOFT_ON: ("Tamam. 24 saat yumuşak mod. Hazır olunca /sert.",),
+        Key.COACH_SOFT_OFF: ("Yumuşak mod kapandı. İşe dön.",),
+        Key.COACH_FACT_SESSION: NEUTRAL.texts[Key.COACH_FACT_SESSION],
+        Key.COACH_FACT_UNDER: NEUTRAL.texts[Key.COACH_FACT_UNDER],
+        Key.COACH_FACT_MISSING: NEUTRAL.texts[Key.COACH_FACT_MISSING],
+        Key.COACH_ACTION_PLANNED: NEUTRAL.texts[Key.COACH_ACTION_PLANNED],
+        Key.COACH_ACTION_FALLBACK: NEUTRAL.texts[Key.COACH_ACTION_FALLBACK],
+        Key.COACH_FREE_WORKOUT: NEUTRAL.texts[Key.COACH_FREE_WORKOUT],
     },
 )

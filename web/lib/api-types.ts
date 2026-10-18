@@ -2108,7 +2108,9 @@ export interface components {
          *         }
          *       ],
          *       "program_id": 3,
-         *       "program_name": "Upper/Lower"
+         *       "program_name": "Upper/Lower",
+         *       "start_time": "18:00:00",
+         *       "weekday": 0
          *     }
          */
         NextDay: {
@@ -2132,6 +2134,16 @@ export interface components {
             program_id: number;
             /** Program Name */
             program_name: string;
+            /**
+             * Start Time
+             * @description Local start time; null = WORKOUT_REMINDER_TIME
+             */
+            start_time?: string | null;
+            /**
+             * Weekday
+             * @description 0 = Monday; null = default spread (ADR 0030)
+             */
+            weekday?: number | null;
         };
         /** PerformedSet */
         PerformedSet: {
@@ -2449,6 +2461,16 @@ export interface components {
             exercises: components["schemas"]["PlannedExerciseIn-Input"][];
             /** Name */
             name: string;
+            /**
+             * Start Time
+             * @description Local start time (CHECKIN_TZ). Null: WORKOUT_REMINDER_TIME
+             */
+            start_time?: string | null;
+            /**
+             * Weekday
+             * @description 0 = Monday. Null: the default spread by days per week (ADR 0030)
+             */
+            weekday?: number | null;
         };
         /** ProgramDayIn */
         "ProgramDayIn-Output": {
@@ -2456,6 +2478,16 @@ export interface components {
             exercises: components["schemas"]["PlannedExerciseIn-Output"][];
             /** Name */
             name: string;
+            /**
+             * Start Time
+             * @description Local start time (CHECKIN_TZ). Null: WORKOUT_REMINDER_TIME
+             */
+            start_time?: string | null;
+            /**
+             * Weekday
+             * @description 0 = Monday. Null: the default spread by days per week (ADR 0030)
+             */
+            weekday?: number | null;
         };
         /** ProgramDayOut */
         ProgramDayOut: {
@@ -2467,6 +2499,16 @@ export interface components {
             id: number;
             /** Name */
             name: string;
+            /**
+             * Start Time
+             * @description Local start time; null = default
+             */
+            start_time?: string | null;
+            /**
+             * Weekday
+             * @description 0 = Monday; null = default spread
+             */
+            weekday?: number | null;
         };
         /**
          * ProgramGoal
@@ -2629,7 +2671,9 @@ export interface components {
          *             }
          *           ],
          *           "id": 11,
-         *           "name": "Upper A"
+         *           "name": "Upper A",
+         *           "start_time": "18:00:00",
+         *           "weekday": 0
          *         }
          *       ],
          *       "days_per_week": 4,

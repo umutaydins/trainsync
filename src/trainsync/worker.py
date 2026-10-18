@@ -20,6 +20,7 @@ from trainsync.db.repositories.tokens import SqlTokenStore
 from trainsync.db.session import create_engine, create_sessionmaker
 from trainsync.notify.alerts import ALERTS_CTX_KEY, alerts_cron, build_alert_deps
 from trainsync.notify.checkin import CHECKIN_CTX_KEY, build_checkin_deps, checkin_cron
+from trainsync.notify.coach import COACH_CTX_KEY, COACH_JOBS, build_coach_deps, coach_cron
 from trainsync.notify.jobs import (
     NOTIFY_CTX_KEY,
     NotifyDeps,
@@ -104,11 +105,16 @@ async def startup(ctx: dict[str, Any]) -> None:
     ctx[CHECKIN_CTX_KEY] = build_checkin_deps(
         settings, sessionmaker, http, clock, sleep, messages_for(settings)
     )
+    ctx[COACH_CTX_KEY] = build_coach_deps(
+        settings, sessionmaker, http, redis, clock, sleep, messages_for(settings)
+    )
     log.info(
         "worker_startup",
         env=settings.env,
         notifier=notifier.channel,
         checkin=settings.checkin_active,
+        coach=settings.coach_active,
+        intensity=settings.bot_intensity,
         alerts=chat_ref is not None,
         backup_dir=settings.backup_dir or None,
     )
@@ -133,12 +139,14 @@ class WorkerSettings:
         incremental_job,
         process_webhook_event_job,
         notify_new_activity_job,
+        *COACH_JOBS,
     ]
     cron_jobs: ClassVar[list[Any]] = [
         incremental_cron,
         retry_webhooks_cron,
         checkin_cron,
         alerts_cron,
+        coach_cron,
     ]
     on_startup = startup
     on_shutdown = shutdown

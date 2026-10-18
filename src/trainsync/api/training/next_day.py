@@ -6,6 +6,7 @@ workout yet it is the first day. A workout that followed a day and is still open
 keeps that day current, with its id, so a client can continue it.
 """
 
+from datetime import time
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -32,6 +33,8 @@ NEXT_DAY_EXAMPLE: dict[str, Any] = {
     "day_id": 11,
     "day_index": 0,
     "day_name": "Upper A",
+    "weekday": 0,
+    "start_time": "18:00:00",
     "open_workout_id": None,
     "planned": [PLANNED_EXAMPLE],
 }
@@ -45,6 +48,12 @@ class NextDay(BaseModel):
     day_id: int
     day_index: int
     day_name: str
+    weekday: int | None = Field(
+        default=None, description="0 = Monday; null = default spread (ADR 0030)"
+    )
+    start_time: time | None = Field(
+        default=None, description="Local start time; null = WORKOUT_REMINDER_TIME"
+    )
     open_workout_id: int | None = Field(
         description="An unfinished workout that follows this day, to continue instead of a new one"
     )
@@ -92,6 +101,8 @@ async def next_day(sessionmaker: SessionmakerDep, settings: SettingsDep) -> Next
             day_id=day.id,
             day_index=day.day_index,
             day_name=day.name,
+            weekday=day.weekday,
+            start_time=day.start_time,
             open_workout_id=open_workout.id if open_workout else None,
             planned=planned,
         )

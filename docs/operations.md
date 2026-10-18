@@ -352,6 +352,42 @@ All secrets live in `.env.prod` (and, for the web app, in Vercel's environment).
 gateway (ADR 0022) and answer only `ok`/`fail` per dependency, so nothing needs rotating; the
 uptime workflow (Alerts) uses them without credentials.
 
+## Coach (intensity, timed messages)
+
+Design: [ADR 0030](decisions/0030-coach-intensity-and-guardrails.md), task
+[P6.11](tasks/P6.11-coach-intensity.md).
+
+- **Intensity**: `BOT_INTENSITY=normal` (default) or `savage`, set in `.env.prod` by the owner
+  himself, then `scripts/mac-prod.sh up` (recreates bot and worker). Savage needs
+  `BOT_TONE=hardcore` and `BOT_LANG=tr`; it is an explicit opt-in to unrestricted profanity and
+  brutal roasting of excuses and missed work, in the coach lines and in the assistant (whose
+  system prompt says the user asked for it). The worker and bot log `intensity` at startup.
+- **Guardrails** (every intensity, in code and in the assistant prompt): never body, weight or
+  appearance; no slurs; pain, injury, illness, dizziness, chest pain → no roast, rest / see a
+  doctor; food is never roasted ("eat it, log it, stay in your daily target"), nothing pushes
+  below the nutrition target. Profanity is not filtered.
+- **Soft mode**: `/yumusak` in the chat → normal intensity for 24 h; `/sert` → back. It is the
+  Redis key `coach:soft` (TTL 24 h), shared by bot and worker:
+  `docker compose --env-file .env.prod -f compose.prod.yml exec redis redis-cli ttl coach:soft`.
+- **Timed messages** (worker, to `TELEGRAM_NOTIFY_CHAT_ID`; off without a bot token, or with
+  `COACH_MESSAGES_ENABLED=false`): on a scheduled program day 30 min before the start, at the
+  start, +30 and +90 min nudges and a "missed" message at +180 min, each only while no workout
+  was started that local day; a workout start line; "rest is over" when the planned rest after
+  the last set has passed; an "under target" line once per exercise per workout; a summary and
+  verdict at finish. Workouts started by the evening check-in get none of the live messages.
+- **Schedule**: a program day's `weekday` (0 = Monday) and `start_time` are set through the API
+  (`PUT /v1/training/programs/{id}`, fields on each day); without them the days follow a default
+  spread (3 days → Mon/Wed/Fri, 4 → Mon/Tue/Thu/Fri, …) at `WORKOUT_REMINDER_TIME` (18:00).
+- **Quiet hours**: `QUIET_HOURS=23:00-07:00` (local, `CHECKIN_TZ`): no proactive coach message;
+  one that falls in the window is dropped, not delayed. Replies to your own messages still come.
+- **Own lines**: copy `config/messages.local.example.yaml` to `config/messages.local.yaml`
+  (git-ignored; mounted read-only into bot and worker), add lines per category, then
+  `scripts/mac-prod.sh restart bot` and `… restart worker`. They are sent verbatim; a line that
+  breaks a guardrail is dropped at startup and logged as `coach_local_line_dropped`
+  (`scripts/mac-prod.sh logs bot | grep coach_local`).
+- **Where the state lives**: sent messages are `notifications` rows (`coach_*` kinds, idempotent);
+  the last 10 lines per category are Redis lists `coach:recent:<category>` (rotation).
+
 ## Owner checks
 
 Manual checks only the owner can perform. Each one stays PENDING until the owner runs the
@@ -389,6 +425,8 @@ that command on the Mac.
 | 27 | Demo stack running (P7.9) | `cp .env.demo.example .env.demo && chmod 600 .env.demo`, set `DEMO_API_KEY`, then `docker compose --env-file .env.demo -f compose.demo.yml up -d --build && docker compose --env-file .env.demo -f compose.demo.yml ps` | PENDING | | |
 | 28 | Demo public on :8443 (P7.9) | `scripts/funnel.sh on all && curl -s -o /dev/null -w '%{http_code}\n' -H "X-API-Key: <demo key>" https://<host>.<tailnet>.ts.net:8443/v1/activities` (expect 200) and the same with `-X PUT …/v1/nutrition/profile` (expect 403) | PENDING | | |
 | 29 | Preview shows the demo, README link filled in (P7.9) | decide preview protection ([deploy-vercel.md](deploy-vercel.md) §3), open the preview URL logged out of Vercel, log in with `trainsync-demo`, confirm demo data (program "Upper/Lower 4-day"); put the URL into README "Live demo" | PENDING | | |
+| 30 | Coach intensity chosen (P6.11) | set `BOT_INTENSITY` (and, for savage, `BOT_TONE=hardcore`, `BOT_LANG=tr`) in `.env.prod`, `scripts/mac-prod.sh up`, then `scripts/mac-prod.sh logs bot \| grep bot_startup` (shows `intensity`) | PENDING | | |
+| 31 | Program days scheduled (P6.11) | set `weekday` / `start_time` on the active program's days (API), then wait for the 30-minute reminder on the next training day | PENDING | | |
 
 ## Backups and restore
 

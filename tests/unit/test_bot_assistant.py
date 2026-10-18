@@ -4,6 +4,9 @@ No test talks to Anthropic: the planner is a fake, and tests/conftest.py points 
 URL at an unroutable host as a backstop.
 """
 
+# Turkish text: the dotless i (U+0131) is a letter here, not a confusable.
+# ruff: noqa: RUF001
+
 import asyncio
 import json
 from collections.abc import AsyncIterator, Callable
@@ -30,7 +33,9 @@ from trainsync.bot.assistant import (
 )
 from trainsync.bot.messages import PACKS, Key, Messages
 from trainsync.bot.read_api import ReadApi
+from trainsync.coach.mode import CoachMode, MemorySoftModeStore
 from trainsync.core.redis import create_redis
+from trainsync.core.settings import BotTone
 
 API = "http://trainsync-api"
 NOW = datetime(2026, 10, 18, 9, 0, tzinfo=UTC)
@@ -442,3 +447,62 @@ async def test_text_handler_is_off_without_a_key(http: httpx.AsyncClient) -> Non
         settings = make_settings(anthropic_api_key="sk-test-not-real")
         on = await bot_main.text_handler(settings, read_api, redis, stack, MSG, clock=lambda: NOW)
         assert on is not None
+
+
+# ---------------------------------------------------------------- coach (P6.11, ADR 0030)
+
+
+@pytest.mark.parametrize("tone", ["neutral", "hardcore"])
+def test_guardrails_are_in_every_prompt_and_savage_only_on_request(tone: BotTone) -> None:
+    plain = system_prompt(NOW, tone, "tr")
+    assert "Hard limits" in plain
+    assert "see a doctor" in plain
+    assert "never push eating below their nutrition target" in plain
+    assert "SAVAGE" not in plain
+    savage = system_prompt(NOW, tone, "tr", savage=True)
+    assert "The user explicitly asked for this tone" in savage
+    assert "Profanity has no limit" in savage
+    assert savage.index("Hard limits") < savage.index("SAVAGE")  # the limits override it
+
+
+def test_a_null_last_synced_at_means_check_the_sync_status_first() -> None:
+    """2026-10-18: the assistant called a running first sync 'no synced data' (P6.11 bug)."""
+    prompt = system_prompt(NOW)
+    assert "If it is null, call get_sync_status before answering" in prompt
+    assert "the first sync is still in progress" in prompt
+    assert "no Strava account is connected yet" in prompt
+
+
+async def test_savage_reaches_the_prompt_and_soft_mode_takes_it_out(
+    http: httpx.AsyncClient, api: respx.MockRouter
+) -> None:
+    soft = MemorySoftModeStore()
+    planner = ScriptedPlanner([text("Kalk lan."), text("Kalk.")])
+    coach = Messages(PACKS["hardcore", "tr"])
+    bot = assistant(http, planner, msg=coach, mode=CoachMode(configured=True, soft=soft))
+    assert await bot.answer(42, "?") == "Kalk lan."
+    assert "SAVAGE" in planner.systems[0]
+    await soft.soften()
+    await bot.answer(42, "?")
+    assert "SAVAGE" not in planner.systems[1]
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "3 antrenman bu hafta, şişko.",
+        "Burn it off tomorrow: 600 kcal over.",
+        "Bugün aç kal, yarın telafi edersin.",
+    ],
+)
+async def test_a_reply_that_breaks_a_guardrail_is_never_sent(
+    http: httpx.AsyncClient, api: respx.MockRouter, reply: str
+) -> None:
+    planner = ScriptedPlanner([text(reply)])
+    assert await assistant(http, planner).answer(42, "?") == MSG(Key.ASSISTANT_UNAVAILABLE)
+
+
+async def test_profanity_in_a_reply_is_fine(http: httpx.AsyncClient, api: respx.MockRouter) -> None:
+    reply = "Amına koyayım, bu hafta 3 antrenman. Siktir et bahaneyi, yarın 18:00."
+    planner = ScriptedPlanner([text(reply)])
+    assert await assistant(http, planner).answer(42, "?") == reply

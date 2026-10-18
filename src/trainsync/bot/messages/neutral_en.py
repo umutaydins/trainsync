@@ -19,7 +19,7 @@ PACK = MessagePack(
             "/log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)\n"
             "/done: finish the workout\n"
             "/plates 102.5: plates per side\n"
-            "/report: daily check-in",
+            "/report: daily check-in\n/yumusak: soft coach for 24 h · /sert: back to normal",
         ),
         Key.NO_ASSISTANT: ("I only understand commands for now.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("Unknown command /{command}.\n\n{help}",),
@@ -130,5 +130,23 @@ PACK = MessagePack(
         Key.CHECKIN_STALE: (
             "That button belongs to an earlier question. Send /report to start the check-in again.",
         ),
+        # Coach (P6.11, ADR 0030).
+        Key.COACH_REMINDER_BEFORE: ("Workout in 30 minutes: {day}, {time}.",),
+        Key.COACH_REMINDER_NOW: ("Time for {day} ({time}).",),
+        Key.COACH_NUDGE: ("{day} was planned for {time}. There is still time today.",),
+        Key.COACH_MISSED: ("No workout today; {day} was planned. Tomorrow is a new day.",),
+        Key.COACH_WORKOUT_START: ("Workout started: {day}. Have a good session.",),
+        Key.COACH_REST_OVER: ("Rest is over: next set.",),
+        Key.COACH_UNDER_TARGET: ("{exercise}: {done}, planned {target}.",),
+        Key.COACH_DONE_GOOD: ("Every planned set done. Well done.",),
+        Key.COACH_DONE_BAD: ("{missing} planned sets were not done.",),
+        Key.COACH_SOFT_ON: ("Soft mode for 24 hours. /sert turns it off.",),
+        Key.COACH_SOFT_OFF: ("Soft mode off.",),
+        Key.COACH_FACT_SESSION: ("{day} · {time}",),
+        Key.COACH_FACT_UNDER: ("{exercise}: {done}, target {target}.",),
+        Key.COACH_FACT_MISSING: ("{missing} planned sets missing.",),
+        Key.COACH_ACTION_PLANNED: ("Today: {day}, {time}.",),
+        Key.COACH_ACTION_FALLBACK: ("Today: a 20-minute walk, now.",),
+        Key.COACH_FREE_WORKOUT: ("free workout",),
     },
 )

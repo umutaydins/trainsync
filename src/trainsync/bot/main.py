@@ -17,6 +17,7 @@ from redis.asyncio import Redis
 
 from trainsync.bot.assistant import TIMEOUT_S, AnthropicPlanner, Assistant, RedisRateLimiter
 from trainsync.bot.checkin import CheckinFlow
+from trainsync.bot.coach import CoachFeature
 from trainsync.bot.common import Feature, RedisStateStore, StateStore
 from trainsync.bot.handlers import Commands, Dispatcher, TextHandler
 from trainsync.bot.messages import Messages, messages_for
@@ -25,6 +26,8 @@ from trainsync.bot.polling import Poller
 from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import TelegramApi
 from trainsync.bot.training import TrainingCommands
+from trainsync.coach.mode import CoachMode, RedisSoftModeStore, SoftModeStore
+from trainsync.coach.voice import CoachVoice, build_voice
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.logging import configure_logging, get_logger, warn_dev_secrets
 from trainsync.core.redis import create_redis
@@ -63,32 +66,57 @@ async def run(
         msg = messages_for(settings)
         redis = create_redis(settings)
         stack.push_async_callback(redis.aclose)
+        voice = build_voice(settings, redis, msg)
+        soft = RedisSoftModeStore(redis)
         dispatcher = Dispatcher(
             telegram,
             Commands(read_api, clock, msg),
             set(settings.telegram_allowed_chat_ids),
             msg,
-            await text_handler(settings, read_api, redis, stack, msg, clock=clock),
-            features=features(settings, read_api, RedisStateStore(redis), msg, clock=clock),
+            await text_handler(settings, read_api, redis, stack, msg, clock=clock, mode=voice.mode),
+            features=features(
+                settings,
+                read_api,
+                RedisStateStore(redis),
+                msg,
+                clock=clock,
+                voice=voice,
+                soft=soft,
+            ),
         )
         log.info(
             "bot_startup",
             allowed_chats=len(settings.telegram_allowed_chat_ids),
             tone=settings.bot_tone,
             lang=settings.bot_lang,
+            intensity=settings.bot_intensity,
+            savage=voice.mode.configured,
+            local_lines=voice.pack.local_count,
         )
         await Poller(telegram, dispatcher, sleep=sleep).run(stop)
     log.info("bot_shutdown")
 
 
 def features(
-    settings: Settings, api: ReadApi, store: StateStore, msg: Messages, *, clock: Clock
+    settings: Settings,
+    api: ReadApi,
+    store: StateStore,
+    msg: Messages,
+    *,
+    clock: Clock,
+    voice: CoachVoice | None = None,
+    soft: SoftModeStore | None = None,
 ) -> list[Feature]:
-    """Check-in (P6.9; first, so a check-in answer is never taken for something else),
-    training and nutrition commands (P6.8). "Today" is the local day in `CHECKIN_TZ`."""
+    """Check-in (P6.9; first, so a check-in answer is never taken for something else), the
+    coach (P6.11: pain guard, savage triggers, /yumusak, /sert), training and nutrition commands
+    (P6.8). "Today" is the local day in `CHECKIN_TZ`."""
     zone = settings.checkin_zone
+    coach: list[Feature] = []
+    if voice is not None and soft is not None:
+        coach = [CoachFeature(api, voice, soft, clock, zone, msg, settings.workout_reminder_time)]
     return [
-        CheckinFlow(api, store, clock, zone, msg),
+        CheckinFlow(api, store, clock, zone, msg, voice),
+        *coach,
         TrainingCommands(api, store, clock, zone, msg),
         NutritionCommands(api, store, clock, zone, msg),
     ]
@@ -102,6 +130,7 @@ async def text_handler(
     msg: Messages,
     *,
     clock: Clock,
+    mode: CoachMode | None = None,
 ) -> TextHandler | None:
     """The natural-language assistant (P5.7), or None without `ANTHROPIC_API_KEY`."""
     if not settings.assistant_enabled:
@@ -117,6 +146,7 @@ async def text_handler(
         RedisRateLimiter(redis, settings.assistant_rate_limit_per_hour, clock),
         clock,
         msg,
+        mode=mode,
     )
     log.info("assistant_enabled", model=settings.assistant_model)
     return assistant.answer

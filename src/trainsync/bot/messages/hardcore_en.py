@@ -25,7 +25,7 @@ PACK = MessagePack(
             "/log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)\n"
             "/done: finish the workout\n"
             "/plates 102.5: plates per side\n"
-            "/report: daily check-in",
+            "/report: daily check-in\n/yumusak: soft coach for 24 h · /sert: back to normal",
         ),
         Key.NO_ASSISTANT: ("I don't do small talk. Commands only.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("/{command}? Not a thing.\n\n{help}",),
@@ -165,5 +165,25 @@ PACK = MessagePack(
         Key.CHECKIN_SUMMARY_WORKOUT: NEUTRAL.texts[Key.CHECKIN_SUMMARY_WORKOUT],
         Key.CHECKIN_SUMMARY_STREAK: ("Check-in streak: {days} days. Don't break it.",),
         Key.CHECKIN_STALE: NEUTRAL.texts[Key.CHECKIN_STALE],
+        # Coach (P6.11, ADR 0030).
+        Key.COACH_REMINDER_BEFORE: ("30 minutes to {day} ({time}). Get your bag.",),
+        Key.COACH_REMINDER_NOW: ("{day}. {time}. Go.",),
+        Key.COACH_NUDGE: ("{day} was at {time}. Still nothing. Damn, go now.",),
+        Key.COACH_MISSED: ("{day} was today. It didn't happen. Tomorrow you show up.",),
+        Key.COACH_WORKOUT_START: ("{day} started. No phone, just sets.",),
+        Key.COACH_REST_OVER: ("Rest is over. Next set.",),
+        Key.COACH_UNDER_TARGET: ("{exercise}: {done}, target {target}. Fix it on the next set.",),
+        Key.COACH_DONE_GOOD: ("Every set done. That's the job. Again next time.",),
+        Key.COACH_DONE_BAD: (
+            "{missing} planned sets left on the table. Hell, finish them next time.",
+        ),
+        Key.COACH_SOFT_ON: ("Fine. Soft mode for 24 hours. /sert when you're ready.",),
+        Key.COACH_SOFT_OFF: ("Soft mode off. Back to work.",),
+        Key.COACH_FACT_SESSION: NEUTRAL.texts[Key.COACH_FACT_SESSION],
+        Key.COACH_FACT_UNDER: NEUTRAL.texts[Key.COACH_FACT_UNDER],
+        Key.COACH_FACT_MISSING: NEUTRAL.texts[Key.COACH_FACT_MISSING],
+        Key.COACH_ACTION_PLANNED: NEUTRAL.texts[Key.COACH_ACTION_PLANNED],
+        Key.COACH_ACTION_FALLBACK: NEUTRAL.texts[Key.COACH_ACTION_FALLBACK],
+        Key.COACH_FREE_WORKOUT: NEUTRAL.texts[Key.COACH_FREE_WORKOUT],
     },
 )

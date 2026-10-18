@@ -28,6 +28,7 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [23. Activity — make deploy and make rollback](#23-activity--make-deploy-and-make-rollback-p75-adr-0026)
 - [24. State — uptime and stack alerts](#24-state--uptime-and-stack-alerts-p78-adr-0027)
 - [25. Deployment — public read-only demo](#25-deployment--public-read-only-demo-p79-adr-0028)
+- [26. Sequence — the coach during a workout](#26-sequence--the-coach-during-a-workout-p611-adr-0030)
 
 ---
 
@@ -331,6 +332,8 @@ erDiagram
         bigint program_id FK
         int day_index "UK with program_id"
         text name
+        int weekday "0-6, nullable (coach schedule)"
+        time start_time "nullable"
     }
     program_exercises {
         bigint id PK
@@ -1380,4 +1383,38 @@ flowchart TB
     seed -- "wipe + synthetic dataset<br/>(seed.py, fixed RNG)" --> pg
     worker -- "same reset nightly" --> pg
     api -. "Strava URLs point here" .-> fs
+```
+
+## 26. Sequence — the coach during a workout (P6.11, ADR 0030)
+
+Every message claims a `notifications` row first; quiet hours drop it; check-in workouts get none.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client (web / bot)
+    participant API as API
+    participant Q as arq (Redis)
+    participant W as Worker (coach jobs)
+    participant T as Telegram
+
+    C->>API: PUT /v1/training/workouts/{client_id} (201)
+    API->>Q: coach_workout_started:{id}
+    Q->>W: coach_workout_started
+    W->>T: start line (savage or tone pack)
+    C->>API: PUT …/sets/{client_id} (201)
+    API->>Q: coach_set_logged:{set id}
+    Q->>W: coach_set_logged
+    alt below plan (reps < rep_min or lighter than the suggestion)
+        W->>T: under target (once per exercise per workout)
+    end
+    W->>Q: coach_rest_over, deferred to completed_at + rest_seconds
+    Q->>W: coach_rest_over
+    alt still the latest set, planned sets left, not late
+        W->>T: "kalk, sıradaki set"
+    end
+    C->>API: POST …/finish
+    API->>Q: coach_workout_finished:{id}
+    Q->>W: coach_workout_finished
+    W->>T: summary + PRs + verdict (good / missing sets)
 ```

@@ -29,7 +29,9 @@ being up or my rate-limit budget being available at read time.
   database (ADR 0012, ADR 0013). Optional natural-language questions: Claude chooses read-API
   calls through four validated tools, every number comes from the API (ADR 0014). All wording
   (replies, notifications, the assistant's persona) comes from a message pack chosen by
-  `BOT_TONE` × `BOT_LANG` (ADR 0016).
+  `BOT_TONE` × `BOT_LANG` (ADR 0016). `BOT_INTENSITY=savage` adds the owner's opt-in brutal
+  coach (savage line pack, excuse roasts, timed messages from the worker), and hard guardrails
+  (body, slurs, pain/illness, food) hold in every intensity (ADR 0030).
 - **Web dashboard** (`web/`, Next.js): server-side BFF that holds the API key and forwards
   allowlisted method + path combinations to the API (reads, and CSRF-checked JSON writes to
   training, nutrition and check-ins); the browser never sees the key (ADR 0011). Phase 6 pages:
@@ -58,7 +60,7 @@ Training (Phase 6, single user, no `athlete_id`):
 |---|---|---|
 | `exercises` | `id`, `slug` (unique), `name`, `primary_muscle`, `secondary_muscles` (text[]), `equipment`, `movement_pattern` (nullable), `is_custom`, `created_at` | ~70 built-in rows seeded by migration 0005 from `training/seed_exercises.json`; `movement_pattern` feeds the program generator |
 | `programs` | `id`, `name`, `goal` (strength / hypertrophy / general), `days_per_week`, `weeks`, `active`, `created_at` | partial unique index: at most one active program |
-| `program_days` | `id`, `program_id` (FK cascade), `day_index`, `name`; unique (`program_id`, `day_index`) | |
+| `program_days` | `id`, `program_id` (FK cascade), `day_index`, `name`, `weekday` (0–6, nullable), `start_time` (nullable); unique (`program_id`, `day_index`) | `weekday`/`start_time` drive the coach's reminders; null = default spread and `WORKOUT_REMINDER_TIME` (ADR 0030) |
 | `program_exercises` | `id`, `program_day_id` (FK cascade), `exercise_id`, `position`, `sets`, `rep_min`, `rep_max`, `rest_seconds`, `start_weight_kg`, `progression` | |
 | `workouts` | `id`, `client_id` (uuid, unique), `program_day_id` (nullable, set null), `started_at`, `ended_at`, `notes`, `strava_activity_id` (link, no FK) | started with `PUT` by `client_id`: a retried start is one workout (ADR 0017) |
 | `workout_sets` | `id`, `client_id` (uuid, unique), `workout_id` (FK cascade), `exercise_id`, `set_index`, `reps`, `weight_kg` numeric(6,2), `rpe`, `is_warmup`, `completed_at`, `rest_seconds` | upsert on `client_id`: a retried log is one row |

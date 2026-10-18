@@ -1,6 +1,6 @@
 """`/v1/training/programs`: training programs with their days and planned exercises."""
 
-from datetime import datetime
+from datetime import datetime, time
 from typing import Annotated, Any, Self
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
@@ -62,6 +62,15 @@ class PlannedExerciseIn(BaseModel):
 class ProgramDayIn(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     exercises: list[PlannedExerciseIn] = Field(max_length=20)
+    weekday: int | None = Field(
+        default=None,
+        ge=0,
+        le=6,
+        description="0 = Monday. Null: the default spread by days per week (ADR 0030)",
+    )
+    start_time: time | None = Field(
+        default=None, description="Local start time (CHECKIN_TZ). Null: WORKOUT_REMINDER_TIME"
+    )
 
 
 class ProgramIn(BaseModel):
@@ -97,7 +106,16 @@ PROGRAM_SUMMARY_EXAMPLE: dict[str, Any] = {
 }
 PROGRAM_EXAMPLE: dict[str, Any] = {
     **PROGRAM_SUMMARY_EXAMPLE,
-    "days": [{"id": 11, "day_index": 0, "name": "Upper A", "exercises": [PLANNED_EXAMPLE]}],
+    "days": [
+        {
+            "id": 11,
+            "day_index": 0,
+            "name": "Upper A",
+            "weekday": 0,
+            "start_time": "18:00:00",
+            "exercises": [PLANNED_EXAMPLE],
+        }
+    ],
 }
 
 
@@ -133,6 +151,8 @@ class ProgramDayOut(BaseModel):
     id: int
     day_index: int
     name: str
+    weekday: int | None = Field(default=None, description="0 = Monday; null = default spread")
+    start_time: time | None = Field(default=None, description="Local start time; null = default")
     exercises: list[PlannedExerciseOut]
 
 
@@ -194,6 +214,8 @@ async def program_out(session: AsyncSession, tree: ProgramTree) -> ProgramOut:
                 id=day.id,
                 day_index=day.day_index,
                 name=day.name,
+                weekday=day.weekday,
+                start_time=day.start_time,
                 exercises=[
                     PlannedExerciseOut.from_row(p, exercises[p.exercise_id]) for p in planned
                 ],
@@ -213,7 +235,9 @@ async def _rows(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"unknown exercise ids: {missing}")
     return [
         (
-            ProgramDay(day_index=index, name=day.name),
+            ProgramDay(
+                day_index=index, name=day.name, weekday=day.weekday, start_time=day.start_time
+            ),
             [
                 ProgramExercise(
                     exercise_id=e.exercise_id,

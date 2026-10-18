@@ -22,7 +22,7 @@ PACK = MessagePack(
             "/log bench 80x5x3: set kaydet (80x5,5,4 ya da bw x12x3 de olur)\n"
             "/done: antrenmanı bitir\n"
             "/plates 102.5: bir tarafa takılacak plakalar\n"
-            "/report: günlük rapor",
+            "/report: günlük rapor\n/yumusak: 24 saat yumuşak koç · /sert: normale dön",
         ),
         Key.NO_ASSISTANT: ("Şimdilik yalnızca komutları anlıyorum.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("Bilinmeyen komut: /{command}.\n\n{help}",),
@@ -131,5 +131,23 @@ PACK = MessagePack(
         Key.CHECKIN_STALE: (
             "Bu düğme önceki bir soruya ait. Raporu yeniden başlatmak için /report gönder.",
         ),
+        # Coach (P6.11, ADR 0030).
+        Key.COACH_REMINDER_BEFORE: ("30 dakika sonra antrenman: {day}, {time}.",),
+        Key.COACH_REMINDER_NOW: ("{day} zamanı ({time}).",),
+        Key.COACH_NUDGE: ("{day}, saat {time} için planlıydı. Bugün hâlâ vakit var.",),
+        Key.COACH_MISSED: ("Bugün antrenman olmadı, {day} planlıydı. Yarın yeni bir gün.",),
+        Key.COACH_WORKOUT_START: ("Antrenman başladı: {day}. İyi çalışmalar.",),
+        Key.COACH_REST_OVER: ("Dinlenme bitti: sıradaki set.",),
+        Key.COACH_UNDER_TARGET: ("{exercise}: {done}, planlanan {target}.",),
+        Key.COACH_DONE_GOOD: ("Planlanan bütün setler tamam. Eline sağlık.",),
+        Key.COACH_DONE_BAD: ("{missing} planlı set yapılmadı.",),
+        Key.COACH_SOFT_ON: ("24 saat yumuşak mod. Kapatmak için /sert.",),
+        Key.COACH_SOFT_OFF: ("Yumuşak mod kapandı.",),
+        Key.COACH_FACT_SESSION: ("{day} · {time}",),
+        Key.COACH_FACT_UNDER: ("{exercise}: {done}, hedef {target}.",),
+        Key.COACH_FACT_MISSING: ("{missing} planlı set eksik.",),
+        Key.COACH_ACTION_PLANNED: ("Bugün: {day}, {time}.",),
+        Key.COACH_ACTION_FALLBACK: ("Bugün: 20 dakika yürüyüş, şimdi.",),
+        Key.COACH_FREE_WORKOUT: ("serbest antrenman",),
     },
 )

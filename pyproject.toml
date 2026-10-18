@@ -15,6 +15,7 @@ dependencies = [
     "httpx>=0.28.1",
     "prometheus-client>=0.26.0",
     "pydantic-settings>=2.16.0",
+    "pyyaml>=6.0.3",
     "redis>=5.3.1",
     "sqlalchemy[asyncio]>=2.1.5",
     "structlog>=26.1.0",
@@ -31,6 +32,7 @@ dev = [
     "respx>=0.23.1",
     "ruff>=0.6",
     "testcontainers[postgres,redis]>=4.13.3",
+    "types-pyyaml>=6.0.12",
 ]
 loadtest = [
     "locust>=2.32",

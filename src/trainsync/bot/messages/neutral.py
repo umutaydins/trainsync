@@ -47,6 +47,11 @@ class NeutralKey(StrEnum):
     CHECKIN_SUMMARY_SLEEP = "checkin.summary.sleep"
     CHECKIN_SUMMARY_ENERGY = "checkin.summary.energy"
 
+    # Coach guardrails (P6.11, ADR 0030): the same in every tone and intensity.
+    SAFETY_PAIN = "safety.pain"
+    FOOD_CRAVING = "food.craving"
+    FOOD_CRAVING_NO_TARGET = "food.craving_no_target"
+
 
 def _fields(*names: str) -> frozenset[str]:
     return frozenset(names)
@@ -79,6 +84,9 @@ NEUTRAL_FIELDS: Mapping[NeutralKey, frozenset[str]] = {
     NeutralKey.CHECKIN_SUMMARY_SCALE: _fields("value"),
     NeutralKey.CHECKIN_SUMMARY_SLEEP: _fields("hours"),
     NeutralKey.CHECKIN_SUMMARY_ENERGY: _fields("energy"),
+    NeutralKey.SAFETY_PAIN: _fields(),
+    NeutralKey.FOOD_CRAVING: _fields("remaining"),
+    NeutralKey.FOOD_CRAVING_NO_TARGET: _fields(),
 }
 
 _EN: Mapping[NeutralKey, str] = {
@@ -112,6 +120,14 @@ _EN: Mapping[NeutralKey, str] = {
     NeutralKey.CHECKIN_SUMMARY_SCALE: "Scale: {value}",
     NeutralKey.CHECKIN_SUMMARY_SLEEP: "Sleep: {hours}",
     NeutralKey.CHECKIN_SUMMARY_ENERGY: "Energy: {energy}/5",
+    NeutralKey.SAFETY_PAIN: (
+        "That sounds like pain or illness. No training through it: rest, and see a doctor if it "
+        "is sharp, in your chest, makes you dizzy or does not go away."
+    ),
+    NeutralKey.FOOD_CRAVING: "Eat it, log it, stay in your daily target: {remaining} left today.",
+    NeutralKey.FOOD_CRAVING_NO_TARGET: (
+        "Eat it and log it with /eat. Set a daily target on the web to see what is left."
+    ),
 }
 
 _TR: Mapping[NeutralKey, str] = {
@@ -147,6 +163,14 @@ _TR: Mapping[NeutralKey, str] = {
     NeutralKey.CHECKIN_SUMMARY_SCALE: "Tartı: {value}",
     NeutralKey.CHECKIN_SUMMARY_SLEEP: "Uyku: {hours}",
     NeutralKey.CHECKIN_SUMMARY_ENERGY: "Enerji: {energy}/5",
+    NeutralKey.SAFETY_PAIN: (
+        "Bu ağrı ya da hastalık gibi duruyor. Bununla antrenman yok: dinlen; ağrı keskinse, "
+        "göğsündeyse, başın dönüyorsa ya da geçmiyorsa doktora görün."
+    ),
+    NeutralKey.FOOD_CRAVING: "Ye, kaydet, günlük hedefinde kal: bugün {remaining} kaldı.",
+    NeutralKey.FOOD_CRAVING_NO_TARGET: (
+        "Ye ve /eat ile kaydet. Kalanı görmek için web'den günlük hedef koy."
+    ),
 }
 
 NEUTRAL_TEXTS: Mapping[BotLang, Mapping[NeutralKey, str]] = {"en": _EN, "tr": _TR}

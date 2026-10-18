@@ -1,7 +1,7 @@
 """SQLAlchemy models for every table in docs/architecture.md → Data model."""
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any, ClassVar
@@ -21,6 +21,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    Time,
     UniqueConstraint,
     func,
     text,
@@ -61,6 +62,18 @@ class NotificationKind(StrEnum):
     # Daily check-in (P6.9, ADR 0020); object_id is the local date as yyyymmdd.
     CHECKIN_PROMPT = "checkin_prompt"
     CHECKIN_REMINDER = "checkin_reminder"
+    # Coach (P6.11, ADR 0030). Reminder stages: object_id = local date (yyyymmdd); workout
+    # messages: the workout id; rest over: the set id; under target: workout id * 100000 +
+    # exercise id (once per exercise per workout).
+    COACH_REMINDER_BEFORE = "coach_reminder_before"
+    COACH_REMINDER_NOW = "coach_reminder_now"
+    COACH_NUDGE_30 = "coach_nudge_30"
+    COACH_NUDGE_90 = "coach_nudge_90"
+    COACH_MISSED = "coach_missed"
+    COACH_WORKOUT_START = "coach_workout_start"
+    COACH_REST_OVER = "coach_rest_over"
+    COACH_UNDER_TARGET = "coach_under_target"
+    COACH_WORKOUT_DONE = "coach_workout_done"
 
 
 class CheckinStatus(StrEnum):
@@ -327,7 +340,10 @@ class Program(Base):
 
 class ProgramDay(Base):
     __tablename__ = "program_days"
-    __table_args__ = (UniqueConstraint("program_id", "day_index"),)
+    __table_args__ = (
+        UniqueConstraint("program_id", "day_index"),
+        CheckConstraint("weekday IS NULL OR weekday BETWEEN 0 AND 6", name="weekday"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     program_id: Mapped[int] = mapped_column(
@@ -335,6 +351,10 @@ class ProgramDay(Base):
     )
     day_index: Mapped[int] = mapped_column(Integer)
     name: Mapped[str] = mapped_column(Text)
+    # When the coach expects this day (P6.11, ADR 0030): weekday 0 = Monday, local start time
+    # (CHECKIN_TZ). Null = the default spread by days_per_week and WORKOUT_REMINDER_TIME.
+    weekday: Mapped[int | None] = mapped_column(Integer)
+    start_time: Mapped[time | None] = mapped_column(Time)
 
 
 class ProgramExercise(Base):
