@@ -24,6 +24,7 @@ from trainsync.strava.budget import Allowance, Priority
 from trainsync.strava.errors import (
     RateLimited,
     StravaAuthError,
+    StravaFieldError,
     StravaNotFound,
     StravaRequestError,
     StravaUnauthorized,
@@ -275,7 +276,7 @@ class StravaClient:
                 STRAVA_RETRIES.inc()
                 await self._sleep(self._policy.backoff(attempt, self._rng))
                 continue
-            raise _client_error(response.status_code)
+            raise _client_error(response)
         raise AssertionError("unreachable")  # pragma: no cover
 
     async def _record_rate_limit(self, response: httpx.Response) -> RateLimitSnapshot | None:
@@ -313,9 +314,33 @@ class StravaClient:
         )
 
 
-def _client_error(status_code: int) -> Exception:
-    if status_code == 401:
+def _client_error(response: httpx.Response) -> Exception:
+    if response.status_code == 401:
         return StravaUnauthorized("strava rejected the access token")
-    if status_code == 404:
+    if response.status_code == 404:
         return StravaNotFound("strava object not found")
-    return StravaRequestError(status_code)
+    message, errors = _error_body(response)
+    return StravaRequestError(response.status_code, message, errors)
+
+
+def _error_body(response: httpx.Response) -> tuple[str, tuple[StravaFieldError, ...]]:
+    """Strava's `{"message": ..., "errors": [{"resource", "field", "code"}]}`, if that is what
+    came back; anything else gives nothing."""
+    try:
+        body = response.json()
+    except ValueError:
+        return "", ()
+    if not isinstance(body, dict):
+        return "", ()
+    raw = body.get("errors")
+    items = raw if isinstance(raw, list) else []
+    errors = tuple(
+        StravaFieldError(
+            resource=str(item.get("resource", "")),
+            field=str(item.get("field", "")),
+            code=str(item.get("code", "")),
+        )
+        for item in items
+        if isinstance(item, dict)
+    )
+    return str(body.get("message", "")), errors

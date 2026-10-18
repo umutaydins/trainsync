@@ -73,14 +73,7 @@ async def _command(args: argparse.Namespace, settings: Settings, strava: StravaC
             print(f"id={sub.id} callback_url={sub.callback_url} created_at={sub.created_at}")
         return 0
     if args.command == "create":
-        callback = args.callback_url or _default_callback(args.env_file)
-        sub = await strava.create_push_subscription(
-            callback, settings.strava_webhook_verify_token.get_secret_value()
-        )
-        print(f"created subscription id={sub.id} for {callback}")
-        print(f"put this in {args.env_file.name}: STRAVA_WEBHOOK_SUBSCRIPTION_ID={sub.id}")
-        print("then: scripts/mac-prod.sh up   (recreates the containers with the new value)")
-        return 0
+        return await _create(args, settings, strava)
     subscription_id = args.id or settings.strava_webhook_subscription_id
     if subscription_id is None:
         listed = await strava.list_push_subscriptions()
@@ -92,6 +85,57 @@ async def _command(args: argparse.Namespace, settings: Settings, strava: StravaC
     print(f"deleted subscription id={subscription_id}")
     print(f"remove STRAVA_WEBHOOK_SUBSCRIPTION_ID from {args.env_file.name}")
     return 0
+
+
+async def _create(args: argparse.Namespace, settings: Settings, strava: StravaClient) -> int:
+    """Strava answers 200 or 201 on success (both are fine). On a 4xx it explains itself in the
+    body; "already exists" is answered with the existing subscription from a `view` call."""
+    callback = args.callback_url or _default_callback(args.env_file)
+    try:
+        sub = await strava.create_push_subscription(
+            callback, settings.strava_webhook_verify_token.get_secret_value()
+        )
+    except StravaRequestError as exc:
+        _print_refusal(exc)
+        if any("already exists" in error.code for error in exc.errors):
+            return await _existing(args, strava, callback)
+        raise
+    print(f"created subscription id={sub.id} for {callback}")
+    _print_env_line(args.env_file, sub.id)
+    return 0
+
+
+def _print_refusal(exc: StravaRequestError) -> None:
+    print(
+        f"strava-subscription: Strava answered {exc.status_code}: {exc.message or '(no message)'}",
+        file=sys.stderr,
+    )
+    for error in exc.errors:
+        print(f"  {error}", file=sys.stderr)
+
+
+async def _existing(args: argparse.Namespace, strava: StravaClient, callback: str) -> int:
+    listed = await strava.list_push_subscriptions()
+    if not listed:
+        print("strava-subscription: but `view` lists none; try again in a minute", file=sys.stderr)
+        return 1
+    for sub in listed:
+        print(f"already subscribed: id={sub.id} callback_url={sub.callback_url}")
+        _print_env_line(args.env_file, sub.id)
+    if all(sub.callback_url == callback for sub in listed):
+        return 0
+    print(
+        f"strava-subscription: the existing callback is not {callback}; `delete` it, then "
+        "`create` again",
+        file=sys.stderr,
+    )
+    return 1
+
+
+def _print_env_line(env_file: Path, subscription_id: int) -> None:
+    print(f"put this in {env_file.name}:")
+    print(f"STRAVA_WEBHOOK_SUBSCRIPTION_ID={subscription_id}")
+    print("then: scripts/mac-prod.sh up   (recreates the containers with the new value)")
 
 
 def _default_callback(env_file: Path) -> str:
