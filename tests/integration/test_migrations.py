@@ -30,6 +30,7 @@ TABLES = {
     "foods",
     "food_logs",
     "nutrition_profile",
+    "daily_checkins",
 }
 
 

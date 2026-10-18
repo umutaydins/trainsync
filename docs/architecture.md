@@ -20,11 +20,12 @@ being up or my rate-limit budget being available at read time.
 ```
 
 - **API process**: OAuth endpoints, webhook endpoints, read API, health, metrics.
-- **Worker process**: backfill, incremental sync, webhook event processing, scheduled jobs.
+- **Worker process**: backfill, incremental sync, webhook event processing, scheduled jobs
+  (including the evening check-in prompt).
 - **Strava client**: the only place that talks to Strava. Owns auth headers, token refresh,
   retries, rate-limit accounting and the circuit breaker.
 - **Bot process** (`python -m trainsync.bot`, Phase 5): Telegram long polling, deterministic
-  summary commands, chat allowlist. A client of the read API (HTTP + API key), never of the
+  summary commands, training/nutrition commands and the daily check-in (Phase 6), chat allowlist. A client of the read API (HTTP + API key), never of the
   database (ADR 0012, ADR 0013). Optional natural-language questions: Claude chooses read-API
   calls through four validated tools, every number comes from the API (ADR 0014). All wording
   (replies, notifications, the assistant's persona) comes from a message pack chosen by
@@ -46,7 +47,7 @@ being up or my rate-limit budget being available at read time.
 | `activities` | `id`, `strava_activity_id` (unique), `athlete_id`, `name`, `sport_type`, `start_date` (timestamptz), `distance_m`, `moving_time_s`, `elapsed_time_s`, `elevation_gain_m`, `average_heartrate` (nullable), `raw` (jsonb), `deleted_at` (nullable), `synced_at` | upsert on `strava_activity_id`; soft delete |
 | `sync_runs` | `id`, `athlete_id`, `kind` (backfill / incremental), `status`, `cursor` (jsonb), `pages`, `upserted`, `error`, `started_at`, `updated_at`, `finished_at` | `cursor` makes backfill resumable; `updated_at` is a per-page heartbeat |
 | `webhook_events` | `id`, `dedup_key` (unique), `payload` (jsonb), `status`, `attempts`, `received_at`, `last_attempt_at`, `processed_at` | dedup on (subscription_id, object_type, object_id, aspect_type, event_time) |
-| `notifications` | `id`, `kind` (`new_activity`), `object_id`, `sent_at`; unique (`kind`, `object_id`) | claimed before sending, released on a failed send (ADR 0012) |
+| `notifications` | `id`, `kind` (`new_activity`, `checkin_prompt`, `checkin_reminder`), `object_id`, `sent_at`; unique (`kind`, `object_id`) | claimed before sending, released on a failed send (ADR 0012); check-in kinds use the local date `yyyymmdd` as `object_id` (ADR 0020) |
 
 Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sport_type, start_date)`,
 `webhook_events (status, received_at)`.
@@ -62,6 +63,7 @@ Training (Phase 6, single user, no `athlete_id`):
 | `workouts` | `id`, `program_day_id` (nullable, set null), `started_at`, `ended_at`, `notes`, `strava_activity_id` (link, no FK) | |
 | `workout_sets` | `id`, `client_id` (uuid, unique), `workout_id` (FK cascade), `exercise_id`, `set_index`, `reps`, `weight_kg` numeric(6,2), `rpe`, `is_warmup`, `completed_at`, `rest_seconds` | upsert on `client_id`: a retried log is one row |
 | `body_metrics` | `date` (PK), `weight_kg` | only what the user enters |
+| `daily_checkins` | `id`, `date` (unique, local day), `status` (done / partial / skipped / rest / sick_or_injured), `workout_id` (nullable, set null), `reason_note`, `sleep_hours`, `energy_1_5`, `body_weight_kg`, `created_at`, `updated_at` | upsert on `date`; a body weight is also written to `body_metrics` (P6.9, ADR 0020) |
 
 Training math (`training/math.py`): volume = reps × weight without warm-ups; Epley e1RM for 1–12
 reps (none above); records per exercise for weight at a rep count, e1RM and session volume.
@@ -213,6 +215,52 @@ RPE 1–10 in 0.5 steps) and JSON numbers in responses.
   progression (`progression.py`: `start` / `increase` / `hold` / `deload`, with `weight_kg`).
   `GET /plates?target=` gives the plates per side (`plates.py`), using `GYM_BAR_KG` and
   `GYM_PLATES`.
+- Next day (P6.8): `GET /programs/active/next-day` is the active program's day that is up, in
+  rotation: the day after the one the latest workout followed (wrapping around), the first day
+  without history, or the day of a still-open workout (`open_workout_id`). Planned exercises come
+  with their `suggestion`, so `/today` in the bot shows suggested weights without starting a workout.
+
+### 7c. Bot: training and nutrition commands (Phase 6, P6.8)
+The bot stays an API client (read and write, same API key). Commands live in `Feature` groups
+(`bot/training.py`, `bot/nutrition.py`, `bot/checkin.py`) that the dispatcher asks in turn:
+- `/today` (next program day with suggested weights), `/plates 102.5`, `/log bench 80x5x3`
+  (also `80x5,5,4` and `bw x12x3`, one parser in `bot/parsing.py` shared with the check-in),
+  `/done` (finish, summary with volume and records), `/eat <food> <grams>`, `/kcal`, `/weight 78.4`.
+- **Local day**: "today" is the owner's day in `CHECKIN_TZ` (default `Europe/Istanbul`), not UTC:
+  `/log` adds to the open workout started on that day (or starts a free one), `/eat`, `/kcal` and
+  `/weight` send that date explicitly. The meal is picked from the local hour.
+- **Idempotency**: client ids are `uuid5` of `tg:{chat}:{update_id}:{n}` (`/log` set n) and
+  `tg:{chat}:{update_id}:eat`. A redelivered update (the bot crashed before confirming it)
+  rewrites the same rows; a set that already exists keeps its `set_index`.
+- **Exercise names**: a small alias table (`bench`, `dl`, `ohp`, `rdl`, `pullup`, …), then
+  `GET /exercises?q=` matched on slug/name, exact before prefix. Food names match stored foods
+  (favourites first), falling back to the Open Food Facts lookup. More than one candidate → a
+  numbered list; the choice waits in Redis (`bot:pending:{chat}`, 15 min) and a number answers it.
+- **Wording**: training texts come from the tone packs; food, scale, sleep and energy texts come
+  from a tone-free layer (`messages/neutral.py`, `NeutralKey`), identical in every `BOT_TONE`.
+
+### 7d. Daily check-in (Phase 6, P6.9, ADR 0020)
+- **API** (`/v1/checkins`, API key, local days): `GET ?from=&to=` (default 12 weeks),
+  `GET /{date}`, `PUT /{date}` (upsert by date: `201` / `200`), `GET /summary?from=&to=` (current
+  and longest streak, adherence = planned days done / planned days per ISO week from the active
+  program's `days_per_week`, minus sick/injured days; done + partial count as done).
+- **Scheduler**: worker cron every 5 minutes (`notify/checkin.py`). At or after `CHECKIN_TIME`
+  local (`CHECKIN_TZ`, the wall time of each local date, DST-safe) it sends the prompt once, only
+  if that day has no check-in; one reminder `CHECKIN_REMINDER_MINUTES` later, still unanswered.
+  "Sent" is a claim in `notifications` (`checkin_prompt` / `checkin_reminder`, object id
+  `yyyymmdd`), so restarts and overlapping ticks never send twice. Off without a bot token or a
+  chat, or with `CHECKIN_ENABLED=false`.
+- **Conversation** (`bot/checkin.py`, state diagram 17): a state machine in Redis
+  (`checkin:{chat}:{yyyymmdd}`, 6 h TTL). Status buttons → planned exercises one by one (As
+  planned = planned sets × bottom of the rep range at the suggested weight, ±2.5 kg, Skip, or
+  typed sets) or free `/log` lines without a program → reason (skipped) → scale, sleep, energy
+  (each skippable) → summary with volume, records and streak, plus an Edit button. Works without
+  an Anthropic key.
+- **Idempotency**: sets use `uuid5("checkin:{date}:{exercise_id}:{set_index}")`, the check-in is
+  a `PUT` by date; buttons carry a per-step `seq` (stale or double presses are answered politely
+  and change nothing); a redelivered text answer is recognised by its `update_id`.
+- **Web**: `/training/checkins` calendar heatmap and day editor; streak and adherence tiles on
+  the dashboard (writes through the BFF's CSRF-checked `PUT`).
 
 ### 8. Operations
 - `GET /health/live` (process up), `GET /health/ready` (DB + Redis reachable).

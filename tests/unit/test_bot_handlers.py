@@ -161,12 +161,12 @@ async def test_poller_replies_to_allowlisted_updates_only_and_advances_offset(
 @pytest.mark.parametrize(
     ("text", "expected_start"),
     [
-        ("/start", MSG(Key.HELP)),
-        ("/help@trainsync_bot", MSG(Key.HELP)),
+        ("/start", MSG.help()),
+        ("/help@trainsync_bot", MSG.help()),
         ("/last", "🏃 Morning Run"),
         ("/stats 12w run", "Last 12w · Run (27 Jul - 15 Oct)"),
         ("/nope", "Unknown command /nope."),
-        ("how was my week?", MSG(Key.NO_ASSISTANT, help=MSG(Key.HELP))),
+        ("how was my week?", MSG(Key.NO_ASSISTANT, help=MSG.help())),
         ("/stats run ride", "Usage: /stats"),
     ],
 )
@@ -337,4 +337,4 @@ async def test_main_with_token_polls_and_replies() -> None:
 
     send = respx.post(f"{BOT_URL}/sendMessage").mock(side_effect=reply)
     await asyncio.wait_for(bot_main.run(settings, stop, sleep=SleepRecorder()), timeout=5)
-    assert sent_messages(send)[0]["text"] == MSG(Key.HELP)
+    assert sent_messages(send)[0]["text"] == MSG.help()

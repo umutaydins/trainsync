@@ -535,6 +535,385 @@
         "title": "ChallengeResponse",
         "type": "object"
       },
+      "CheckinIn": {
+        "description": "Replaces the day's check-in (every field; omitted ones become null).",
+        "examples": [
+          {
+            "body_weight_kg": 78.4,
+            "energy_1_5": 4,
+            "sleep_hours": 7.5,
+            "status": "done",
+            "workout_id": 42
+          },
+          {
+            "reason_note": "late meeting",
+            "status": "skipped"
+          }
+        ],
+        "properties": {
+          "body_weight_kg": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 500.0,
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Also stored in body metrics",
+            "title": "Body Weight Kg"
+          },
+          "energy_1_5": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy 1 5"
+          },
+          "reason_note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Note"
+          },
+          "sleep_hours": {
+            "anyOf": [
+              {
+                "maximum": 24.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep Hours"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CheckinStatus"
+          },
+          "workout_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The workout logged that day",
+            "title": "Workout Id"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "CheckinIn",
+        "type": "object"
+      },
+      "CheckinList": {
+        "examples": [
+          {
+            "from": "2026-10-01",
+            "items": [
+              {
+                "body_weight_kg": 78.4,
+                "created_at": "2026-10-18T18:05:00Z",
+                "date": "2026-10-18",
+                "energy_1_5": 4,
+                "sleep_hours": 7.5,
+                "status": "done",
+                "updated_at": "2026-10-18T18:07:30Z",
+                "workout_id": 42
+              }
+            ],
+            "to": "2026-10-18"
+          }
+        ],
+        "properties": {
+          "from": {
+            "format": "date",
+            "title": "From",
+            "type": "string"
+          },
+          "items": {
+            "description": "Oldest first; days without a check-in are absent",
+            "items": {
+              "$ref": "#/components/schemas/CheckinOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "to": {
+            "format": "date",
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "items"
+        ],
+        "title": "CheckinList",
+        "type": "object"
+      },
+      "CheckinOut": {
+        "examples": [
+          {
+            "body_weight_kg": 78.4,
+            "created_at": "2026-10-18T18:05:00Z",
+            "date": "2026-10-18",
+            "energy_1_5": 4,
+            "sleep_hours": 7.5,
+            "status": "done",
+            "updated_at": "2026-10-18T18:07:30Z",
+            "workout_id": 42
+          }
+        ],
+        "properties": {
+          "body_weight_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Weight Kg"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "energy_1_5": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy 1 5"
+          },
+          "reason_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Note"
+          },
+          "sleep_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep Hours"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CheckinStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "workout_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workout Id"
+          }
+        },
+        "required": [
+          "date",
+          "status",
+          "workout_id",
+          "reason_note",
+          "sleep_hours",
+          "energy_1_5",
+          "body_weight_kg",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CheckinOut",
+        "type": "object"
+      },
+      "CheckinStatus": {
+        "enum": [
+          "done",
+          "partial",
+          "skipped",
+          "rest",
+          "sick_or_injured"
+        ],
+        "title": "CheckinStatus",
+        "type": "string"
+      },
+      "CheckinSummary": {
+        "examples": [
+          {
+            "adherence": 0.778,
+            "counts": {
+              "done": 6,
+              "partial": 1,
+              "rest": 8,
+              "sick_or_injured": 0,
+              "skipped": 2
+            },
+            "current_streak": 6,
+            "days_per_week": 3,
+            "from": "2026-09-28",
+            "longest_streak": 11,
+            "planned_days": 9,
+            "planned_days_done": 7,
+            "to": "2026-10-18",
+            "today": "2026-10-18",
+            "weeks": [
+              {
+                "done": 3,
+                "planned": 3,
+                "week_start": "2026-09-28"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "adherence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "planned_days_done / planned_days; null if 0",
+            "title": "Adherence"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Check-ins per status in the range",
+            "propertyNames": {
+              "$ref": "#/components/schemas/CheckinStatus"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "current_streak": {
+            "description": "Days in a row with a check-in that is not `skipped`, up to today (or yesterday while today has none yet)",
+            "title": "Current Streak",
+            "type": "integer"
+          },
+          "days_per_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Of the active program; null without one",
+            "title": "Days Per Week"
+          },
+          "from": {
+            "format": "date",
+            "title": "From",
+            "type": "string"
+          },
+          "longest_streak": {
+            "title": "Longest Streak",
+            "type": "integer"
+          },
+          "planned_days": {
+            "description": "Per ISO week: min(days_per_week, days in range - sick/injured days)",
+            "title": "Planned Days",
+            "type": "integer"
+          },
+          "planned_days_done": {
+            "description": "done + partial days, at most planned per week",
+            "title": "Planned Days Done",
+            "type": "integer"
+          },
+          "to": {
+            "format": "date",
+            "title": "To",
+            "type": "string"
+          },
+          "today": {
+            "description": "The local day (`CHECKIN_TZ`) the streak is counted to",
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          },
+          "weeks": {
+            "items": {
+              "$ref": "#/components/schemas/WeekOut"
+            },
+            "title": "Weeks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "today",
+          "current_streak",
+          "longest_streak",
+          "days_per_week",
+          "planned_days",
+          "planned_days_done",
+          "adherence",
+          "counts",
+          "weeks"
+        ],
+        "title": "CheckinSummary",
+        "type": "object"
+      },
       "CircuitOut": {
         "properties": {
           "processes": {
@@ -2016,6 +2395,113 @@
           "volume_kg"
         ],
         "title": "MuscleWeek",
+        "type": "object"
+      },
+      "NextDay": {
+        "examples": [
+          {
+            "day_id": 11,
+            "day_index": 0,
+            "day_name": "Upper A",
+            "planned": [
+              {
+                "exercise": {
+                  "equipment": "barbell",
+                  "id": 20,
+                  "is_custom": false,
+                  "movement_pattern": "horizontal_push",
+                  "name": "Bench Press",
+                  "primary_muscle": "chest",
+                  "secondary_muscles": [
+                    "triceps",
+                    "shoulders"
+                  ],
+                  "slug": "bench-press"
+                },
+                "last_performance": {
+                  "sets": [
+                    {
+                      "reps": 10,
+                      "rpe": 8.5,
+                      "weight_kg": 77.5
+                    },
+                    {
+                      "reps": 9,
+                      "weight_kg": 77.5
+                    }
+                  ],
+                  "started_at": "2026-10-15T17:30:00Z",
+                  "workout_id": 41
+                },
+                "progression": "double",
+                "rep_max": 12,
+                "rep_min": 8,
+                "rest_seconds": 90,
+                "sets": 3,
+                "start_weight_kg": 60.0,
+                "suggestion": {
+                  "action": "hold",
+                  "previous_weight_kg": 77.5,
+                  "weight_kg": 77.5
+                }
+              }
+            ],
+            "program_id": 3,
+            "program_name": "Upper/Lower"
+          }
+        ],
+        "properties": {
+          "day_id": {
+            "title": "Day Id",
+            "type": "integer"
+          },
+          "day_index": {
+            "title": "Day Index",
+            "type": "integer"
+          },
+          "day_name": {
+            "title": "Day Name",
+            "type": "string"
+          },
+          "open_workout_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "An unfinished workout that follows this day, to continue instead of a new one",
+            "title": "Open Workout Id"
+          },
+          "planned": {
+            "description": "The day's exercises with last performance and suggested weight",
+            "items": {
+              "$ref": "#/components/schemas/PlannedExercise"
+            },
+            "title": "Planned",
+            "type": "array"
+          },
+          "program_id": {
+            "title": "Program Id",
+            "type": "integer"
+          },
+          "program_name": {
+            "title": "Program Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "program_id",
+          "program_name",
+          "day_id",
+          "day_index",
+          "day_name",
+          "open_workout_id",
+          "planned"
+        ],
+        "title": "NextDay",
         "type": "object"
       },
       "PerformedSet": {
@@ -4273,6 +4759,31 @@
         "title": "Week",
         "type": "object"
       },
+      "WeekOut": {
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          },
+          "planned": {
+            "title": "Planned",
+            "type": "integer"
+          },
+          "week_start": {
+            "description": "Monday of the ISO week",
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week_start",
+          "planned",
+          "done"
+        ],
+        "title": "WeekOut",
+        "type": "object"
+      },
       "WeeklyStats": {
         "examples": [
           {
@@ -5290,6 +5801,365 @@
         "summary": "Get one activity",
         "tags": [
           "activities"
+        ]
+      }
+    },
+    "/v1/checkins": {
+      "get": {
+        "description": "Check-ins in `from`..`to` (inclusive, local days); default: the last 12 weeks.",
+        "operationId": "list_checkins_v1_checkins_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-10-01"
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-10-18"
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "`to` is before `from`"
+                }
+              }
+            },
+            "description": "`to` before `from`, or too long"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List check-ins",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/checkins/summary": {
+      "get": {
+        "description": "Current and longest streak (consecutive days with a check-in that is not `skipped`) and adherence over `from`..`to` (default: the current ISO week and the three before it). Adherence = planned days done / planned days, where each ISO week plans `days_per_week` of the active program, capped by its days inside the range minus sick/injured days; done + partial days count as done (ADR 0020).",
+        "operationId": "checkin_summary_v1_checkins_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-28"
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-10-18"
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "`to` is before `from`"
+                }
+              }
+            },
+            "description": "`to` before `from`, or too long"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Streak and adherence",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/checkins/{day}": {
+      "get": {
+        "operationId": "get_checkin_v1_checkins__day__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "examples": [
+                "2026-10-18"
+              ],
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "no check-in for this date"
+                }
+              }
+            },
+            "description": "No check-in that day"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get a day's check-in",
+        "tags": [
+          "training"
+        ]
+      },
+      "put": {
+        "description": "Upsert by date: `201` when it created the check-in, `200` when it replaced it. The same request twice stores one row. `body_weight_kg` is also written to body metrics for that date; leaving it out later does not delete that body metric.",
+        "operationId": "put_checkin_v1_checkins__day__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "examples": [
+                "2026-10-18"
+              ],
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinOut"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "workout not found"
+                }
+              }
+            },
+            "description": "Unknown workout"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Save a day's check-in (idempotent)",
+        "tags": [
+          "training"
         ]
       }
     },
@@ -7394,6 +8264,53 @@
           }
         ],
         "summary": "Get the active program",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/programs/active/next-day": {
+      "get": {
+        "description": "The program day that is up next, in rotation: the day after the one the latest workout followed (wrapping around), the first day if none, or the day of a still-open workout. Planned exercises come with the double-progression suggestion (ADR 0018). `404` when no program is active.",
+        "operationId": "next_day_v1_training_programs_active_next_day_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextDay"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "no active program"
+                }
+              }
+            },
+            "description": "No active program"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Next day of the active program",
         "tags": [
           "training"
         ]

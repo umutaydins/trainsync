@@ -60,6 +60,56 @@ class Key(StrEnum):
     ASSISTANT_TOO_MANY_CALLS = "assistant.too_many_calls"
     ASSISTANT_REFUSED = "assistant.refused"
 
+    # Training commands (P6.8). Units and numbers are computed in code and passed as fields.
+    TODAY_NO_PROGRAM = "today.no_program"
+    TODAY_TITLE = "today.title"
+    TODAY_EXERCISE = "today.exercise"
+    TODAY_IN_PROGRESS = "today.in_progress"
+    TODAY_FOOTER = "today.footer"
+    USAGE_PLATES = "usage.plates"
+    PLATES = "plates"
+    PLATES_NONE = "plates.none"
+    PLATES_INEXACT = "plates.inexact"
+    USAGE_LOG = "usage.log"
+    LOG_UNKNOWN_EXERCISE = "log.unknown_exercise"
+    LOG_CHOOSE_EXERCISE = "log.choose_exercise"
+    LOG_SAVED = "log.saved"
+    DONE_NO_WORKOUT = "done.no_workout"
+    DONE_SUMMARY = "done.summary"
+    PRS_TITLE = "prs.title"
+    PR_WEIGHT_FOR_REPS = "pr.weight_for_reps"
+    PR_E1RM = "pr.e1rm"
+    PR_VOLUME = "pr.volume"
+
+    # Daily check-in (P6.9). Rest and sick/injured answers are calm in every tone (ADR 0020).
+    CHECKIN_PROMPT = "checkin.prompt"
+    CHECKIN_REMINDER = "checkin.reminder"
+    CHECKIN_BTN_DONE = "checkin.button.done"
+    CHECKIN_BTN_PARTIAL = "checkin.button.partial"
+    CHECKIN_BTN_SKIPPED = "checkin.button.skipped"
+    CHECKIN_BTN_REST = "checkin.button.rest"
+    CHECKIN_BTN_SICK = "checkin.button.sick"
+    CHECKIN_BTN_AS_PLANNED = "checkin.button.as_planned"
+    CHECKIN_BTN_STEP = "checkin.button.step"
+    CHECKIN_BTN_SKIP_EXERCISE = "checkin.button.skip_exercise"
+    CHECKIN_BTN_FINISH = "checkin.button.finish"
+    CHECKIN_BTN_EDIT = "checkin.button.edit"
+    CHECKIN_EXERCISE = "checkin.exercise"
+    CHECKIN_SETS_SAVED = "checkin.sets_saved"
+    CHECKIN_EXERCISE_SKIPPED = "checkin.exercise_skipped"
+    CHECKIN_ALREADY_LOGGED = "checkin.already_logged"
+    CHECKIN_ASK_FREEFORM = "checkin.ask_freeform"
+    CHECKIN_INVALID_SETS = "checkin.invalid_sets"
+    CHECKIN_ASK_REASON = "checkin.ask_reason"
+    CHECKIN_REASON_SAVED = "checkin.reason_saved"
+    CHECKIN_SKIPPED_NO_REASON = "checkin.skipped_no_reason"
+    CHECKIN_REST_SAVED = "checkin.rest_saved"
+    CHECKIN_SICK_SAVED = "checkin.sick_saved"
+    CHECKIN_SUMMARY = "checkin.summary"
+    CHECKIN_SUMMARY_WORKOUT = "checkin.summary.workout"
+    CHECKIN_SUMMARY_STREAK = "checkin.summary.streak"
+    CHECKIN_STALE = "checkin.stale"
+
 
 def _fields(*names: str) -> frozenset[str]:
     return frozenset(names)
@@ -107,4 +157,56 @@ FIELDS: Mapping[Key, frozenset[str]] = {
     Key.ASSISTANT_UNAVAILABLE: _fields(),
     Key.ASSISTANT_TOO_MANY_CALLS: _fields(),
     Key.ASSISTANT_REFUSED: _fields(),
+    Key.TODAY_NO_PROGRAM: _fields(),
+    Key.TODAY_TITLE: _fields("program", "day_name"),
+    Key.TODAY_EXERCISE: _fields("name", "plan", "suggested"),
+    Key.TODAY_IN_PROGRESS: _fields("count"),
+    Key.TODAY_FOOTER: _fields(),
+    Key.USAGE_PLATES: _fields(),
+    Key.PLATES: _fields("target", "per_side", "bar"),
+    Key.PLATES_NONE: _fields(),
+    Key.PLATES_INEXACT: _fields("achieved", "difference"),
+    Key.USAGE_LOG: _fields(),
+    Key.LOG_UNKNOWN_EXERCISE: _fields("query"),
+    Key.LOG_CHOOSE_EXERCISE: _fields("choices"),
+    Key.LOG_SAVED: _fields("exercise", "sets", "volume"),
+    Key.DONE_NO_WORKOUT: _fields(),
+    Key.DONE_SUMMARY: _fields("count", "exercises", "volume", "duration"),
+    Key.PRS_TITLE: _fields(),
+    Key.PR_WEIGHT_FOR_REPS: _fields("exercise", "load", "reps"),
+    Key.PR_E1RM: _fields("exercise", "value"),
+    Key.PR_VOLUME: _fields("exercise", "value"),
+    Key.CHECKIN_PROMPT: _fields(),
+    Key.CHECKIN_REMINDER: _fields(),
+    Key.CHECKIN_BTN_DONE: _fields(),
+    Key.CHECKIN_BTN_PARTIAL: _fields(),
+    Key.CHECKIN_BTN_SKIPPED: _fields(),
+    Key.CHECKIN_BTN_REST: _fields(),
+    Key.CHECKIN_BTN_SICK: _fields(),
+    Key.CHECKIN_BTN_AS_PLANNED: _fields(),
+    Key.CHECKIN_BTN_STEP: _fields("step"),
+    Key.CHECKIN_BTN_SKIP_EXERCISE: _fields(),
+    Key.CHECKIN_BTN_FINISH: _fields(),
+    Key.CHECKIN_BTN_EDIT: _fields(),
+    Key.CHECKIN_EXERCISE: _fields("index", "total", "name", "plan", "suggested"),
+    Key.CHECKIN_SETS_SAVED: _fields("name", "sets"),
+    Key.CHECKIN_EXERCISE_SKIPPED: _fields("name"),
+    Key.CHECKIN_ALREADY_LOGGED: _fields("name", "sets"),
+    Key.CHECKIN_ASK_FREEFORM: _fields(),
+    Key.CHECKIN_INVALID_SETS: _fields(),
+    Key.CHECKIN_ASK_REASON: _fields(),
+    Key.CHECKIN_REASON_SAVED: _fields(),
+    Key.CHECKIN_SKIPPED_NO_REASON: _fields(),
+    Key.CHECKIN_REST_SAVED: _fields(),
+    Key.CHECKIN_SICK_SAVED: _fields(),
+    Key.CHECKIN_SUMMARY: _fields("day", "status"),
+    Key.CHECKIN_SUMMARY_WORKOUT: _fields("count", "volume"),
+    Key.CHECKIN_SUMMARY_STREAK: _fields("days"),
+    Key.CHECKIN_STALE: _fields(),
 }
+
+# Answers that stay calm in every tone: no pushing on rest or on being sick or injured
+# (tests/unit/test_bot_messages.py checks the hardcore wording of these, too).
+RESPECTFUL: frozenset[Key] = frozenset(
+    {Key.CHECKIN_REST_SAVED, Key.CHECKIN_SICK_SAVED, Key.CHECKIN_BTN_REST, Key.CHECKIN_BTN_SICK}
+)

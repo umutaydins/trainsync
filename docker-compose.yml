@@ -105,6 +105,11 @@ services:
       DASHBOARD_PUBLIC_URL: ${DASHBOARD_PUBLIC_URL:-http://localhost:3000}
       BOT_TONE: ${BOT_TONE:-neutral}  # notification wording (ADR 0016)
       BOT_LANG: ${BOT_LANG:-en}
+      # Daily check-in prompt (P6.9, ADR 0020); empty CHECKIN_ENABLED = on with a bot token.
+      CHECKIN_ENABLED: ${CHECKIN_ENABLED:-}
+      CHECKIN_TIME: ${CHECKIN_TIME:-21:00}
+      CHECKIN_TZ: ${CHECKIN_TZ:-Europe/Istanbul}
+      CHECKIN_REMINDER_MINUTES: ${CHECKIN_REMINDER_MINUTES:-90}
     ports: ["9100:9100"]  # worker /metrics (WORKER_METRICS_PORT)
     depends_on:
       migrate: { condition: service_completed_successfully }
@@ -126,6 +131,11 @@ services:
       ASSISTANT_MODEL: ${ASSISTANT_MODEL:-claude-sonnet-5-5}
       BOT_TONE: ${BOT_TONE:-neutral}  # reply wording and assistant persona (ADR 0016)
       BOT_LANG: ${BOT_LANG:-en}
+      # The bot's "today" (P6.8) and the check-in conversation (P6.9).
+      CHECKIN_ENABLED: ${CHECKIN_ENABLED:-}
+      CHECKIN_TIME: ${CHECKIN_TIME:-21:00}
+      CHECKIN_TZ: ${CHECKIN_TZ:-Europe/Istanbul}
+      CHECKIN_REMINDER_MINUTES: ${CHECKIN_REMINDER_MINUTES:-90}
     ports: ["9101:9101"]  # bot /metrics (BOT_METRICS_PORT)
     depends_on:
       api: { condition: service_healthy }

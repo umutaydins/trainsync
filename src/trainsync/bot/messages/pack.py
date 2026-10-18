@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 
 from trainsync.bot.messages.keys import Key
+from trainsync.bot.messages.neutral import NEUTRAL_TEXTS, NeutralKey
 from trainsync.core.settings import BotLang, BotTone
 
 
@@ -39,6 +40,15 @@ class Messages:
         variants = self.pack.texts[key]
         template = variants[0] if len(variants) == 1 else self._rng.choice(variants)
         return template.format(**fields)
+
+    def neutral(self, key: NeutralKey, **fields: object) -> str:
+        """Tone-free wording (nutrition, scale, sleep, energy): the same in every tone."""
+        return NEUTRAL_TEXTS[self.pack.lang][key].format(**fields)
+
+    def help(self) -> str:
+        """The pack's help plus the tone-free nutrition lines."""
+        nutrition = self.neutral(NeutralKey.HELP_NUTRITION, scale_command="/weight")
+        return f"{self(Key.HELP)}\n{nutrition}"
 
     def day(self, day: date) -> str:
         """`14 Oct`"""

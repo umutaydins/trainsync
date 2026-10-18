@@ -173,6 +173,7 @@ NON_STRAVA_HTTP_CLIENTS = {
     "bot/telegram.py",
     "bot/read_api.py",
     "notify/jobs.py",
+    "notify/checkin.py",
     "nutrition/off_client.py",
 }
 

@@ -10,6 +10,7 @@ import {
   WeeklyBlock,
   WeeklySkeleton,
 } from "@/components/dashboard/blocks";
+import { CheckinTilesBlock } from "@/components/checkins/tiles";
 import { DashboardFilters } from "@/components/dashboard/filters";
 import { TrainingTilesBlock, TrainingTilesSkeleton } from "@/components/dashboard/training-tiles";
 import { PageHeader } from "@/components/ui";
@@ -63,6 +64,9 @@ export default async function DashboardPage({
             </Suspense>
             <Suspense key={`longest-${key}`} fallback={<CardSkeleton title="Longest activity" rows={2} />}>
               <LongestBlock range={range} />
+            </Suspense>
+            <Suspense fallback={<CardSkeleton title="Check-ins" rows={2} />}>
+              <CheckinTilesBlock />
             </Suspense>
           </div>
         </div>

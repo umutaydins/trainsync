@@ -1,13 +1,15 @@
 """A small Telegram Bot API client on the shared httpx client (ADR 0013).
 
-Only the two methods we use: `getUpdates` (long polling) and `sendMessage`. The bot token is part
-of every URL, so neither URLs nor httpx exceptions (which carry the URL) are ever logged or put
-into our own exception messages.
+Only the methods we use: `getUpdates` (long polling), `sendMessage` (optionally with an inline
+keyboard), `answerCallbackQuery` and `editMessageReplyMarkup` (button presses, P6.9).
+The bot token is part of every URL, so neither URLs nor httpx exceptions (which carry the URL)
+are ever logged or put into our own exception messages.
 
 Retries: a 429 waits exactly `parameters.retry_after` seconds; 5xx and network errors back off
 exponentially (1, 2, 4, … s, capped). Waiting goes through the injected `sleep`.
 """
 
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -66,11 +68,44 @@ class Message(BaseModel):
     text: str | None = None
 
 
+class CallbackQuery(BaseModel):
+    """A press of an inline keyboard button. `message` is the message the button was on."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    data: str | None = None
+    message: Message | None = None
+
+
 class Update(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     update_id: int
     message: Message | None = None
+    callback_query: CallbackQuery | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Button:
+    text: str
+    data: str  # callback data, at most 64 bytes
+
+
+# Rows of buttons.
+Keyboard = tuple[tuple[Button, ...], ...]
+ALLOWED_UPDATES = '["message","callback_query"]'
+MAX_CALLBACK_DATA = 64
+
+
+def keyboard_markup(keyboard: Keyboard | None) -> dict[str, Any]:
+    """`reply_markup` for an inline keyboard; an empty one removes the buttons."""
+    rows = [[{"text": b.text, "callback_data": b.data} for b in row] for row in (keyboard or ())]
+    for row in rows:
+        for button in row:
+            if len(button["callback_data"].encode()) > MAX_CALLBACK_DATA:
+                raise ValueError("callback data longer than 64 bytes")
+    return {"inline_keyboard": rows}
 
 
 class _Envelope(BaseModel):
@@ -107,7 +142,7 @@ class TelegramApi:
     async def get_updates(
         self, offset: int | None, *, poll_timeout: int = POLL_TIMEOUT_S
     ) -> list[Update]:
-        params: dict[str, Any] = {"timeout": poll_timeout, "allowed_updates": '["message"]'}
+        params: dict[str, Any] = {"timeout": poll_timeout, "allowed_updates": ALLOWED_UPDATES}
         if offset is not None:
             params["offset"] = offset
         result = await self._call(
@@ -118,14 +153,33 @@ class TelegramApi:
         )
         return [Update.model_validate(item) for item in result or []]
 
-    async def send_message(self, chat_id: int, text: str) -> None:
+    async def send_message(self, chat_id: int, text: str, keyboard: Keyboard | None = None) -> None:
+        body: dict[str, Any] = {
+            "chat_id": chat_id,
+            "text": text[:MAX_MESSAGE_LEN],
+            "link_preview_options": {"is_disabled": True},
+        }
+        if keyboard:
+            body["reply_markup"] = keyboard_markup(keyboard)
+        await self._call("sendMessage", json=body)
+
+    async def answer_callback_query(self, callback_query_id: str, text: str = "") -> None:
+        """Stops the button's loading spinner; `text` shows as a small toast."""
+        body: dict[str, Any] = {"callback_query_id": callback_query_id}
+        if text:
+            body["text"] = text[:200]
+        await self._call("answerCallbackQuery", json=body, attempts=1)
+
+    async def remove_keyboard(self, chat_id: int, message_id: int) -> None:
+        """Takes the buttons off an answered question (`editMessageReplyMarkup`)."""
         await self._call(
-            "sendMessage",
+            "editMessageReplyMarkup",
             json={
                 "chat_id": chat_id,
-                "text": text[:MAX_MESSAGE_LEN],
-                "link_preview_options": {"is_disabled": True},
+                "message_id": message_id,
+                "reply_markup": keyboard_markup(None),
             },
+            attempts=1,
         )
 
     async def _call(
