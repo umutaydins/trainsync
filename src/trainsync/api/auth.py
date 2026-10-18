@@ -1,7 +1,7 @@
 """OAuth connect: redirect to Strava, handle the callback, store tokens, enqueue a backfill."""
 
 from typing import Annotated
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
@@ -17,6 +17,7 @@ from trainsync.api.deps import (
 )
 from trainsync.api.errors import error
 from trainsync.core.logging import get_logger
+from trainsync.core.settings import Settings
 from trainsync.core.state import InvalidStateError, sign_state, verify_state
 from trainsync.db.repositories.athletes import AthleteRepository
 from trainsync.db.repositories.tokens import TokenRepository
@@ -44,11 +45,28 @@ class ConnectedResponse(BaseModel):
 @router.get(
     "/login",
     summary="Start the Strava OAuth flow",
-    description="Redirects the browser to Strava's authorize page with a signed, expiring `state`.",
+    description=(
+        "Redirects the browser to Strava's authorize page with a signed, expiring `state`. "
+        "An optional `return_to` that exactly matches `OAUTH_RETURN_TO_ALLOWLIST` is signed into "
+        "the state; after the callback the browser is sent there. Any other value is ignored."
+    ),
     status_code=status.HTTP_302_FOUND,
     response_class=RedirectResponse,
 )
-async def login(settings: SettingsDep, clock: ClockDep) -> RedirectResponse:
+async def login(
+    settings: SettingsDep,
+    clock: ClockDep,
+    return_to: Annotated[
+        str | None,
+        Query(
+            description="Where to send the browser after connecting (allowlisted URLs only)",
+            examples=["http://localhost:3000/sync"],
+        ),
+    ] = None,
+) -> RedirectResponse:
+    allowed = allowed_return_to(return_to, settings)
+    if return_to and not allowed:
+        log.warning("oauth_return_to_ignored")
     query = urlencode(
         {
             "client_id": settings.strava_client_id,
@@ -56,7 +74,7 @@ async def login(settings: SettingsDep, clock: ClockDep) -> RedirectResponse:
             "response_type": "code",
             "approval_prompt": "auto",
             "scope": REQUESTED_SCOPE,
-            "state": sign_state(clock(), settings.state_signing_key),
+            "state": sign_state(clock(), settings.state_signing_key, data=allowed),
         }
     )
     url = f"{settings.strava_oauth_public_base_url}/authorize?{query}"
@@ -68,13 +86,18 @@ async def login(settings: SettingsDep, clock: ClockDep) -> RedirectResponse:
     summary="Strava OAuth callback",
     description=(
         "Verifies `state`, requires the `activity:read_all` scope, exchanges the code for "
-        "tokens, stores the athlete with encrypted tokens and enqueues the initial backfill."
+        "tokens, stores the athlete with encrypted tokens and enqueues the initial backfill. "
+        "If the login carried an allowlisted `return_to`, the browser is redirected (303) there "
+        "with `connected=1`, or with `connect_error=<reason>` once the state itself is valid."
     ),
     response_model=ConnectedResponse,
     responses={
+        303: {
+            "description": "Back to the allowlisted `return_to` (`connected=1` or `connect_error`)"
+        },
         400: error(
             "Bad state, denied access, missing scope or bad code", "invalid or expired state"
-        )
+        ),
     },
 )
 async def callback(
@@ -88,24 +111,30 @@ async def callback(
     code: Annotated[str | None, Query()] = None,
     scope: Annotated[str, Query()] = "",
     error: Annotated[str | None, Query()] = None,
-) -> ConnectedResponse:
+) -> ConnectedResponse | RedirectResponse:
     try:
-        verify_state(state, clock(), settings.state_signing_key)
+        signed_return_to = verify_state(state, clock(), settings.state_signing_key)
     except InvalidStateError as exc:
         raise _bad_request("invalid or expired state") from exc
-    if error is not None:
-        raise _bad_request(f"strava authorization failed: {error}")
-    if code is None:
-        raise _bad_request("missing code")
-    if REQUIRED_SCOPE not in scope.split(","):
-        raise _bad_request(f"the '{REQUIRED_SCOPE}' scope is required to sync activities")
-
+    # Re-checked against the current allowlist: the signature proves origin, not current policy.
+    return_to = allowed_return_to(signed_return_to, settings)
     try:
-        token = await strava.exchange_code(code)
-    except StravaAuthError as exc:
-        raise _bad_request("strava rejected the authorization code") from exc
-    if token.athlete is None:
-        raise _bad_request("strava did not return the athlete")
+        if error is not None:
+            raise _bad_request(f"strava authorization failed: {error}")
+        if code is None:
+            raise _bad_request("missing code")
+        if REQUIRED_SCOPE not in scope.split(","):
+            raise _bad_request(f"the '{REQUIRED_SCOPE}' scope is required to sync activities")
+        try:
+            token = await strava.exchange_code(code)
+        except StravaAuthError as exc:
+            raise _bad_request("strava rejected the authorization code") from exc
+        if token.athlete is None:
+            raise _bad_request("strava did not return the athlete")
+    except HTTPException as exc:
+        if return_to:
+            return _redirect(return_to, connect_error=str(exc.detail))
+        raise
 
     async with sessionmaker.begin() as session:
         athlete_id = await AthleteRepository(session).upsert_connected(token.athlete.id)
@@ -115,6 +144,8 @@ async def callback(
 
     queued = await queue.enqueue_backfill(athlete_id)
     log.info("athlete_connected", athlete_id=athlete_id, backfill_enqueued=queued)
+    if return_to:
+        return _redirect(return_to, connected="1")
     return ConnectedResponse(
         athlete_id=athlete_id, strava_athlete_id=token.athlete.id, backfill="queued"
     )
@@ -122,3 +153,17 @@ async def callback(
 
 def _bad_request(detail: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
+
+def allowed_return_to(value: str | None, settings: Settings) -> str:
+    """`value` if it exactly matches an allowlisted URL, else "" (no partial or prefix match)."""
+    if value and value in settings.oauth_return_to_allowlist:
+        return value
+    return ""
+
+
+def _redirect(url: str, **params: str) -> RedirectResponse:
+    parts = urlsplit(url)
+    query = "&".join(filter(None, [parts.query, urlencode(params)]))
+    target = urlunsplit((parts.scheme, parts.netloc, parts.path, query, ""))
+    return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)

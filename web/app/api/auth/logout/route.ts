@@ -1,11 +1,11 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-import { SESSION_COOKIE } from "@/lib/session";
+import { SESSION_COOKIE, seeOther } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-export function POST(request: NextRequest): NextResponse {
-  const response = NextResponse.redirect(new URL("/login", request.url), 303);
+export function POST(): NextResponse {
+  const response = new NextResponse(null, seeOther("/login"));
   response.cookies.delete(SESSION_COOKIE);
   return response;
 }

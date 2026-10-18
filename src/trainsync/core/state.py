@@ -1,4 +1,8 @@
-"""Signed, expiring OAuth `state` values: `<nonce>.<issued_at>.<hmac>` (URL-safe base64)."""
+"""Signed, expiring OAuth `state` values (URL-safe base64 parts).
+
+`<nonce>.<issued_at>.<hmac>`, or `<nonce>.<issued_at>.<data>.<hmac>` when it carries data (the
+signed post-connect `return_to`), so the data cannot be changed on the way through Strava.
+"""
 
 import base64
 import binascii
@@ -25,11 +29,14 @@ def sign_state(
     now: datetime,
     key: SigningKey,
     *,
+    data: str = "",
     token_bytes: Callable[[int], bytes] = secrets.token_bytes,
 ) -> str:
     nonce = _b64encode(token_bytes(_NONCE_BYTES))
     issued_at = _b64encode(str(int(now.timestamp())).encode())
     payload = f"{nonce}.{issued_at}"
+    if data:
+        payload = f"{payload}.{_b64encode(data.encode())}"
     return f"{payload}.{_signature(payload, key)}"
 
 
@@ -38,14 +45,16 @@ def verify_state(
     now: datetime,
     key: SigningKey,
     max_age: timedelta = DEFAULT_MAX_AGE,
-) -> None:
+) -> str:
+    """Raise `InvalidStateError` unless `value` is genuine and fresh; return its data or ""."""
     parts = value.split(".")
-    if len(parts) != 3 or not all(parts):
+    if len(parts) not in (3, 4) or not all(parts):
         raise InvalidStateError("malformed state")
-    nonce, issued_at_b64, signature = parts
-    expected = _signature(f"{nonce}.{issued_at_b64}", key)
+    *payload_parts, signature = parts
+    expected = _signature(".".join(payload_parts), key)
     if not hmac.compare_digest(signature.encode(), expected.encode()):
         raise InvalidStateError("state signature mismatch")
+    issued_at_b64 = payload_parts[1]
     try:
         issued_at = datetime.fromtimestamp(int(_b64decode(issued_at_b64)), tz=UTC)
     except (ValueError, binascii.Error, OverflowError, OSError):
@@ -54,6 +63,12 @@ def verify_state(
         raise InvalidStateError("state issued in the future")
     if now - issued_at > max_age:
         raise InvalidStateError("state expired")
+    if len(payload_parts) == 2:
+        return ""
+    try:
+        return _b64decode(payload_parts[2]).decode()
+    except (ValueError, binascii.Error):
+        raise InvalidStateError("malformed state data") from None
 
 
 def _signature(payload: str, key: SigningKey) -> str:

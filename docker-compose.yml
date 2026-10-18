@@ -70,7 +70,10 @@ services:
 
   api:
     <<: *trainsync-image
-    environment: *trainsync-env
+    environment:
+      <<: *trainsync-env
+      # Where the OAuth callback may send the browser back to (the web dashboard's sync page).
+      OAUTH_RETURN_TO_ALLOWLIST: http://localhost:3000/sync
     ports: ["8000:8000"]
     depends_on:
       migrate: { condition: service_completed_successfully }

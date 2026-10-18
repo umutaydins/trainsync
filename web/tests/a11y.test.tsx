@@ -12,8 +12,9 @@ import { KpiTiles } from "@/components/dashboard/kpi-tiles";
 import { SportBreakdown } from "@/components/dashboard/sport-breakdown";
 import { WeeklyChart } from "@/components/dashboard/weekly-chart";
 import { LoginForm } from "@/components/login-form";
+import { SyncStatusView } from "@/components/sync/sync-status-view";
 import { ErrorState } from "@/components/ui";
-import { activity, page, summary, week } from "./support/fixtures";
+import { activity, page, summary, syncStatus, week } from "./support/fixtures";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -43,6 +44,8 @@ describe("accessibility (axe)", () => {
     ["activity detail", <ActivityDetailCard key="d" activity={activity(1)} />],
     ["login form", <LoginForm key="lf" next="/" />],
     ["error state", <ErrorState key="e" message="boom" />],
+    ["sync status", <SyncStatusView key="ss" initial={syncStatus()} />],
+    ["sync status (empty)", <SyncStatusView key="se" initial={syncStatus({ athletes: [], rate_limit: null })} />],
   ])("%s has no violations", async (_name, ui) => {
     expect(await violations(ui)).toEqual([]);
   });

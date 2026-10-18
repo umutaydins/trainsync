@@ -13,7 +13,7 @@ export interface paths {
         };
         /**
          * Strava OAuth callback
-         * @description Verifies `state`, requires the `activity:read_all` scope, exchanges the code for tokens, stores the athlete with encrypted tokens and enqueues the initial backfill.
+         * @description Verifies `state`, requires the `activity:read_all` scope, exchanges the code for tokens, stores the athlete with encrypted tokens and enqueues the initial backfill. If the login carried an allowlisted `return_to`, the browser is redirected (303) there with `connected=1`, or with `connect_error=<reason>` once the state itself is valid.
          */
         get: operations["callback_auth_strava_callback_get"];
         put?: never;
@@ -33,7 +33,7 @@ export interface paths {
         };
         /**
          * Start the Strava OAuth flow
-         * @description Redirects the browser to Strava's authorize page with a signed, expiring `state`.
+         * @description Redirects the browser to Strava's authorize page with a signed, expiring `state`. An optional `return_to` that exactly matches `OAUTH_RETURN_TO_ALLOWLIST` is signed into the state; after the callback the browser is sent there. Any other value is ignored.
          */
         get: operations["login_auth_strava_login_get"];
         put?: never;
@@ -751,6 +751,13 @@ export interface operations {
                     "application/json": components["schemas"]["ConnectedResponse"];
                 };
             };
+            /** @description Back to the allowlisted `return_to` (`connected=1` or `connect_error`) */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Bad state, denied access, missing scope or bad code */
             400: {
                 headers: {
@@ -778,7 +785,10 @@ export interface operations {
     };
     login_auth_strava_login_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Where to send the browser after connecting (allowlisted URLs only) */
+                return_to?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -791,6 +801,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

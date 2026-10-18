@@ -7,6 +7,7 @@ import {
   createSessionToken,
   passwordMatches,
   safeNextPath,
+  seeOther,
 } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!passwordMatches(password, env.dashboardPassword)) {
     return NextResponse.json({ error: "wrong password" }, { status: 401 });
   }
-  const response = NextResponse.redirect(new URL(safeNextPath(next), request.url), 303);
+  const response = new NextResponse(null, seeOther(safeNextPath(next)));
   response.cookies.set(SESSION_COOKIE, createSessionToken(env.sessionSecret, new Date()), {
     httpOnly: true,
     secure: env.cookieSecure,

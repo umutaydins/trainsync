@@ -29,9 +29,7 @@ describe("POST /api/auth/login", () => {
   it("sets a signed httpOnly lax cookie and redirects for the right password", async () => {
     const response = await login(form(TEST_PASSWORD, "/activities?sport_type=Run"));
     expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe(
-      "http://localhost:3000/activities?sport_type=Run",
-    );
+    expect(response.headers.get("location")).toBe("/activities?sport_type=Run");
     const cookie = response.cookies.get(SESSION_COOKIE);
     expect(cookie?.httpOnly).toBe(true);
     expect(cookie?.sameSite).toBe("lax");
@@ -47,7 +45,7 @@ describe("POST /api/auth/login", () => {
       headers: { "content-type": "application/json" },
     });
     const response = await login(request);
-    expect(response.headers.get("location")).toBe("http://localhost:3000/");
+    expect(response.headers.get("location")).toBe("/");
   });
 
   it("marks the cookie secure in production", async () => {
@@ -71,9 +69,9 @@ describe("POST /api/auth/login", () => {
 
 describe("POST /api/auth/logout", () => {
   it("clears the cookie and goes to /login", () => {
-    const response = logout(new NextRequest("http://localhost:3000/api/auth/logout", { method: "POST" }));
+    const response = logout();
     expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("http://localhost:3000/login");
+    expect(response.headers.get("location")).toBe("/login");
     expect(response.headers.get("set-cookie")).toMatch(new RegExp(`${SESSION_COOKIE}=;`));
   });
 });

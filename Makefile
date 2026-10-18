@@ -79,3 +79,6 @@ WEB_CANARY_ENV := TRAINSYNC_API_KEY=web-verify-canary-api-key-3f9a1c \
 web-verify: ## Web: install (locked) + lint + typecheck + unit tests + build + no-secret-in-bundle check
 	cd web && pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test \
 		&& $(WEB_CANARY_ENV) pnpm build && $(WEB_CANARY_ENV) pnpm check:bundle
+
+web-e2e: ## Web: compose stack + Playwright e2e (fake Strava), screenshots to docs/img, tear down
+	./scripts/web_e2e.sh
