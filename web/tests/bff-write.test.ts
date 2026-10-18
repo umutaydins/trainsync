@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DELETE, GET, PATCH, POST, PUT } from "@/app/api/ts/[...path]/route";
 import { CSRF_COOKIE } from "@/lib/csrf-cookie";
-import { BACKEND_UNREACHABLE, MAX_BODY_BYTES, allowedMethods } from "@/lib/upstream";
+import { BACKEND_UNREACHABLE, DEMO_READ_ONLY, MAX_BODY_BYTES, allowedMethods } from "@/lib/upstream";
 import { TEST_API_KEY, jsonResponse, stubServerEnv } from "./support/env";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -352,6 +352,25 @@ describe("BFF mutations: upstream answers", () => {
     const response = await call("POST", "v1/training/workouts", { body: "{}" });
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({
+      error: "the web app is not authorized for the trainsync API",
+    });
+  });
+
+  it("says so when the read-only demo refuses a write, and only for its marked 403", async () => {
+    const demo = new Response(JSON.stringify({ detail: "This is a read-only demo." }), {
+      status: 403,
+      headers: { "content-type": "application/json", "x-trainsync-demo": "read-only" },
+    });
+    fetchMock.mockResolvedValueOnce(demo);
+    const refused = await call("PUT", SET, { body: SET_BODY });
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toEqual({ error: DEMO_READ_ONLY });
+    expect(refused.headers.get("x-trainsync-demo")).toBeNull();
+
+    // A 403 without the marker stays an opaque authorization failure.
+    fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "This is a read-only demo." }, 403));
+    const plain = await call("PUT", SET, { body: SET_BODY });
+    expect(await plain.json()).toEqual({
       error: "the web app is not authorized for the trainsync API",
     });
   });

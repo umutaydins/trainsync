@@ -26,6 +26,7 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [21. Deployment — production on the MacBook (Phase 7)](#21-deployment--production-on-the-macbook-phase-7)
 - [22. Sequence — nightly backup and weekly restore check](#22-sequence--nightly-backup-and-weekly-restore-check-p74-adr-0024)
 - [23. Activity — make deploy and make rollback](#23-activity--make-deploy-and-make-rollback-p75-adr-0026)
+- [25. Deployment — public read-only demo](#25-deployment--public-read-only-demo-p79-adr-0028)
 
 ---
 
@@ -1290,4 +1291,38 @@ flowchart TD
     down --> old
     crossed -- "any reversible = False" --> restore(["refuse · print the restore steps<br/>(pre-deploy backup, then rollback --restored)"])
     old --> rbdone(["smoke test · deploy-state: current = previous · Telegram"])
+```
+
+## 25. Deployment — public read-only demo (P7.9, ADR 0028)
+
+```mermaid
+flowchart TB
+    visitor["Visitor (README link)"]
+    preview["Vercel preview<br/>web/ BFF · demo key + password"]
+
+    subgraph ts["Tailscale"]
+        funnel["Funnel :8443"]
+    end
+
+    subgraph dd["Docker Desktop · compose.demo.yml (project trainsync-demo)"]
+        gw["gateway (same Caddy image + routes.toml)<br/>127.0.0.1:8081"]
+        api["api · DEMO_MODE=true<br/>DemoReadOnlyMiddleware: writes → 403"]
+        subgraph backend["backend network (internal)"]
+            pg[("postgres · demo-pgdata")]
+            rd[("redis")]
+            fs["fake_strava (no real Strava)"]
+            worker["demo worker<br/>reset cron 03:00 UTC"]
+            seed["seed (one-shot on up)<br/>python -m trainsync.demo reset"]
+        end
+    end
+
+    visitor --> preview
+    preview -- "GET /v1/* + X-API-Key" --> funnel
+    funnel -- "http 127.0.0.1:8081" --> gw
+    gw --> api
+    api -- "reads" --> pg
+    api --> rd
+    seed -- "wipe + synthetic dataset<br/>(seed.py, fixed RNG)" --> pg
+    worker -- "same reset nightly" --> pg
+    api -. "Strava URLs point here" .-> fs
 ```
