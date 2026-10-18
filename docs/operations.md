@@ -322,6 +322,36 @@ make demo-check     # scripted: config, seeded reads and 403 writes through the 
   containers (`unless-stopped`) as long as they were up when Docker stopped.
 - **Memory**: about 1.2 GB of limits next to production; `down` it when the Mac is short.
 
+## Strava subscription
+
+Creating the API application, connecting the account and the webhook subscription are in
+[strava-setup.md](strava-setup.md); `scripts/strava-subscription.py view|create|delete` manages
+the subscription (owner checks below). Re-create it whenever `PUBLIC_API_BASE_URL` changes
+(another host, ADR 0029): `delete`, update `.env.prod`, `scripts/mac-prod.sh up`, `create`.
+
+## Rotating secrets
+
+All secrets live in `.env.prod` (and, for the web app, in Vercel's environment). After changing
+`.env.prod`, run `scripts/mac-prod.sh up`: compose recreates the containers with the new values
+(`restart` would keep the old ones). Nothing here needs a code change.
+
+| Secret | How to rotate | Effect |
+| --- | --- | --- |
+| `API_KEYS` (and Vercel `TRAINSYNC_API_KEY`) | add the new key: `API_KEYS=<new>,<old>`; `mac-prod.sh up`; set the new one in Vercel and redeploy; then remove the old one from `API_KEYS` and `mac-prod.sh up` | no downtime: both keys work in between |
+| `TOKEN_ENCRYPTION_KEY` | put the new key first: `TOKEN_ENCRYPTION_KEY=<new>,<old>` (the first encrypts, all decrypt); `mac-prod.sh up`; Strava tokens are re-encrypted with the new key whenever they are refreshed (every few hours while syncs run); after a day, drop the old key | if you drop the old key too early, an athlete whose tokens were not refreshed must reconnect Strava |
+| `STATE_SIGNING_KEY` | replace it; `mac-prod.sh up` | only an OAuth login started in the minutes before fails; start it again |
+| `STRAVA_CLIENT_SECRET` | "Reset" on strava.com/settings/api, put the new value in `.env.prod`, `mac-prod.sh up` | token refreshes fail until the new value is in; existing access tokens keep working until they expire |
+| `STRAVA_WEBHOOK_VERIFY_TOKEN` | change it, `mac-prod.sh up`, then `strava-subscription.py delete` and `create` (Strava checks it only when subscribing) | none |
+| `POSTGRES_PASSWORD` | `docker compose --env-file .env.prod -f compose.prod.yml exec postgres psql -U trainsync -c "ALTER USER trainsync PASSWORD '<new>'"`, then set it in `.env.prod`, `mac-prod.sh up` | the app reconnects with the new password |
+| `TELEGRAM_BOT_TOKEN` | BotFather → `/revoke`, new token into `.env.prod` (and the GitHub secret for uptime alerts: `gh secret set TELEGRAM_BOT_TOKEN`), `mac-prod.sh up` | the bot is silent until the new token is in |
+| `DASHBOARD_PASSWORD`, `DASHBOARD_SESSION_SECRET` (Vercel) | change in Vercel → redeploy | a new session secret logs every browser out |
+| Backup age key (`BACKUP_AGE_RECIPIENT` / identity) | see "Backups and restore": new key pair, new recipient in `.env.prod`; **keep the old identity** as long as backups made with it are within retention (6 months) | old backups still need the old identity to restore |
+| Demo key and password (`.env.demo`, Vercel Preview) | change both, `docker compose --env-file .env.demo -f compose.demo.yml up -d`, redeploy previews | public anyway; rotate if abused |
+
+**Health token**: there is none. `/health/live` and `/health/ready` are public through the
+gateway (ADR 0022) and answer only `ok`/`fail` per dependency, so nothing needs rotating; the
+uptime workflow (Alerts) uses them without credentials.
+
 ## Owner checks
 
 Manual checks only the owner can perform. Each one stays PENDING until the owner runs the

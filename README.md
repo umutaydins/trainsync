@@ -127,6 +127,26 @@ For development against a real Strava app, copy `.env.example` to `.env`, fill i
 The bot runs with `uv run python -m trainsync.bot`, the dashboard with `cd web && pnpm install &&
 pnpm dev` (it reads the web variables below from its environment).
 
+## Deploy (Phase 7)
+Production runs the backend on an always-on MacBook and the dashboard on Vercel, with a separate
+read-only demo; it moves to a VPS / Oracle Always Free without code changes
+([ADR 0029](docs/decisions/0029-backend-on-a-personal-mac-and-how-to-move-it.md)).
+
+- `compose.prod.yml` + `.env.prod` (template `.env.prod.example`): Postgres and Redis private, a
+  Caddy gateway on `127.0.0.1:8080` that forwards only `deploy/gateway/routes.toml`;
+  `make prod-check` proves it with dummy secrets (also in CI).
+- Tailscale Funnel gives it public HTTPS (`scripts/funnel.sh`); `scripts/mac-prod.sh` starts,
+  stops and checks the Mac (`doctor`); a LaunchAgent starts it at login.
+- `make deploy` / `make rollback`: green CI required, pre-deploy backup, migrations as a
+  one-shot step, smoke test, automatic rollback.
+- Nightly encrypted backups to iCloud Drive with a weekly restore check; uptime checked from
+  GitHub Actions and stack alerts on Telegram.
+- Dashboard on Vercel ([docs/deploy-vercel.md](docs/deploy-vercel.md)); real Strava app and
+  webhooks ([docs/strava-setup.md](docs/strava-setup.md)).
+
+Runbook: [docs/operations.md](docs/operations.md), including the owner checks that still have to
+be done on the Mac.
+
 ## Web dashboard
 A private, single-user dashboard in `web/`. Every page and every BFF call needs a signed session
 cookie (one password, `DASHBOARD_PASSWORD`). Pages are server components that read the API with
@@ -382,6 +402,14 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 | [0019](docs/decisions/0019-energy-balance-estimates-and-open-food-facts.md) | Energy-balance estimates and the Open Food Facts lookup |
 | [0020](docs/decisions/0020-daily-check-in.md) | Daily check-in: streaks, adherence, scheduler bookkeeping, conversation state |
 | [0021](docs/decisions/0021-web-workout-screen-and-pwa.md) | Web workout screen: timestamp timers, retry queue, PWA without a service worker |
+| [0022](docs/decisions/0022-public-gateway-with-a-route-allowlist.md) | Production compose with a public-route gateway (Caddy, path allowlist) |
+| [0023](docs/decisions/0023-macos-launchagent-and-control-script.md) | The Mac as a server: a login LaunchAgent and one control script |
+| [0024](docs/decisions/0024-encrypted-pg-dump-backups-with-a-restore-check.md) | Nightly encrypted pg_dump to iCloud Drive, GFS retention, scripted restore check |
+| [0025](docs/decisions/0025-public-https-with-tailscale-funnel.md) | Public HTTPS with Tailscale Funnel, checked from outside |
+| [0026](docs/decisions/0026-manual-make-deploy-instead-of-a-self-hosted-runner.md) | Manual `make deploy` on the Mac instead of a self-hosted GitHub runner |
+| [0027](docs/decisions/0027-uptime-and-stack-alerts.md) | Uptime check from GitHub Actions, stack alerts from the worker |
+| [0028](docs/decisions/0028-read-only-demo-with-a-synthetic-seed.md) | Public demo: read-only by middleware, synthetic seed as code |
+| [0029](docs/decisions/0029-backend-on-a-personal-mac-and-how-to-move-it.md) | Backend on a personal Mac behind Tailscale Funnel; how to move it to a VPS |
 
 ## Status
 - [x] Phase 1 — Foundation, OAuth, Strava client
@@ -390,5 +418,5 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 - [x] Phase 4 — Observability, load test, CI
 - [x] Phase 5 — Web dashboard and Telegram bot
 - [x] Phase 6 — Strength training, programs and nutrition
-- [ ] Phase 7 — Deploy (Mac backend + Vercel web)
+- [ ] Phase 7 — Deploy (Mac backend + Vercel web) — built and tested; waiting for the owner checks in [docs/operations.md](docs/operations.md#owner-checks) ([evidence](docs/phases/phase-7-deploy.md#evidence))
 - [ ] Phase 8 — Body composition, Apple Health and adaptive programs

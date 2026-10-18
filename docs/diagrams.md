@@ -1214,11 +1214,15 @@ flowchart TB
 
     subgraph mac["MacBook (always on, no AC sleep)"]
         agent["LaunchAgent com.trainsync.stack<br/>at login: wait for Docker → mac-prod.sh up"]
+        deploy["make deploy / make rollback<br/>(green CI, pre-deploy backup, migrate, smoke)"]
+        icloud[("iCloud Drive<br/>trainsync-backups (*.dump.age)")]
+        demo["compose.demo.yml · 127.0.0.1:8081<br/>read-only demo (diagram 25)"]
         subgraph dd["Docker Desktop · compose.prod.yml"]
             gw["gateway (Caddy)<br/>127.0.0.1:8080 · route allowlist"]
             api["api"]
             worker["worker"]
             bot["bot"]
+            backup["backup<br/>nightly pg_dump + age · retention · weekly restore check"]
             subgraph backend["backend network (internal)"]
                 pg[("postgres")]
                 rd[("redis")]
@@ -1237,6 +1241,12 @@ flowchart TB
     worker --> rd
     bot --> api
     agent -. "docker compose up" .-> dd
+    deploy -. "images tagged by git SHA" .-> dd
+    funnel -- "http 127.0.0.1:8081" --> demo
+    backup --> pg
+    backup -- "encrypted dumps" --> icloud
+    worker -. "reads backup age" .-> icloud
+    backup -. "backup / restore-check result" .-> tg
     gha -. "uptime: down / recovered" .-> tg
     worker -. "stack alerts: start / clear" .-> tg
 ```
