@@ -127,12 +127,12 @@ export interface paths {
         };
         /**
          * Settings of a chat
-         * @description The language the chat chose with `/lang`, or null.
+         * @description The language (`/lang`) and profanity level (`/swear`) the chat chose, or null.
          */
         get: operations["get_chat_settings_v1_chats__chat_id__settings_get"];
         /**
          * Store the settings of a chat
-         * @description Idempotent: the same body twice stores one row.
+         * @description Idempotent: the same body twice stores one row. A field left out keeps its stored value; at least one is required.
          */
         put: operations["put_chat_settings_v1_chats__chat_id__settings_put"];
         post?: never;
@@ -1157,22 +1157,26 @@ export interface components {
         };
         /**
          * ChatSettingsIn
+         * @description Either field or both; a field left out keeps its stored value.
          * @example {
          *       "lang": "en"
          *     }
+         * @example {
+         *       "profanity": "max"
+         *     }
          */
         ChatSettingsIn: {
-            /**
-             * Lang
-             * @enum {string}
-             */
-            lang: "en" | "tr";
+            /** Lang */
+            lang?: ("en" | "tr") | null;
+            /** Profanity */
+            profanity?: ("roast" | "max") | null;
         };
         /**
          * ChatSettingsOut
          * @example {
          *       "chat_id": 123456789,
-         *       "lang": "tr"
+         *       "lang": "tr",
+         *       "profanity": "max"
          *     }
          */
         ChatSettingsOut: {
@@ -1183,6 +1187,11 @@ export interface components {
              * @description null: never chosen, the bot uses BOT_LANG
              */
             lang: ("en" | "tr") | null;
+            /**
+             * Profanity
+             * @description null: never chosen, the bot uses BOT_PROFANITY
+             */
+            profanity?: ("roast" | "max") | null;
         };
         /**
          * CheckinIn
@@ -1456,7 +1465,10 @@ export interface components {
          *           "grams": 80,
          *           "kcal": 297.6,
          *           "meal": "breakfast",
-         *           "protein_g": 10.8
+         *           "nova_group": 1,
+         *           "protein_g": 10.8,
+         *           "sugars_100g": 1.1,
+         *           "sugars_g": 0.9
          *         }
          *       ]
          *     }
@@ -1506,6 +1518,7 @@ export interface components {
          *       "macros_complete": true,
          *       "protein_g": 131.2,
          *       "protein_target_g": 140,
+         *       "sugars_g": 41.5,
          *       "weight_date": "2026-10-12",
          *       "weight_kg": 80
          *     }
@@ -1588,6 +1601,12 @@ export interface components {
             protein_g: number;
             /** Protein Target G */
             protein_target_g: number | null;
+            /**
+             * Sugars G
+             * @description Known sugar values only
+             * @default 0
+             */
+            sugars_g: number;
             /** Weight Date */
             weight_date: string | null;
             /**
@@ -1779,10 +1798,20 @@ export interface components {
             /** Name */
             name: string;
             /**
+             * Nova Group
+             * @description Open Food Facts NOVA group, 4 = ultra-processed; null = unknown
+             */
+            nova_group?: number | null;
+            /**
              * Protein 100G
              * @description g per 100 g; null = unknown
              */
             protein_100g?: number | null;
+            /**
+             * Sugars 100G
+             * @description g per 100 g; null = unknown
+             */
+            sugars_100g?: number | null;
         };
         /**
          * FoodList
@@ -1797,8 +1826,10 @@ export interface components {
          *           "id": 7,
          *           "kcal_100g": 372,
          *           "name": "Rolled oats",
+         *           "nova_group": 1,
          *           "protein_100g": 13.5,
-         *           "source": "openfoodfacts"
+         *           "source": "openfoodfacts",
+         *           "sugars_100g": 1.1
          *         }
          *       ]
          *     }
@@ -1820,8 +1851,10 @@ export interface components {
          *           "id": 7,
          *           "kcal_100g": 372,
          *           "name": "Rolled oats",
+         *           "nova_group": 1,
          *           "protein_100g": 13.5,
-         *           "source": "openfoodfacts"
+         *           "source": "openfoodfacts",
+         *           "sugars_100g": 1.1
          *         }
          *       ],
          *       "remote": "ok"
@@ -1848,8 +1881,10 @@ export interface components {
          *       "id": 7,
          *       "kcal_100g": 372,
          *       "name": "Rolled oats",
+         *       "nova_group": 1,
          *       "protein_100g": 13.5,
-         *       "source": "openfoodfacts"
+         *       "source": "openfoodfacts",
+         *       "sugars_100g": 1.1
          *     }
          */
         FoodOut: {
@@ -1876,12 +1911,22 @@ export interface components {
             /** Name */
             name: string;
             /**
+             * Nova Group
+             * @description Open Food Facts NOVA group, 4 = ultra-processed; null = unknown
+             */
+            nova_group?: number | null;
+            /**
              * Protein 100G
              * @description null = unknown
              */
             protein_100g: number | null;
             /** @description `openfoodfacts` rows are cached lookups */
             source: components["schemas"]["FoodSource"];
+            /**
+             * Sugars 100G
+             * @description null = unknown
+             */
+            sugars_100g?: number | null;
         };
         /**
          * FoodPatch
@@ -1909,10 +1954,20 @@ export interface components {
             /** Name */
             name?: string | null;
             /**
+             * Nova Group
+             * @description Open Food Facts NOVA group, 4 = ultra-processed; null = unknown
+             */
+            nova_group?: number | null;
+            /**
              * Protein 100G
              * @description g per 100 g; null = unknown
              */
             protein_100g?: number | null;
+            /**
+             * Sugars 100G
+             * @description g per 100 g; null = unknown
+             */
+            sugars_100g?: number | null;
         };
         /**
          * FoodSource
@@ -2031,7 +2086,10 @@ export interface components {
          *       "grams": 80,
          *       "kcal": 297.6,
          *       "meal": "breakfast",
-         *       "protein_g": 10.8
+         *       "nova_group": 1,
+         *       "protein_g": 10.8,
+         *       "sugars_100g": 1.1,
+         *       "sugars_g": 0.9
          *     }
          */
         LogOut: {
@@ -2072,10 +2130,25 @@ export interface components {
             kcal: number;
             meal: components["schemas"]["Meal"];
             /**
+             * Nova Group
+             * @description Open Food Facts NOVA group, 4 = ultra-processed; null = unknown
+             */
+            nova_group?: number | null;
+            /**
              * Protein G
              * @description null when the food's value is unknown
              */
             protein_g: number | null;
+            /**
+             * Sugars 100G
+             * @description Snapshot; null = unknown
+             */
+            sugars_100g?: number | null;
+            /**
+             * Sugars G
+             * @description null when the food's value is unknown
+             */
+            sugars_g?: number | null;
         };
         /**
          * Meal
@@ -2888,6 +2961,7 @@ export interface components {
          *           "macros_complete": true,
          *           "protein_g": 131.2,
          *           "protein_target_g": 140,
+         *           "sugars_g": 41.5,
          *           "weight_date": "2026-10-12",
          *           "weight_kg": 80
          *         }

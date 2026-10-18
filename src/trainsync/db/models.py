@@ -19,6 +19,7 @@ from sqlalchemy import (
     LargeBinary,
     MetaData,
     Numeric,
+    SmallInteger,
     String,
     Text,
     Time,
@@ -483,6 +484,11 @@ class Food(Base):
             " AND (fat_100g IS NULL OR fat_100g BETWEEN 0 AND 100)",
             name="macros_100g",
         ),
+        CheckConstraint(
+            "(sugars_100g IS NULL OR sugars_100g BETWEEN 0 AND 100)"
+            " AND (nova_group IS NULL OR nova_group BETWEEN 1 AND 4)",
+            name="sugar_nova",
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -493,6 +499,9 @@ class Food(Base):
     protein_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
     carbs_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
     fat_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    # ADR 0032: sugar per 100 g and the Open Food Facts NOVA group (1-4); null = unknown.
+    sugars_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    nova_group: Mapped[int | None] = mapped_column(SmallInteger)
     source: Mapped[str] = mapped_column(String(16), server_default=text("'manual'"))
     favorite: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     created_at: Mapped[datetime] = _utc_timestamp(default_now=True)
@@ -522,6 +531,8 @@ class FoodLog(Base):
     protein_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
     carbs_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
     fat_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    sugars_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    nova_group: Mapped[int | None] = mapped_column(SmallInteger)
     created_at: Mapped[datetime] = _utc_timestamp(default_now=True)
 
 
@@ -555,11 +566,16 @@ class NutritionProfile(Base):
 
 
 class ChatSetting(Base):
-    """Per-chat bot settings (ADR 0031): the language chosen with `/lang`. No row = `BOT_LANG`."""
+    """Per-chat bot settings: the language chosen with `/lang` (ADR 0031) and the profanity
+    level chosen with `/swear` (ADR 0032). Null = the default (`BOT_LANG`, `BOT_PROFANITY`)."""
 
     __tablename__ = "chat_settings"
-    __table_args__ = (CheckConstraint("lang IN ('en', 'tr')", name="lang"),)
+    __table_args__ = (
+        CheckConstraint("lang IN ('en', 'tr')", name="lang"),
+        CheckConstraint("profanity IN ('roast', 'max')", name="profanity"),
+    )
 
     chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
-    lang: Mapped[str] = mapped_column(String(2))
+    lang: Mapped[str | None] = mapped_column(String(2))
+    profanity: Mapped[str | None] = mapped_column(String(8))
     updated_at: Mapped[datetime] = _utc_timestamp(default_now=True)

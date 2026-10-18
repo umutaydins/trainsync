@@ -103,6 +103,7 @@ class IntakeEntry:
     protein_100g: Decimal | None = None
     carbs_100g: Decimal | None = None
     fat_100g: Decimal | None = None
+    sugars_100g: Decimal | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +115,8 @@ class Intake:
     entries: int
     # False when any entry's food has an unknown macro (its share is missing from the sums).
     macros_complete: bool
+    # Known sugar values only (ADR 0032); not part of `macros_complete`.
+    sugars_g: Decimal = Decimal(0)
 
 
 def per_grams(per_100g: Decimal, grams: Decimal) -> Decimal:
@@ -121,7 +124,7 @@ def per_grams(per_100g: Decimal, grams: Decimal) -> Decimal:
 
 
 def intake(entries: Iterable[IntakeEntry]) -> Intake:
-    kcal = protein = carbs = fat = Decimal(0)
+    kcal = protein = carbs = fat = sugars = Decimal(0)
     count = 0
     complete = True
     for e in entries:
@@ -131,7 +134,10 @@ def intake(entries: Iterable[IntakeEntry]) -> Intake:
         protein += per_grams(e.protein_100g or Decimal(0), e.grams)
         carbs += per_grams(e.carbs_100g or Decimal(0), e.grams)
         fat += per_grams(e.fat_100g or Decimal(0), e.grams)
-    return Intake(tenth(kcal), tenth(protein), tenth(carbs), tenth(fat), count, complete)
+        sugars += per_grams(e.sugars_100g or Decimal(0), e.grams)
+    return Intake(
+        tenth(kcal), tenth(protein), tenth(carbs), tenth(fat), count, complete, tenth(sugars)
+    )
 
 
 # ---------------------------------------------------------------- balance

@@ -42,6 +42,8 @@ BotTone = Literal["neutral", "hardcore"]
 BotLang = Literal["en", "tr"]
 # How hard the hardcore coach gets (ADR 0030): `savage` is an explicit opt-in.
 BotIntensity = Literal["normal", "savage"]
+# Where savage swears (ADR 0032): only in the roast lines, or in every savage message.
+BotProfanity = Literal["roast", "max"]
 
 
 def parse_quiet_hours(value: str) -> tuple[time, time]:
@@ -265,6 +267,10 @@ class Settings(BaseSettings):
     quiet_hours: str = "23:00-07:00"
     # The owner's own extra lines, merged into the savage pack (git-ignored; optional).
     coach_messages_file: str = "config/messages.local.yaml"
+    # Savage profanity (ADR 0032): `max` swears in every savage message; `/swear` per chat.
+    bot_profanity: BotProfanity = "roast"
+    # A day's sugar (g) above this gets a savage food roast on the next /eat (ADR 0032).
+    sugar_limit_g: float = Field(default=50.0, gt=0, le=1000)
 
     @field_validator("coach_messages_enabled", mode="before")
     @classmethod

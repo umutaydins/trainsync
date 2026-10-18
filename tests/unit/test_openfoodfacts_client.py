@@ -146,3 +146,19 @@ def test_parse_product_drops_out_of_range_values() -> None:
     assert parse_product(product(**{"energy-kcal_100g": 2500})) is None
     assert parse_product(product(**{"energy-kcal_100g": True})) is None
     assert parse_product(product(name="x" * 300)) == parse_product(product(name="x" * 200))
+
+
+def test_parse_product_reads_sugar_and_nova() -> None:
+    """ADR 0032: sugar per 100 g and the NOVA group feed the savage food roast."""
+    item = {**product(sugars_100g=56.25), "nova_group": 4}
+    parsed = parse_product(item)
+    assert parsed is not None
+    assert (parsed.sugars_100g, parsed.nova_group) == (Decimal("56.2"), 4)
+    for nova in (0, 5, 2.5, "x", True):
+        odd = parse_product({**product(sugars_100g=120), "nova_group": nova})
+        assert odd is not None
+        assert (odd.sugars_100g, odd.nova_group) == (None, None)
+    plain = parse_product(product())
+    assert plain is not None
+    assert (plain.sugars_100g, plain.nova_group) == (None, None)
+    assert parse_product({**product(), "nova_group": "3"}).nova_group == 3  # type: ignore[union-attr]

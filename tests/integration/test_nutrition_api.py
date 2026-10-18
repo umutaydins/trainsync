@@ -245,6 +245,27 @@ async def test_editing_a_food_does_not_change_past_days(api: httpx.AsyncClient) 
     assert (day["intake_kcal"], day["macros_complete"]) == (200.0, False)
 
 
+async def test_sugar_and_nova_are_snapshotted_and_summed(api: httpx.AsyncClient) -> None:
+    """ADR 0032: the savage food roast reads these from the log and the day summary."""
+    baklava = await _food(
+        api, name="Baklava", kcal_100g=430, sugars_100g=30, nova_group=4, fat_100g=23
+    )
+    assert (baklava["sugars_100g"], baklava["nova_group"]) == (30.0, 4)
+    entry = await _ok(await _log(api, baklava["id"], 120), 201)
+    assert (entry["sugars_g"], entry["sugars_100g"], entry["nova_group"]) == (36.0, 30.0, 4)
+    await _ok(await api.patch(f"{BASE}/foods/{baklava['id']}", json={"sugars_100g": 40}))
+    fresh = await _ok(await api.patch(f"{BASE}/foods/{baklava['id']}", json={"nova_group": 3}))
+    assert (fresh["sugars_100g"], fresh["nova_group"]) == (40.0, 3)
+    await _ok(await _log(api, baklava["id"], 50), 201)
+    oats = await _food(api, **FIXTURE["foods"]["oats"])  # sugar unknown
+    await _ok(await _log(api, oats["id"], 80), 201)
+    day = await _ok(await api.get(f"{BASE}/summary", params={"date": "2026-10-14"}))
+    assert day["sugars_g"] == 56.0  # 36 (snapshot) + 20; the oats count as nothing
+    assert (
+        await api.post(f"{BASE}/foods", json={"name": "x", "kcal_100g": 1, "nova_group": 5})
+    ).status_code == 422
+
+
 async def test_food_log_validation(api: httpx.AsyncClient) -> None:
     oats = await _food(api, **FIXTURE["foods"]["oats"])
     assert (await _log(api, 999_999, 50)).status_code == 404

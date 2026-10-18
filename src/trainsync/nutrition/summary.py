@@ -92,7 +92,14 @@ async def energy_days(session: AsyncSession, start: date, end: date) -> list[Day
     for log, _ in await repo.log_entries(start, end):
         # The values snapshotted at log time, not the food's current ones.
         entries[log.date].append(
-            IntakeEntry(log.grams, log.kcal_100g, log.protein_100g, log.carbs_100g, log.fat_100g)
+            IntakeEntry(
+                log.grams,
+                log.kcal_100g,
+                log.protein_100g,
+                log.carbs_100g,
+                log.fat_100g,
+                log.sugars_100g,
+            )
         )
 
     athlete_ids = await ReadRepository(session).active_athlete_ids()

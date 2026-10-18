@@ -84,6 +84,15 @@ def test_intake_sums_and_flags_unknown_macros() -> None:
     assert (empty.kcal, empty.entries, empty.macros_complete) == (D("0.0"), 0, True)
 
 
+def test_intake_sums_known_sugar_only() -> None:
+    baklava = IntakeEntry(D("120"), D("430"), D("6"), D("50"), D("23"), sugars_100g=D("30"))
+    unknown = IntakeEntry(D("100"), D("100"))
+    total = intake([baklava, unknown])
+    assert total.sugars_g == D("36.0")
+    assert total.macros_complete is False  # sugar is not a macro: only `unknown` makes it so
+    assert intake([]).sugars_g == D("0.0")
+
+
 def test_balance_leaves_unknown_exercise_out_and_flags_it() -> None:
     run = ActivityEnergy(D("420.5"), KcalSource.CALORIES)
     gym = ActivityEnergy(None, None)

@@ -99,12 +99,23 @@ class NutritionRepository:
                 "protein_100g": p.protein_100g,
                 "carbs_100g": p.carbs_100g,
                 "fat_100g": p.fat_100g,
+                "sugars_100g": p.sugars_100g,
+                "nova_group": p.nova_group,
                 "source": FoodSource.OPENFOODFACTS.value,
             }
             for p in unique.values()
         ]
         stmt = insert(Food).values(rows)
-        fields = ("name", "brand", "kcal_100g", "protein_100g", "carbs_100g", "fat_100g")
+        fields = (
+            "name",
+            "brand",
+            "kcal_100g",
+            "protein_100g",
+            "carbs_100g",
+            "fat_100g",
+            "sugars_100g",
+            "nova_group",
+        )
         stmt = stmt.on_conflict_do_update(
             index_elements=[Food.barcode],
             set_={name: stmt.excluded[name] for name in fields},
@@ -137,6 +148,8 @@ class NutritionRepository:
             "protein_100g": food.protein_100g,
             "carbs_100g": food.carbs_100g,
             "fat_100g": food.fat_100g,
+            "sugars_100g": food.sugars_100g,
+            "nova_group": food.nova_group,
         }
         values_stmt = insert(FoodLog).values(client_id=client_id, **fields)
         stmt = values_stmt.on_conflict_do_update(
