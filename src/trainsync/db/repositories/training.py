@@ -69,6 +69,11 @@ class ExerciseRepository:
             stmt = stmt.where(Exercise.equipment.in_(equipment))
         return list(await self._session.scalars(stmt))
 
+    async def with_pattern(self) -> list[Exercise]:
+        """Every exercise with a movement pattern (what the program generator picks from)."""
+        stmt = select(Exercise).where(Exercise.movement_pattern.is_not(None)).order_by(Exercise.id)
+        return list(await self._session.scalars(stmt))
+
     async def add(self, exercise: Exercise) -> Exercise:
         self._session.add(exercise)
         await self._session.flush()
@@ -290,28 +295,41 @@ class WorkoutRepository:
 
     async def exercise_history(
         self,
-        exercise_ids: Sequence[int],
+        exercise_ids: Sequence[int] | None,
         before: datetime | None = None,
         exclude_workout_id: int | None = None,
+        since: datetime | None = None,
     ) -> list[tuple[Workout, WorkoutSet]]:
-        """Every logged set of these exercises with its workout, oldest first."""
+        """Every logged set of these exercises (None: of all exercises) with its workout,
+        oldest first; `since` ≤ started_at < `before`."""
         stmt = (
             select(Workout, WorkoutSet)
             .join(WorkoutSet, WorkoutSet.workout_id == Workout.id)
-            .where(WorkoutSet.exercise_id.in_(exercise_ids))
             .order_by(Workout.started_at, Workout.id, WorkoutSet.set_index, WorkoutSet.id)
         )
+        if exercise_ids is not None:
+            stmt = stmt.where(WorkoutSet.exercise_id.in_(exercise_ids))
+        if since is not None:
+            stmt = stmt.where(Workout.started_at >= since)
         if before is not None:
             stmt = stmt.where(Workout.started_at < before)
         if exclude_workout_id is not None:
             stmt = stmt.where(Workout.id != exclude_workout_id)
         result = await self._session.execute(stmt)
-        return [(workout, workout_set) for workout, workout_set in result.tuples()]
+        return [(workout, workout_set) for workout, workout_set in result]
 
     async def last_performance(
         self, exercise_ids: Sequence[int], exclude_workout_id: int | None = None
     ) -> dict[int, list[WorkoutSet]]:
         """Per exercise, the working sets of the most recent other workout that logged it."""
+        recent = await self.recent_performances(exercise_ids, 1, exclude_workout_id)
+        return {exercise_id: sessions[0] for exercise_id, sessions in recent.items()}
+
+    async def recent_performances(
+        self, exercise_ids: Sequence[int], sessions: int, exclude_workout_id: int | None = None
+    ) -> dict[int, list[list[WorkoutSet]]]:
+        """Per exercise, the working sets of its `sessions` most recent other workouts,
+        newest workout first."""
         conditions: list[ColumnElement[bool]] = [
             WorkoutSet.exercise_id.in_(exercise_ids),
             WorkoutSet.is_warmup.is_(False),
@@ -333,15 +351,18 @@ class WorkoutRepository:
             .subquery()
         )
         stmt = (
-            select(WorkoutSet)
+            select(WorkoutSet, ranked.c.rank)
             .join(ranked, ranked.c.id == WorkoutSet.id)
-            .where(ranked.c.rank == 1)
-            .order_by(WorkoutSet.exercise_id, WorkoutSet.set_index, WorkoutSet.id)
+            .where(ranked.c.rank <= sessions)
+            .order_by(WorkoutSet.exercise_id, ranked.c.rank, WorkoutSet.set_index, WorkoutSet.id)
         )
-        grouped: dict[int, list[WorkoutSet]] = {}
-        for row in await self._session.scalars(stmt):
-            grouped.setdefault(row.exercise_id, []).append(row)
-        return grouped
+        grouped: dict[int, dict[int, list[WorkoutSet]]] = {}
+        for row, rank in await self._session.execute(stmt):
+            grouped.setdefault(row.exercise_id, {}).setdefault(rank, []).append(row)
+        return {
+            exercise_id: [by_rank[rank] for rank in sorted(by_rank)]
+            for exercise_id, by_rank in grouped.items()
+        }
 
 
 class BodyMetricRepository:

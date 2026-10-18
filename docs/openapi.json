@@ -24,6 +24,16 @@
         "title": "Ack",
         "type": "object"
       },
+      "Action": {
+        "enum": [
+          "start",
+          "increase",
+          "hold",
+          "deload"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
       "ActivityBaseline": {
         "description": "Everyday activity outside logged exercise; picks the BMR multiplier (P6.4).",
         "enum": [
@@ -353,6 +363,115 @@
         "title": "AthleteSync",
         "type": "object"
       },
+      "BestSet": {
+        "properties": {
+          "e1rm_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Epley; null above 12 reps",
+            "title": "E1Rm Kg"
+          },
+          "reps": {
+            "title": "Reps",
+            "type": "integer"
+          },
+          "weight_kg": {
+            "title": "Weight Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "reps",
+          "weight_kg",
+          "e1rm_kg"
+        ],
+        "title": "BestSet",
+        "type": "object"
+      },
+      "BodyMetricIn": {
+        "examples": [
+          {
+            "weight_kg": 78.4
+          }
+        ],
+        "properties": {
+          "weight_kg": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 500.0,
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Weight Kg"
+          }
+        },
+        "required": [
+          "weight_kg"
+        ],
+        "title": "BodyMetricIn",
+        "type": "object"
+      },
+      "BodyMetricList": {
+        "examples": [
+          {
+            "items": [
+              {
+                "date": "2026-10-18",
+                "weight_kg": 78.4
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BodyMetricOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BodyMetricList",
+        "type": "object"
+      },
+      "BodyMetricOut": {
+        "examples": [
+          {
+            "date": "2026-10-18",
+            "weight_kg": 78.4
+          }
+        ],
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "weight_kg": {
+            "title": "Weight Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "weight_kg"
+        ],
+        "title": "BodyMetricOut",
+        "type": "object"
+      },
       "BreakerProcess": {
         "properties": {
           "changed_at": {
@@ -465,6 +584,81 @@
           "backfill"
         ],
         "title": "ConnectedResponse",
+        "type": "object"
+      },
+      "CurrentRecord": {
+        "description": "The standing record; `previous` is the one it beat.",
+        "examples": [
+          {
+            "achieved_at": "2026-10-18T17:30:00Z",
+            "exercise_id": 20,
+            "exercise_name": "Bench Press",
+            "kind": "weight_for_reps",
+            "previous": 80.0,
+            "reps": 8,
+            "value": 82.5,
+            "workout_id": 42
+          }
+        ],
+        "properties": {
+          "achieved_at": {
+            "format": "date-time",
+            "title": "Achieved At",
+            "type": "string"
+          },
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "exercise_name": {
+            "title": "Exercise Name",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PrKind"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous"
+          },
+          "reps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reps"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          },
+          "workout_id": {
+            "title": "Workout Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "exercise_name",
+          "kind",
+          "value",
+          "previous",
+          "reps",
+          "workout_id",
+          "achieved_at"
+        ],
+        "title": "CurrentRecord",
         "type": "object"
       },
       "DayLog": {
@@ -763,6 +957,19 @@
         "title": "DaySummary",
         "type": "object"
       },
+      "Equipment": {
+        "enum": [
+          "barbell",
+          "dumbbell",
+          "machine",
+          "cable",
+          "bodyweight",
+          "kettlebell",
+          "band"
+        ],
+        "title": "Equipment",
+        "type": "string"
+      },
       "EstimateGap": {
         "description": "Why BMR and the everyday baseline could not be estimated for a day.",
         "enum": [
@@ -771,6 +978,284 @@
         ],
         "title": "EstimateGap",
         "type": "string"
+      },
+      "ExerciseCreate": {
+        "examples": [
+          {
+            "equipment": "barbell",
+            "movement_pattern": "vertical_push",
+            "name": "Landmine Press",
+            "primary_muscle": "shoulders",
+            "secondary_muscles": [
+              "chest",
+              "triceps"
+            ]
+          }
+        ],
+        "properties": {
+          "equipment": {
+            "$ref": "#/components/schemas/Equipment"
+          },
+          "movement_pattern": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MovementPattern"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "primary_muscle": {
+            "$ref": "#/components/schemas/Muscle"
+          },
+          "secondary_muscles": {
+            "items": {
+              "$ref": "#/components/schemas/Muscle"
+            },
+            "title": "Secondary Muscles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "primary_muscle",
+          "equipment"
+        ],
+        "title": "ExerciseCreate",
+        "type": "object"
+      },
+      "ExerciseList": {
+        "examples": [
+          {
+            "items": [
+              {
+                "equipment": "barbell",
+                "id": 20,
+                "is_custom": false,
+                "movement_pattern": "horizontal_push",
+                "name": "Bench Press",
+                "primary_muscle": "chest",
+                "secondary_muscles": [
+                  "triceps",
+                  "shoulders"
+                ],
+                "slug": "bench-press"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExerciseOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ExerciseList",
+        "type": "object"
+      },
+      "ExerciseOut": {
+        "examples": [
+          {
+            "equipment": "barbell",
+            "id": 20,
+            "is_custom": false,
+            "movement_pattern": "horizontal_push",
+            "name": "Bench Press",
+            "primary_muscle": "chest",
+            "secondary_muscles": [
+              "triceps",
+              "shoulders"
+            ],
+            "slug": "bench-press"
+          }
+        ],
+        "properties": {
+          "equipment": {
+            "$ref": "#/components/schemas/Equipment"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_custom": {
+            "title": "Is Custom",
+            "type": "boolean"
+          },
+          "movement_pattern": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MovementPattern"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "primary_muscle": {
+            "$ref": "#/components/schemas/Muscle"
+          },
+          "secondary_muscles": {
+            "items": {
+              "$ref": "#/components/schemas/Muscle"
+            },
+            "title": "Secondary Muscles",
+            "type": "array"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "primary_muscle",
+          "secondary_muscles",
+          "equipment",
+          "movement_pattern",
+          "is_custom"
+        ],
+        "title": "ExerciseOut",
+        "type": "object"
+      },
+      "ExerciseProgress": {
+        "examples": [
+          {
+            "exercise": {
+              "equipment": "barbell",
+              "id": 20,
+              "is_custom": false,
+              "movement_pattern": "horizontal_push",
+              "name": "Bench Press",
+              "primary_muscle": "chest",
+              "secondary_muscles": [
+                "triceps",
+                "shoulders"
+              ],
+              "slug": "bench-press"
+            },
+            "sessions": [
+              {
+                "best_set": {
+                  "e1rm_kg": 104.5,
+                  "reps": 8,
+                  "weight_kg": 82.5
+                },
+                "e1rm_kg": 104.5,
+                "started_at": "2026-10-18T17:30:00Z",
+                "volume_kg": 1890.0,
+                "working_sets": 3,
+                "workout_id": 42
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "exercise": {
+            "$ref": "#/components/schemas/ExerciseOut"
+          },
+          "sessions": {
+            "description": "Oldest first",
+            "items": {
+              "$ref": "#/components/schemas/SessionProgress"
+            },
+            "title": "Sessions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "exercise",
+          "sessions"
+        ],
+        "title": "ExerciseProgress",
+        "type": "object"
+      },
+      "ExerciseUpdate": {
+        "description": "Only the fields that are sent change; the slug stays.",
+        "examples": [
+          {
+            "name": "Half-kneeling Landmine"
+          }
+        ],
+        "properties": {
+          "equipment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Equipment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "movement_pattern": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MovementPattern"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "primary_muscle": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Muscle"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "secondary_muscles": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Muscle"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secondary Muscles"
+          }
+        },
+        "title": "ExerciseUpdate",
+        "type": "object"
       },
       "FoodIn": {
         "examples": [
@@ -1169,6 +1654,70 @@
         "title": "FoodSource",
         "type": "string"
       },
+      "GenerateIn": {
+        "examples": [
+          {
+            "days_per_week": 4,
+            "equipment": [
+              "barbell",
+              "dumbbell"
+            ],
+            "goal": "hypertrophy",
+            "session_minutes": 60
+          }
+        ],
+        "properties": {
+          "days_per_week": {
+            "description": "2 or 3 full body, 4 upper/lower, 3 or 6 PPL",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Days Per Week",
+            "type": "integer"
+          },
+          "equipment": {
+            "description": "Available equipment; bodyweight is always included",
+            "items": {
+              "$ref": "#/components/schemas/Equipment"
+            },
+            "title": "Equipment",
+            "type": "array"
+          },
+          "goal": {
+            "$ref": "#/components/schemas/ProgramGoal"
+          },
+          "session_minutes": {
+            "default": 60,
+            "maximum": 180.0,
+            "minimum": 20.0,
+            "title": "Session Minutes",
+            "type": "integer"
+          },
+          "template": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Template"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Default: by days per week"
+          },
+          "weeks": {
+            "default": 8,
+            "maximum": 52.0,
+            "minimum": 1.0,
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "days_per_week",
+          "goal"
+        ],
+        "title": "GenerateIn",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "examples": [
           {
@@ -1204,6 +1753,34 @@
         ],
         "title": "KcalSource",
         "type": "string"
+      },
+      "LastPerformance": {
+        "description": "Working sets of the most recent other workout that logged the exercise.",
+        "properties": {
+          "sets": {
+            "items": {
+              "$ref": "#/components/schemas/PerformedSet"
+            },
+            "title": "Sets",
+            "type": "array"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "workout_id": {
+            "title": "Workout Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "workout_id",
+          "started_at",
+          "sets"
+        ],
+        "title": "LastPerformance",
+        "type": "object"
       },
       "LogIn": {
         "examples": [
@@ -1369,6 +1946,562 @@
         ],
         "title": "Meal",
         "type": "string"
+      },
+      "MovementPattern": {
+        "description": "What the program generator (P6.3) picks exercises by; null for custom exercises.",
+        "enum": [
+          "squat",
+          "hinge",
+          "lunge",
+          "horizontal_push",
+          "vertical_push",
+          "horizontal_pull",
+          "vertical_pull",
+          "chest_fly",
+          "lateral_raise",
+          "rear_delt",
+          "biceps",
+          "triceps",
+          "knee_extension",
+          "knee_flexion",
+          "calf_raise",
+          "core"
+        ],
+        "title": "MovementPattern",
+        "type": "string"
+      },
+      "Muscle": {
+        "enum": [
+          "chest",
+          "back",
+          "shoulders",
+          "biceps",
+          "triceps",
+          "forearms",
+          "quads",
+          "hamstrings",
+          "glutes",
+          "calves",
+          "core"
+        ],
+        "title": "Muscle",
+        "type": "string"
+      },
+      "MuscleWeek": {
+        "properties": {
+          "muscle": {
+            "$ref": "#/components/schemas/Muscle",
+            "description": "Primary muscle of the exercises"
+          },
+          "sets": {
+            "description": "Working sets",
+            "title": "Sets",
+            "type": "integer"
+          },
+          "volume_kg": {
+            "title": "Volume Kg",
+            "type": "number"
+          },
+          "week_start": {
+            "description": "Monday of the ISO week (UTC)",
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week_start",
+          "muscle",
+          "sets",
+          "volume_kg"
+        ],
+        "title": "MuscleWeek",
+        "type": "object"
+      },
+      "PerformedSet": {
+        "properties": {
+          "reps": {
+            "title": "Reps",
+            "type": "integer"
+          },
+          "rpe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rpe"
+          },
+          "weight_kg": {
+            "title": "Weight Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "reps",
+          "weight_kg"
+        ],
+        "title": "PerformedSet",
+        "type": "object"
+      },
+      "PlannedExercise": {
+        "description": "A program-day exercise with what was lifted last time.",
+        "examples": [
+          {
+            "exercise": {
+              "equipment": "barbell",
+              "id": 20,
+              "is_custom": false,
+              "movement_pattern": "horizontal_push",
+              "name": "Bench Press",
+              "primary_muscle": "chest",
+              "secondary_muscles": [
+                "triceps",
+                "shoulders"
+              ],
+              "slug": "bench-press"
+            },
+            "last_performance": {
+              "sets": [
+                {
+                  "reps": 10,
+                  "rpe": 8.5,
+                  "weight_kg": 77.5
+                },
+                {
+                  "reps": 9,
+                  "weight_kg": 77.5
+                }
+              ],
+              "started_at": "2026-10-15T17:30:00Z",
+              "workout_id": 41
+            },
+            "progression": "double",
+            "rep_max": 12,
+            "rep_min": 8,
+            "rest_seconds": 90,
+            "sets": 3,
+            "start_weight_kg": 60.0,
+            "suggestion": {
+              "action": "hold",
+              "previous_weight_kg": 77.5,
+              "weight_kg": 77.5
+            }
+          }
+        ],
+        "properties": {
+          "exercise": {
+            "$ref": "#/components/schemas/ExerciseOut"
+          },
+          "last_performance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastPerformance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "progression": {
+            "$ref": "#/components/schemas/Progression"
+          },
+          "rep_max": {
+            "title": "Rep Max",
+            "type": "integer"
+          },
+          "rep_min": {
+            "title": "Rep Min",
+            "type": "integer"
+          },
+          "rest_seconds": {
+            "title": "Rest Seconds",
+            "type": "integer"
+          },
+          "sets": {
+            "title": "Sets",
+            "type": "integer"
+          },
+          "start_weight_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Weight Kg"
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/SuggestionOut"
+          }
+        },
+        "required": [
+          "exercise",
+          "sets",
+          "rep_min",
+          "rep_max",
+          "rest_seconds",
+          "start_weight_kg",
+          "progression",
+          "last_performance",
+          "suggestion"
+        ],
+        "title": "PlannedExercise",
+        "type": "object"
+      },
+      "PlannedExerciseIn-Input": {
+        "examples": [
+          {
+            "exercise_id": 20,
+            "progression": "double",
+            "rep_max": 12,
+            "rep_min": 8,
+            "rest_seconds": 90,
+            "sets": 3,
+            "start_weight_kg": 60.0
+          }
+        ],
+        "properties": {
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "progression": {
+            "$ref": "#/components/schemas/Progression",
+            "default": "double"
+          },
+          "rep_max": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Rep Max",
+            "type": "integer"
+          },
+          "rep_min": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Rep Min",
+            "type": "integer"
+          },
+          "rest_seconds": {
+            "maximum": 900.0,
+            "minimum": 0.0,
+            "title": "Rest Seconds",
+            "type": "integer"
+          },
+          "sets": {
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Sets",
+            "type": "integer"
+          },
+          "start_weight_kg": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "maximum": 500.0,
+                    "minimum": 0.0,
+                    "multipleOf": 0.25,
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "description": "kg, 0-500 in 0.25 steps"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Weight Kg"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "sets",
+          "rep_min",
+          "rep_max",
+          "rest_seconds"
+        ],
+        "title": "PlannedExerciseIn",
+        "type": "object"
+      },
+      "PlannedExerciseIn-Output": {
+        "examples": [
+          {
+            "exercise_id": 20,
+            "progression": "double",
+            "rep_max": 12,
+            "rep_min": 8,
+            "rest_seconds": 90,
+            "sets": 3,
+            "start_weight_kg": 60.0
+          }
+        ],
+        "properties": {
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "progression": {
+            "$ref": "#/components/schemas/Progression",
+            "default": "double"
+          },
+          "rep_max": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Rep Max",
+            "type": "integer"
+          },
+          "rep_min": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Rep Min",
+            "type": "integer"
+          },
+          "rest_seconds": {
+            "maximum": 900.0,
+            "minimum": 0.0,
+            "title": "Rest Seconds",
+            "type": "integer"
+          },
+          "sets": {
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Sets",
+            "type": "integer"
+          },
+          "start_weight_kg": {
+            "anyOf": [
+              {
+                "description": "kg, 0-500 in 0.25 steps",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Weight Kg"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "sets",
+          "rep_min",
+          "rep_max",
+          "rest_seconds"
+        ],
+        "title": "PlannedExerciseIn",
+        "type": "object"
+      },
+      "PlannedExerciseOut": {
+        "examples": [
+          {
+            "exercise": {
+              "equipment": "barbell",
+              "id": 20,
+              "is_custom": false,
+              "movement_pattern": "horizontal_push",
+              "name": "Bench Press",
+              "primary_muscle": "chest",
+              "secondary_muscles": [
+                "triceps",
+                "shoulders"
+              ],
+              "slug": "bench-press"
+            },
+            "id": 7,
+            "position": 0,
+            "progression": "double",
+            "rep_max": 12,
+            "rep_min": 8,
+            "rest_seconds": 90,
+            "sets": 3,
+            "start_weight_kg": 60.0
+          }
+        ],
+        "properties": {
+          "exercise": {
+            "$ref": "#/components/schemas/ExerciseOut"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "progression": {
+            "$ref": "#/components/schemas/Progression"
+          },
+          "rep_max": {
+            "title": "Rep Max",
+            "type": "integer"
+          },
+          "rep_min": {
+            "title": "Rep Min",
+            "type": "integer"
+          },
+          "rest_seconds": {
+            "title": "Rest Seconds",
+            "type": "integer"
+          },
+          "sets": {
+            "title": "Sets",
+            "type": "integer"
+          },
+          "start_weight_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Weight Kg"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "exercise",
+          "sets",
+          "rep_min",
+          "rep_max",
+          "rest_seconds",
+          "start_weight_kg",
+          "progression"
+        ],
+        "title": "PlannedExerciseOut",
+        "type": "object"
+      },
+      "PlatesOut": {
+        "examples": [
+          {
+            "achieved_kg": 100.0,
+            "bar_kg": 20.0,
+            "difference_kg": 1.0,
+            "exact": false,
+            "per_side": [
+              25.0,
+              15.0
+            ],
+            "target_kg": 101.0
+          }
+        ],
+        "properties": {
+          "achieved_kg": {
+            "description": "Target, or the nearest lower weight the plates allow",
+            "title": "Achieved Kg",
+            "type": "number"
+          },
+          "bar_kg": {
+            "title": "Bar Kg",
+            "type": "number"
+          },
+          "difference_kg": {
+            "description": "target - achieved; negative when the bar is heavier",
+            "title": "Difference Kg",
+            "type": "number"
+          },
+          "exact": {
+            "title": "Exact",
+            "type": "boolean"
+          },
+          "per_side": {
+            "description": "Plates for each side, heaviest first",
+            "items": {
+              "type": "number"
+            },
+            "title": "Per Side",
+            "type": "array"
+          },
+          "target_kg": {
+            "title": "Target Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "target_kg",
+          "bar_kg",
+          "per_side",
+          "achieved_kg",
+          "difference_kg",
+          "exact"
+        ],
+        "title": "PlatesOut",
+        "type": "object"
+      },
+      "PrKind": {
+        "enum": [
+          "weight_for_reps",
+          "e1rm",
+          "session_volume"
+        ],
+        "title": "PrKind",
+        "type": "string"
+      },
+      "PreviewDay": {
+        "properties": {
+          "estimated_minutes": {
+            "description": "Sets, rest and set-up time",
+            "title": "Estimated Minutes",
+            "type": "number"
+          },
+          "exercises": {
+            "items": {
+              "$ref": "#/components/schemas/PreviewExercise"
+            },
+            "title": "Exercises",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "estimated_minutes",
+          "exercises"
+        ],
+        "title": "PreviewDay",
+        "type": "object"
+      },
+      "PreviewExercise": {
+        "properties": {
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "slug",
+          "name",
+          "role"
+        ],
+        "title": "PreviewExercise",
+        "type": "object"
       },
       "ProfileIn": {
         "examples": [
@@ -1572,6 +2705,508 @@
         "title": "ProfileOut",
         "type": "object"
       },
+      "ProgramDayIn-Input": {
+        "properties": {
+          "exercises": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedExerciseIn-Input"
+            },
+            "maxItems": 20,
+            "title": "Exercises",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "exercises"
+        ],
+        "title": "ProgramDayIn",
+        "type": "object"
+      },
+      "ProgramDayIn-Output": {
+        "properties": {
+          "exercises": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedExerciseIn-Output"
+            },
+            "maxItems": 20,
+            "title": "Exercises",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "exercises"
+        ],
+        "title": "ProgramDayIn",
+        "type": "object"
+      },
+      "ProgramDayOut": {
+        "properties": {
+          "day_index": {
+            "title": "Day Index",
+            "type": "integer"
+          },
+          "exercises": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedExerciseOut"
+            },
+            "title": "Exercises",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "day_index",
+          "name",
+          "exercises"
+        ],
+        "title": "ProgramDayOut",
+        "type": "object"
+      },
+      "ProgramGoal": {
+        "enum": [
+          "strength",
+          "hypertrophy",
+          "general"
+        ],
+        "title": "ProgramGoal",
+        "type": "string"
+      },
+      "ProgramIn-Input": {
+        "description": "`days_per_week` is the number of days.",
+        "examples": [
+          {
+            "days": [
+              {
+                "exercises": [
+                  {
+                    "exercise_id": 20,
+                    "progression": "double",
+                    "rep_max": 12,
+                    "rep_min": 8,
+                    "rest_seconds": 90,
+                    "sets": 3,
+                    "start_weight_kg": 60.0
+                  }
+                ],
+                "name": "Upper A"
+              },
+              {
+                "exercises": [
+                  {
+                    "exercise_id": 1,
+                    "progression": "double",
+                    "rep_max": 12,
+                    "rep_min": 8,
+                    "rest_seconds": 90,
+                    "sets": 3,
+                    "start_weight_kg": 60.0
+                  }
+                ],
+                "name": "Lower A"
+              }
+            ],
+            "goal": "hypertrophy",
+            "name": "Upper/Lower",
+            "weeks": 8
+          }
+        ],
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramDayIn-Input"
+            },
+            "maxItems": 7,
+            "minItems": 1,
+            "title": "Days",
+            "type": "array"
+          },
+          "goal": {
+            "$ref": "#/components/schemas/ProgramGoal"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "weeks": {
+            "default": 8,
+            "maximum": 52.0,
+            "minimum": 1.0,
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "goal",
+          "days"
+        ],
+        "title": "ProgramIn",
+        "type": "object"
+      },
+      "ProgramIn-Output": {
+        "description": "`days_per_week` is the number of days.",
+        "examples": [
+          {
+            "days": [
+              {
+                "exercises": [
+                  {
+                    "exercise_id": 20,
+                    "progression": "double",
+                    "rep_max": 12,
+                    "rep_min": 8,
+                    "rest_seconds": 90,
+                    "sets": 3,
+                    "start_weight_kg": 60.0
+                  }
+                ],
+                "name": "Upper A"
+              },
+              {
+                "exercises": [
+                  {
+                    "exercise_id": 1,
+                    "progression": "double",
+                    "rep_max": 12,
+                    "rep_min": 8,
+                    "rest_seconds": 90,
+                    "sets": 3,
+                    "start_weight_kg": 60.0
+                  }
+                ],
+                "name": "Lower A"
+              }
+            ],
+            "goal": "hypertrophy",
+            "name": "Upper/Lower",
+            "weeks": 8
+          }
+        ],
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramDayIn-Output"
+            },
+            "maxItems": 7,
+            "minItems": 1,
+            "title": "Days",
+            "type": "array"
+          },
+          "goal": {
+            "$ref": "#/components/schemas/ProgramGoal"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "weeks": {
+            "default": 8,
+            "maximum": 52.0,
+            "minimum": 1.0,
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "goal",
+          "days"
+        ],
+        "title": "ProgramIn",
+        "type": "object"
+      },
+      "ProgramList": {
+        "examples": [
+          {
+            "items": [
+              {
+                "active": true,
+                "created_at": "2026-10-18T10:00:00Z",
+                "days_per_week": 4,
+                "goal": "hypertrophy",
+                "id": 3,
+                "name": "Upper/Lower",
+                "weeks": 8
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ProgramList",
+        "type": "object"
+      },
+      "ProgramOut": {
+        "examples": [
+          {
+            "active": true,
+            "created_at": "2026-10-18T10:00:00Z",
+            "days": [
+              {
+                "day_index": 0,
+                "exercises": [
+                  {
+                    "exercise": {
+                      "equipment": "barbell",
+                      "id": 20,
+                      "is_custom": false,
+                      "movement_pattern": "horizontal_push",
+                      "name": "Bench Press",
+                      "primary_muscle": "chest",
+                      "secondary_muscles": [
+                        "triceps",
+                        "shoulders"
+                      ],
+                      "slug": "bench-press"
+                    },
+                    "id": 7,
+                    "position": 0,
+                    "progression": "double",
+                    "rep_max": 12,
+                    "rep_min": 8,
+                    "rest_seconds": 90,
+                    "sets": 3,
+                    "start_weight_kg": 60.0
+                  }
+                ],
+                "id": 11,
+                "name": "Upper A"
+              }
+            ],
+            "days_per_week": 4,
+            "goal": "hypertrophy",
+            "id": 3,
+            "name": "Upper/Lower",
+            "weeks": 8
+          }
+        ],
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramDayOut"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "days_per_week": {
+            "title": "Days Per Week",
+            "type": "integer"
+          },
+          "goal": {
+            "$ref": "#/components/schemas/ProgramGoal"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "weeks": {
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "goal",
+          "days_per_week",
+          "weeks",
+          "active",
+          "created_at",
+          "days"
+        ],
+        "title": "ProgramOut",
+        "type": "object"
+      },
+      "ProgramPreview": {
+        "description": "Not saved: send `program` to `POST /v1/training/programs` to keep it.",
+        "examples": [
+          {
+            "days": [
+              {
+                "estimated_minutes": 52.5,
+                "exercises": [
+                  {
+                    "exercise_id": 20,
+                    "name": "Bench Press",
+                    "role": "compound",
+                    "slug": "bench-press"
+                  }
+                ],
+                "name": "Upper A"
+              }
+            ],
+            "program": {
+              "days": [
+                {
+                  "exercises": [
+                    {
+                      "exercise_id": 20,
+                      "progression": "double",
+                      "rep_max": 12,
+                      "rep_min": 8,
+                      "rest_seconds": 90,
+                      "sets": 3,
+                      "start_weight_kg": 60.0
+                    }
+                  ],
+                  "name": "Upper A"
+                },
+                {
+                  "exercises": [
+                    {
+                      "exercise_id": 1,
+                      "progression": "double",
+                      "rep_max": 12,
+                      "rep_min": 8,
+                      "rest_seconds": 90,
+                      "sets": 3,
+                      "start_weight_kg": 60.0
+                    }
+                  ],
+                  "name": "Lower A"
+                }
+              ],
+              "goal": "hypertrophy",
+              "name": "Upper/Lower",
+              "weeks": 8
+            },
+            "template": "upper_lower"
+          }
+        ],
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/PreviewDay"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "program": {
+            "$ref": "#/components/schemas/ProgramIn-Output"
+          },
+          "template": {
+            "$ref": "#/components/schemas/Template"
+          }
+        },
+        "required": [
+          "template",
+          "days",
+          "program"
+        ],
+        "title": "ProgramPreview",
+        "type": "object"
+      },
+      "ProgramSummary": {
+        "examples": [
+          {
+            "active": true,
+            "created_at": "2026-10-18T10:00:00Z",
+            "days_per_week": 4,
+            "goal": "hypertrophy",
+            "id": 3,
+            "name": "Upper/Lower",
+            "weeks": 8
+          }
+        ],
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "days_per_week": {
+            "title": "Days Per Week",
+            "type": "integer"
+          },
+          "goal": {
+            "$ref": "#/components/schemas/ProgramGoal"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "weeks": {
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "goal",
+          "days_per_week",
+          "weeks",
+          "active",
+          "created_at"
+        ],
+        "title": "ProgramSummary",
+        "type": "object"
+      },
+      "Progression": {
+        "enum": [
+          "double",
+          "none"
+        ],
+        "title": "Progression",
+        "type": "string"
+      },
       "RangeSummary": {
         "examples": [
           {
@@ -1757,6 +3392,108 @@
         "title": "RateLimitOut",
         "type": "object"
       },
+      "RecordList": {
+        "examples": [
+          {
+            "items": [
+              {
+                "achieved_at": "2026-10-18T17:30:00Z",
+                "exercise_id": 20,
+                "exercise_name": "Bench Press",
+                "kind": "weight_for_reps",
+                "previous": 80.0,
+                "reps": 8,
+                "value": 82.5,
+                "workout_id": 42
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CurrentRecord"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "RecordList",
+        "type": "object"
+      },
+      "RecordOut": {
+        "description": "A personal record: `value` beats `previous` (null for a first-ever performance).\n`weight_for_reps`: kg lifted for `reps`; `e1rm`: estimated 1RM in kg; `session_volume`: kg.",
+        "examples": [
+          {
+            "exercise_id": 20,
+            "exercise_name": "Bench Press",
+            "kind": "weight_for_reps",
+            "previous": 80.0,
+            "reps": 8,
+            "value": 82.5
+          }
+        ],
+        "properties": {
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "exercise_name": {
+            "title": "Exercise Name",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PrKind"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous"
+          },
+          "reps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reps"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "exercise_name",
+          "kind",
+          "value",
+          "previous",
+          "reps"
+        ],
+        "title": "RecordOut",
+        "type": "object"
+      },
+      "Role": {
+        "enum": [
+          "compound",
+          "accessory"
+        ],
+        "title": "Role",
+        "type": "string"
+      },
       "RunOut": {
         "properties": {
           "error": {
@@ -1820,6 +3557,251 @@
           "finished_at"
         ],
         "title": "RunOut",
+        "type": "object"
+      },
+      "SessionProgress": {
+        "properties": {
+          "best_set": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BestSet"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Working set with the highest e1RM (then weight); null without working sets"
+          },
+          "e1rm_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Best e1RM of the session",
+            "title": "E1Rm Kg"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "volume_kg": {
+            "title": "Volume Kg",
+            "type": "number"
+          },
+          "working_sets": {
+            "title": "Working Sets",
+            "type": "integer"
+          },
+          "workout_id": {
+            "title": "Workout Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "workout_id",
+          "started_at",
+          "best_set",
+          "e1rm_kg",
+          "volume_kg",
+          "working_sets"
+        ],
+        "title": "SessionProgress",
+        "type": "object"
+      },
+      "SetIn": {
+        "examples": [
+          {
+            "completed_at": "2026-10-18T17:42:10Z",
+            "exercise_id": 20,
+            "is_warmup": false,
+            "reps": 8,
+            "rest_seconds": 120,
+            "rpe": 8.0,
+            "set_index": 1,
+            "weight_kg": 80.0
+          }
+        ],
+        "properties": {
+          "completed_at": {
+            "description": "When the set was done, as the client saw it (part of the idempotent body)",
+            "format": "date-time",
+            "title": "Completed At",
+            "type": "string"
+          },
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "is_warmup": {
+            "default": false,
+            "title": "Is Warmup",
+            "type": "boolean"
+          },
+          "reps": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Reps",
+            "type": "integer"
+          },
+          "rest_seconds": {
+            "anyOf": [
+              {
+                "maximum": 86400.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rest Seconds"
+          },
+          "rpe": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "maximum": 10.0,
+                    "minimum": 1.0,
+                    "multipleOf": 0.5,
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "description": "1-10 in 0.5 steps"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rpe"
+          },
+          "set_index": {
+            "description": "Order of the set within the exercise",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Set Index",
+            "type": "integer"
+          },
+          "weight_kg": {
+            "anyOf": [
+              {
+                "maximum": 500.0,
+                "minimum": 0.0,
+                "multipleOf": 0.25,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "description": "kg, 0-500 in 0.25 steps",
+            "title": "Weight Kg"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "set_index",
+          "reps",
+          "weight_kg",
+          "completed_at"
+        ],
+        "title": "SetIn",
+        "type": "object"
+      },
+      "SetOut": {
+        "examples": [
+          {
+            "client_id": "6f1c2a52-8a7e-4f57-9a43-3c3b4b8f0d11",
+            "completed_at": "2026-10-18T17:42:10Z",
+            "exercise_id": 20,
+            "is_warmup": false,
+            "reps": 8,
+            "rest_seconds": 120,
+            "rpe": 8.0,
+            "set_index": 1,
+            "weight_kg": 80.0,
+            "workout_id": 42
+          }
+        ],
+        "properties": {
+          "client_id": {
+            "format": "uuid",
+            "title": "Client Id",
+            "type": "string"
+          },
+          "completed_at": {
+            "format": "date-time",
+            "title": "Completed At",
+            "type": "string"
+          },
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "is_warmup": {
+            "title": "Is Warmup",
+            "type": "boolean"
+          },
+          "reps": {
+            "title": "Reps",
+            "type": "integer"
+          },
+          "rest_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rest Seconds"
+          },
+          "rpe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rpe"
+          },
+          "set_index": {
+            "title": "Set Index",
+            "type": "integer"
+          },
+          "weight_kg": {
+            "title": "Weight Kg",
+            "type": "number"
+          },
+          "workout_id": {
+            "title": "Workout Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "client_id",
+          "workout_id",
+          "exercise_id",
+          "set_index",
+          "reps",
+          "weight_kg",
+          "rpe",
+          "is_warmup",
+          "completed_at",
+          "rest_seconds"
+        ],
+        "title": "SetOut",
         "type": "object"
       },
       "Sex": {
@@ -1983,6 +3965,44 @@
         "title": "StatsSummary",
         "type": "object"
       },
+      "SuggestionOut": {
+        "description": "Next weight by double progression (ADR 0018). `start`: no history yet, `weight_kg` is\nthe planned start weight (may be null); `increase`: every set hit `rep_max` last time;\n`deload`: two sessions in a row below `rep_min` (-10 %); `hold`: same weight, more reps.",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/Action"
+          },
+          "previous_weight_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Working weight of the last session",
+            "title": "Previous Weight Kg"
+          },
+          "weight_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Kg"
+          }
+        },
+        "required": [
+          "action",
+          "weight_kg",
+          "previous_weight_kg"
+        ],
+        "title": "SuggestionOut",
+        "type": "object"
+      },
       "SyncStatusOut": {
         "examples": [
           {
@@ -2075,6 +4095,15 @@
         ],
         "title": "SyncStatusOut",
         "type": "object"
+      },
+      "Template": {
+        "enum": [
+          "full_body",
+          "upper_lower",
+          "push_pull_legs"
+        ],
+        "title": "Template",
+        "type": "string"
       },
       "TotalsOut": {
         "properties": {
@@ -2319,6 +4348,441 @@
           "last_synced_at"
         ],
         "title": "WeeklyStats",
+        "type": "object"
+      },
+      "WeeklyVolume": {
+        "examples": [
+          {
+            "items": [
+              {
+                "muscle": "chest",
+                "sets": 12,
+                "volume_kg": 6420.0,
+                "week_start": "2026-10-12"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "items": {
+            "description": "By week, then muscle; weeks without sets omitted",
+            "items": {
+              "$ref": "#/components/schemas/MuscleWeek"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "WeeklyVolume",
+        "type": "object"
+      },
+      "WorkoutDetail": {
+        "examples": [
+          {
+            "ended_at": "2026-10-18T18:35:00Z",
+            "exercise_count": 5,
+            "id": 42,
+            "notes": "",
+            "planned": [
+              {
+                "exercise": {
+                  "equipment": "barbell",
+                  "id": 20,
+                  "is_custom": false,
+                  "movement_pattern": "horizontal_push",
+                  "name": "Bench Press",
+                  "primary_muscle": "chest",
+                  "secondary_muscles": [
+                    "triceps",
+                    "shoulders"
+                  ],
+                  "slug": "bench-press"
+                },
+                "last_performance": {
+                  "sets": [
+                    {
+                      "reps": 10,
+                      "rpe": 8.5,
+                      "weight_kg": 77.5
+                    },
+                    {
+                      "reps": 9,
+                      "weight_kg": 77.5
+                    }
+                  ],
+                  "started_at": "2026-10-15T17:30:00Z",
+                  "workout_id": 41
+                },
+                "progression": "double",
+                "rep_max": 12,
+                "rep_min": 8,
+                "rest_seconds": 90,
+                "sets": 3,
+                "start_weight_kg": 60.0,
+                "suggestion": {
+                  "action": "hold",
+                  "previous_weight_kg": 77.5,
+                  "weight_kg": 77.5
+                }
+              }
+            ],
+            "program_day_id": 11,
+            "program_day_name": "Upper A",
+            "records": [
+              {
+                "exercise_id": 20,
+                "exercise_name": "Bench Press",
+                "kind": "weight_for_reps",
+                "previous": 80.0,
+                "reps": 8,
+                "value": 82.5
+              }
+            ],
+            "set_count": 14,
+            "sets": [
+              {
+                "client_id": "6f1c2a52-8a7e-4f57-9a43-3c3b4b8f0d11",
+                "completed_at": "2026-10-18T17:42:10Z",
+                "exercise_id": 20,
+                "is_warmup": false,
+                "reps": 8,
+                "rest_seconds": 120,
+                "rpe": 8.0,
+                "set_index": 1,
+                "weight_kg": 80.0,
+                "workout_id": 42
+              }
+            ],
+            "started_at": "2026-10-18T17:30:00Z",
+            "volume_kg": 8240.0
+          }
+        ],
+        "properties": {
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null while the workout is in progress",
+            "title": "Ended At"
+          },
+          "exercise_count": {
+            "title": "Exercise Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "planned": {
+            "description": "The program day's exercises in order; empty for a free workout",
+            "items": {
+              "$ref": "#/components/schemas/PlannedExercise"
+            },
+            "title": "Planned",
+            "type": "array"
+          },
+          "program_day_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Day Id"
+          },
+          "program_day_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Day Name"
+          },
+          "records": {
+            "description": "Personal records these sets beat, against every earlier workout",
+            "items": {
+              "$ref": "#/components/schemas/RecordOut"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "set_count": {
+            "description": "Logged sets, warm-ups included",
+            "title": "Set Count",
+            "type": "integer"
+          },
+          "sets": {
+            "description": "In completion order",
+            "items": {
+              "$ref": "#/components/schemas/SetOut"
+            },
+            "title": "Sets",
+            "type": "array"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "volume_kg": {
+            "description": "Sum of reps x weight of the working sets",
+            "title": "Volume Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "program_day_id",
+          "program_day_name",
+          "started_at",
+          "ended_at",
+          "notes",
+          "set_count",
+          "exercise_count",
+          "volume_kg",
+          "planned",
+          "sets",
+          "records"
+        ],
+        "title": "WorkoutDetail",
+        "type": "object"
+      },
+      "WorkoutFinish": {
+        "examples": [
+          {
+            "ended_at": "2026-10-18T18:35:00Z",
+            "notes": "good"
+          }
+        ],
+        "properties": {
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Default: now",
+            "title": "Ended At"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "title": "WorkoutFinish",
+        "type": "object"
+      },
+      "WorkoutPage": {
+        "examples": [
+          {
+            "items": [
+              {
+                "ended_at": "2026-10-18T18:35:00Z",
+                "exercise_count": 5,
+                "id": 42,
+                "notes": "",
+                "program_day_id": 11,
+                "program_day_name": "Upper A",
+                "set_count": 14,
+                "started_at": "2026-10-18T17:30:00Z",
+                "volume_kg": 8240.0
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkoutSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` for the next page",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "WorkoutPage",
+        "type": "object"
+      },
+      "WorkoutStart": {
+        "examples": [
+          {
+            "program_day_id": 11
+          },
+          {
+            "notes": "hotel gym"
+          }
+        ],
+        "properties": {
+          "notes": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "program_day_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Plan to follow, if any",
+            "title": "Program Day Id"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Default: now",
+            "title": "Started At"
+          }
+        },
+        "title": "WorkoutStart",
+        "type": "object"
+      },
+      "WorkoutSummary": {
+        "examples": [
+          {
+            "ended_at": "2026-10-18T18:35:00Z",
+            "exercise_count": 5,
+            "id": 42,
+            "notes": "",
+            "program_day_id": 11,
+            "program_day_name": "Upper A",
+            "set_count": 14,
+            "started_at": "2026-10-18T17:30:00Z",
+            "volume_kg": 8240.0
+          }
+        ],
+        "properties": {
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null while the workout is in progress",
+            "title": "Ended At"
+          },
+          "exercise_count": {
+            "title": "Exercise Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "program_day_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Day Id"
+          },
+          "program_day_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Day Name"
+          },
+          "set_count": {
+            "description": "Logged sets, warm-ups included",
+            "title": "Set Count",
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "volume_kg": {
+            "description": "Sum of reps x weight of the working sets",
+            "title": "Volume Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "program_day_id",
+          "program_day_name",
+          "started_at",
+          "ended_at",
+          "notes",
+          "set_count",
+          "exercise_count",
+          "volume_kg"
+        ],
+        "title": "WorkoutSummary",
         "type": "object"
       }
     },
@@ -4159,6 +6623,1918 @@
         "summary": "Sync status",
         "tags": [
           "sync"
+        ]
+      }
+    },
+    "/v1/training/body-metrics": {
+      "get": {
+        "description": "Oldest first; `from`/`to` inclusive.",
+        "operationId": "list_body_metrics_v1_training_body_metrics_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-01"
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-10-31"
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodyMetricList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "`to` is before `from`"
+                }
+              }
+            },
+            "description": "`to` before `from`"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List body metrics",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/body-metrics/{day}": {
+      "put": {
+        "description": "Upsert by date (idempotent).",
+        "operationId": "put_body_metric_v1_training_body_metrics__day__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "examples": [
+                "2026-10-18"
+              ],
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BodyMetricIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodyMetricOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Record body weight for a day",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/exercises": {
+      "get": {
+        "description": "Built-in and custom exercises by name. `q` matches name or slug (case-insensitive substring), `muscle` the primary or a secondary muscle, `equipment` any of the given.",
+        "operationId": "list_exercises_v1_training_exercises_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "press"
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "muscle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Muscle"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Muscle"
+            }
+          },
+          {
+            "in": "query",
+            "name": "equipment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Equipment"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List or search exercises",
+        "tags": [
+          "training"
+        ]
+      },
+      "post": {
+        "description": "The slug is derived from the name; a name whose slug exists already is `409`.",
+        "operationId": "create_exercise_v1_training_exercises_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExerciseCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "exercise `landmine-press` exists"
+                }
+              }
+            },
+            "description": "Slug taken"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Create a custom exercise",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/exercises/{exercise_id}": {
+      "patch": {
+        "description": "Built-in exercises are read-only (`409`).",
+        "operationId": "update_exercise_v1_training_exercises__exercise_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exercise_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                73
+              ],
+              "title": "Exercise Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExerciseUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "exercise not found"
+                }
+              }
+            },
+            "description": "Unknown exercise"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "built-in exercises are read-only"
+                }
+              }
+            },
+            "description": "Built-in exercise"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Update a custom exercise",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/exercises/{exercise_id}/progress": {
+      "get": {
+        "description": "Per workout that logged the exercise (oldest first): best set, best e1RM (Epley, 1-12 reps), working volume. `from`/`to` are inclusive UTC dates.",
+        "operationId": "exercise_progress_v1_training_exercises__exercise_id__progress_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exercise_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                20
+              ],
+              "title": "Exercise Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-07-01"
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-10-31"
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseProgress"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "`to` is before `from`"
+                }
+              }
+            },
+            "description": "`to` before `from`"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "exercise not found"
+                }
+              }
+            },
+            "description": "Unknown exercise"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Progress of one exercise",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/plates": {
+      "get": {
+        "description": "Plates to load on each side for `target` kg, from `GYM_BAR_KG` and the `GYM_PLATES` inventory. If the target cannot be made, the nearest lower weight and the difference.",
+        "operationId": "plates_v1_training_plates_get",
+        "parameters": [
+          {
+            "description": "kg",
+            "in": "query",
+            "name": "target",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1000.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "kg",
+              "examples": [
+                "102.5"
+              ],
+              "title": "Target"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Plates per side",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/programs": {
+      "get": {
+        "description": "Every program, newest first, without days.",
+        "operationId": "list_programs_v1_training_programs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List programs",
+        "tags": [
+          "training"
+        ]
+      },
+      "post": {
+        "description": "A program with its days (in order) and planned exercises (in order). The program generator's preview (`POST /programs/generate`) has a `program` field that can be sent here unchanged. New programs are inactive.",
+        "operationId": "create_program_v1_training_programs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramIn-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "unknown exercise ids: [999]"
+                }
+              }
+            },
+            "description": "A planned exercise does not exist"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Create a program",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/programs/active": {
+      "get": {
+        "description": "The one active program with its days, or `404` when none is active.",
+        "operationId": "get_active_program_v1_training_programs_active_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "no active program"
+                }
+              }
+            },
+            "description": "No active program"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get the active program",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/programs/generate": {
+      "post": {
+        "description": "Deterministic, rule-based program from the exercise library: template by days per week (2-3 full body, 4 upper/lower, 3 or 6 push/pull/legs), exercises by movement pattern and equipment, sets/reps/rest by goal, trimmed to `session_minutes`. Nothing is saved: `program` is a ready body for `POST /v1/training/programs`.",
+        "operationId": "generate_program_v1_training_programs_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramPreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "upper_lower takes 4 days a week"
+                }
+              }
+            },
+            "description": "Unsupported days for the template"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Generate a program (preview)",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/programs/{program_id}": {
+      "delete": {
+        "description": "Deletes the program and its days; logged workouts stay.",
+        "operationId": "delete_program_v1_training_programs__program_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                3
+              ],
+              "title": "Program Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "program not found"
+                }
+              }
+            },
+            "description": "Unknown program"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Delete a program",
+        "tags": [
+          "training"
+        ]
+      },
+      "get": {
+        "description": "One program with its days and planned exercises.",
+        "operationId": "get_program_v1_training_programs__program_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                3
+              ],
+              "title": "Program Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "program not found"
+                }
+              }
+            },
+            "description": "Unknown program"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get a program",
+        "tags": [
+          "training"
+        ]
+      },
+      "put": {
+        "description": "Replaces name, goal, weeks and all days. Logged workouts stay; their link to a replaced program day becomes null.",
+        "operationId": "replace_program_v1_training_programs__program_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                3
+              ],
+              "title": "Program Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramIn-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "unknown exercise ids: [999]"
+                }
+              }
+            },
+            "description": "A planned exercise does not exist"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "program not found"
+                }
+              }
+            },
+            "description": "Unknown program"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Replace a program",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/programs/{program_id}/activate": {
+      "post": {
+        "description": "Makes this the only active program (idempotent).",
+        "operationId": "activate_program_v1_training_programs__program_id__activate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "program_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                3
+              ],
+              "title": "Program Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "program not found"
+                }
+              }
+            },
+            "description": "Unknown program"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Activate a program",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/prs": {
+      "get": {
+        "description": "Standing records per exercise: heaviest weight per rep count, best e1RM and best session volume, with the workout that set them.",
+        "operationId": "personal_records_v1_training_prs_get",
+        "parameters": [
+          {
+            "description": "Only this exercise",
+            "in": "query",
+            "name": "exercise_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this exercise",
+              "title": "Exercise Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Personal records",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/volume/weekly": {
+      "get": {
+        "description": "Working sets and kg (reps x weight) per ISO week and primary muscle. `from`/`to` are inclusive UTC dates; default the last 12 weeks.",
+        "operationId": "weekly_volume_v1_training_volume_weekly_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-01"
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-10-31"
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyVolume"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "`to` is before `from`"
+                }
+              }
+            },
+            "description": "`to` before `from`"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Weekly volume per muscle",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/workouts": {
+      "get": {
+        "description": "Newest first, keyset-paginated (ADR 0009): pass `next_cursor` back as `cursor`.",
+        "operationId": "list_workouts_v1_training_workouts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "`next_cursor` of the previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`next_cursor` of the previous page",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "invalid cursor"
+                }
+              }
+            },
+            "description": "Invalid cursor"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List workouts",
+        "tags": [
+          "training"
+        ]
+      },
+      "post": {
+        "description": "Starts a workout, free or from a program day. The response lists the day's planned exercises with the last performance of each (working sets of the most recent other workout that logged it).",
+        "operationId": "start_workout_v1_training_workouts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "free": {
+                  "value": {
+                    "notes": "hotel gym"
+                  }
+                },
+                "program_day": {
+                  "value": {
+                    "program_day_id": 11
+                  }
+                }
+              },
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/WorkoutStart"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "program day not found"
+                }
+              }
+            },
+            "description": "Unknown program day"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Start a workout",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/workouts/{workout_id}": {
+      "delete": {
+        "description": "Deletes the workout and its sets.",
+        "operationId": "delete_workout_v1_training_workouts__workout_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workout_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                42
+              ],
+              "title": "Workout Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "workout not found"
+                }
+              }
+            },
+            "description": "Unknown workout"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Delete a workout",
+        "tags": [
+          "training"
+        ]
+      },
+      "get": {
+        "description": "Sets, volume, records hit and (for a program day) the plan with last performance.",
+        "operationId": "get_workout_v1_training_workouts__workout_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workout_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                42
+              ],
+              "title": "Workout Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "workout not found"
+                }
+              }
+            },
+            "description": "Unknown workout"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get a workout",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/workouts/{workout_id}/finish": {
+      "post": {
+        "description": "Sets `ended_at` (default now); an empty workout can be finished. Finishing again keeps the first `ended_at` (idempotent) but updates `notes` when sent.",
+        "operationId": "finish_workout_v1_training_workouts__workout_id__finish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workout_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                42
+              ],
+              "title": "Workout Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "now": {
+                  "value": {}
+                },
+                "with_notes": {
+                  "value": {
+                    "notes": "good"
+                  }
+                }
+              },
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/WorkoutFinish"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "`ended_at` is before `started_at`"
+                }
+              }
+            },
+            "description": "`ended_at` before the start"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "workout not found"
+                }
+              }
+            },
+            "description": "Unknown workout"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Finish a workout",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/workouts/{workout_id}/sets/{client_id}": {
+      "delete": {
+        "description": "Idempotent: deleting a set that is not there is also `204`.",
+        "operationId": "delete_set_v1_training_workouts__workout_id__sets__client_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workout_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                42
+              ],
+              "title": "Workout Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "client_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "6f1c2a52-8a7e-4f57-9a43-3c3b4b8f0d11"
+              ],
+              "format": "uuid",
+              "title": "Client Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "workout not found"
+                }
+              }
+            },
+            "description": "Unknown workout"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Delete a set",
+        "tags": [
+          "training"
+        ]
+      },
+      "put": {
+        "description": "Upsert by the client-generated `client_id` (ADR 0017): the first call creates the set (`201`), a retry or a correction with the same id updates that same set (`200`, same body for the same input). Retries and double taps never create a second set. An id already used in another workout is `409`.",
+        "operationId": "put_set_v1_training_workouts__workout_id__sets__client_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workout_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                42
+              ],
+              "title": "Workout Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "client_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "6f1c2a52-8a7e-4f57-9a43-3c3b4b8f0d11"
+              ],
+              "format": "uuid",
+              "title": "Client Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetOut"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "exercise not found"
+                }
+              }
+            },
+            "description": "Unknown exercise"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "workout not found"
+                }
+              }
+            },
+            "description": "Unknown workout"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "client_id belongs to another workout"
+                }
+              }
+            },
+            "description": "Id used by another workout"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Log or correct a set (idempotent)",
+        "tags": [
+          "training"
         ]
       }
     },
