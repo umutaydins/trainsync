@@ -1,4 +1,4 @@
-# 0020 — Web workout screen: timestamp timers, retry queue, PWA without a service worker
+# 0021 — Web workout screen: timestamp timers, retry queue, PWA without a service worker
 
 - Status: accepted
 - Date: 2026-10-18

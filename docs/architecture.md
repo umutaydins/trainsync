@@ -33,7 +33,7 @@ being up or my rate-limit budget being available at read time.
   allowlisted method + path combinations to the API (reads, and CSRF-checked JSON writes to
   training, nutrition and check-ins); the browser never sees the key (ADR 0011). Phase 6 pages:
   `/training` (today, programs, the active-workout screen, history, progress) and `/nutrition`;
-  installable as a PWA without a service worker (ADR 0020).
+  installable as a PWA without a service worker (ADR 0021).
 - **fake_strava**: a small FastAPI app that mimics the endpoints we use, with configurable
   latency, error rate and rate-limit headers. Used for local dev, integration tests and load tests.
 

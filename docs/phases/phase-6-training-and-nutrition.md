@@ -29,4 +29,4 @@ next to the synced Strava data, on the web (phone-first) and in the Telegram bot
 - Offline-first set logging on the web (P6.6): today failed set `PUT`s wait in a localStorage
   retry queue and are re-sent on reconnect, but the workout page itself needs the network to
   load. A service worker that caches the workout screen plus an IndexedDB queue (Background Sync
-  where available) would make a whole session work offline (ADR 0020).
+  where available) would make a whole session work offline (ADR 0021).
