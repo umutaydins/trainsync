@@ -1,5 +1,6 @@
 import asyncio
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from alembic import command
@@ -13,6 +14,8 @@ from tests.support.containers import alembic_config
 from trainsync.db.models import Base
 
 pytestmark = pytest.mark.integration
+
+VERSIONS = Path(__file__).resolve().parents[2] / "migrations" / "versions"
 
 TABLES = {
     "athletes",
@@ -53,6 +56,21 @@ def test_upgrade_downgrade_upgrade_round_trip(pg_url: str) -> None:
     assert asyncio.run(_table_names(pg_url)) == set()
 
     command.upgrade(config, "head")
+    assert asyncio.run(_table_names(pg_url)) == TABLES
+
+
+def test_every_reversible_migration_steps_down_and_up_again(pg_url: str) -> None:
+    """`reversible = True` (P7.5, ADR 0026) is backed by a downgrade that actually runs: each
+    migration, from the head down, downgrades one step and upgrades again cleanly."""
+    config = alembic_config(pg_url)
+    revisions = sorted(p.name.split("_", 1)[0] for p in VERSIONS.glob("[0-9]*.py"))
+    try:
+        for revision in reversed(revisions):
+            command.downgrade(config, "-1")
+            command.upgrade(config, revision)
+            command.downgrade(config, "-1")
+    finally:
+        command.upgrade(config, "head")
     assert asyncio.run(_table_names(pg_url)) == TABLES
 
 

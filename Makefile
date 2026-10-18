@@ -95,6 +95,14 @@ shellcheck: ## shellcheck every scripts/ and deploy/ shell script (pinned Docker
 doctor: ## Mac production host health: Docker, sleep, disk, Tailscale/Funnel, agent, backups
 	./scripts/mac-prod.sh doctor
 
+.PHONY: deploy rollback
+
+deploy: ## Production: clean main == origin/main + green CI -> build, backup, migrate, up, smoke test
+	./scripts/deploy.sh deploy
+
+rollback: ## Production: previous deploy's images back (downgrades reversible migrations first)
+	./scripts/deploy.sh rollback
+
 public-check: ## From outside: TLS, allowlisted routes forwarded, the rest 404 (URL=https://<host>.ts.net)
 	@test -n "$(URL)" || { echo "usage: make public-check URL=https://<host>.ts.net" >&2; exit 2; }
 	$(UV) run python scripts/public_check.py --url "$(URL)"

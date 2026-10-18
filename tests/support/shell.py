@@ -1,7 +1,7 @@
-"""Run the repo's shell scripts against stub commands (P7.2, P7.3).
+"""Run the repo's shell scripts against stub commands (P7.2, P7.3, P7.5).
 
 Every external command a script uses (docker, pmset, tailscale, df, curl, launchctl, fdesetup,
-defaults, git, open, sleep) is a stub on a temporary PATH, and HOME is a temporary directory, so
+defaults, git, open, sleep, gh) is a stub on a temporary PATH, and HOME is a temporary directory, so
 nothing touches the machine the tests run on.
 """
 
@@ -28,6 +28,7 @@ STUBBED = (
     "git",
     "open",
     "sleep",
+    "gh",
 )
 # One dispatcher, linked under every stubbed name: it logs its call and runs the test's behavior
 # file for that name. Created once per session, because macOS scans each new executable on its

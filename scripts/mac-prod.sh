@@ -14,7 +14,9 @@
 # Every external command (docker, pmset, tailscale, df, curl, launchctl, fdesetup, git, ...) is
 # looked up on PATH, so tests run this script against stub commands. Overridable settings:
 #   TRAINSYNC_ENV_FILE  default <repo>/.env.prod
-#   TRAINSYNC_TAG       image tag; default: the value in the env file, else the current git SHA
+#   TRAINSYNC_TAG       image tag; default: the value in the env file, else the tag the last
+#                       deploy/rollback started (TRAINSYNC_STATE_DIR/deploy-state, P7.5),
+#                       else the current git SHA
 #   BACKUP_DIR          default the iCloud Drive folder trainsync-backups (P7.4)
 #   BACKUP_MAX_AGE_HOURS (36), MIN_FREE_GB (10), GATEWAY_PORT (8080)
 #   LAUNCH_AGENTS_DIR   default ~/Library/LaunchAgents;  TRAINSYNC_LOG_DIR default ~/Library/Logs/trainsync
@@ -31,6 +33,7 @@ LOG_DIR="${TRAINSYNC_LOG_DIR:-$HOME/Library/Logs/trainsync}"
 BACKUP_DIR="${BACKUP_DIR:-$HOME/Library/Mobile Documents/com~apple~CloudDocs/trainsync-backups}"
 BACKUP_MAX_AGE_HOURS="${BACKUP_MAX_AGE_HOURS:-36}"
 MIN_FREE_GB="${MIN_FREE_GB:-10}"
+DEPLOY_STATE="${TRAINSYNC_STATE_DIR:-$HOME/Library/Application Support/trainsync}/deploy-state"
 DOCKER_SETTINGS="${DOCKER_SETTINGS:-$HOME/Library/Group Containers/group.com.docker/settings-store.json}"
 
 usage() {
@@ -60,6 +63,11 @@ resolve_tag() {
   fi
   local tag
   tag="$(env_value TRAINSYNC_TAG)"
+  if [ -z "$tag" ] && [ -f "$DEPLOY_STATE" ]; then
+    # What `make deploy` / `make rollback` last started (P7.5): a reboot after a rollback brings
+    # back the rolled-back-to version, not the checked-out commit.
+    tag="$(grep -E '^current_tag=' "$DEPLOY_STATE" | tail -n 1 | cut -d= -f2- || true)"
+  fi
   if [ -z "$tag" ]; then
     tag="$(git -C "$ROOT" rev-parse --short=12 HEAD)" || die "no TRAINSYNC_TAG and no git SHA"
   fi

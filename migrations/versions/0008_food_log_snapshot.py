@@ -16,6 +16,9 @@ revision: str = "0008"
 down_revision: str | None = "0007"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+# Rollback (ADR 0026): downgrade() restores the previous revision's schema; it drops only what
+# this revision added.
+reversible: bool = True
 
 
 def upgrade() -> None:
