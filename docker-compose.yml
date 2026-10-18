@@ -94,6 +94,21 @@ services:
       redis: { condition: service_healthy }
       fake-strava: { condition: service_healthy }
 
+  # Telegram bot (P5.5). Without TELEGRAM_BOT_TOKEN it does not poll: it only serves its metrics
+  # and stays up, so the stack (and `make compose-smoke`) behaves the same with or without a token.
+  bot:
+    <<: *trainsync-image
+    command: ["python", "-m", "trainsync.bot"]
+    environment:
+      <<: *trainsync-env
+      HEALTHCHECK_URL: http://127.0.0.1:9101/metrics
+      BOT_API_BASE_URL: http://api:8000
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_ALLOWED_CHAT_IDS: ${TELEGRAM_ALLOWED_CHAT_IDS:-}
+    ports: ["9101:9101"]  # bot /metrics (BOT_METRICS_PORT)
+    depends_on:
+      api: { condition: service_healthy }
+
 volumes:
   pgdata:
   redisdata:

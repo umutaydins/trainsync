@@ -54,6 +54,46 @@ class Settings(BaseSettings):
             self.strava_oauth_public_base_url = self.strava_oauth_base_url
         return self
 
+    # ---------------------------------------------------------------- bot + notifications (P5.5+)
+    # All optional: the API and the worker start without them.
+    # Empty token = the bot idles (metrics only) and notifications go nowhere (NullNotifier).
+    telegram_bot_token: SecretStr = SecretStr("")
+    telegram_allowed_chat_ids: Annotated[list[int], NoDecode] = Field(default_factory=list)
+    # Chat that receives new-activity notifications; empty = the first allowlisted chat.
+    telegram_notify_chat_id: int | None = None
+    telegram_api_base_url: str = "https://api.telegram.org"
+    # The read API the bot talks to (the bot never touches the DB) and its key;
+    # an empty BOT_API_KEY falls back to the first of API_KEYS.
+    bot_api_base_url: str = "http://localhost:8000"
+    bot_api_key: SecretStr = SecretStr("")
+    bot_metrics_port: int = Field(default=9101, ge=0, le=65535)
+    # Base URL of the web dashboard; notifications link to `<url>/activities/<id>`. Empty = no link.
+    dashboard_public_url: str = ""
+
+    @field_validator("telegram_allowed_chat_ids", mode="before")
+    @classmethod
+    def _split_chat_ids(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [part.strip() for part in value.split(",") if part.strip()]
+        return value
+
+    @field_validator("telegram_notify_chat_id", mode="before")
+    @classmethod
+    def _empty_chat_as_none(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @property
+    def bot_enabled(self) -> bool:
+        return bool(self.telegram_bot_token.get_secret_value())
+
+    def bot_read_api_key(self) -> SecretStr:
+        return self.bot_api_key if self.bot_api_key.get_secret_value() else self.api_keys[0]
+
+    def notify_chat_id(self) -> int | None:
+        if self.telegram_notify_chat_id is not None:
+            return self.telegram_notify_chat_id
+        return self.telegram_allowed_chat_ids[0] if self.telegram_allowed_chat_ids else None
+
 
 @lru_cache
 def get_settings() -> Settings:

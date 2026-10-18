@@ -23,6 +23,9 @@ being up or my rate-limit budget being available at read time.
 - **Worker process**: backfill, incremental sync, webhook event processing, scheduled jobs.
 - **Strava client**: the only place that talks to Strava. Owns auth headers, token refresh,
   retries, rate-limit accounting and the circuit breaker.
+- **Bot process** (`python -m trainsync.bot`, Phase 5): Telegram long polling, deterministic
+  summary commands, chat allowlist. A client of the read API (HTTP + API key), never of the
+  database (ADR 0012, ADR 0013).
 - **fake_strava**: a small FastAPI app that mimics the endpoints we use, with configurable
   latency, error rate and rate-limit headers. Used for local dev, integration tests and load tests.
 
