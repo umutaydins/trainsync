@@ -13,10 +13,12 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [8. Sequence — resumable backfill](#8-sequence--resumable-backfill)
 - [9. Sequence — webhook ack-then-process](#9-sequence--webhook-ack-then-process)
 - [10. Sequence — deauthorization](#10-sequence--deauthorization)
-- [11. State — circuit breaker](#11-state--circuit-breaker)
-- [12. State — webhook event](#12-state--webhook-event)
-- [13. State — sync run](#13-state--sync-run)
-- [14. Activity — rate-limit budget decision](#14-activity--rate-limit-budget-decision)
+- [11. Sequence — dashboard request through the BFF](#11-sequence--dashboard-request-through-the-bff)
+- [12. Sequence — new activity → notification](#12-sequence--new-activity--notification)
+- [13. State — circuit breaker](#13-state--circuit-breaker)
+- [14. State — webhook event](#14-state--webhook-event)
+- [15. State — sync run](#15-state--sync-run)
+- [16. Activity — rate-limit budget decision](#16-activity--rate-limit-budget-decision)
 
 ---
 
@@ -26,9 +28,28 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 flowchart LR
     strava[("Strava API")]
     client_user(["API client<br/>(curl, notebooks)"])
+    browser(["Browser"])
+    tg_user(["Telegram chat"])
+    telegram[("Telegram Bot API")]
+    anthropic[("Anthropic API<br/>(optional)")]
 
     subgraph trainsync
         direction LR
+        subgraph web["Web process (Next.js, web/)"]
+            gate["proxy.ts<br/>session-cookie gate"]
+            pages["server components<br/>dashboard · activities · sync"]
+            bff["BFF route /api/ts/v1/*<br/>GET, allowlisted paths"]
+            upstream["lib/upstream.ts<br/>adds X-API-Key"]
+        end
+
+        subgraph bot["Bot process (python -m trainsync.bot)"]
+            poller["Poller<br/>getUpdates long polling"]
+            dispatch["Dispatcher<br/>chat allowlist"]
+            cmds["Commands<br/>/week /last /stats /status"]
+            assistant["Assistant<br/>Claude tool use (optional)"]
+            readapi["ReadApi<br/>httpx → /v1/*"]
+        end
+
         subgraph api["API process (FastAPI)"]
             auth["auth router<br/>/auth/strava/*"]
             hooks["webhooks router<br/>/webhooks/strava"]
@@ -42,6 +63,8 @@ flowchart LR
             proc["process_webhook_event"]
             sched["schedule_incremental<br/>(cron :00, :30)"]
             retry["retry_webhooks<br/>(cron 5 min)"]
+            notify["notify_new_activity"]
+            notifier["Notifier<br/>TelegramNotifier · NullNotifier"]
         end
 
         subgraph sc["strava package"]
@@ -72,37 +95,81 @@ flowchart LR
     sclient -- "HTTPS (httpx)" --> strava
     worker -- "upsert" --> pg
     read -- "SELECT" --> pg
+
+    browser -- "session cookie" --> gate
+    gate --> pages
+    gate --> bff
+    pages --> upstream
+    bff --> upstream
+    upstream -- "X-API-Key" --> read
+
+    tg_user -. "messages" .-> telegram
+    poller -- "getUpdates" --> telegram
+    poller --> dispatch
+    dispatch --> cmds
+    dispatch -- "plain text" --> assistant
+    assistant -- "plan tool calls" --> anthropic
+    assistant -- "rate limit per chat" --> redis
+    cmds --> readapi
+    assistant --> readapi
+    readapi -- "X-API-Key" --> read
+    dispatch -- "sendMessage" --> telegram
+
+    proc -- "enqueue (activity create only)" --> redis
+    notify -- "claim (kind, object_id)" --> pg
+    notify --> notifier
+    notifier -- "sendMessage" --> telegram
 ```
+
+The web app and the bot are clients of the read API: neither touches PostgreSQL, and the API key
+stays server-side (ADRs 0011, 0012). New-activity notifications run in the worker with its own
+Telegram client, so they do not depend on the bot process.
 
 ## 2. Deployment diagram (docker compose)
 
 ```mermaid
 flowchart TB
     browser(["Browser / curl<br/>on host"])
+    telegram[("api.telegram.org<br/>(only with TELEGRAM_BOT_TOKEN)")]
+    anthropic[("Anthropic API<br/>(only with ANTHROPIC_API_KEY)")]
 
     subgraph host["Docker host"]
         subgraph net["compose network"]
+            web["web<br/>Next.js standalone :3000"]
             api["api<br/>uvicorn :8000"]
             worker["worker<br/>arq · metrics :9100"]
+            bot["bot<br/>python -m trainsync.bot<br/>metrics :9101"]
             migrate["migrate<br/>alembic upgrade head<br/>(one-shot)"]
             fake["fake-strava<br/>uvicorn :8001"]
             pg[("postgres:16<br/>volume pgdata")]
-            rd[("redis:7")]
+            rd[("redis:7<br/>volume redisdata")]
         end
     end
 
+    browser -- ":3000 (dashboard)" --> web
     browser -- ":8000" --> api
     browser -- ":9100 (metrics)" --> worker
+    browser -- ":9101 (metrics)" --> bot
     browser -- ":8001 (OAuth authorize)" --> fake
+    web -- "http://api:8000 + X-API-Key" --> api
+    bot -- "http://api:8000 + X-API-Key" --> api
     migrate --> pg
     api --> pg
     api --> rd
     worker --> pg
     worker --> rd
+    bot -- "assistant rate limit" --> rd
     api -- "token exchange" --> fake
     worker -- "API calls" --> fake
     fake -. "webhook events" .-> api
+    bot -- "getUpdates / sendMessage" --> telegram
+    worker -- "notifications" --> telegram
+    bot -. "questions" .-> anthropic
 ```
+
+Without `TELEGRAM_BOT_TOKEN` the bot does not poll (it only serves its metrics and stays healthy)
+and the worker uses the `NullNotifier`, so the stack and `make compose-smoke` behave the same with
+or without a token.
 
 ## 3. Data model (ER)
 
@@ -164,7 +231,16 @@ erDiagram
         timestamptz last_attempt_at
         timestamptz processed_at
     }
+    notifications {
+        bigint id PK
+        text kind "new_activity"
+        bigint object_id "strava_activity_id, UK with kind"
+        timestamptz sent_at
+    }
 ```
+
+`notifications` has no foreign key: a row is the idempotency claim for one message (ADR 0012),
+kept even if the activity is deleted later.
 
 ## 4. Class diagram — core modules
 
@@ -185,6 +261,14 @@ classDiagram
         +int worker_metrics_port
         +SecretStr token_encryption_key
         +list~SecretStr~ api_keys
+        +list~str~ oauth_return_to_allowlist
+        +SecretStr telegram_bot_token
+        +list~int~ telegram_allowed_chat_ids
+        +int|None telegram_notify_chat_id
+        +str dashboard_public_url
+        +SecretStr anthropic_api_key
+        +str assistant_model
+        +notify_chat_id() int|None
     }
 
     class StravaClient {
@@ -361,6 +445,53 @@ classDiagram
         +sessionmaker
         +ActivityFetcher strava
         +Clock clock
+        +on_new_activity(strava_activity_id) callback|None
+    }
+
+    class Notifier {
+        <<interface>>
+        +str channel
+        +send(chat_ref, text)
+    }
+
+    class TelegramNotifier {
+        +str channel = telegram
+        -TelegramApi api
+        +send(chat_ref, text)
+    }
+
+    class NullNotifier {
+        +str channel = null
+        +send(chat_ref, text)
+    }
+
+    class TelegramApi {
+        -AsyncClient http
+        -SecretStr token
+        -Sleep sleep
+        +get_updates(offset, poll_timeout) list~Update~
+        +send_message(chat_id, text)
+    }
+
+    class NotifyDeps {
+        +sessionmaker
+        +Notifier notifier
+        +str|None chat_ref
+        +str dashboard_url
+        +Clock clock
+    }
+
+    class NotificationRepository {
+        +claim(kind, object_id, now) bool
+        +release(kind, object_id)
+    }
+
+    class NotifyFailedError {
+        <<exception>>
+        +float|None retry_after
+    }
+    class DeliveryUnknownError {
+        <<exception>>
     }
 
     class WorkerJobs {
@@ -370,6 +501,7 @@ classDiagram
         +process_webhook_event(ctx, event_id)
         +schedule_incremental(ctx) cron 0,30
         +retry_webhooks(ctx) cron every 5 min
+        +notify_new_activity(ctx, strava_activity_id) max 5 tries
     }
 
     WorkerJobs --> SyncDeps
@@ -381,6 +513,14 @@ classDiagram
     WorkerJobs ..> ActivityRepository
     WorkerJobs ..> AthleteRepository
     WorkerJobs ..> WebhookEventRepository
+    WorkerJobs --> NotifyDeps
+    NotifyDeps --> Notifier
+    WorkerJobs ..> NotificationRepository
+    Notifier <|.. TelegramNotifier
+    Notifier <|.. NullNotifier
+    TelegramNotifier --> TelegramApi
+    TelegramNotifier ..> NotifyFailedError : raises
+    TelegramNotifier ..> DeliveryUnknownError : raises
     TokenProvider <|.. TokenManager
     RateLimitHook <|.. RateBudget
     StravaClient --> TokenProvider
@@ -615,7 +755,104 @@ sequenceDiagram
     Note over W,DB: Later events for this athlete are marked processed without fetching.
 ```
 
-## 11. State — circuit breaker
+## 11. Sequence — dashboard request through the BFF
+
+The browser only ever talks to the web server. The API key lives in the web server's environment
+and is added in one place, `lib/upstream.ts` (ADR 0011).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Browser
+    participant P as proxy.ts (access gate)
+    participant RSC as Dashboard page (server components)
+    participant BFF as BFF route /api/ts/[...path]
+    participant UP as lib/upstream.ts
+    participant API as trainsync API /v1
+
+    U->>P: GET /?from=2025-03-01&to=2025-12-31 (session cookie)
+    P->>P: verifySessionToken(cookie, DASHBOARD_SESSION_SECRET)
+    alt no or invalid session
+        P-->>U: 307 → /login?next=… (a page) or 401 JSON (an /api/ call)
+    else valid
+        P->>RSC: render
+        par one Suspense block each
+            RSC->>UP: api.summary(from, to, sport)
+            UP->>API: GET /v1/stats/summary + X-API-Key (timeout 10 s, no-store)
+            API-->>UP: totals, by sport, last_synced_at
+        and
+            RSC->>UP: api.weekly(from, to, sport)
+            UP->>API: GET /v1/stats/weekly + X-API-Key
+            API-->>UP: weeks (zero-filled)
+        end
+        RSC-->>U: streamed HTML: KPI tiles, weekly chart, by sport (no key in it)
+    end
+
+    Note over U,BFF: Client components ("Load more" on /activities, the 15 s refresh on /sync)
+    U->>P: GET /api/ts/v1/activities?cursor=… (session cookie)
+    P->>BFF: valid session
+    BFF->>BFF: isAllowedPath? (5 read paths, others 404, non-GET 405)
+    BFF->>UP: upstreamGet(path, query)
+    UP->>API: GET /v1/activities?cursor=… + X-API-Key
+    alt 2xx
+        API-->>UP: page
+        UP-->>BFF: data
+        BFF-->>U: 200 JSON (Cache-Control: no-store)
+    else API error / unreachable
+        UP-->>BFF: status + short message (no upstream details, unreachable = 502)
+        BFF-->>U: {error} with that status
+    end
+```
+
+## 12. Sequence — new activity → notification
+
+Only a live `activity create` webhook leads to a notification; backfill and incremental sync
+import history and never enqueue one. Exactly one message per activity (ADR 0012).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as Strava
+    participant API as POST /webhooks/strava
+    participant DB as PostgreSQL
+    participant Q as Redis (arq)
+    participant W as Worker: process_webhook_event
+    participant N as Worker: notify_new_activity
+    participant T as Notifier (TelegramNotifier)
+
+    S->>API: activity create (delivered twice)
+    API->>DB: INSERT webhook_events ON CONFLICT (dedup_key) DO NOTHING
+    Note over API,DB: the second delivery is a duplicate: nothing enqueued
+    API->>Q: enqueue process_webhook_event(id)
+    Q->>W: run
+    W->>DB: claim event, fetch current state from Strava, upsert activity
+    W->>Q: enqueue notify_new_activity(strava_id), job id notify:{strava_id}
+    Note over W,Q: same job id already queued or recently done → not enqueued again
+    Q->>N: run (try n)
+    alt no chat configured (NullNotifier)
+        N-->>N: disabled
+    else activity deleted or athlete gone
+        N-->>N: skipped
+    else
+        N->>DB: INSERT notifications (new_activity, strava_id) ON CONFLICT DO NOTHING, COMMIT
+        alt already claimed
+            N-->>N: duplicate: send nothing
+        else claimed
+            N->>T: send(chat_ref, text with link to /activities/{id})
+            alt delivered
+                T-->>N: ok → sent
+            else no answer after the request went out (DeliveryUnknownError)
+                T-->>N: keep the claim → unknown (better one missed message than two)
+            else definite failure (NotifyFailedError, e.g. Telegram 5xx or 429)
+                T-->>N: error
+                N->>DB: DELETE the claim (release)
+                N->>Q: arq Retry, defer max(10 s · 3^(n-1), retry_after), gave_up after 5 tries
+            end
+        end
+    end
+```
+
+## 13. State — circuit breaker
 
 ```mermaid
 stateDiagram-v2
@@ -632,7 +869,7 @@ stateDiagram-v2
 
 Per process (ADR 0005). Defaults: N = 5, cooldown = 30 s.
 
-## 12. State — webhook event
+## 14. State — webhook event
 
 ```mermaid
 stateDiagram-v2
@@ -646,7 +883,7 @@ stateDiagram-v2
     processed --> [*]
 ```
 
-## 13. State — sync run
+## 15. State — sync run
 
 ```mermaid
 stateDiagram-v2
@@ -660,7 +897,7 @@ stateDiagram-v2
     failed --> [*]
 ```
 
-## 14. Activity — rate-limit budget decision
+## 16. Activity — rate-limit budget decision
 
 ```mermaid
 flowchart TD
