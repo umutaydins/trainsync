@@ -34,6 +34,7 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  // Everything except Next's own static assets and the favicon.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg).*)"],
+  // Everything except Next's own static assets, the favicon and the PWA manifest and icons (the
+  // browser fetches the manifest without cookies; none of these carry data).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest|icons/).*)"],
 };

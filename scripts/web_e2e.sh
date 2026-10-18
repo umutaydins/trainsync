@@ -6,6 +6,8 @@ cd "$(dirname "$0")/.."
 
 PROJECT=${COMPOSE_PROJECT_NAME:-trainsync-e2e}
 export POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-15432} REDIS_HOST_PORT=${REDIS_HOST_PORT:-16379}
+# The e2e logs manually created foods only: no Open Food Facts calls from the stack.
+export OPENFOODFACTS_ENABLED=false
 compose() { docker compose -p "$PROJECT" "$@"; }
 
 cleanup() {
