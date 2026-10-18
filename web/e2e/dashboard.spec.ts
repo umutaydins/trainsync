@@ -8,8 +8,6 @@ import type { StatsSummary, WeeklyStats } from "../lib/types";
 const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
 const API_KEY = process.env.E2E_API_KEY ?? "dev-key-1";
 const PASSWORD = process.env.E2E_PASSWORD ?? "dev-only-dashboard-password";
-// fake_strava's seeded history ends on 2026-01-01; this range holds most of it.
-const RANGE = { from: "2025-03-01", to: "2025-12-31" };
 
 function screenshotPath(name: string): string {
   return fileURLToPath(new URL(`../../docs/img/${name}.png`, import.meta.url));
@@ -55,19 +53,24 @@ test("log in, connect Strava, backfill, dashboard matches the API, activity, syn
   });
 
   await test.step("dashboard KPIs equal /v1/stats/summary and the chart equals /v1/stats/weekly", async () => {
-    await page.goto(`/?from=${RANGE.from}&to=${RANGE.to}`);
+    // The default range (last 12 weeks): fake_strava seeds the year before "now", so it has data.
+    await page.goto("/");
     const kpis = page.getByTestId("kpis");
-    await expect(kpis).toHaveAttribute("data-from", RANGE.from);
-    await expect(kpis).toHaveAttribute("data-to", RANGE.to);
+    const range = {
+      from: (await kpis.getAttribute("data-from")) ?? "",
+      to: (await kpis.getAttribute("data-to")) ?? "",
+    };
+    expect(range.from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(range.to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
-    const summary = await apiGet<StatsSummary>(request, "/v1/stats/summary", RANGE);
+    const summary = await apiGet<StatsSummary>(request, "/v1/stats/summary", range);
     expect(summary.totals.count).toBeGreaterThan(0);
     expect(await tile(page, "Distance")).toBe(formatKm(summary.totals.distance_m, 1));
     expect(await tile(page, "Moving time")).toBe(formatDuration(summary.totals.moving_time_s));
     expect(await tile(page, "Elevation")).toBe(formatMeters(summary.totals.elevation_gain_m));
     expect(await tile(page, "Activities")).toBe(formatCount(summary.totals.count));
 
-    const weekly = await apiGet<WeeklyStats>(request, "/v1/stats/weekly", RANGE);
+    const weekly = await apiGet<WeeklyStats>(request, "/v1/stats/weekly", range);
     const rows = page.getByTestId("weekly-table").locator("tbody tr");
     await expect(rows).toHaveCount(weekly.weeks.length);
     const shown = await rows.evaluateAll((trs) =>

@@ -8,7 +8,7 @@ import pytest
 from fake_strava.app import create_app
 from fake_strava.clock import FakeClock
 from fake_strava.config import FakeStravaConfig
-from fake_strava.seed import DEFAULT_ATHLETE_ID, SEED_END, seed_activities
+from fake_strava.seed import DEFAULT_ATHLETE_ID, SEED_WINDOW, seed_activities
 from fake_strava.state import FakeStravaState
 from tests.conftest import FAKE_STRAVA_BASE_URL, fake_strava_login
 
@@ -260,13 +260,35 @@ async def test_get_activity_and_404(
     assert missing.json()["message"] == "Record Not Found"
 
 
+SEED_NOW = datetime(2026, 10, 17, 12, 0, tzinfo=UTC)
+
+
 async def test_seed_is_deterministic() -> None:
-    first = [a.to_json() for a in seed_activities(DEFAULT_ATHLETE_ID, 300, rng_seed=7)]
-    again = [a.to_json() for a in seed_activities(DEFAULT_ATHLETE_ID, 300, rng_seed=7)]
-    other = [a.to_json() for a in seed_activities(DEFAULT_ATHLETE_ID, 300, rng_seed=8)]
+    first = [a.to_json() for a in seed_activities(DEFAULT_ATHLETE_ID, 300, 7, SEED_NOW)]
+    again = [a.to_json() for a in seed_activities(DEFAULT_ATHLETE_ID, 300, 7, SEED_NOW)]
+    other = [a.to_json() for a in seed_activities(DEFAULT_ATHLETE_ID, 300, 8, SEED_NOW)]
     assert first == again
     assert first != other
-    assert all(datetime.fromisoformat(a["start_date"]) < SEED_END for a in first)
+
+
+@pytest.mark.parametrize("count", [1, 300, 5000])
+async def test_seed_covers_the_year_before_the_clock(count: int) -> None:
+    activities = seed_activities(DEFAULT_ATHLETE_ID, count, 7, SEED_NOW)
+    starts = [a.start_date for a in activities]
+    assert len(starts) == count
+    assert all(SEED_NOW - SEED_WINDOW <= start < SEED_NOW for start in starts)
+    assert starts == sorted(starts)
+    assert [a.id for a in activities] == sorted(a.id for a in activities)
+
+
+async def test_seed_moves_with_the_clock() -> None:
+    today = seed_activities(DEFAULT_ATHLETE_ID, 300, 7, SEED_NOW)
+    tomorrow = seed_activities(DEFAULT_ATHLETE_ID, 300, 7, SEED_NOW + timedelta(days=1))
+    assert [b.start_date - a.start_date for a, b in zip(today, tomorrow, strict=True)] == [
+        timedelta(days=1)
+    ] * 300
+    # The newest activity is recent, so "the last 12 weeks" always has data.
+    assert SEED_NOW - today[-1].start_date < timedelta(days=2)
 
 
 async def test_two_apps_with_same_seed_serve_identical_activities(fake_clock: FakeClock) -> None:

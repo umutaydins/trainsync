@@ -105,9 +105,10 @@ class FakeStravaState:
             a.id: a for a in seed_athletes(cfg.athletes, cfg.rng_seed)
         }
         self.activities: dict[int, FakeActivity] = {}
+        seed_end = self.clock.now()
         for index, athlete_id in enumerate(self.athletes):
             for activity in seed_activities(
-                athlete_id, cfg.seed_activities, cfg.rng_seed, first_activity_id(index)
+                athlete_id, cfg.seed_activities, cfg.rng_seed, seed_end, first_activity_id(index)
             ):
                 self.activities[activity.id] = activity
         self.codes: dict[str, AuthCode] = {}
