@@ -10,6 +10,7 @@ Koç burada. Komutlar var, bahane yok.
 /plates 102.5: bir tarafa takılacak plakalar
 /report: günlük rapor
 /yumusak: 24 saat yumuşak koç · /sert: normale dön
+/lang: Türkçe / English
 /eat <yiyecek> <gram>: yiyecek kaydet, ör. /eat yulaf 60
 /kcal: bugünkü alım ve makrolar
 /weight 78.4: bugünkü tartı
@@ -28,6 +29,7 @@ Koç burada. Komutlar var, bahane yok.
 /plates 102.5: bir tarafa takılacak plakalar
 /report: günlük rapor
 /yumusak: 24 saat yumuşak koç · /sert: normale dön
+/lang: Türkçe / English
 /eat <yiyecek> <gram>: yiyecek kaydet, ör. /eat yulaf 60
 /kcal: bugünkü alım ve makrolar
 /weight 78.4: bugünkü tartı
@@ -46,6 +48,7 @@ Koç burada. Komutlar var, bahane yok.
 /plates 102.5: bir tarafa takılacak plakalar
 /report: günlük rapor
 /yumusak: 24 saat yumuşak koç · /sert: normale dön
+/lang: Türkçe / English
 /eat <yiyecek> <gram>: yiyecek kaydet, ör. /eat yulaf 60
 /kcal: bugünkü alım ve makrolar
 /weight 78.4: bugünkü tartı

@@ -118,6 +118,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/chats/{chat_id}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Settings of a chat
+         * @description The language the chat chose with `/lang`, or null.
+         */
+        get: operations["get_chat_settings_v1_chats__chat_id__settings_get"];
+        /**
+         * Store the settings of a chat
+         * @description Idempotent: the same body twice stores one row.
+         */
+        put: operations["put_chat_settings_v1_chats__chat_id__settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/checkins": {
         parameters: {
             query?: never;
@@ -1130,6 +1154,35 @@ export interface components {
         ChallengeResponse: {
             /** Hub.Challenge */
             "hub.challenge": string;
+        };
+        /**
+         * ChatSettingsIn
+         * @example {
+         *       "lang": "en"
+         *     }
+         */
+        ChatSettingsIn: {
+            /**
+             * Lang
+             * @enum {string}
+             */
+            lang: "en" | "tr";
+        };
+        /**
+         * ChatSettingsOut
+         * @example {
+         *       "chat_id": 123456789,
+         *       "lang": "tr"
+         *     }
+         */
+        ChatSettingsOut: {
+            /** Chat Id */
+            chat_id: number;
+            /**
+             * Lang
+             * @description null: never chosen, the bot uses BOT_LANG
+             */
+            lang: ("en" | "tr") | null;
         };
         /**
          * CheckinIn
@@ -3962,6 +4015,102 @@ export interface operations {
                     /**
                      * @example {
                      *       "detail": "activity not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_chat_settings_v1_chats__chat_id__settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Telegram chat id */
+                chat_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSettingsOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_chat_settings_v1_chats__chat_id__settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Telegram chat id */
+                chat_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSettingsOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
                      *     }
                      */
                     "application/json": unknown;

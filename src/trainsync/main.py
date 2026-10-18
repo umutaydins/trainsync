@@ -15,6 +15,7 @@ from trainsync import __version__
 from trainsync.api import (
     activities,
     auth,
+    chats,
     checkins,
     health,
     nutrition,
@@ -92,6 +93,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(activities.router)
     app.include_router(stats.router)
     app.include_router(sync_status.router)
+    app.include_router(chats.router)
     for router in training.ROUTERS:
         app.include_router(router)
     app.include_router(nutrition.router)

@@ -22,7 +22,9 @@ PACK = MessagePack(
             "/log bench 80x5x3: set kaydet (80x5,5,4 ya da bw x12x3 de olur)\n"
             "/done: antrenmanı bitir\n"
             "/plates 102.5: bir tarafa takılacak plakalar\n"
-            "/report: günlük rapor\n/yumusak: 24 saat yumuşak koç · /sert: normale dön",
+            "/report: günlük rapor\n"
+            "/yumusak: 24 saat yumuşak koç · /sert: normale dön\n"
+            "/lang: Türkçe / English",
         ),
         Key.NO_ASSISTANT: ("Şimdilik yalnızca komutları anlıyorum.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("Bilinmeyen komut: /{command}.\n\n{help}",),
@@ -143,6 +145,9 @@ PACK = MessagePack(
         Key.COACH_DONE_BAD: ("{missing} planlı set yapılmadı.",),
         Key.COACH_SOFT_ON: ("24 saat yumuşak mod. Kapatmak için /sert.",),
         Key.COACH_SOFT_OFF: ("Yumuşak mod kapandı.",),
+        Key.LANG_CHOOSE: ("Botun dilini seç.",),
+        Key.LANG_SET: ("Dil ayarlandı: Türkçe.",),
+        Key.LANG_USAGE: ("Kullanım: /lang, /lang en veya /lang tr.",),
         Key.COACH_FACT_SESSION: ("{day} · {time}",),
         Key.COACH_FACT_UNDER: ("{exercise}: {done}, hedef {target}.",),
         Key.COACH_FACT_MISSING: ("{missing} planlı set eksik.",),

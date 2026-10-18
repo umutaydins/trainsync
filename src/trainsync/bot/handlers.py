@@ -10,7 +10,8 @@ from datetime import date, timedelta
 
 from trainsync.bot import formatting
 from trainsync.bot.common import Feature, Incoming, Press, PressResult, Reply
-from trainsync.bot.messages import Key, Messages
+from trainsync.bot.language import LanguageStore
+from trainsync.bot.messages import Key, Messages, using_lang
 from trainsync.bot.read_api import ReadApi, ReadApiError
 from trainsync.bot.telegram import (
     CallbackQuery,
@@ -143,6 +144,7 @@ class Dispatcher:
         text_handler: TextHandler | None = None,
         *,
         features: Sequence[Feature] = (),
+        languages: LanguageStore | None = None,
     ) -> None:
         self._telegram = telegram
         self._commands = commands
@@ -150,9 +152,19 @@ class Dispatcher:
         self._allowed = allowed_chat_ids
         self._text_handler = text_handler
         self._features = tuple(features)
+        self._languages = languages
         self._known = COMMANDS.union(*(f.commands for f in self._features))
 
     async def handle(self, update: Update) -> None:
+        """Everything for this update is rendered in the chat's language (ADR 0031)."""
+        lang = None
+        chat_id = _chat_of(update)
+        if self._languages is not None and chat_id in self._allowed:
+            lang = await self._languages.get(chat_id)
+        with using_lang(lang):
+            await self._handle(update)
+
+    async def _handle(self, update: Update) -> None:
         if update.callback_query is not None:
             await self._handle_press(update.update_id, update.callback_query)
             return
@@ -246,3 +258,10 @@ class Dispatcher:
         if command is None:
             return "text"
         return command if command in self._known else "unknown"
+
+
+def _chat_of(update: Update) -> int | None:
+    if update.callback_query is not None:
+        message = update.callback_query.message
+        return message.chat.id if message is not None else None
+    return update.message.chat.id if update.message is not None else None

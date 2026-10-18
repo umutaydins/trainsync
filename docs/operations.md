@@ -359,7 +359,7 @@ Design: [ADR 0030](decisions/0030-coach-intensity-and-guardrails.md), task
 
 - **Intensity**: `BOT_INTENSITY=normal` (default) or `savage`, set in `.env.prod` by the owner
   himself, then `scripts/mac-prod.sh up` (recreates bot and worker). Savage needs
-  `BOT_TONE=hardcore` and `BOT_LANG=tr`; it is an explicit opt-in to unrestricted profanity and
+  `BOT_TONE=hardcore` and works in both chat languages; it is an explicit opt-in to unrestricted profanity and
   brutal roasting of excuses and missed work, in the coach lines and in the assistant (whose
   system prompt says the user asked for it). The worker and bot log `intensity` at startup.
 - **Guardrails** (every intensity, in code and in the assistant prompt): never body, weight or
@@ -381,12 +381,31 @@ Design: [ADR 0030](decisions/0030-coach-intensity-and-guardrails.md), task
 - **Quiet hours**: `QUIET_HOURS=23:00-07:00` (local, `CHECKIN_TZ`): no proactive coach message;
   one that falls in the window is dropped, not delayed. Replies to your own messages still come.
 - **Own lines**: copy `config/messages.local.example.yaml` to `config/messages.local.yaml`
-  (git-ignored; mounted read-only into bot and worker), add lines per category, then
+  (git-ignored; mounted read-only into bot and worker), add lines per category under `tr:` and
+  `en:` (a top-level `punchline_en` list goes into both languages; categories at the top level,
+  the first format, count as Turkish), then
   `scripts/mac-prod.sh restart bot` and `… restart worker`. They are sent verbatim; a line that
   breaks a guardrail is dropped at startup and logged as `coach_local_line_dropped`
   (`scripts/mac-prod.sh logs bot | grep coach_local`).
 - **Where the state lives**: sent messages are `notifications` rows (`coach_*` kinds, idempotent);
   the last 10 lines per category are Redis lists `coach:recent:<category>` (rotation).
+
+## Bot language (/lang)
+
+Design: [ADR 0031](decisions/0031-runtime-bot-language.md), task
+[P6.12](tasks/P6.12-bot-language.md).
+
+- `/lang` in the chat shows "Türkçe" / "English" buttons; `/lang tr` and `/lang en` switch
+  directly. The confirmation comes in the new language. Command names and `/help` stay English.
+- The choice is a `chat_settings` row (part of the database backups), so it survives restarts and
+  redeploys. No row: `BOT_LANG` from `.env.prod`, which stays the default.
+- Everything follows it: replies, check-in, coach lines (savage/tr or savage/en), the assistant,
+  and the worker's reminders, notifications and stack alerts (read at send time, no restart). The
+  host uptime check (`ops/uptime.py`) stays English.
+- Check or reset it:
+  `docker compose --env-file .env.prod -f compose.prod.yml exec postgres psql -U trainsync -c "select * from chat_settings"`;
+  `delete from chat_settings` returns every chat to `BOT_LANG` (restart the bot to drop its cache:
+  `scripts/mac-prod.sh restart bot`).
 
 ## Owner checks
 
@@ -425,8 +444,9 @@ that command on the Mac.
 | 27 | Demo stack running (P7.9) | `cp .env.demo.example .env.demo && chmod 600 .env.demo`, set `DEMO_API_KEY`, then `docker compose --env-file .env.demo -f compose.demo.yml up -d --build && docker compose --env-file .env.demo -f compose.demo.yml ps` | PENDING | | |
 | 28 | Demo public on :8443 (P7.9) | `scripts/funnel.sh on all && curl -s -o /dev/null -w '%{http_code}\n' -H "X-API-Key: <demo key>" https://<host>.<tailnet>.ts.net:8443/v1/activities` (expect 200) and the same with `-X PUT …/v1/nutrition/profile` (expect 403) | PENDING | | |
 | 29 | Preview shows the demo, README link filled in (P7.9) | decide preview protection ([deploy-vercel.md](deploy-vercel.md) §3), open the preview URL logged out of Vercel, log in with `trainsync-demo`, confirm demo data (program "Upper/Lower 4-day"); put the URL into README "Live demo" | PENDING | | |
-| 30 | Coach intensity chosen (P6.11) | set `BOT_INTENSITY` (and, for savage, `BOT_TONE=hardcore`, `BOT_LANG=tr`) in `.env.prod`, `scripts/mac-prod.sh up`, then `scripts/mac-prod.sh logs bot \| grep bot_startup` (shows `intensity`) | PENDING | | |
+| 30 | Coach intensity chosen (P6.11) | set `BOT_INTENSITY` (and, for savage, `BOT_TONE=hardcore`) in `.env.prod`, `scripts/mac-prod.sh up`, then `scripts/mac-prod.sh logs bot \| grep bot_startup` (shows `intensity`) | PENDING | | |
 | 31 | Program days scheduled (P6.11) | set `weekday` / `start_time` on the active program's days (API), then wait for the 30-minute reminder on the next training day | PENDING | | |
+| 32 | Bot language switch (P6.12) | in the chat: `/lang`, press "English", then `/week` (English); `/lang tr`, `/week` (Turkish); `scripts/mac-prod.sh restart bot`, `/week` (still Turkish) | PENDING | | |
 
 ## Backups and restore
 

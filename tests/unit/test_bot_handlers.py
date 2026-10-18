@@ -336,5 +336,9 @@ async def test_main_with_token_polls_and_replies() -> None:
         return ok({})
 
     send = respx.post(f"{BOT_URL}/sendMessage").mock(side_effect=reply)
+    # The chat chose Turkish (P6.12); help stays English in every language.
+    respx.get(f"{API}/v1/chats/{ALLOWED}/settings").mock(
+        return_value=httpx.Response(200, json={"chat_id": ALLOWED, "lang": "tr"})
+    )
     await asyncio.wait_for(bot_main.run(settings, stop, sleep=SleepRecorder()), timeout=5)
     assert sent_messages(send)[0]["text"] == MSG.help()

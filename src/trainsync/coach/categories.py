@@ -1,4 +1,4 @@
-"""Line categories of the savage pack (and of `config/messages.local.yaml`)."""
+"""Line categories of the savage packs, one per language (and of `config/messages.local.yaml`)."""
 
 from enum import StrEnum
 
@@ -14,6 +14,8 @@ class Category(StrEnum):
     REMINDER_BEFORE = "reminder_before"
     REMINDER_NOW = "reminder_now"
     ESCALATION = "escalation"
+    # The confirmation after /lang (ADR 0031).
+    LANGUAGE_SET = "language_set"
     # Short English lines appended to about 1 in 4 savage messages; never sent alone.
     PUNCHLINE_EN = "punchline_en"
 

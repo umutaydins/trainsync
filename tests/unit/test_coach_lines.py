@@ -1,4 +1,5 @@
-"""P6.11: the savage pack, the local override file, rotation and punchlines (ADR 0030)."""
+"""P6.11/P6.12: the savage packs (Turkish and English), the local override file, rotation and
+punchlines (ADR 0030, 0031)."""
 
 # Turkish text: the dotless i (U+0131) is a letter here, not a confusable.
 # ruff: noqa: RUF001
@@ -11,19 +12,23 @@ from pathlib import Path
 import pytest
 
 from trainsync.coach.categories import MESSAGE_CATEGORIES, Category
-from trainsync.coach.guardrails import violations
+from trainsync.coach.guardrails import mentions_pain, violations
 from trainsync.coach.lines import (
     RECENT,
+    SAVAGE,
     LinePack,
     MemoryRecentStore,
     compose,
     line_id,
     load_pack,
+    load_packs,
     merge,
     pick,
     read_local,
 )
+from trainsync.coach.punchlines import PUNCHLINES
 from trainsync.coach.savage_tr import LINES
+from trainsync.core.settings import BotLang
 
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE = ROOT / "config" / "messages.local.example.yaml"
@@ -31,28 +36,51 @@ EXAMPLE = ROOT / "config" / "messages.local.example.yaml"
 REAL_PEOPLE = re.compile(r"goggins|rocky|schwarzenegger|arnold|bruce lee|kobe|jordan|ali\b", re.I)
 
 
-def test_pack_size_and_categories() -> None:
-    assert set(LINES) == set(Category)
-    assert sum(len(LINES[c]) for c in MESSAGE_CATEGORIES) >= 60
-    assert len(LINES[Category.PUNCHLINE_EN]) >= 20
-    assert all(len(LINES[c]) >= 5 for c in MESSAGE_CATEGORIES)
-    for lines in LINES.values():
-        assert len(lines) == len(set(lines)), "duplicate line"
+def test_both_languages_have_a_savage_pack() -> None:
+    assert set(SAVAGE) == {"en", "tr"}
 
 
+@pytest.mark.parametrize("lang", ["en", "tr"])
+def test_pack_size_and_categories(lang: BotLang) -> None:
+    """Fails when a language's pack is missing a category (ADR 0031)."""
+    lines = SAVAGE[lang]
+    assert set(lines) == set(Category)
+    assert sum(len(lines[c]) for c in MESSAGE_CATEGORIES) >= 60
+    assert lines[Category.PUNCHLINE_EN] == PUNCHLINES  # the same add-on in both languages
+    assert len(PUNCHLINES) >= 20
+    assert all(len(lines[c]) >= 5 for c in MESSAGE_CATEGORIES)
+    for texts in lines.values():
+        assert len(texts) == len(set(texts)), "duplicate line"
+
+
+@pytest.mark.parametrize("lang", ["en", "tr"])
 @pytest.mark.parametrize("category", list(Category))
-def test_built_in_lines_respect_the_guardrails(category: Category) -> None:
-    for line in LINES[category]:
+def test_built_in_lines_respect_the_guardrails(lang: BotLang, category: Category) -> None:
+    for line in SAVAGE[lang][category]:
         assert violations(line) == [], line
+        assert not mentions_pain(line), line
         assert not REAL_PEOPLE.search(line), line
         assert not re.search(r"\d+\s*(?:kg|kcal|kalori|calorie)", line, re.I), line
 
 
-def test_savage_lines_do_swear() -> None:
-    """The owner asked for it; the pack must not be quietly mild."""
-    text = " ".join(line for c in MESSAGE_CATEGORIES for line in LINES[c]).lower()
-    for word in ("amına koyayım", "siktir", "amk", "hassiktir", "ulan"):
+@pytest.mark.parametrize(
+    ("lang", "words"),
+    [
+        ("tr", ("amına koyayım", "siktir", "amk", "hassiktir", "ulan")),
+        ("en", ("fuck", "shit", "damn", "hell", "ass")),
+    ],
+)
+def test_savage_lines_do_swear(lang: BotLang, words: tuple[str, ...]) -> None:
+    """The owner asked for it; neither pack may be quietly mild."""
+    text = " ".join(line for c in MESSAGE_CATEGORIES for line in SAVAGE[lang][c]).lower()
+    for word in words:
         assert word in text, word
+
+
+def test_the_english_pack_is_english() -> None:
+    for category in MESSAGE_CATEGORIES:
+        for line in SAVAGE["en"][category]:
+            assert line.isascii(), line
 
 
 def test_punchlines_are_short_english() -> None:
@@ -63,13 +91,40 @@ def test_punchlines_are_short_english() -> None:
 
 def test_example_local_file_covers_every_category_and_is_clean() -> None:
     local = read_local(EXAMPLE)
-    assert set(local) == {c.value for c in Category}
-    pack = merge(LINES, local)
-    assert pack.dropped == ()
-    assert pack.local_count == sum(len(v) for v in local.values()) - 1  # one duplicates a built-in
+    assert set(local["tr"]) == {c.value for c in Category}
+    assert {"excuse", "language_set", "punchline_en"} <= set(local["en"])
+    assert local["en"]["punchline_en"] == local["tr"]["punchline_en"] == ["Do it anyway."]
+    for lang in ("tr", "en"):
+        pack = merge(SAVAGE[lang], local[lang])
+        assert pack.dropped == ()
+        assert pack.local_count == sum(len(v) for v in local[lang].values())
+
+
+def test_language_sections_go_to_their_language(tmp_path: Path) -> None:
+    path = tmp_path / "messages.local.yaml"
+    path.write_text(
+        "tr:\n"
+        "  excuse:\n"
+        '    - "Kalk lan."\n'
+        "en:\n"
+        "  excuse:\n"
+        '    - "Get the fuck up."\n'
+        '    - "Fat lazy ass."\n'  # body shaming: dropped, in English too
+        "punchline_en:\n"
+        '  - "Lift first. Talk later."\n',
+        encoding="utf-8",
+    )
+    packs = load_packs(path)
+    assert "Kalk lan." in packs["tr"].lines[Category.EXCUSE]
+    assert "Kalk lan." not in packs["en"].lines[Category.EXCUSE]
+    assert "Get the fuck up." in packs["en"].lines[Category.EXCUSE]
+    assert [d.text for d in packs["en"].dropped] == ["Fat lazy ass."]
+    for lang in ("tr", "en"):
+        assert "Lift first. Talk later." in packs[lang].lines[Category.PUNCHLINE_EN]
 
 
 def test_local_lines_are_merged_verbatim_and_bad_ones_dropped(tmp_path: Path) -> None:
+    """The first format (categories at the top level) still works and counts as Turkish."""
     path = tmp_path / "messages.local.yaml"
     path.write_text(
         "excuse:\n"

@@ -16,8 +16,12 @@ tick tries again); an unknown outcome counts as sent (better a missed message th
 Off, without touching the state, while no Telegram target is configured.
 """
 
+# Turkish text: the dotless i (U+0131) is a letter here, not a confusable.
+# ruff: noqa: RUF001
+
 import asyncio
 import json
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -31,10 +35,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from trainsync.core.clock import Clock
 from trainsync.core.logging import get_logger
 from trainsync.core.metrics import NOTIFICATIONS
-from trainsync.core.settings import Settings
+from trainsync.core.settings import BotLang, Settings
 from trainsync.db.repositories.reads import ReadRepository
 from trainsync.db.repositories.webhook_events import MAX_ATTEMPTS, WebhookEventRepository
 from trainsync.notify.base import DeliveryUnknownError, Notifier, NotifyFailedError
+from trainsync.notify.language import stored_lang
 from trainsync.ops.retention import Backup, parse_name
 from trainsync.strava.breaker import BreakerState
 from trainsync.strava.breaker_status import overall_state, read_breakers
@@ -83,7 +88,8 @@ class AlertState:
 @dataclass(frozen=True, slots=True)
 class Observation:
     bad: bool | None  # None: cannot tell this tick, the state stays as it is
-    detail: str
+    detail: "Detail"
+    fields: Mapping[str, object] = field(default_factory=dict)
     grace: timedelta = timedelta(0)  # bad for this long before the alert fires
 
 
@@ -126,57 +132,119 @@ class Facts:
     newest_backup: Backup | None = None
 
 
-def _hours(delta: timedelta) -> str:
-    return f"{delta.total_seconds() / 3600:.1f} h"
+class Detail(StrEnum):
+    CIRCUIT_UNKNOWN = "circuit_unknown"
+    CIRCUIT_CLOSED = "circuit_closed"
+    CIRCUIT_OPEN = "circuit_open"
+    DEAD_LETTERS = "dead_letters"
+    DEAD_LETTERS_NONE = "dead_letters_none"
+    NO_ATHLETE = "no_athlete"
+    NEVER_SYNCED = "never_synced"
+    SYNC_STALE = "sync_stale"
+    SYNC_OK = "sync_ok"
+    NO_BACKUP = "no_backup"
+    BACKUP_STALE = "backup_stale"
+    BACKUP_OK = "backup_ok"
+
+
+# The chat's language (`/lang`, ADR 0031); tone-free, like the neutral layer.
+DETAILS: Mapping[BotLang, Mapping[Detail, str]] = {
+    "en": {
+        Detail.CIRCUIT_UNKNOWN: "no circuit breaker state reported",
+        Detail.CIRCUIT_CLOSED: "Strava circuit breaker is closed again",
+        Detail.CIRCUIT_OPEN: "Strava circuit breaker {state}, not closed for {minutes}+ min",
+        Detail.DEAD_LETTERS: "{count} dead-letter webhook event(s), failed {attempts} times "
+        "and no longer retried (GET /v1/sync/status)",
+        Detail.DEAD_LETTERS_NONE: "no dead-letter webhook events left",
+        Detail.NO_ATHLETE: "no athlete connected",
+        Detail.NEVER_SYNCED: "never synced yet",
+        Detail.SYNC_STALE: "no successful sync for {hours:.1f} h (last {last})",
+        Detail.SYNC_OK: "syncing again (last {last})",
+        Detail.NO_BACKUP: "no backup in {directory}",
+        Detail.BACKUP_STALE: "newest backup is {hours:.1f} h old ({name})",
+        Detail.BACKUP_OK: "a fresh backup exists ({name})",
+    },
+    "tr": {
+        Detail.CIRCUIT_UNKNOWN: "devre kesici durumu bildirilmedi",
+        Detail.CIRCUIT_CLOSED: "Strava devre kesicisi yeniden kapandı",
+        Detail.CIRCUIT_OPEN: "Strava devre kesicisi {state}, {minutes}+ dk kapanmadı",
+        Detail.DEAD_LETTERS: "{count} dead-letter webhook olayı {attempts} kez başarısız oldu "
+        "ve artık denenmiyor (GET /v1/sync/status)",
+        Detail.DEAD_LETTERS_NONE: "dead-letter webhook olayı kalmadı",
+        Detail.NO_ATHLETE: "bağlı sporcu yok",
+        Detail.NEVER_SYNCED: "henüz hiç senkronize edilmedi",
+        Detail.SYNC_STALE: "{hours:.1f} sa boyunca başarılı senkronizasyon yok (son {last})",
+        Detail.SYNC_OK: "senkronizasyon yeniden çalışıyor (son {last})",
+        Detail.NO_BACKUP: "{directory} içinde yedek yok",
+        Detail.BACKUP_STALE: "en yeni yedek {hours:.1f} sa önce alınmış ({name})",
+        Detail.BACKUP_OK: "yeni bir yedek var ({name})",
+    },
+}
+HEADLINES: Mapping[BotLang, Mapping[Action, str]] = {
+    "en": {
+        Action.FIRE: "trainsync alert: {detail}",
+        Action.RESOLVE: "trainsync resolved: {detail}",
+    },
+    "tr": {
+        Action.FIRE: "trainsync uyarısı: {detail}",
+        Action.RESOLVE: "trainsync düzeldi: {detail}",
+    },
+}
+AFTER: Mapping[BotLang, str] = {"en": " (after {minutes} min)", "tr": " ({minutes} dk sonra)"}
+
+
+def _hours(delta: timedelta) -> float:
+    return delta.total_seconds() / 3600
 
 
 def observe(facts: Facts, now: datetime, limits: Thresholds) -> dict[Condition, Observation]:
     """What each condition looks like now (pure)."""
     minutes = int(limits.circuit_open.total_seconds() // 60)
     if facts.circuit is None:
-        circuit = Observation(None, "no circuit breaker state reported")
+        circuit = Observation(None, Detail.CIRCUIT_UNKNOWN)
     elif facts.circuit is BreakerState.CLOSED:
-        circuit = Observation(False, "Strava circuit breaker is closed again")
+        circuit = Observation(False, Detail.CIRCUIT_CLOSED)
     else:
         circuit = Observation(
             True,
-            f"Strava circuit breaker {facts.circuit.value}, not closed for {minutes}+ min",
+            Detail.CIRCUIT_OPEN,
+            {"state": facts.circuit.value, "minutes": minutes},
             limits.circuit_open,
         )
     found = {
         Condition.CIRCUIT_OPEN: circuit,
         Condition.DEAD_LETTERS: Observation(
             facts.dead_letters > 0,
-            f"{facts.dead_letters} dead-letter webhook event(s), failed {MAX_ATTEMPTS} times "
-            "and no longer retried (GET /v1/sync/status)"
-            if facts.dead_letters
-            else "no dead-letter webhook events left",
-        ),
+            Detail.DEAD_LETTERS,
+            {"count": facts.dead_letters, "attempts": MAX_ATTEMPTS},
+        )
+        if facts.dead_letters
+        else Observation(False, Detail.DEAD_LETTERS_NONE),
     }
     if not facts.athletes_active:
-        found[Condition.SYNC_STALE] = Observation(False, "no athlete connected")
+        found[Condition.SYNC_STALE] = Observation(False, Detail.NO_ATHLETE)
     elif facts.last_synced_at is None:
-        found[Condition.SYNC_STALE] = Observation(None, "never synced yet")
+        found[Condition.SYNC_STALE] = Observation(None, Detail.NEVER_SYNCED)
     else:
         age = now - facts.last_synced_at
-        found[Condition.SYNC_STALE] = Observation(
-            age > limits.sync_stale,
-            f"no successful sync for {_hours(age)} (last {facts.last_synced_at.isoformat()})"
+        last = facts.last_synced_at.isoformat()
+        found[Condition.SYNC_STALE] = (
+            Observation(True, Detail.SYNC_STALE, {"hours": _hours(age), "last": last})
             if age > limits.sync_stale
-            else f"syncing again (last {facts.last_synced_at.isoformat()})",
+            else Observation(False, Detail.SYNC_OK, {"last": last})
         )
     if facts.backup_dir is not None:
         backup = facts.newest_backup
         if backup is None:
-            found[Condition.BACKUP_STALE] = Observation(True, f"no backup in {facts.backup_dir}")
+            found[Condition.BACKUP_STALE] = Observation(
+                True, Detail.NO_BACKUP, {"directory": str(facts.backup_dir)}
+            )
         else:
             age = now - backup.taken_at
-            stale = age > limits.backup_max_age
-            found[Condition.BACKUP_STALE] = Observation(
-                stale,
-                f"newest backup is {_hours(age)} old ({backup.name})"
-                if stale
-                else f"a fresh backup exists ({backup.name})",
+            found[Condition.BACKUP_STALE] = (
+                Observation(True, Detail.BACKUP_STALE, {"hours": _hours(age), "name": backup.name})
+                if age > limits.backup_max_age
+                else Observation(False, Detail.BACKUP_OK, {"name": backup.name})
             )
     return found
 
@@ -255,6 +323,8 @@ class AlertDeps:
     chat_ref: str | None  # None: alerts off (no Telegram target)
     clock: Clock
     thresholds: Thresholds = field(default_factory=Thresholds)
+    # The chat's stored language at send time (ADR 0031); None: English.
+    language: Callable[[str], Awaitable[BotLang | None]] | None = None
 
 
 def build_alert_deps(
@@ -273,16 +343,19 @@ def build_alert_deps(
         chat_ref=chat_ref,
         clock=clock,
         thresholds=Thresholds.from_settings(settings),
+        language=lambda chat: stored_lang(sessionmaker, chat),
     )
 
 
-def message(action: Action, observation: Observation, old: AlertState, now: datetime) -> str:
-    if action is Action.FIRE:
-        return f"trainsync alert: {observation.detail}"
-    after = ""
-    if old.bad_since is not None:
-        after = f" (after {max(0, int((now - old.bad_since).total_seconds() // 60))} min)"
-    return f"trainsync resolved: {observation.detail}{after}"
+def message(
+    action: Action, observation: Observation, old: AlertState, now: datetime, lang: BotLang = "en"
+) -> str:
+    detail = DETAILS[lang][observation.detail].format(**observation.fields)
+    text = HEADLINES[lang][action].format(detail=detail)
+    if action is Action.RESOLVE and old.bad_since is not None:
+        minutes = max(0, int((now - old.bad_since).total_seconds() // 60))
+        text += AFTER[lang].format(minutes=minutes)
+    return text
 
 
 async def run_alerts(deps: AlertDeps) -> dict[Condition, str]:
@@ -317,7 +390,8 @@ async def _send(
     now: datetime,
 ) -> str:
     try:
-        await deps.notifier.send(chat, message(action, observation, old, now))
+        lang = await deps.language(chat) if deps.language is not None else None
+        await deps.notifier.send(chat, message(action, observation, old, now, lang or "en"))
     except DeliveryUnknownError as exc:
         log.warning("alert_delivery_unknown", condition=condition.value, error=str(exc))
         await deps.store.save(condition, new)

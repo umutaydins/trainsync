@@ -1,6 +1,6 @@
-"""Effective intensity (ADR 0030): savage only when configured (hardcore, Turkish, savage) and
-not in the owner's 24-hour soft mode (`/yumusak`). Soft mode is a Redis key that the bot sets
-and the worker reads."""
+"""Effective intensity (ADR 0030): savage only when configured (hardcore and savage, in either
+language since ADR 0031) and not in the owner's 24-hour soft mode (`/yumusak`). Soft mode is a
+Redis key that the bot sets and the worker reads."""
 
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -54,12 +54,8 @@ class MemorySoftModeStore:
 
 
 def savage_configured(settings: Settings) -> bool:
-    """The savage pack exists in Turkish and belongs to the hardcore tone."""
-    return (
-        settings.bot_intensity == "savage"
-        and settings.bot_tone == "hardcore"
-        and settings.bot_lang == "tr"
-    )
+    """Savage belongs to the hardcore tone; both languages have a savage pack (ADR 0031)."""
+    return settings.bot_intensity == "savage" and settings.bot_tone == "hardcore"
 
 
 @dataclass(frozen=True)

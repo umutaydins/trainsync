@@ -31,7 +31,7 @@ from trainsync.bot.assistant import (
     Assistant,
     system_prompt,
 )
-from trainsync.bot.messages import PACKS, Key, Messages
+from trainsync.bot.messages import PACKS, Key, Messages, messages_for, using_lang
 from trainsync.bot.read_api import ReadApi
 from trainsync.coach.mode import CoachMode, MemorySoftModeStore
 from trainsync.core.redis import create_redis
@@ -506,3 +506,17 @@ async def test_profanity_in_a_reply_is_fine(http: httpx.AsyncClient, api: respx.
     reply = "Amına koyayım, bu hafta 3 antrenman. Siktir et bahaneyi, yarın 18:00."
     planner = ScriptedPlanner([text(reply)])
     assert await assistant(http, planner).answer(42, "?") == reply
+
+
+async def test_the_chat_language_reaches_the_prompt(
+    http: httpx.AsyncClient, api: respx.MockRouter
+) -> None:
+    """P6.12: `/lang` changes the reply language of the assistant at runtime (ADR 0031)."""
+    msg = messages_for(make_settings(bot_lang="en"))
+    planner = ScriptedPlanner([text("ok")])
+    bot = assistant(http, planner, msg=msg)
+    await bot.answer(42, "?")
+    with using_lang("tr"):
+        await bot.answer(42, "?")
+    assert "Reply in English." in planner.systems[0]
+    assert "Reply in Turkish." in planner.systems[1]

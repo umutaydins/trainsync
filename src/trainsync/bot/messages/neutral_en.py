@@ -19,7 +19,9 @@ PACK = MessagePack(
             "/log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)\n"
             "/done: finish the workout\n"
             "/plates 102.5: plates per side\n"
-            "/report: daily check-in\n/yumusak: soft coach for 24 h · /sert: back to normal",
+            "/report: daily check-in\n"
+            "/yumusak: soft coach for 24 h · /sert: back to normal\n"
+            "/lang: Türkçe / English",
         ),
         Key.NO_ASSISTANT: ("I only understand commands for now.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("Unknown command /{command}.\n\n{help}",),
@@ -142,6 +144,9 @@ PACK = MessagePack(
         Key.COACH_DONE_BAD: ("{missing} planned sets were not done.",),
         Key.COACH_SOFT_ON: ("Soft mode for 24 hours. /sert turns it off.",),
         Key.COACH_SOFT_OFF: ("Soft mode off.",),
+        Key.LANG_CHOOSE: ("Choose the bot's language.",),
+        Key.LANG_SET: ("Language set: English.",),
+        Key.LANG_USAGE: ("Usage: /lang, /lang en or /lang tr.",),
         Key.COACH_FACT_SESSION: ("{day} · {time}",),
         Key.COACH_FACT_UNDER: ("{exercise}: {done}, target {target}.",),
         Key.COACH_FACT_MISSING: ("{missing} planned sets missing.",),

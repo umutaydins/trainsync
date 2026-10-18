@@ -13,6 +13,7 @@ or imitates a real person.
 from collections.abc import Mapping
 
 from trainsync.coach.categories import Category
+from trainsync.coach.punchlines import PUNCHLINES
 
 LINES: Mapping[Category, tuple[str, ...]] = {
     Category.EXCUSE: (
@@ -101,28 +102,12 @@ LINES: Mapping[Category, tuple[str, ...]] = {
         "Başlamadın. 20 dakika bile yeter, ama şimdi.",
         "Hassiktir, hâlâ hareket yok. Ayakkabıları giy, gerisi gelir.",
     ),
-    Category.PUNCHLINE_EN: (
-        "Nobody's coming. Get up.",
-        "Your excuses don't lift weights.",
-        "Earn the rest. You haven't yet.",
-        "The bar doesn't care how you feel.",
-        "Comfort is the enemy.",
-        "Show up. Then show up again.",
-        "Discipline is a daily vote.",
-        "Tired is a feeling, not a plan.",
-        "The plan only works if you do.",
-        "Nobody remembers the skipped day. You will.",
-        "Do the rep you were scared of.",
-        "Talk less. Lift more.",
-        "Your future self is watching.",
-        "Results don't negotiate.",
-        "The set won't do itself.",
-        "Quit waiting. Start lifting.",
-        "Excuses are heavier than the bar.",
-        "Every skipped set has a price.",
-        "Earn it today.",
-        "Soft days build soft habits.",
-        "Consistency is the whole trick.",
-        "Get uncomfortable. Stay there.",
+    Category.LANGUAGE_SET: (
+        "Tamam, Türkçe. Dil değişti, bahanelerin aynı kaldı mı bakacağız.",
+        "Türkçe tamam. Artık anlamadım deme şansın da yok amk.",
+        "Dil Türkçe oldu. Şimdi kalk ve aynı dilde terle.",
+        "Ana dilinde ayar yiyeceksin artık. Hazır ol.",
+        "Türkçeye geçtik. Bahane de Türkçe olsa sökmez, haberin olsun.",
     ),
+    Category.PUNCHLINE_EN: PUNCHLINES,
 }
