@@ -105,6 +105,13 @@ The LaunchAgent runs at login, so a reboot brings the stack back only once a use
 
 `stack.log` is appended to on every login and is small; delete it whenever you like.
 
+The gateway's access and error logs never carry the query string of `/webhooks/strava` (Strava's
+subscription handshake sends `hub.verify_token` there) or the `X-API-Key` header: a Caddy log
+filter rendered by `scripts/render_gateway.py`, checked by `make prod-check`. Lines written
+before that filter (deploys before 2026-10-19) may still hold the verify token: `docker compose
+logs` keeps them until the gateway container is recreated, which the next deploy does; rotate
+`STRAVA_WEBHOOK_VERIFY_TOKEN` (Rotating secrets) if those logs ever left the Mac.
+
 ## Deploy and rollback
 
 Design: [ADR 0026](decisions/0026-manual-make-deploy-instead-of-a-self-hosted-runner.md).

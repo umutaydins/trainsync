@@ -1,6 +1,7 @@
 """P7.1: the public-route allowlist (deploy/gateway/routes.toml) and its rendered Caddyfile."""
 
 import importlib.util
+import re
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -88,3 +89,27 @@ def test_unknown_paths_fall_through_to_404_in_the_caddyfile() -> None:
     assert caddyfile.rstrip().endswith("handle {\n\t\trespond 404\n\t}\n}")
     assert "admin off" in caddyfile
     assert "metrics" not in caddyfile
+
+
+@pytest.mark.parametrize(
+    ("uri", "logged"),
+    [
+        (
+            "/webhooks/strava?hub.mode=subscribe&hub.verify_token=s3cret&hub.challenge=x",
+            "/webhooks/strava",
+        ),
+        ("/webhooks/strava/?hub.verify_token=s3cret", "/webhooks/strava/"),
+        ("/webhooks/strava", "/webhooks/strava"),
+        ("/v1/activities?limit=1", "/v1/activities?limit=1"),
+    ],
+)
+def test_the_access_log_drops_the_webhook_query_string(uri: str, logged: str) -> None:
+    """The same substitution Caddy's regexp log filter makes (RE2 and `re` agree on it)."""
+    assert re.sub(gateway.WEBHOOK_QUERY_RE, r"\1", uri) == logged
+
+
+def test_both_loggers_filter_the_query_and_the_api_key() -> None:
+    caddyfile = gateway.render()
+    assert caddyfile.count(f"request>uri regexp {gateway.WEBHOOK_QUERY_RE} $1") == 2
+    assert caddyfile.count("request>headers>X-Api-Key delete") == 2
+    assert "log default {" in caddyfile

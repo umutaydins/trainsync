@@ -7,6 +7,14 @@
 		trusted_proxies static private_ranges
 		client_ip_headers X-Forwarded-For
 	}
+	log default {
+		output stdout
+		format filter {
+			wrap json
+			request>uri regexp ^(/webhooks/strava[^?]*)[?].*$ $1
+			request>headers>X-Api-Key delete
+		}
+	}
 }
 
 :8080 {
@@ -20,7 +28,11 @@
 	}
 	log {
 		output stdout
-		format json
+		format filter {
+			wrap json
+			request>uri regexp ^(/webhooks/strava[^?]*)[?].*$ $1
+			request>headers>X-Api-Key delete
+		}
 	}
 
 	@webhooks {
