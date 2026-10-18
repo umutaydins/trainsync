@@ -242,6 +242,84 @@ erDiagram
 `notifications` has no foreign key: a row is the idempotency claim for one message (ADR 0012),
 kept even if the activity is deleted later.
 
+### Training (Phase 6)
+
+Single user, so no `athlete_id`. `workouts.strava_activity_id` is a link, not a foreign key.
+
+```mermaid
+erDiagram
+    programs ||--o{ program_days : "has"
+    program_days ||--o{ program_exercises : "plans"
+    exercises ||--o{ program_exercises : "used in"
+    program_days |o--o{ workouts : "followed by"
+    workouts ||--o{ workout_sets : "logs"
+    exercises ||--o{ workout_sets : "of"
+
+    exercises {
+        int id PK
+        text slug UK
+        text name
+        text primary_muscle
+        text_array secondary_muscles
+        text equipment
+        text movement_pattern "nullable"
+        boolean is_custom
+        timestamptz created_at
+    }
+    programs {
+        bigint id PK
+        text name
+        text goal "strength | hypertrophy | general"
+        int days_per_week
+        int weeks
+        boolean active "at most one true"
+        timestamptz created_at
+    }
+    program_days {
+        bigint id PK
+        bigint program_id FK
+        int day_index "UK with program_id"
+        text name
+    }
+    program_exercises {
+        bigint id PK
+        bigint program_day_id FK
+        int exercise_id FK
+        int position
+        int sets
+        int rep_min
+        int rep_max
+        int rest_seconds
+        numeric start_weight_kg "nullable"
+        text progression "double | none"
+    }
+    workouts {
+        bigint id PK
+        bigint program_day_id FK "nullable"
+        timestamptz started_at
+        timestamptz ended_at "nullable"
+        text notes
+        bigint strava_activity_id "nullable, no FK"
+    }
+    workout_sets {
+        bigint id PK
+        uuid client_id UK "client-generated"
+        bigint workout_id FK
+        int exercise_id FK
+        int set_index
+        int reps
+        numeric weight_kg
+        numeric rpe "nullable"
+        boolean is_warmup
+        timestamptz completed_at
+        int rest_seconds "nullable, actual rest"
+    }
+    body_metrics {
+        date date PK
+        numeric weight_kg
+    }
+```
+
 ## 4. Class diagram — core modules
 
 Generated from the code (public methods; Protocols shown as interfaces).
