@@ -99,6 +99,8 @@ async def energy_days(session: AsyncSession, start: date, end: date) -> list[Day
                 log.carbs_100g,
                 log.fat_100g,
                 log.sugars_100g,
+                log.food_group,
+                log.nova_group,
             )
         )
 

@@ -16,11 +16,15 @@ import httpx
 
 from trainsync.core.logging import get_logger
 from trainsync.core.settings import Settings
+from trainsync.db.models import FoodGroup
+from trainsync.nutrition.sugar import food_group_from_categories
 
 log = get_logger(__name__)
 
 BARCODE = re.compile(r"^\d{8,14}$")
-FIELDS = "code,product_name,product_name_en,generic_name,brands,nutriments,nova_group"
+FIELDS = (
+    "code,product_name,product_name_en,generic_name,brands,nutriments,nova_group,categories_tags"
+)
 KJ_PER_KCAL = Decimal("4.184")
 MAX_NAME = 200
 
@@ -40,6 +44,7 @@ class OffProduct:
     fat_100g: Decimal | None
     sugars_100g: Decimal | None = None
     nova_group: int | None = None  # 1-4 (4 = ultra-processed); None = unknown
+    food_group: FoodGroup | None = None  # from categories_tags; None = no known category
 
 
 class OpenFoodFactsClient:
@@ -123,6 +128,13 @@ def _nova(product: Mapping[str, object]) -> int | None:
     return int(value)
 
 
+def _food_group(product: Mapping[str, object]) -> FoodGroup | None:
+    tags = product.get("categories_tags")
+    if not isinstance(tags, list):
+        return None
+    return food_group_from_categories(t for t in tags if isinstance(t, str))
+
+
 def _kcal(nutriments: Mapping[str, object]) -> Decimal | None:
     kcal = _number(nutriments.get("energy-kcal_100g"))
     if kcal is None:
@@ -164,4 +176,5 @@ def parse_product(product: Mapping[str, object]) -> OffProduct | None:
         fat_100g=_macro(nutriments, "fat_100g"),
         sugars_100g=_macro(nutriments, "sugars_100g"),
         nova_group=_nova(product),
+        food_group=_food_group(product),
     )

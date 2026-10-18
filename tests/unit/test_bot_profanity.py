@@ -263,6 +263,34 @@ async def test_a_plain_log_is_not_roasted_and_a_day_over_the_sugar_limit_is(
     assert "\n" not in await normal.say("/eat baklava 100")  # savage only
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        "/eat apple 600",  # 62 g of fruit sugar
+        "/eat plain yogurt 1200",  # 56 g of milk sugar, NOVA 4 in the data
+    ],
+)
+async def test_fruit_and_plain_dairy_never_trigger_a_sugar_roast(
+    http: httpx.AsyncClient, router: respx.MockRouter, fake: FakeApi, command: str
+) -> None:
+    bot = Bot(http, router)
+    reply = await bot.say(command)
+    assert "\n" not in reply, reply
+    assert "\n" not in await bot.say(command)  # the day's total sugar is past 100 g now
+
+
+async def test_cola_and_baklava_trigger_and_only_free_sugar_counts_toward_the_limit(
+    http: httpx.AsyncClient, router: respx.MockRouter, fake: FakeApi
+) -> None:
+    bot = Bot(http, router)
+    assert "\n" not in await bot.say("/eat apple 600")  # 62 g sugar, none of it free
+    baklava = await bot.say("/eat baklava 100")  # 30 g free sugar: a roast, under the limit
+    assert len(baklava.split("\n")) == 4, baklava
+    assert "50 g" not in baklava
+    cola = await bot.say("/eat cola 330")  # +35 g: 65 g free sugar
+    assert bot.msg.neutral(NeutralKey.FOOD_SUGAR_DAY, sugar="65 g", limit="50 g") in cola
+
+
 async def test_help_lists_swear(http: httpx.AsyncClient, router: respx.MockRouter) -> None:
     help_text = await Bot(http, router).say("/help")
     assert "/swear: max / roast" in help_text

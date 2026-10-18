@@ -127,7 +127,14 @@ def features(
         coach.append(LanguageFeature(chat_settings, msg, voice))
         coach.append(SwearFeature(chat_settings, msg, voice))
     nutrition = NutritionCommands(
-        api, store, clock, zone, msg, voice=voice, sugar_limit_g=settings.sugar_limit_g
+        api,
+        store,
+        clock,
+        zone,
+        msg,
+        voice=voice,
+        sugar_limit_g=settings.sugar_limit_g,
+        high_sugar_per_100g=settings.high_sugar_per_100g,
     )
     return [
         CheckinFlow(api, store, clock, zone, msg, voice),

@@ -93,6 +93,21 @@ def test_intake_sums_known_sugar_only() -> None:
     assert intake([]).sugars_g == D("0.0")
 
 
+def test_intake_counts_free_sugar_only_toward_the_limit() -> None:
+    apple = IntakeEntry(D("600"), D("52"), sugars_100g=D("10.4"), food_group="fruit", nova_group=1)
+    yoghurt = IntakeEntry(
+        D("500"), D("61"), sugars_100g=D("4.7"), food_group="plain_dairy", nova_group=4
+    )
+    cola = IntakeEntry(
+        D("330"), D("42"), sugars_100g=D("10.6"), food_group="sugary_drink", nova_group=4
+    )
+    bar = IntakeEntry(D("50"), D("400"), sugars_100g=D("15"), nova_group=4)
+    total = intake([apple, yoghurt, cola, bar])
+    assert total.sugars_g == D("128.4")
+    assert total.free_sugars_g == D("42.5")  # cola 35.0 + bar 7.5
+    assert intake([apple, yoghurt]).free_sugars_g == D("0.0")
+
+
 def test_balance_leaves_unknown_exercise_out_and_flags_it() -> None:
     run = ActivityEnergy(D("420.5"), KcalSource.CALORIES)
     gym = ActivityEnergy(None, None)

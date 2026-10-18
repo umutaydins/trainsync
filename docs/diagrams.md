@@ -267,6 +267,7 @@ erDiagram
         numeric fat_100g "nullable = unknown"
         numeric sugars_100g "nullable = unknown (ADR 0032)"
         smallint nova_group "1-4, nullable"
+        varchar food_group "free-sugar group, nullable (ADR 0032)"
         text source "manual | openfoodfacts"
         boolean favorite
         timestamptz created_at
@@ -284,6 +285,7 @@ erDiagram
         numeric fat_100g "snapshot, nullable"
         numeric sugars_100g "snapshot, nullable"
         smallint nova_group "snapshot, nullable"
+        varchar food_group "snapshot, nullable"
         timestamptz created_at
     }
     nutrition_profile {

@@ -269,8 +269,10 @@ class Settings(BaseSettings):
     coach_messages_file: str = "config/messages.local.yaml"
     # Savage profanity (ADR 0032): `max` swears in every savage message; `/swear` per chat.
     bot_profanity: BotProfanity = "roast"
-    # A day's sugar (g) above this gets a savage food roast on the next /eat (ADR 0032).
+    # A day's free sugar (g) above this gets a savage food roast on the next /eat (ADR 0032).
     sugar_limit_g: float = Field(default=50.0, gt=0, le=1000)
+    # One item above this sugar per 100 g gets a roast (the UK front-of-pack "high" mark).
+    high_sugar_per_100g: float = Field(default=22.5, gt=0, le=100)
 
     @field_validator("coach_messages_enabled", mode="before")
     @classmethod

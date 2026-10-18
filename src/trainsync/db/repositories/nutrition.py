@@ -101,6 +101,7 @@ class NutritionRepository:
                 "fat_100g": p.fat_100g,
                 "sugars_100g": p.sugars_100g,
                 "nova_group": p.nova_group,
+                "food_group": p.food_group,
                 "source": FoodSource.OPENFOODFACTS.value,
             }
             for p in unique.values()
@@ -115,6 +116,7 @@ class NutritionRepository:
             "fat_100g",
             "sugars_100g",
             "nova_group",
+            "food_group",
         )
         stmt = stmt.on_conflict_do_update(
             index_elements=[Food.barcode],
@@ -150,6 +152,7 @@ class NutritionRepository:
             "fat_100g": food.fat_100g,
             "sugars_100g": food.sugars_100g,
             "nova_group": food.nova_group,
+            "food_group": food.food_group,
         }
         values_stmt = insert(FoodLog).values(client_id=client_id, **fields)
         stmt = values_stmt.on_conflict_do_update(

@@ -112,6 +112,7 @@ services:
       BOT_INTENSITY: ${BOT_INTENSITY:-normal}  # coach (P6.11, ADR 0030)
       BOT_PROFANITY: ${BOT_PROFANITY:-roast}  # /swear default (P6.13, ADR 0032)
       SUGAR_LIMIT_G: ${SUGAR_LIMIT_G:-50}
+      HIGH_SUGAR_PER_100G: ${HIGH_SUGAR_PER_100G:-22.5}
       WORKOUT_REMINDER_TIME: ${WORKOUT_REMINDER_TIME:-18:00}
       QUIET_HOURS: ${QUIET_HOURS:-23:00-07:00}
       # Daily check-in prompt (P6.9, ADR 0020); empty CHECKIN_ENABLED = on with a bot token.
@@ -144,6 +145,7 @@ services:
       BOT_INTENSITY: ${BOT_INTENSITY:-normal}  # coach (P6.11, ADR 0030)
       BOT_PROFANITY: ${BOT_PROFANITY:-roast}  # /swear default (P6.13, ADR 0032)
       SUGAR_LIMIT_G: ${SUGAR_LIMIT_G:-50}
+      HIGH_SUGAR_PER_100G: ${HIGH_SUGAR_PER_100G:-22.5}
       WORKOUT_REMINDER_TIME: ${WORKOUT_REMINDER_TIME:-18:00}
       QUIET_HOURS: ${QUIET_HOURS:-23:00-07:00}
       # The bot's "today" (P6.8) and the check-in conversation (P6.9).

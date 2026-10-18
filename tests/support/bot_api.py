@@ -16,6 +16,8 @@ from typing import Any
 import httpx
 import respx
 
+from trainsync.nutrition.sugar import counts_as_free_sugar
+
 API = "http://trainsync-api"
 
 EXERCISES: list[dict[str, Any]] = [
@@ -131,6 +133,7 @@ FOODS: list[dict[str, Any]] = [
         "fat_100g": 23.0,
         "sugars_100g": 30.0,
         "nova_group": 3,
+        "food_group": "dessert",
         "source": "manual",
         "favorite": False,
     },
@@ -145,6 +148,52 @@ FOODS: list[dict[str, Any]] = [
         "fat_100g": 12.0,
         "sugars_100g": 15.0,
         "nova_group": 4,
+        "source": "manual",
+        "favorite": False,
+    },
+    # Free sugar only (ADR 0032): fruit and plain dairy never count, a sugary drink does.
+    {
+        "id": 14,
+        "name": "Apple",
+        "brand": None,
+        "barcode": None,
+        "kcal_100g": 52.0,
+        "protein_100g": 0.3,
+        "carbs_100g": 14.0,
+        "fat_100g": 0.2,
+        "sugars_100g": 10.4,
+        "nova_group": 1,
+        "food_group": "fruit",
+        "source": "manual",
+        "favorite": False,
+    },
+    {
+        "id": 15,
+        "name": "Plain yogurt",
+        "brand": None,
+        "barcode": None,
+        "kcal_100g": 61.0,
+        "protein_100g": 3.5,
+        "carbs_100g": 4.7,
+        "fat_100g": 3.3,
+        "sugars_100g": 4.7,
+        "nova_group": 4,
+        "food_group": "plain_dairy",
+        "source": "manual",
+        "favorite": False,
+    },
+    {
+        "id": 16,
+        "name": "Cola",
+        "brand": None,
+        "barcode": None,
+        "kcal_100g": 42.0,
+        "protein_100g": 0.0,
+        "carbs_100g": 10.6,
+        "fat_100g": 0.0,
+        "sugars_100g": 10.6,
+        "nova_group": 4,
+        "food_group": "sugary_drink",
         "source": "manual",
         "favorite": False,
     },
@@ -391,6 +440,7 @@ def install(router: respx.MockRouter, clock: Any) -> FakeApi:
             "sugars_g": None if sugar_100g is None else round(sugar_100g * grams / 100, 1),
             "sugars_100g": sugar_100g,
             "nova_group": food.get("nova_group"),
+            "food_group": food.get("food_group"),
             "created_at": "2026-10-18T07:00:00Z",
         }
         return httpx.Response(201 if created else 200, json=api.food_log[cid])
@@ -409,6 +459,11 @@ def install(router: respx.MockRouter, clock: Any) -> FakeApi:
                 "carbs_g": 120.2,
                 "fat_g": 20.0,
                 "sugars_g": sum(e.get("sugars_g") or 0 for e in entries),
+                "free_sugars_g": sum(
+                    e.get("sugars_g") or 0
+                    for e in entries
+                    if counts_as_free_sugar(e.get("food_group"), e.get("nova_group"))
+                ),
                 "entry_count": len(entries),
                 "macros_complete": len(entries) < 2,
                 "kcal_target": target,

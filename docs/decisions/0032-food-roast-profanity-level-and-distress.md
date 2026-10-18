@@ -20,13 +20,19 @@ never be roasted or sworn at.
   drinks, fast food, fried food, alcohol, cigarettes, vaping) or of staying up late
   (`guardrails.food_kind`), and `/eat` logs of an item with more than 22.5 g sugar per 100 g
   (the UK front-of-pack "high" mark) or NOVA group 4, plus a day whose sugar total passes
-  `SUGAR_LIMIT_G` (50 g, the WHO "free sugars" figure at 2,000 kcal). Total sugars over-count
-  fruit and milk sugar; for a roast trigger that is acceptable. The moves never suggest
+  `SUGAR_LIMIT_G` (50 g, the WHO "free sugars" figure at 2,000 kcal). Because WHO's figure is
+  about free sugars, only free sugar counts toward it: items in the sweets, desserts or
+  sugary-drinks groups, or NOVA 4. Fruit, vegetables and plain dairy never count and are never
+  roasted for sugar, whatever their NOVA group (`nutrition.sugar`). The per-item mark is the
+  setting `HIGH_SUGAR_PER_100G`. The moves never suggest
   skipping, compensating or eating below the target, and the blocklist now also catches "eat
   less", "eat below …" and punishment cardio.
 - **Sugar and NOVA are stored.** `foods` and `food_logs` get `sugars_100g` and `nova_group`
-  (migration 0013, nullable: unknown stays unknown); logs snapshot them like the macros (ADR
-  0019), Open Food Facts fills them, the day summary gains `sugars_g` (known values only).
+  (migration 0013, nullable: unknown stays unknown), and `food_group` (migration 0014: sweets,
+  dessert, sugary_drink, fruit, vegetable, plain_dairy, other; from OFF `categories_tags`, the
+  sweet groups matched first so a fruit juice or fruit yoghurt is not taken for fruit or plain
+  dairy). Logs snapshot them like the macros (ADR 0019); the day summary gains `sugars_g` (known
+  values only) and `free_sugars_g` (the part that counts toward the limit).
 - **Profanity is a third axis**, next to tone and intensity: `BOT_PROFANITY=roast|max`,
   default `roast`, and a per-chat override in `chat_settings.profanity` (migration 0012; `lang`
   becomes nullable so either setting can exist alone). `PUT /v1/chats/{id}/settings` takes either

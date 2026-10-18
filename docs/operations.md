@@ -368,10 +368,13 @@ Design: [ADR 0030](decisions/0030-coach-intensity-and-guardrails.md), task
   dizziness, chest pain → no roast, rest / see a doctor; never burn-it-off, punishment cardio,
   skipped meals or eating below the nutrition target. Profanity is not filtered.
 - **Food rule** (savage, ADR 0032): junk, sugar, soft and energy drinks, fast or fried food,
-  alcohol, cigarettes and staying up late in the chat, and `/eat` logs with more than 22.5 g
-  sugar per 100 g or NOVA group 4, or that take the day past `SUGAR_LIMIT_G` (50 g), get a
-  `food_roast` line about the choice, one concrete move (portion, swap, log it now) and the
-  day's kcal target unchanged. Sugar and NOVA come from Open Food Facts (or a manual food).
+  alcohol, cigarettes and staying up late in the chat, and `/eat` logs with more than
+  `HIGH_SUGAR_PER_100G` (22.5 g) sugar per 100 g or NOVA group 4, or that take the day's *free*
+  sugar past `SUGAR_LIMIT_G` (50 g), get a `food_roast` line about the choice, one concrete move
+  (portion, swap, log it now) and the day's kcal target unchanged. Free sugar = sweets, desserts,
+  sugary drinks and NOVA 4 foods; fruit, vegetables and plain dairy never count and are never
+  roasted for sugar. Sugar, NOVA and the food group come from Open Food Facts (`categories_tags`)
+  or a manual food (`food_group`).
 - **Soft mode**: `/yumusak` in the chat → normal intensity for 24 h; `/sert` → back. It is the
   Redis key `coach:soft` (TTL 24 h), shared by bot and worker:
   `docker compose --env-file .env.prod -f compose.prod.yml exec redis redis-cli ttl coach:soft`.

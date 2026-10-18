@@ -2,9 +2,10 @@
 
 Every text here comes from the tone-free layer (`Messages.neutral`); the scale is never commented
 on. The one exception is the savage coach (ADR 0032): an `/eat` log of a high-sugar (more than
-`HIGH_SUGAR_100G` per 100 g) or NOVA 4 food, or one that takes the day's sugar past
+`HIGH_SUGAR_PER_100G`) or NOVA 4 food, or a free-sugar item that takes the day's free sugar past
 `SUGAR_LIMIT_G`, gets a `food_roast` line about the choice, one concrete move and the day's kcal
-target, unchanged. Days are the owner's local days (`CHECKIN_TZ`); the API is asked for that date
+target, unchanged. Fruit, vegetables and plain dairy are never roasted for sugar
+(`nutrition.sugar`). Days are the owner's local days (`CHECKIN_TZ`); the API is asked for that date
 explicitly. `/eat` client ids are `uuid5("tg:{chat}:{update}:eat")`.
 """
 
@@ -36,11 +37,9 @@ from trainsync.coach.voice import CoachVoice
 from trainsync.core.clock import Clock
 from trainsync.core.localtime import local_now, local_today
 from trainsync.db.models import Meal
+from trainsync.nutrition.sugar import ULTRA_PROCESSED, counts_as_free_sugar, is_intrinsic
 
 NUTRITION_COMMANDS = frozenset({"eat", "kcal", "weight"})
-# "High" sugar on a UK front-of-pack label: more than 22.5 g per 100 g (ADR 0032).
-HIGH_SUGAR_100G = 22.5
-ULTRA_PROCESSED = 4  # NOVA group
 MAX_CHOICES = 8
 _MEAL_LABELS = {
     Meal.BREAKFAST: NeutralKey.MEAL_BREAKFAST,
@@ -86,6 +85,7 @@ class NutritionCommands:
         *,
         voice: CoachVoice | None = None,
         sugar_limit_g: float = 50.0,
+        high_sugar_per_100g: float = 22.5,
     ) -> None:
         self._api = api
         self._store = store
@@ -94,6 +94,7 @@ class NutritionCommands:
         self._msg = msg
         self._voice = voice
         self._sugar_limit_g = sugar_limit_g
+        self._high_sugar_per_100g = high_sugar_per_100g
 
     async def command(self, incoming: Incoming, command: str, args: list[str]) -> Reply:
         if command == "eat":
@@ -167,15 +168,20 @@ class NutritionCommands:
         return "\n".join([saved, *await self._roast(entry)])
 
     async def _roast(self, entry: LogOut) -> list[str]:
-        """Savage only: a high-sugar or ultra-processed item, or a day over the sugar limit."""
+        """Savage only: a high-sugar or ultra-processed item, or a free-sugar item that takes the
+        day over the sugar limit. Fruit, vegetables and plain dairy are never roasted."""
         if self._voice is None or not await self._voice.savage():
             return []
-        high = (entry.sugars_100g or 0) > HIGH_SUGAR_100G or entry.nova_group == ULTRA_PROCESSED
+        if is_intrinsic(entry.food_group):
+            return []
+        high_sugar = (entry.sugars_100g or 0) > self._high_sugar_per_100g
+        high = high_sugar or entry.nova_group == ULTRA_PROCESSED
+        free = counts_as_free_sugar(entry.food_group, entry.nova_group) and bool(entry.sugars_g)
         try:
             day = await self._api.nutrition_summary(entry.date)
         except ReadApiError:
             day = None
-        over = day is not None and day.sugars_g > self._sugar_limit_g and bool(entry.sugars_g)
+        over = day is not None and free and day.free_sugars_g > self._sugar_limit_g
         if not (high or over):
             return []
         neutral = self._msg.neutral
@@ -184,7 +190,7 @@ class NutritionCommands:
             lines.append(
                 neutral(
                     NeutralKey.FOOD_SUGAR_DAY,
-                    sugar=f"{number(day.sugars_g, 0)} g",
+                    sugar=f"{number(day.free_sugars_g, 0)} g",
                     limit=f"{number(self._sugar_limit_g, 0)} g",
                 )
             )

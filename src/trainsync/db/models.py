@@ -149,6 +149,18 @@ class FoodSource(StrEnum):
     OPENFOODFACTS = "openfoodfacts"
 
 
+class FoodGroup(StrEnum):
+    """What decides whether a food's sugar is free sugar (ADR 0032); null = unknown."""
+
+    SWEETS = "sweets"
+    DESSERT = "dessert"
+    SUGARY_DRINK = "sugary_drink"
+    FRUIT = "fruit"
+    VEGETABLE = "vegetable"
+    PLAIN_DAIRY = "plain_dairy"
+    OTHER = "other"
+
+
 class Meal(StrEnum):
     BREAKFAST = "breakfast"
     LUNCH = "lunch"
@@ -489,6 +501,7 @@ class Food(Base):
             " AND (nova_group IS NULL OR nova_group BETWEEN 1 AND 4)",
             name="sugar_nova",
         ),
+        CheckConstraint(_check_in("food_group", FoodGroup), name="food_group"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -502,6 +515,7 @@ class Food(Base):
     # ADR 0032: sugar per 100 g and the Open Food Facts NOVA group (1-4); null = unknown.
     sugars_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
     nova_group: Mapped[int | None] = mapped_column(SmallInteger)
+    food_group: Mapped[str | None] = mapped_column(String(16))
     source: Mapped[str] = mapped_column(String(16), server_default=text("'manual'"))
     favorite: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     created_at: Mapped[datetime] = _utc_timestamp(default_now=True)
@@ -533,6 +547,7 @@ class FoodLog(Base):
     fat_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
     sugars_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
     nova_group: Mapped[int | None] = mapped_column(SmallInteger)
+    food_group: Mapped[str | None] = mapped_column(String(16))
     created_at: Mapped[datetime] = _utc_timestamp(default_now=True)
 
 
