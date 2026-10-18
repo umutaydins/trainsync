@@ -316,7 +316,7 @@ class WorkoutRepository:
         if exclude_workout_id is not None:
             stmt = stmt.where(Workout.id != exclude_workout_id)
         result = await self._session.execute(stmt)
-        return [(workout, workout_set) for workout, workout_set in result.tuples()]
+        return [(workout, workout_set) for workout, workout_set in result]
 
     async def last_performance(
         self, exercise_ids: Sequence[int], exclude_workout_id: int | None = None
@@ -357,7 +357,7 @@ class WorkoutRepository:
             .order_by(WorkoutSet.exercise_id, ranked.c.rank, WorkoutSet.set_index, WorkoutSet.id)
         )
         grouped: dict[int, dict[int, list[WorkoutSet]]] = {}
-        for row, rank in (await self._session.execute(stmt)).tuples():
+        for row, rank in await self._session.execute(stmt):
             grouped.setdefault(row.exercise_id, {}).setdefault(rank, []).append(row)
         return {
             exercise_id: [by_rank[rank] for rank in sorted(by_rank)]

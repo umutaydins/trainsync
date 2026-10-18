@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from trainsync.api.activities import as_utc
-from trainsync.api.deps import ClockDep, SessionmakerDep, require_api_key
+from trainsync.api.deps import ClockDep, SessionmakerDep, SettingsDep, require_api_key
 from trainsync.api.errors import UNAUTHORIZED, error
 from trainsync.api.training.common import (
     EXERCISE_EXAMPLE,
@@ -25,8 +25,9 @@ from trainsync.api.training.common import (
     encode_cursor,
     entry,
 )
+from trainsync.core.settings import Settings
+from trainsync.db.models import LOWER_BODY, Workout, WorkoutSet
 from trainsync.db.models import Progression as ProgressionKind
-from trainsync.db.models import Workout, WorkoutSet
 from trainsync.db.repositories.training import (
     ExerciseRepository,
     ProgramRepository,
@@ -35,6 +36,7 @@ from trainsync.db.repositories.training import (
     WorkoutRepository,
 )
 from trainsync.training.math import detect_prs, volume
+from trainsync.training.progression import Action, Rules, Suggestion, suggest
 
 router = APIRouter(
     prefix="/v1/training", tags=["training"], dependencies=[Depends(require_api_key)]
@@ -56,6 +58,7 @@ PLANNED_EXAMPLE: dict[str, Any] = {
     "start_weight_kg": 60.0,
     "progression": "double",
     "last_performance": LAST_EXAMPLE,
+    "suggestion": {"action": "hold", "weight_kg": 77.5, "previous_weight_kg": 77.5},
 }
 SUMMARY_EXAMPLE: dict[str, Any] = {
     "id": 42,
@@ -90,6 +93,24 @@ class LastPerformance(BaseModel):
     sets: list[PerformedSet]
 
 
+class SuggestionOut(BaseModel):
+    """Next weight by double progression (ADR 0018). `start`: no history yet, `weight_kg` is
+    the planned start weight (may be null); `increase`: every set hit `rep_max` last time;
+    `deload`: two sessions in a row below `rep_min` (-10 %); `hold`: same weight, more reps."""
+
+    action: Action
+    weight_kg: Kg | None
+    previous_weight_kg: Kg | None = Field(description="Working weight of the last session")
+
+    @classmethod
+    def from_suggestion(cls, suggestion: Suggestion) -> "SuggestionOut":
+        return cls(
+            action=suggestion.action,
+            weight_kg=suggestion.weight_kg,
+            previous_weight_kg=suggestion.previous_weight_kg,
+        )
+
+
 class PlannedExercise(BaseModel):
     """A program-day exercise with what was lifted last time."""
 
@@ -103,6 +124,7 @@ class PlannedExercise(BaseModel):
     start_weight_kg: Kg | None
     progression: ProgressionKind
     last_performance: LastPerformance | None
+    suggestion: SuggestionOut
 
 
 class WorkoutSummary(BaseModel):
@@ -212,7 +234,9 @@ def _summary_fields(
     }
 
 
-async def planned_exercises(session: AsyncSession, workout: Workout) -> list[PlannedExercise]:
+async def planned_exercises(
+    session: AsyncSession, workout: Workout, rules: Rules
+) -> list[PlannedExercise]:
     if workout.program_day_id is None:
         return []
     planned = (await ProgramRepository(session).day_exercises([workout.program_day_id])).get(
@@ -220,7 +244,10 @@ async def planned_exercises(session: AsyncSession, workout: Workout) -> list[Pla
     )
     ids = [p.exercise_id for p in planned]
     exercises = await ExerciseRepository(session).by_ids(ids)
-    last = await WorkoutRepository(session).last_performance(ids, exclude_workout_id=workout.id)
+    recent = await WorkoutRepository(session).recent_performances(
+        ids, 2, exclude_workout_id=workout.id
+    )
+    last = {exercise_id: sessions[0] for exercise_id, sessions in recent.items()}
     started = await _started_at(session, {sets[0].workout_id for sets in last.values()})
     return [
         PlannedExercise(
@@ -232,6 +259,18 @@ async def planned_exercises(session: AsyncSession, workout: Workout) -> list[Pla
             start_weight_kg=p.start_weight_kg,
             progression=ProgressionKind(p.progression),
             last_performance=_last(last.get(p.exercise_id), started),
+            suggestion=SuggestionOut.from_suggestion(
+                suggest(
+                    [[entry(s) for s in sets] for sets in recent.get(p.exercise_id, [])],
+                    p.rep_min,
+                    p.rep_max,
+                    planned_sets=p.sets,
+                    lower_body=exercises[p.exercise_id].primary_muscle in LOWER_BODY,
+                    start_weight_kg=p.start_weight_kg,
+                    auto=p.progression == ProgressionKind.DOUBLE,
+                    rules=rules,
+                )
+            ),
         )
         for p in planned
     ]
@@ -253,7 +292,14 @@ def _last(sets: list[WorkoutSet] | None, started: dict[int, datetime]) -> LastPe
     )
 
 
-async def workout_detail(session: AsyncSession, workout: Workout) -> WorkoutDetail:
+def progression_rules(settings: Settings) -> Rules:
+    return Rules(
+        increment_kg=settings.progression_increment_kg,
+        lower_body_increment_kg=settings.progression_lower_body_increment_kg,
+    )
+
+
+async def workout_detail(session: AsyncSession, workout: Workout, rules: Rules) -> WorkoutDetail:
     repo = WorkoutRepository(session)
     sets = await repo.sets([workout.id])
     exercise_ids = sorted({s.exercise_id for s in sets})
@@ -268,7 +314,7 @@ async def workout_detail(session: AsyncSession, workout: Workout) -> WorkoutDeta
     names = {i: e.name for i, e in (await ExerciseRepository(session).by_ids(exercise_ids)).items()}
     return WorkoutDetail(
         **_summary_fields(workout, await _day_name(session, workout), sets),
-        planned=await planned_exercises(session, workout),
+        planned=await planned_exercises(session, workout, rules),
         sets=[SetOut.from_row(s) for s in sets],
         records=[RecordOut.from_record(r, names) for r in records],
     )
@@ -295,6 +341,7 @@ async def _day_name(session: AsyncSession, workout: Workout) -> str | None:
 )
 async def start_workout(
     sessionmaker: SessionmakerDep,
+    settings: SettingsDep,
     clock: ClockDep,
     body: Annotated[
         WorkoutStart | None,
@@ -316,7 +363,7 @@ async def start_workout(
         workout = await WorkoutRepository(session).start(
             as_utc(body.started_at) or clock(), body.program_day_id, body.notes
         )
-        return await workout_detail(session, workout)
+        return await workout_detail(session, workout, progression_rules(settings))
 
 
 @router.get(
@@ -357,10 +404,13 @@ async def list_workouts(
     responses={**UNAUTHORIZED, 404: NOT_FOUND},
 )
 async def get_workout(
-    sessionmaker: SessionmakerDep, workout_id: Annotated[int, Path(examples=[42])]
+    sessionmaker: SessionmakerDep,
+    settings: SettingsDep,
+    workout_id: Annotated[int, Path(examples=[42])],
 ) -> WorkoutDetail:
     async with sessionmaker() as session:
-        return await workout_detail(session, await get_or_404(session, workout_id))
+        workout = await get_or_404(session, workout_id)
+        return await workout_detail(session, workout, progression_rules(settings))
 
 
 @router.post(
@@ -379,6 +429,7 @@ async def get_workout(
 )
 async def finish_workout(
     sessionmaker: SessionmakerDep,
+    settings: SettingsDep,
     clock: ClockDep,
     workout_id: Annotated[int, Path(examples=[42])],
     body: Annotated[
@@ -399,7 +450,7 @@ async def finish_workout(
         if body.notes is not None:
             workout.notes = body.notes
         await session.flush()
-        return await workout_detail(session, workout)
+        return await workout_detail(session, workout, progression_rules(settings))
 
 
 @router.delete(

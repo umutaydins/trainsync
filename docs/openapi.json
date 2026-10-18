@@ -24,6 +24,16 @@
         "title": "Ack",
         "type": "object"
       },
+      "Action": {
+        "enum": [
+          "start",
+          "increase",
+          "hold",
+          "deload"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
       "ActivityDetail": {
         "examples": [
           {
@@ -862,6 +872,70 @@
         "title": "ExerciseUpdate",
         "type": "object"
       },
+      "GenerateIn": {
+        "examples": [
+          {
+            "days_per_week": 4,
+            "equipment": [
+              "barbell",
+              "dumbbell"
+            ],
+            "goal": "hypertrophy",
+            "session_minutes": 60
+          }
+        ],
+        "properties": {
+          "days_per_week": {
+            "description": "2 or 3 full body, 4 upper/lower, 3 or 6 PPL",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Days Per Week",
+            "type": "integer"
+          },
+          "equipment": {
+            "description": "Available equipment; bodyweight is always included",
+            "items": {
+              "$ref": "#/components/schemas/Equipment"
+            },
+            "title": "Equipment",
+            "type": "array"
+          },
+          "goal": {
+            "$ref": "#/components/schemas/ProgramGoal"
+          },
+          "session_minutes": {
+            "default": 60,
+            "maximum": 180.0,
+            "minimum": 20.0,
+            "title": "Session Minutes",
+            "type": "integer"
+          },
+          "template": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Template"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Default: by days per week"
+          },
+          "weeks": {
+            "default": 8,
+            "maximum": 52.0,
+            "minimum": 1.0,
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "days_per_week",
+          "goal"
+        ],
+        "title": "GenerateIn",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "examples": [
           {
@@ -1055,7 +1129,12 @@
             "rep_min": 8,
             "rest_seconds": 90,
             "sets": 3,
-            "start_weight_kg": 60.0
+            "start_weight_kg": 60.0,
+            "suggestion": {
+              "action": "hold",
+              "previous_weight_kg": 77.5,
+              "weight_kg": 77.5
+            }
           }
         ],
         "properties": {
@@ -1101,6 +1180,9 @@
               }
             ],
             "title": "Start Weight Kg"
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/SuggestionOut"
           }
         },
         "required": [
@@ -1111,12 +1193,13 @@
           "rest_seconds",
           "start_weight_kg",
           "progression",
-          "last_performance"
+          "last_performance",
+          "suggestion"
         ],
         "title": "PlannedExercise",
         "type": "object"
       },
-      "PlannedExerciseIn": {
+      "PlannedExerciseIn-Input": {
         "examples": [
           {
             "exercise_id": 20,
@@ -1176,6 +1259,74 @@
                   }
                 ],
                 "description": "kg, 0-500 in 0.25 steps"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Weight Kg"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "sets",
+          "rep_min",
+          "rep_max",
+          "rest_seconds"
+        ],
+        "title": "PlannedExerciseIn",
+        "type": "object"
+      },
+      "PlannedExerciseIn-Output": {
+        "examples": [
+          {
+            "exercise_id": 20,
+            "progression": "double",
+            "rep_max": 12,
+            "rep_min": 8,
+            "rest_seconds": 90,
+            "sets": 3,
+            "start_weight_kg": 60.0
+          }
+        ],
+        "properties": {
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "progression": {
+            "$ref": "#/components/schemas/Progression",
+            "default": "double"
+          },
+          "rep_max": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Rep Max",
+            "type": "integer"
+          },
+          "rep_min": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Rep Min",
+            "type": "integer"
+          },
+          "rest_seconds": {
+            "maximum": 900.0,
+            "minimum": 0.0,
+            "title": "Rest Seconds",
+            "type": "integer"
+          },
+          "sets": {
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Sets",
+            "type": "integer"
+          },
+          "start_weight_kg": {
+            "anyOf": [
+              {
+                "description": "kg, 0-500 in 0.25 steps",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -1277,6 +1428,63 @@
         "title": "PlannedExerciseOut",
         "type": "object"
       },
+      "PlatesOut": {
+        "examples": [
+          {
+            "achieved_kg": 100.0,
+            "bar_kg": 20.0,
+            "difference_kg": 1.0,
+            "exact": false,
+            "per_side": [
+              25.0,
+              15.0
+            ],
+            "target_kg": 101.0
+          }
+        ],
+        "properties": {
+          "achieved_kg": {
+            "description": "Target, or the nearest lower weight the plates allow",
+            "title": "Achieved Kg",
+            "type": "number"
+          },
+          "bar_kg": {
+            "title": "Bar Kg",
+            "type": "number"
+          },
+          "difference_kg": {
+            "description": "target - achieved; negative when the bar is heavier",
+            "title": "Difference Kg",
+            "type": "number"
+          },
+          "exact": {
+            "title": "Exact",
+            "type": "boolean"
+          },
+          "per_side": {
+            "description": "Plates for each side, heaviest first",
+            "items": {
+              "type": "number"
+            },
+            "title": "Per Side",
+            "type": "array"
+          },
+          "target_kg": {
+            "title": "Target Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "target_kg",
+          "bar_kg",
+          "per_side",
+          "achieved_kg",
+          "difference_kg",
+          "exact"
+        ],
+        "title": "PlatesOut",
+        "type": "object"
+      },
       "PrKind": {
         "enum": [
           "weight_for_reps",
@@ -1286,11 +1494,89 @@
         "title": "PrKind",
         "type": "string"
       },
-      "ProgramDayIn": {
+      "PreviewDay": {
+        "properties": {
+          "estimated_minutes": {
+            "description": "Sets, rest and set-up time",
+            "title": "Estimated Minutes",
+            "type": "number"
+          },
+          "exercises": {
+            "items": {
+              "$ref": "#/components/schemas/PreviewExercise"
+            },
+            "title": "Exercises",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "estimated_minutes",
+          "exercises"
+        ],
+        "title": "PreviewDay",
+        "type": "object"
+      },
+      "PreviewExercise": {
+        "properties": {
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "slug",
+          "name",
+          "role"
+        ],
+        "title": "PreviewExercise",
+        "type": "object"
+      },
+      "ProgramDayIn-Input": {
         "properties": {
           "exercises": {
             "items": {
-              "$ref": "#/components/schemas/PlannedExerciseIn"
+              "$ref": "#/components/schemas/PlannedExerciseIn-Input"
+            },
+            "maxItems": 20,
+            "title": "Exercises",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "exercises"
+        ],
+        "title": "ProgramDayIn",
+        "type": "object"
+      },
+      "ProgramDayIn-Output": {
+        "properties": {
+          "exercises": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedExerciseIn-Output"
             },
             "maxItems": 20,
             "title": "Exercises",
@@ -1350,7 +1636,7 @@
         "title": "ProgramGoal",
         "type": "string"
       },
-      "ProgramIn": {
+      "ProgramIn-Input": {
         "description": "`days_per_week` is the number of days.",
         "examples": [
           {
@@ -1392,7 +1678,81 @@
         "properties": {
           "days": {
             "items": {
-              "$ref": "#/components/schemas/ProgramDayIn"
+              "$ref": "#/components/schemas/ProgramDayIn-Input"
+            },
+            "maxItems": 7,
+            "minItems": 1,
+            "title": "Days",
+            "type": "array"
+          },
+          "goal": {
+            "$ref": "#/components/schemas/ProgramGoal"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "weeks": {
+            "default": 8,
+            "maximum": 52.0,
+            "minimum": 1.0,
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "goal",
+          "days"
+        ],
+        "title": "ProgramIn",
+        "type": "object"
+      },
+      "ProgramIn-Output": {
+        "description": "`days_per_week` is the number of days.",
+        "examples": [
+          {
+            "days": [
+              {
+                "exercises": [
+                  {
+                    "exercise_id": 20,
+                    "progression": "double",
+                    "rep_max": 12,
+                    "rep_min": 8,
+                    "rest_seconds": 90,
+                    "sets": 3,
+                    "start_weight_kg": 60.0
+                  }
+                ],
+                "name": "Upper A"
+              },
+              {
+                "exercises": [
+                  {
+                    "exercise_id": 1,
+                    "progression": "double",
+                    "rep_max": 12,
+                    "rep_min": 8,
+                    "rest_seconds": 90,
+                    "sets": 3,
+                    "start_weight_kg": 60.0
+                  }
+                ],
+                "name": "Lower A"
+              }
+            ],
+            "goal": "hypertrophy",
+            "name": "Upper/Lower",
+            "weeks": 8
+          }
+        ],
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramDayIn-Output"
             },
             "maxItems": 7,
             "minItems": 1,
@@ -1547,6 +1907,85 @@
           "days"
         ],
         "title": "ProgramOut",
+        "type": "object"
+      },
+      "ProgramPreview": {
+        "description": "Not saved: send `program` to `POST /v1/training/programs` to keep it.",
+        "examples": [
+          {
+            "days": [
+              {
+                "estimated_minutes": 52.5,
+                "exercises": [
+                  {
+                    "exercise_id": 20,
+                    "name": "Bench Press",
+                    "role": "compound",
+                    "slug": "bench-press"
+                  }
+                ],
+                "name": "Upper A"
+              }
+            ],
+            "program": {
+              "days": [
+                {
+                  "exercises": [
+                    {
+                      "exercise_id": 20,
+                      "progression": "double",
+                      "rep_max": 12,
+                      "rep_min": 8,
+                      "rest_seconds": 90,
+                      "sets": 3,
+                      "start_weight_kg": 60.0
+                    }
+                  ],
+                  "name": "Upper A"
+                },
+                {
+                  "exercises": [
+                    {
+                      "exercise_id": 1,
+                      "progression": "double",
+                      "rep_max": 12,
+                      "rep_min": 8,
+                      "rest_seconds": 90,
+                      "sets": 3,
+                      "start_weight_kg": 60.0
+                    }
+                  ],
+                  "name": "Lower A"
+                }
+              ],
+              "goal": "hypertrophy",
+              "name": "Upper/Lower",
+              "weeks": 8
+            },
+            "template": "upper_lower"
+          }
+        ],
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/PreviewDay"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "program": {
+            "$ref": "#/components/schemas/ProgramIn-Output"
+          },
+          "template": {
+            "$ref": "#/components/schemas/Template"
+          }
+        },
+        "required": [
+          "template",
+          "days",
+          "program"
+        ],
+        "title": "ProgramPreview",
         "type": "object"
       },
       "ProgramSummary": {
@@ -1743,6 +2182,14 @@
         ],
         "title": "RecordOut",
         "type": "object"
+      },
+      "Role": {
+        "enum": [
+          "compound",
+          "accessory"
+        ],
+        "title": "Role",
+        "type": "string"
       },
       "RunOut": {
         "properties": {
@@ -2206,6 +2653,44 @@
         "title": "StatsSummary",
         "type": "object"
       },
+      "SuggestionOut": {
+        "description": "Next weight by double progression (ADR 0018). `start`: no history yet, `weight_kg` is\nthe planned start weight (may be null); `increase`: every set hit `rep_max` last time;\n`deload`: two sessions in a row below `rep_min` (-10 %); `hold`: same weight, more reps.",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/Action"
+          },
+          "previous_weight_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Working weight of the last session",
+            "title": "Previous Weight Kg"
+          },
+          "weight_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Kg"
+          }
+        },
+        "required": [
+          "action",
+          "weight_kg",
+          "previous_weight_kg"
+        ],
+        "title": "SuggestionOut",
+        "type": "object"
+      },
       "SyncStatusOut": {
         "examples": [
           {
@@ -2298,6 +2783,15 @@
         ],
         "title": "SyncStatusOut",
         "type": "object"
+      },
+      "Template": {
+        "enum": [
+          "full_body",
+          "upper_lower",
+          "push_pull_legs"
+        ],
+        "title": "Template",
+        "type": "string"
       },
       "TotalsOut": {
         "properties": {
@@ -2615,7 +3109,12 @@
                 "rep_min": 8,
                 "rest_seconds": 90,
                 "sets": 3,
-                "start_weight_kg": 60.0
+                "start_weight_kg": 60.0,
+                "suggestion": {
+                  "action": "hold",
+                  "previous_weight_kg": 77.5,
+                  "weight_kg": 77.5
+                }
               }
             ],
             "program_day_id": 11,
@@ -4373,6 +4872,78 @@
         ]
       }
     },
+    "/v1/training/plates": {
+      "get": {
+        "description": "Plates to load on each side for `target` kg, from `GYM_BAR_KG` and the `GYM_PLATES` inventory. If the target cannot be made, the nearest lower weight and the difference.",
+        "operationId": "plates_v1_training_plates_get",
+        "parameters": [
+          {
+            "description": "kg",
+            "in": "query",
+            "name": "target",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1000.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "description": "kg",
+              "examples": [
+                "102.5"
+              ],
+              "title": "Target"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Plates per side",
+        "tags": [
+          "training"
+        ]
+      }
+    },
     "/v1/training/programs": {
       "get": {
         "description": "Every program, newest first, without days.",
@@ -4416,7 +4987,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProgramIn"
+                "$ref": "#/components/schemas/ProgramIn-Input"
               }
             }
           },
@@ -4517,6 +5088,73 @@
           }
         ],
         "summary": "Get the active program",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/v1/training/programs/generate": {
+      "post": {
+        "description": "Deterministic, rule-based program from the exercise library: template by days per week (2-3 full body, 4 upper/lower, 3 or 6 push/pull/legs), exercises by movement pattern and equipment, sets/reps/rest by goal, trimmed to `session_minutes`. Nothing is saved: `program` is a ready body for `POST /v1/training/programs`.",
+        "operationId": "generate_program_v1_training_programs_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramPreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "upper_lower takes 4 days a week"
+                }
+              }
+            },
+            "description": "Unsupported days for the template"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Generate a program (preview)",
         "tags": [
           "training"
         ]
@@ -4675,7 +5313,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProgramIn"
+                "$ref": "#/components/schemas/ProgramIn-Input"
               }
             }
           },

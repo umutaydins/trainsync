@@ -1,10 +1,13 @@
 """Typed application settings, loaded from environment variables (and `.env`)."""
 
+from decimal import Decimal
 from functools import lru_cache
 from typing import Annotated, Literal
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+from trainsync.training.plates import DEFAULT_INVENTORY, parse_inventory
 
 # Wording of every bot reply, notification and assistant prompt (ADR 0016).
 BotTone = Literal["neutral", "hardcore"]
@@ -119,6 +122,21 @@ class Settings(BaseSettings):
         if self.telegram_notify_chat_id is not None:
             return self.telegram_notify_chat_id
         return self.telegram_allowed_chat_ids[0] if self.telegram_allowed_chat_ids else None
+
+    # ---------------------------------------------------------------- training (P6.3)
+    # Plate calculator: bar weight and plates as `<kg>x<pairs>` (pairs = one plate per side).
+    gym_bar_kg: Decimal = Field(default=Decimal(20), gt=0, le=100)
+    gym_plates: Annotated[dict[Decimal, int], NoDecode] = Field(
+        default_factory=lambda: dict(DEFAULT_INVENTORY)
+    )
+    # Double progression step when every set hit the top of the rep range (ADR 0018).
+    progression_increment_kg: Decimal = Field(default=Decimal("2.5"), gt=0, le=20)
+    progression_lower_body_increment_kg: Decimal = Field(default=Decimal(5), gt=0, le=20)
+
+    @field_validator("gym_plates", mode="before")
+    @classmethod
+    def _parse_plates(cls, value: object) -> object:
+        return parse_inventory(value) if isinstance(value, str) else value
 
 
 @lru_cache

@@ -167,6 +167,12 @@ RPE 1–10 in 0.5 steps) and JSON numbers in responses.
   `GET /volume/weekly` (working sets and kg per ISO week and primary muscle), `GET /prs` (standing
   records, found by replaying workouts oldest first through `detect_prs`).
 - Body metrics: `PUT /body-metrics/{date}`, `GET /body-metrics?from=&to=`.
+- Planning (ADR 0018, all pure functions in `training/`): `POST /programs/generate` returns a
+  deterministic rule-based preview (`generator.py`), and its `program` field is the body to `POST
+  /programs` to save it. Each `planned` exercise of a workout has a `suggestion` from double
+  progression (`progression.py`: `start` / `increase` / `hold` / `deload`, with `weight_kg`).
+  `GET /plates?target=` gives the plates per side (`plates.py`), using `GYM_BAR_KG` and
+  `GYM_PLATES`.
 
 ### 8. Operations
 - `GET /health/live` (process up), `GET /health/ready` (DB + Redis reachable).

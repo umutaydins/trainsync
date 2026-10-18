@@ -282,6 +282,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/training/plates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plates per side
+         * @description Plates to load on each side for `target` kg, from `GYM_BAR_KG` and the `GYM_PLATES` inventory. If the target cannot be made, the nearest lower weight and the difference.
+         */
+        get: operations["plates_v1_training_plates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/training/programs": {
         parameters: {
             query?: never;
@@ -320,6 +340,26 @@ export interface paths {
         get: operations["get_active_program_v1_training_programs_active_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/programs/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate a program (preview)
+         * @description Deterministic, rule-based program from the exercise library: template by days per week (2-3 full body, 4 upper/lower, 3 or 6 push/pull/legs), exercises by movement pattern and equipment, sets/reps/rest by goal, trimmed to `session_minutes`. Nothing is saved: `program` is a ready body for `POST /v1/training/programs`.
+         */
+        post: operations["generate_program_v1_training_programs_generate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -547,6 +587,11 @@ export interface components {
              */
             status: "queued" | "duplicate" | "ignored";
         };
+        /**
+         * Action
+         * @enum {string}
+         */
+        Action: "start" | "increase" | "hold" | "deload";
         /**
          * ActivityDetail
          * @example {
@@ -952,6 +997,43 @@ export interface components {
             secondary_muscles?: components["schemas"]["Muscle"][] | null;
         };
         /**
+         * GenerateIn
+         * @example {
+         *       "days_per_week": 4,
+         *       "equipment": [
+         *         "barbell",
+         *         "dumbbell"
+         *       ],
+         *       "goal": "hypertrophy",
+         *       "session_minutes": 60
+         *     }
+         */
+        GenerateIn: {
+            /**
+             * Days Per Week
+             * @description 2 or 3 full body, 4 upper/lower, 3 or 6 PPL
+             */
+            days_per_week: number;
+            /**
+             * Equipment
+             * @description Available equipment; bodyweight is always included
+             */
+            equipment?: components["schemas"]["Equipment"][];
+            goal: components["schemas"]["ProgramGoal"];
+            /**
+             * Session Minutes
+             * @default 60
+             */
+            session_minutes: number;
+            /** @description Default: by days per week */
+            template?: components["schemas"]["Template"] | null;
+            /**
+             * Weeks
+             * @default 8
+             */
+            weeks: number;
+        };
+        /**
          * HTTPValidationError
          * @example {
          *       "detail": [
@@ -1061,7 +1143,12 @@ export interface components {
          *       "rep_min": 8,
          *       "rest_seconds": 90,
          *       "sets": 3,
-         *       "start_weight_kg": 60
+         *       "start_weight_kg": 60,
+         *       "suggestion": {
+         *         "action": "hold",
+         *         "previous_weight_kg": 77.5,
+         *         "weight_kg": 77.5
+         *       }
          *     }
          */
         PlannedExercise: {
@@ -1078,6 +1165,7 @@ export interface components {
             sets: number;
             /** Start Weight Kg */
             start_weight_kg: number | null;
+            suggestion: components["schemas"]["SuggestionOut"];
         };
         /**
          * PlannedExerciseIn
@@ -1091,7 +1179,7 @@ export interface components {
          *       "start_weight_kg": 60
          *     }
          */
-        PlannedExerciseIn: {
+        "PlannedExerciseIn-Input": {
             /** Exercise Id */
             exercise_id: number;
             /** @default double */
@@ -1106,6 +1194,34 @@ export interface components {
             sets: number;
             /** Start Weight Kg */
             start_weight_kg?: (number | string) | null;
+        };
+        /**
+         * PlannedExerciseIn
+         * @example {
+         *       "exercise_id": 20,
+         *       "progression": "double",
+         *       "rep_max": 12,
+         *       "rep_min": 8,
+         *       "rest_seconds": 90,
+         *       "sets": 3,
+         *       "start_weight_kg": 60
+         *     }
+         */
+        "PlannedExerciseIn-Output": {
+            /** Exercise Id */
+            exercise_id: number;
+            /** @default double */
+            progression: components["schemas"]["Progression"];
+            /** Rep Max */
+            rep_max: number;
+            /** Rep Min */
+            rep_min: number;
+            /** Rest Seconds */
+            rest_seconds: number;
+            /** Sets */
+            sets: number;
+            /** Start Weight Kg */
+            start_weight_kg?: string | null;
         };
         /**
          * PlannedExerciseOut
@@ -1152,14 +1268,80 @@ export interface components {
             start_weight_kg: number | null;
         };
         /**
+         * PlatesOut
+         * @example {
+         *       "achieved_kg": 100,
+         *       "bar_kg": 20,
+         *       "difference_kg": 1,
+         *       "exact": false,
+         *       "per_side": [
+         *         25,
+         *         15
+         *       ],
+         *       "target_kg": 101
+         *     }
+         */
+        PlatesOut: {
+            /**
+             * Achieved Kg
+             * @description Target, or the nearest lower weight the plates allow
+             */
+            achieved_kg: number;
+            /** Bar Kg */
+            bar_kg: number;
+            /**
+             * Difference Kg
+             * @description target - achieved; negative when the bar is heavier
+             */
+            difference_kg: number;
+            /** Exact */
+            exact: boolean;
+            /**
+             * Per Side
+             * @description Plates for each side, heaviest first
+             */
+            per_side: number[];
+            /** Target Kg */
+            target_kg: number;
+        };
+        /**
          * PrKind
          * @enum {string}
          */
         PrKind: "weight_for_reps" | "e1rm" | "session_volume";
-        /** ProgramDayIn */
-        ProgramDayIn: {
+        /** PreviewDay */
+        PreviewDay: {
+            /**
+             * Estimated Minutes
+             * @description Sets, rest and set-up time
+             */
+            estimated_minutes: number;
             /** Exercises */
-            exercises: components["schemas"]["PlannedExerciseIn"][];
+            exercises: components["schemas"]["PreviewExercise"][];
+            /** Name */
+            name: string;
+        };
+        /** PreviewExercise */
+        PreviewExercise: {
+            /** Exercise Id */
+            exercise_id: number;
+            /** Name */
+            name: string;
+            role: components["schemas"]["Role"];
+            /** Slug */
+            slug: string;
+        };
+        /** ProgramDayIn */
+        "ProgramDayIn-Input": {
+            /** Exercises */
+            exercises: components["schemas"]["PlannedExerciseIn-Input"][];
+            /** Name */
+            name: string;
+        };
+        /** ProgramDayIn */
+        "ProgramDayIn-Output": {
+            /** Exercises */
+            exercises: components["schemas"]["PlannedExerciseIn-Output"][];
             /** Name */
             name: string;
         };
@@ -1218,9 +1400,60 @@ export interface components {
          *       "weeks": 8
          *     }
          */
-        ProgramIn: {
+        "ProgramIn-Input": {
             /** Days */
-            days: components["schemas"]["ProgramDayIn"][];
+            days: components["schemas"]["ProgramDayIn-Input"][];
+            goal: components["schemas"]["ProgramGoal"];
+            /** Name */
+            name: string;
+            /**
+             * Weeks
+             * @default 8
+             */
+            weeks: number;
+        };
+        /**
+         * ProgramIn
+         * @description `days_per_week` is the number of days.
+         * @example {
+         *       "days": [
+         *         {
+         *           "exercises": [
+         *             {
+         *               "exercise_id": 20,
+         *               "progression": "double",
+         *               "rep_max": 12,
+         *               "rep_min": 8,
+         *               "rest_seconds": 90,
+         *               "sets": 3,
+         *               "start_weight_kg": 60
+         *             }
+         *           ],
+         *           "name": "Upper A"
+         *         },
+         *         {
+         *           "exercises": [
+         *             {
+         *               "exercise_id": 1,
+         *               "progression": "double",
+         *               "rep_max": 12,
+         *               "rep_min": 8,
+         *               "rest_seconds": 90,
+         *               "sets": 3,
+         *               "start_weight_kg": 60
+         *             }
+         *           ],
+         *           "name": "Lower A"
+         *         }
+         *       ],
+         *       "goal": "hypertrophy",
+         *       "name": "Upper/Lower",
+         *       "weeks": 8
+         *     }
+         */
+        "ProgramIn-Output": {
+            /** Days */
+            days: components["schemas"]["ProgramDayIn-Output"][];
             goal: components["schemas"]["ProgramGoal"];
             /** Name */
             name: string;
@@ -1313,6 +1546,68 @@ export interface components {
             name: string;
             /** Weeks */
             weeks: number;
+        };
+        /**
+         * ProgramPreview
+         * @description Not saved: send `program` to `POST /v1/training/programs` to keep it.
+         * @example {
+         *       "days": [
+         *         {
+         *           "estimated_minutes": 52.5,
+         *           "exercises": [
+         *             {
+         *               "exercise_id": 20,
+         *               "name": "Bench Press",
+         *               "role": "compound",
+         *               "slug": "bench-press"
+         *             }
+         *           ],
+         *           "name": "Upper A"
+         *         }
+         *       ],
+         *       "program": {
+         *         "days": [
+         *           {
+         *             "exercises": [
+         *               {
+         *                 "exercise_id": 20,
+         *                 "progression": "double",
+         *                 "rep_max": 12,
+         *                 "rep_min": 8,
+         *                 "rest_seconds": 90,
+         *                 "sets": 3,
+         *                 "start_weight_kg": 60
+         *               }
+         *             ],
+         *             "name": "Upper A"
+         *           },
+         *           {
+         *             "exercises": [
+         *               {
+         *                 "exercise_id": 1,
+         *                 "progression": "double",
+         *                 "rep_max": 12,
+         *                 "rep_min": 8,
+         *                 "rest_seconds": 90,
+         *                 "sets": 3,
+         *                 "start_weight_kg": 60
+         *               }
+         *             ],
+         *             "name": "Lower A"
+         *           }
+         *         ],
+         *         "goal": "hypertrophy",
+         *         "name": "Upper/Lower",
+         *         "weeks": 8
+         *       },
+         *       "template": "upper_lower"
+         *     }
+         */
+        ProgramPreview: {
+            /** Days */
+            days: components["schemas"]["PreviewDay"][];
+            program: components["schemas"]["ProgramIn-Output"];
+            template: components["schemas"]["Template"];
         };
         /**
          * ProgramSummary
@@ -1416,6 +1711,11 @@ export interface components {
             /** Value */
             value: number;
         };
+        /**
+         * Role
+         * @enum {string}
+         */
+        Role: "compound" | "accessory";
         /** RunOut */
         RunOut: {
             /** Error */
@@ -1637,6 +1937,22 @@ export interface components {
             totals: components["schemas"]["TotalsOut"];
         };
         /**
+         * SuggestionOut
+         * @description Next weight by double progression (ADR 0018). `start`: no history yet, `weight_kg` is
+         *     the planned start weight (may be null); `increase`: every set hit `rep_max` last time;
+         *     `deload`: two sessions in a row below `rep_min` (-10 %); `hold`: same weight, more reps.
+         */
+        SuggestionOut: {
+            action: components["schemas"]["Action"];
+            /**
+             * Previous Weight Kg
+             * @description Working weight of the last session
+             */
+            previous_weight_kg: number | null;
+            /** Weight Kg */
+            weight_kg: number | null;
+        };
+        /**
          * SyncStatusOut
          * @example {
          *       "athletes": [
@@ -1691,6 +2007,11 @@ export interface components {
             rate_limit: components["schemas"]["RateLimitOut"] | null;
             webhooks: components["schemas"]["WebhookStatusOut"];
         };
+        /**
+         * Template
+         * @enum {string}
+         */
+        Template: "full_body" | "upper_lower" | "push_pull_legs";
         /** TotalsOut */
         TotalsOut: {
             /** Count */
@@ -1867,7 +2188,12 @@ export interface components {
          *           "rep_min": 8,
          *           "rest_seconds": 90,
          *           "sets": 3,
-         *           "start_weight_kg": 60
+         *           "start_weight_kg": 60,
+         *           "suggestion": {
+         *             "action": "hold",
+         *             "previous_weight_kg": 77.5,
+         *             "weight_kg": 77.5
+         *           }
          *         }
          *       ],
          *       "program_day_id": 11,
@@ -2902,6 +3228,52 @@ export interface operations {
             };
         };
     };
+    plates_v1_training_plates_get: {
+        parameters: {
+            query: {
+                /** @description kg */
+                target: number | string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatesOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_programs_v1_training_programs_get: {
         parameters: {
             query?: never;
@@ -2945,7 +3317,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProgramIn"];
+                "application/json": components["schemas"]["ProgramIn-Input"];
             };
         };
         responses: {
@@ -3045,6 +3417,67 @@ export interface operations {
             };
         };
     };
+    generate_program_v1_training_programs_generate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramPreview"];
+                };
+            };
+            /** @description Unsupported days for the template */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "upper_lower takes 4 days a week"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_program_v1_training_programs__program_id__get: {
         parameters: {
             query?: never;
@@ -3115,7 +3548,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProgramIn"];
+                "application/json": components["schemas"]["ProgramIn-Input"];
             };
         };
         responses: {

@@ -74,6 +74,11 @@ services:
       <<: *trainsync-env
       # Where the OAuth callback may send the browser back to (the web dashboard's sync page).
       OAUTH_RETURN_TO_ALLOWLIST: http://localhost:3000/sync
+      # Plate calculator and double progression (P6.3, ADR 0018).
+      GYM_BAR_KG: ${GYM_BAR_KG:-20}
+      GYM_PLATES: ${GYM_PLATES:-25x2,20x2,15x2,10x2,5x2,2.5x2,1.25x2}
+      PROGRESSION_INCREMENT_KG: ${PROGRESSION_INCREMENT_KG:-2.5}
+      PROGRESSION_LOWER_BODY_INCREMENT_KG: ${PROGRESSION_LOWER_BODY_INCREMENT_KG:-5}
     ports: ["8000:8000"]
     depends_on:
       migrate: { condition: service_completed_successfully }
