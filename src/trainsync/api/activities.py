@@ -1,4 +1,7 @@
-"""`GET /v1/activities`: stored activities, newest first, keyset-paginated (ADR 0009)."""
+"""`GET /v1/activities`: stored activities, newest first, keyset-paginated (ADR 0009).
+
+`GET /v1/activities/{strava_activity_id}`: one stored activity.
+"""
 
 import base64
 import binascii
@@ -6,7 +9,7 @@ import json
 from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from trainsync.api.deps import SessionmakerDep, require_api_key
@@ -89,6 +92,19 @@ class ActivityPage(BaseModel):
     )
 
 
+class ActivityDetail(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"activity": ACTIVITY_EXAMPLE, "last_synced_at": "2026-10-18T09:30:02Z"}]
+        }
+    )
+
+    activity: ActivityOut
+    last_synced_at: datetime | None = Field(
+        description="When data was last written by any sync path; tells how fresh this is"
+    )
+
+
 def encode_cursor(keyset: Keyset) -> str:
     raw = json.dumps({"start_date": keyset.start_date.isoformat(), "id": keyset.id})
     return base64.urlsafe_b64encode(raw.encode()).decode()
@@ -159,5 +175,35 @@ async def list_activities(
     return ActivityPage(
         items=[ActivityOut.from_row(r, include_raw=include == "raw") for r in rows],
         next_cursor=encode_cursor(next_keyset) if next_keyset else None,
+        last_synced_at=last_synced_at,
+    )
+
+
+@router.get(
+    "/activities/{strava_activity_id}",
+    summary="Get one activity",
+    description=(
+        "One stored activity of an active athlete, by its Strava id. Unknown and soft-deleted "
+        "activities are 404."
+    ),
+    response_model=ActivityDetail,
+    response_model_exclude_none=False,
+    responses={**UNAUTHORIZED, 404: error("Unknown or deleted activity", "activity not found")},
+)
+async def get_activity(
+    sessionmaker: SessionmakerDep,
+    strava_activity_id: Annotated[
+        int, Path(description="Strava activity id", examples=[10000000123])
+    ],
+    include: Annotated[Literal["raw"] | None, Query(description="`raw` adds Strava's JSON")] = None,
+) -> ActivityDetail:
+    async with sessionmaker() as session:
+        reads = ReadRepository(session)
+        row = await reads.activity(strava_activity_id, await reads.active_athlete_ids())
+        if row is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "activity not found")
+        last_synced_at = await reads.last_synced_at([row.athlete_id])
+    return ActivityDetail(
+        activity=ActivityOut.from_row(row, include_raw=include == "raw"),
         last_synced_at=last_synced_at,
     )

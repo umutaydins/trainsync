@@ -5,6 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 API=${API:-http://localhost:8000}
+WEB=${WEB:-http://localhost:3000}
 PROJECT=${COMPOSE_PROJECT_NAME:-trainsync-smoke}
 # The smoke test talks to postgres/redis through `docker compose exec`, so their host ports only
 # need to be free, not standard.
@@ -15,7 +16,7 @@ cleanup() {
   status=$?
   if [ "$status" -ne 0 ]; then
     echo "smoke: FAILED, recent logs:" >&2
-    compose logs --tail=50 api worker migrate fake-strava >&2 || true
+    compose logs --tail=50 api worker migrate fake-strava web >&2 || true
   fi
   compose down -v --remove-orphans >/dev/null 2>&1 || true
   exit "$status"
@@ -47,5 +48,24 @@ athletes=$(sql "select count(*) from athletes where active")
 # Fernet tokens are url-safe base64 starting with version byte 0x80 -> 'gAAAAA'.
 encrypted=$(sql "select count(*) from oauth_tokens where convert_from(access_token_enc, 'UTF8') like 'gAAAAA%' and convert_from(refresh_token_enc, 'UTF8') like 'gAAAAA%'")
 [ "$encrypted" = "1" ] || fail "tokens are not stored as Fernet ciphertext"
+
+echo "smoke: web dashboard"
+web_dir=$(mktemp -d)
+jar="$web_dir/cookies"
+code=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "$WEB/")
+case "$code" in "307 $WEB/login"*) ;; *) fail "web / without a session: $code";; esac
+code=$(curl -sS -o /dev/null -w '%{http_code}' "$WEB/api/ts/v1/sync/status")
+[ "$code" = "401" ] || fail "BFF without a session: $code"
+code=$(curl -sS -o /dev/null -w '%{http_code}' -d password=wrong "$WEB/api/auth/login")
+[ "$code" = "401" ] || fail "wrong password: $code"
+code=$(curl -sS -o /dev/null -w '%{http_code}' -c "$jar" -d password=dev-only-dashboard-password "$WEB/api/auth/login")
+[ "$code" = "303" ] || fail "right password: $code"
+summary=$(curl -fsS -b "$jar" "$WEB/api/ts/v1/stats/summary") || fail "BFF summary failed"
+case "$summary" in *'"totals"'*) ;; *) fail "unexpected BFF summary: $summary";; esac
+case "$summary" in *dev-key-1*) fail "BFF response contains the API key";; esac
+code=$(curl -sS -o /dev/null -w '%{http_code}' -b "$jar" -X POST "$WEB/api/ts/v1/sync/status")
+[ "$code" = "405" ] || fail "BFF POST: $code"
+rm -rf "$web_dir"
+echo "  login gate, BFF and key isolation OK"
 
 echo "smoke: OK"

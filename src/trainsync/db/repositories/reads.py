@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import (
     ColumnElement,
@@ -95,6 +96,18 @@ class ReadRepository:
         last = rows[limit - 1]
         return rows[:limit], Keyset(last.start_date, last.id)
 
+    async def activity(
+        self, strava_activity_id: int, athlete_ids: Sequence[int]
+    ) -> Activity | None:
+        """One stored activity of the given athletes, or None if unknown or soft-deleted."""
+        if not athlete_ids:
+            return None
+        stmt = select(Activity).where(
+            Activity.strava_activity_id == strava_activity_id,
+            *ActivityFilter(athlete_ids).conditions(),
+        )
+        return (await self._session.scalars(stmt)).one_or_none()
+
     async def last_synced_at(self, athlete_ids: Sequence[int]) -> datetime | None:
         """The newest of: a finished sync run, an activity written by any sync path."""
         if not athlete_ids:
@@ -125,30 +138,43 @@ class ReadRepository:
             .render_derived()
         )
         activity_week = func.date_trunc("week", func.timezone("UTC", Activity.start_date))
-        conditions = activity_filter.conditions() if activity_filter.athlete_ids else [false()]
+        conditions = _conditions(activity_filter)
         stmt = (
-            select(
-                weeks.c.week_start,
-                func.count(Activity.id),
-                func.coalesce(func.sum(Activity.distance_m), 0.0),
-                func.coalesce(func.sum(Activity.moving_time_s), 0),
-                func.coalesce(func.sum(Activity.elevation_gain_m), 0.0),
-            )
+            select(weeks.c.week_start, *_totals_columns())
             .select_from(weeks)
             .outerjoin(Activity, and_(activity_week == weeks.c.week_start, *conditions))
             .group_by(weeks.c.week_start)
             .order_by(weeks.c.week_start)
         )
         return [
-            WeekStats(
-                week_start=row[0].date(),
-                count=row[1],
-                distance_m=round(float(row[2]), 1),
-                moving_time_s=int(row[3]),
-                elevation_gain_m=round(float(row[4]), 1),
-            )
+            WeekStats(row[0].date(), *_totals(row[1:]))
             for row in (await self._session.execute(stmt)).all()
         ]
+
+    async def summary(self, activity_filter: ActivityFilter) -> "Summary":
+        """Totals, totals per sport type and the longest activity (by distance) for the filter.
+
+        Three queries, one per block; all aggregation happens in Postgres.
+        """
+        conditions = _conditions(activity_filter)
+        totals = (await self._session.execute(select(*_totals_columns()).where(*conditions))).one()
+        by_sport = await self._session.execute(
+            select(Activity.sport_type, *_totals_columns())
+            .where(*conditions)
+            .group_by(Activity.sport_type)
+            .order_by(Activity.sport_type)
+        )
+        longest = await self._session.scalar(
+            select(Activity)
+            .where(*conditions)
+            .order_by(Activity.distance_m.desc(), Activity.start_date.desc(), Activity.id.desc())
+            .limit(1)
+        )
+        return Summary(
+            totals=Totals(*_totals(totals)),
+            by_sport=[SportTotals(row[0], *_totals(row[1:])) for row in by_sport.all()],
+            longest=longest,
+        )
 
     async def latest_runs(self, athlete_ids: Sequence[int]) -> dict[tuple[int, str], SyncRun]:
         """The newest run per (athlete, kind)."""
@@ -197,6 +223,30 @@ class WeekStats:
 
 
 @dataclass(frozen=True, slots=True)
+class Totals:
+    count: int
+    distance_m: float
+    moving_time_s: int
+    elevation_gain_m: float
+
+
+@dataclass(frozen=True, slots=True)
+class SportTotals:
+    sport_type: str
+    count: int
+    distance_m: float
+    moving_time_s: int
+    elevation_gain_m: float
+
+
+@dataclass(frozen=True, slots=True)
+class Summary:
+    totals: Totals
+    by_sport: list[SportTotals]
+    longest: Activity | None
+
+
+@dataclass(frozen=True, slots=True)
 class WebhookSummary:
     last_received_at: datetime | None
     last_processed_at: datetime | None
@@ -204,6 +254,25 @@ class WebhookSummary:
     processing: int
     failed: int  # will be retried
     dead_letters: int  # attempts exhausted
+
+
+def _conditions(activity_filter: ActivityFilter) -> list[ColumnElement[bool]]:
+    return activity_filter.conditions() if activity_filter.athlete_ids else [false()]
+
+
+def _totals_columns() -> tuple[ColumnElement[Any], ...]:
+    """count, distance, moving time, elevation; zeros when no activity matches."""
+    return (
+        func.count(Activity.id),
+        func.coalesce(func.sum(Activity.distance_m), 0.0),
+        func.coalesce(func.sum(Activity.moving_time_s), 0),
+        func.coalesce(func.sum(Activity.elevation_gain_m), 0.0),
+    )
+
+
+def _totals(values: Sequence[Any]) -> tuple[int, float, int, float]:
+    count, distance, moving_time, elevation = values
+    return int(count), round(float(distance), 1), int(moving_time), round(float(elevation), 1)
 
 
 def week_start(day: date) -> date:

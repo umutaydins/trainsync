@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-# Seeded history ends here, so the data does not depend on when the fake starts.
-SEED_END = datetime(2026, 1, 1, tzinfo=UTC)
+# Seeded history covers the year before the fake's clock, so a dashboard's default range has data.
+SEED_WINDOW = timedelta(days=365)
 DEFAULT_ATHLETE_ID = 1001
 FIRST_ACTIVITY_ID = 10_000_000_000
 # Each athlete gets its own id range so ids never collide.
@@ -91,15 +91,26 @@ def first_activity_id(athlete_index: int) -> int:
 
 
 def seed_activities(
-    athlete_id: int, count: int, rng_seed: int, first_id: int = FIRST_ACTIVITY_ID
+    athlete_id: int,
+    count: int,
+    rng_seed: int,
+    end: datetime,
+    first_id: int = FIRST_ACTIVITY_ID,
 ) -> list[FakeActivity]:
-    """`count` activities before SEED_END, oldest first; ids grow with start_date."""
+    """`count` activities in the SEED_WINDOW before `end`, oldest first; ids grow with start_date.
+
+    Deterministic for a given `rng_seed` and `end`. Gaps of 8-40 h between activities, squeezed
+    to fit the window when `count` is large.
+    """
     rng = random.Random(f"activities:{rng_seed}:{athlete_id}")
+    gaps = [rng.randint(8 * 3600, 40 * 3600) for _ in range(count)]
+    scale = min(1.0, SEED_WINDOW.total_seconds() / sum(gaps)) if gaps else 1.0
+    end = end.astimezone(UTC).replace(microsecond=0)
     starts: list[datetime] = []
-    cursor = SEED_END
-    for _ in range(count):
-        cursor -= timedelta(minutes=rng.randint(8 * 60, 40 * 60))
-        starts.append(cursor)
+    elapsed = 0
+    for gap in gaps:
+        elapsed += gap
+        starts.append(end - timedelta(seconds=int(elapsed * scale)))
     starts.reverse()
     return [_make_activity(rng, athlete_id, first_id + i, start) for i, start in enumerate(starts)]
 

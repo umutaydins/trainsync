@@ -1,5 +1,5 @@
 {
-  "_comment": "Hand-computed. Weeks start Monday 00:00 UTC. Range from=2026-09-07 to=2026-10-04 (inclusive). #6 (Sun 23:30) and #7 (Mon 00:30) straddle a week boundary; week 2026-09-21 is empty apart from soft-deleted #13; #20 and #21 fall just outside the range.",
+  "_comment": "Hand-computed. Weeks start Monday 00:00 UTC. Range from=2026-09-07 to=2026-10-04 (inclusive). #6 (Sun 23:30) and #7 (Mon 00:30) straddle a week boundary; week 2026-09-21 is empty apart from soft-deleted #13; #20 and #21 fall just outside the range. `summary` is the whole range: totals, per sport (A to Z) and the id of the longest activity by distance (all sports, and Run only).",
   "from": "2026-09-07",
   "to": "2026-10-04",
   "activities": [
@@ -25,6 +25,16 @@
     {"id": 20, "sport_type": "Run", "start_date": "2026-10-05T00:30:00Z", "distance": 3000.0, "moving_time": 900, "total_elevation_gain": 5.0},
     {"id": 21, "sport_type": "Run", "start_date": "2026-09-06T23:30:00Z", "distance": 4000.0, "moving_time": 1200, "total_elevation_gain": 8.0}
   ],
+  "summary": {
+    "totals": {"count": 18, "distance_m": 352295.0, "moving_time_s": 74600, "elevation_gain_m": 2493.0},
+    "by_sport": [
+      {"sport_type": "Ride", "count": 4, "distance_m": 205000.0, "moving_time_s": 24600, "elevation_gain_m": 1850.0},
+      {"sport_type": "Run", "count": 11, "distance_m": 141295.0, "moving_time_s": 42300, "elevation_gain_m": 643.0},
+      {"sport_type": "Swim", "count": 3, "distance_m": 6000.0, "moving_time_s": 7700, "elevation_gain_m": 0.0}
+    ],
+    "longest": 12,
+    "longest_Run": 19
+  },
   "expected": {
     "all": [
       {"week_start": "2026-09-07", "count": 6, "distance_m": 86100.0, "moving_time_s": 20700, "elevation_gain_m": 510.5},

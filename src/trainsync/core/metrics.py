@@ -44,3 +44,17 @@ HTTP_REQUEST_DURATION = Histogram(
 def webhook_aspect(object_type: str, aspect_type: str) -> str:
     """`activity:create`, `athlete:update`, … (6 values at most)."""
     return f"{object_type}:{aspect_type}"
+
+
+# ---------------------------------------------------------------- bot + notifications (Phase 5)
+# The bot is its own process and serves these on BOT_METRICS_PORT (ADR 0010).
+BOT_UPDATES = Counter(
+    "bot_updates_total",
+    "Telegram updates handled by the bot, by command (a fixed set) and outcome",
+    ["command", "outcome"],
+)
+NOTIFICATIONS = Counter(
+    "notifications_total",
+    "New-activity notification attempts by channel and outcome",
+    ["channel", "outcome"],
+)

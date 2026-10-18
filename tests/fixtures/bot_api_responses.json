@@ -1,0 +1,107 @@
+{
+  "now": "2026-10-15T18:00:00Z",
+  "summary_this_week": {
+    "from": "2026-10-12",
+    "to": "2026-10-15",
+    "sport_type": null,
+    "totals": {"count": 3, "distance_m": 41260.0, "moving_time_s": 7385, "elevation_gain_m": 412.4},
+    "by_sport": [
+      {"sport_type": "Ride", "count": 1, "distance_m": 30100.0, "moving_time_s": 3720, "elevation_gain_m": 350.0},
+      {"sport_type": "Run", "count": 2, "distance_m": 11160.0, "moving_time_s": 3665, "elevation_gain_m": 62.4}
+    ],
+    "longest": null,
+    "last_synced_at": "2026-10-15T17:40:00Z"
+  },
+  "summary_last_week": {
+    "from": "2026-10-05",
+    "to": "2026-10-11",
+    "sport_type": null,
+    "totals": {"count": 4, "distance_m": 52000.0, "moving_time_s": 10800, "elevation_gain_m": 520.0},
+    "by_sport": [],
+    "longest": null,
+    "last_synced_at": "2026-10-15T17:40:00Z"
+  },
+  "summary_empty_week": {
+    "from": "2026-10-12",
+    "to": "2026-10-15",
+    "sport_type": null,
+    "totals": {"count": 0, "distance_m": 0.0, "moving_time_s": 0, "elevation_gain_m": 0.0},
+    "by_sport": [],
+    "longest": null,
+    "last_synced_at": "2026-10-10T08:00:00Z"
+  },
+  "activity_run": {
+    "id": 10000000123,
+    "athlete_id": 1,
+    "name": "Morning Run",
+    "sport_type": "Run",
+    "start_date": "2026-10-14T06:30:00Z",
+    "distance_m": 10012.5,
+    "moving_time_s": 3000,
+    "elapsed_time_s": 3100,
+    "elevation_gain_m": 42.0,
+    "average_heartrate": 151.2,
+    "synced_at": "2026-10-14T07:02:11Z"
+  },
+  "activity_ride": {
+    "id": 10000000124,
+    "athlete_id": 1,
+    "name": "Evening Ride",
+    "sport_type": "Ride",
+    "start_date": "2026-10-13T17:00:00Z",
+    "distance_m": 30100.0,
+    "moving_time_s": 3720,
+    "elapsed_time_s": 3900,
+    "elevation_gain_m": 350.0,
+    "average_heartrate": null,
+    "synced_at": "2026-10-13T18:10:00Z"
+  },
+  "summary_12w_run": {
+    "from": "2026-07-27",
+    "to": "2026-10-15",
+    "sport_type": "Run",
+    "totals": {"count": 30, "distance_m": 301500.0, "moving_time_s": 97200, "elevation_gain_m": 2100.0},
+    "by_sport": [
+      {"sport_type": "Run", "count": 30, "distance_m": 301500.0, "moving_time_s": 97200, "elevation_gain_m": 2100.0}
+    ],
+    "longest": {
+      "id": 10000000099,
+      "athlete_id": 1,
+      "name": "Long Run",
+      "sport_type": "Run",
+      "start_date": "2026-09-20T07:00:00Z",
+      "distance_m": 30000.0,
+      "moving_time_s": 10200,
+      "elapsed_time_s": 10500,
+      "elevation_gain_m": 180.0,
+      "average_heartrate": 145.0,
+      "synced_at": "2026-09-20T10:00:00Z"
+    },
+    "last_synced_at": "2026-10-15T17:40:00Z"
+  },
+  "weekly_12w_run": {
+    "from": "2026-07-27",
+    "to": "2026-10-15",
+    "sport_type": "Run",
+    "weeks": [
+      {"week_start": "2026-09-14", "count": 4, "distance_m": 52000.0, "moving_time_s": 17000, "elevation_gain_m": 300.0},
+      {"week_start": "2026-09-21", "count": 3, "distance_m": 30000.0, "moving_time_s": 9800, "elevation_gain_m": 200.0},
+      {"week_start": "2026-09-28", "count": 0, "distance_m": 0.0, "moving_time_s": 0, "elevation_gain_m": 0.0}
+    ],
+    "last_synced_at": "2026-10-15T17:40:00Z"
+  },
+  "sync_status_healthy": {
+    "athletes": [],
+    "webhooks": {"last_received_at": null, "last_processed_at": null, "pending": 0, "processing": 0, "failed": 0, "dead_letters": 0},
+    "rate_limit": {"short_ratio": 0.12, "daily_ratio": 0.03, "window_start": "2026-10-15T17:45:00Z", "blocked_until": null},
+    "circuit": {"state": "closed", "processes": []},
+    "last_synced_at": "2026-10-15T17:40:00Z"
+  },
+  "sync_status_degraded": {
+    "athletes": [],
+    "webhooks": {"last_received_at": null, "last_processed_at": null, "pending": 2, "processing": 0, "failed": 1, "dead_letters": 0},
+    "rate_limit": null,
+    "circuit": {"state": "open", "processes": []},
+    "last_synced_at": "2026-10-15T15:00:00Z"
+  }
+}

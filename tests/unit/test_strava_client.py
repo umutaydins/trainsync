@@ -168,15 +168,22 @@ async def test_token_endpoint_rejection_is_auth_error(
         await make_client(http, settings).refresh("old")
 
 
+# Outbound clients for other services (Phase 5), named one by one; they must not touch Strava.
+NON_STRAVA_HTTP_CLIENTS = {"bot/telegram.py", "bot/read_api.py", "notify/jobs.py"}
+
+
 def test_only_strava_package_imports_httpx() -> None:
     src = Path(__file__).resolve().parents[2] / "src" / "trainsync"
     pattern = re.compile(r"^\s*(import httpx|from httpx\b)", re.MULTILINE)
-    offenders = [
+    importers = {
         str(path.relative_to(src))
         for path in src.rglob("*.py")
         if pattern.search(path.read_text()) and path.parent.name != "strava"
-    ]
-    assert offenders == []
+    }
+    assert importers - NON_STRAVA_HTTP_CLIENTS == set()
+    strava_access = re.compile(r"strava\.com|strava_(api|oauth)_|trainsync\.strava\b")
+    for name in NON_STRAVA_HTTP_CLIENTS:
+        assert not strava_access.search((src / name).read_text()), name
 
 
 @respx.mock

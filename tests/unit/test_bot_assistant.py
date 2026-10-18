@@ -1,0 +1,406 @@
+"""P5.7: the assistant with a scripted fake Anthropic planner and a respx-stubbed read API.
+
+No test talks to Anthropic: the planner is a fake, and tests/conftest.py points the SDK's base
+URL at an unroutable host as a backstop.
+"""
+
+import asyncio
+import json
+from collections.abc import AsyncIterator, Callable
+from contextlib import AsyncExitStack
+from datetime import UTC, datetime
+from typing import Any
+
+import anthropic
+import httpx
+import httpx2
+import pytest
+import respx
+from anthropic.types.beta import BetaMessage, BetaMessageParam, BetaToolParam
+from pydantic import SecretStr
+
+from tests.conftest import make_settings
+from trainsync.bot import main as bot_main
+from trainsync.bot.assistant import (
+    RATE_LIMITED,
+    REFUSED,
+    TIMED_OUT,
+    TOO_MANY_CALLS,
+    TOOLS,
+    UNAVAILABLE,
+    AnthropicPlanner,
+    Assistant,
+)
+from trainsync.bot.read_api import ReadApi
+
+API = "http://trainsync-api"
+NOW = datetime(2026, 10, 18, 9, 0, tzinfo=UTC)
+
+SEPTEMBER = {
+    "from": "2026-09-01",
+    "to": "2026-09-30",
+    "sport_type": "Run",
+    "totals": {
+        "count": 14,
+        "distance_m": 152340.0,
+        "moving_time_s": 49800,
+        "elevation_gain_m": 910.0,
+    },
+    "by_sport": [],
+    "longest": None,
+    "last_synced_at": "2026-10-18T08:30:00Z",
+}
+AUGUST = {
+    **SEPTEMBER,
+    "from": "2026-08-01",
+    "to": "2026-08-31",
+    "totals": {
+        "count": 11,
+        "distance_m": 118760.0,
+        "moving_time_s": 39000,
+        "elevation_gain_m": 700.0,
+    },
+}
+STATUS = {
+    "athletes": [],
+    "webhooks": {
+        "last_received_at": None,
+        "last_processed_at": None,
+        "pending": 0,
+        "processing": 0,
+        "failed": 0,
+        "dead_letters": 0,
+    },
+    "rate_limit": None,
+    "circuit": {"state": "closed", "processes": []},
+    "last_synced_at": "2026-10-18T08:30:00Z",
+}
+
+
+def message(content: list[dict[str, Any]], stop_reason: str = "tool_use") -> BetaMessage:
+    return BetaMessage.model_validate(
+        {
+            "id": "msg_test",
+            "type": "message",
+            "role": "assistant",
+            "model": "claude-sonnet-5-5",
+            "content": content,
+            "stop_reason": stop_reason,
+            "stop_sequence": None,
+            "usage": {"input_tokens": 10, "output_tokens": 10},
+        }
+    )
+
+
+def tool_use(call_id: str, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    return {"type": "tool_use", "id": call_id, "name": name, "input": arguments}
+
+
+def text(value: str) -> BetaMessage:
+    return message([{"type": "text", "text": value}], "end_turn")
+
+
+Turn = Callable[[list[BetaMessageParam]], BetaMessage]
+
+
+class ScriptedPlanner:
+    """Plays one scripted turn per request and records what it was sent."""
+
+    def __init__(self, turns: list[Turn | BetaMessage]) -> None:
+        self._turns = list(turns)
+        self.requests: list[list[BetaMessageParam]] = []
+        self.systems: list[str] = []
+
+    async def create(
+        self, *, system: str, tools: list[BetaToolParam], messages: list[BetaMessageParam]
+    ) -> BetaMessage:
+        assert tools == TOOLS
+        self.requests.append(list(messages))
+        self.systems.append(system)
+        turn = self._turns.pop(0) if len(self._turns) > 1 else self._turns[0]
+        return turn if isinstance(turn, BetaMessage) else turn(messages)
+
+
+def tool_results(messages: list[BetaMessageParam]) -> list[dict[str, Any]]:
+    last = messages[-1]
+    assert last["role"] == "user"
+    content = last["content"]
+    assert isinstance(content, list)
+    return [dict(block) for block in content]  # type: ignore[call-overload]
+
+
+class AllowAll:
+    def __init__(self) -> None:
+        self.asked: list[int] = []
+
+    async def allow(self, chat_id: int) -> bool:
+        self.asked.append(chat_id)
+        return True
+
+
+class DenyAll:
+    async def allow(self, chat_id: int) -> bool:
+        return False
+
+
+@pytest.fixture
+async def http() -> AsyncIterator[httpx.AsyncClient]:
+    async with httpx.AsyncClient() as client:
+        yield client
+
+
+@pytest.fixture
+def api() -> respx.MockRouter:
+    with respx.mock(assert_all_called=False) as router:
+
+        def summary(request: httpx.Request) -> httpx.Response:
+            body = {"2026-09-01": SEPTEMBER, "2026-08-01": AUGUST}[request.url.params["from"]]
+            return httpx.Response(200, json=body)
+
+        router.get(f"{API}/v1/stats/summary", name="summary").mock(side_effect=summary)
+        router.get(f"{API}/v1/sync/status", name="status").mock(
+            return_value=httpx.Response(200, json=STATUS)
+        )
+        router.get(f"{API}/v1/activities", name="activities").mock(
+            return_value=httpx.Response(
+                200, json={"items": [], "next_cursor": None, "last_synced_at": None}
+            )
+        )
+        yield router
+
+
+def assistant(http: httpx.AsyncClient, planner: ScriptedPlanner, **kwargs: Any) -> Assistant:
+    read_api = ReadApi(http, API, SecretStr("bot-key"))
+    return Assistant(planner, read_api, kwargs.pop("limiter", AllowAll()), lambda: NOW, **kwargs)
+
+
+def answer_from_results(messages: list[BetaMessageParam]) -> BetaMessage:
+    """What a grounded model does: read the numbers out of the tool results."""
+    km = [
+        json.loads(result["content"])["totals"]["distance_m"] / 1000
+        for result in tool_results(messages)
+    ]
+    return text(f"September: {km[0]:.1f} km, August: {km[1]:.1f} km (+{km[0] - km[1]:.1f} km).")
+
+
+async def test_tool_calls_run_against_the_api_and_the_answer_uses_its_numbers(
+    http: httpx.AsyncClient, api: respx.MockRouter
+) -> None:
+    planner = ScriptedPlanner(
+        [
+            message(
+                [
+                    {"type": "text", "text": "Let me look that up."},
+                    tool_use(
+                        "tu_1",
+                        "get_summary",
+                        {"from": "2026-09-01", "to": "2026-09-30", "sport_type": "Run"},
+                    ),
+                    tool_use(
+                        "tu_2",
+                        "get_summary",
+                        {"from": "2026-08-01", "to": "2026-08-31", "sport_type": "Run"},
+                    ),
+                ]
+            ),
+            answer_from_results,
+        ]
+    )
+    reply = await assistant(http, planner).answer(
+        42, "How many km did I run in September compared to August?"
+    )
+    assert reply == "September: 152.3 km, August: 118.8 km (+33.6 km)."
+
+    calls = [c.request.url.params for c in api["summary"].calls]
+    assert [(p["from"], p["to"], p["sport_type"]) for p in calls] == [
+        ("2026-09-01", "2026-09-30", "Run"),
+        ("2026-08-01", "2026-08-31", "Run"),
+    ]
+    results = tool_results(planner.requests[1])
+    assert [r["tool_use_id"] for r in results] == ["tu_1", "tu_2"]
+    assert all("is_error" not in r for r in results)
+    assert json.loads(results[0]["content"])["last_synced_at"] == "2026-10-18T08:30:00Z"
+    assert "Today is 2026-10-18 (Sunday)." in planner.systems[0]
+
+
+@pytest.mark.parametrize(
+    ("name", "arguments", "error"),
+    [
+        (
+            "get_summary",
+            {"from": "September", "to": "2026-09-30", "sport_type": None},
+            "YYYY-MM-DD",
+        ),
+        ("get_summary", {"from": 1756684800, "to": "2026-09-30", "sport_type": None}, "YYYY-MM-DD"),
+        ("get_weekly", {"from": "2026-09-30", "to": "2026-09-01", "sport_type": None}, "before"),
+        ("get_weekly", {"from": "2000-01-01", "to": "2026-09-01", "sport_type": None}, "longer"),
+        ("get_summary", {"from": "2026-02-30", "to": "2026-03-01", "sport_type": None}, "date"),
+        ("get_summary", {"from": "2026-09-01", "to": "2026-09-30", "sql": "1"}, "Extra inputs"),
+        ("list_activities", {"from": None, "to": None, "sport_type": None, "limit": 500}, "50"),
+        ("get_sync_status", {"verbose": True}, "Extra inputs"),
+        ("drop_tables", {}, "Unknown tool"),
+    ],
+)
+async def test_invalid_arguments_are_reported_back_and_not_executed(
+    http: httpx.AsyncClient,
+    api: respx.MockRouter,
+    name: str,
+    arguments: dict[str, Any],
+    error: str,
+) -> None:
+    planner = ScriptedPlanner([message([tool_use("tu_1", name, arguments)]), text("Sorry.")])
+    assert await assistant(http, planner).answer(42, "?") == "Sorry."
+    [result] = tool_results(planner.requests[1])
+    assert result["is_error"] is True
+    assert result["tool_use_id"] == "tu_1"
+    assert error in result["content"]
+    assert all(route.call_count == 0 for route in api.routes)
+
+
+async def test_valid_list_and_status_calls(http: httpx.AsyncClient, api: respx.MockRouter) -> None:
+    planner = ScriptedPlanner(
+        [
+            message(
+                [
+                    tool_use(
+                        "tu_1",
+                        "list_activities",
+                        {"from": "2026-10-01", "to": None, "sport_type": "Ride", "limit": 5},
+                    ),
+                    tool_use("tu_2", "get_sync_status", {}),
+                ]
+            ),
+            text("No rides yet this month."),
+        ]
+    )
+    assert await assistant(http, planner).answer(42, "rides?") == "No rides yet this month."
+    params = api["activities"].calls.last.request.url.params
+    assert (params["from"], params["sport_type"], params["limit"]) == ("2026-10-01", "Ride", "5")
+    assert "to" not in params
+    listed, status = tool_results(planner.requests[1])
+    assert "next_cursor" not in json.loads(listed["content"])
+    assert json.loads(status["content"])["circuit"]["state"] == "closed"
+
+
+async def test_api_failure_is_a_tool_error(http: httpx.AsyncClient, api: respx.MockRouter) -> None:
+    api["status"].mock(return_value=httpx.Response(503))
+    planner = ScriptedPlanner([message([tool_use("tu_1", "get_sync_status", {})]), text("Down.")])
+    assert await assistant(http, planner).answer(42, "status?") == "Down."
+    [result] = tool_results(planner.requests[1])
+    assert result["is_error"] is True
+    assert "HTTP 503" in result["content"]
+
+
+async def test_tool_call_limit_is_enforced(http: httpx.AsyncClient, api: respx.MockRouter) -> None:
+    counter = iter(range(100))
+
+    def always_another_call(messages: list[BetaMessageParam]) -> BetaMessage:
+        return message([tool_use(f"tu_{next(counter)}", "get_sync_status", {})])
+
+    planner = ScriptedPlanner([always_another_call])
+    reply = await assistant(http, planner, max_tool_calls=5).answer(42, "loop forever")
+    assert reply == TOO_MANY_CALLS
+    assert api["status"].call_count == 5  # the sixth call was refused, not executed
+    [refused] = tool_results(planner.requests[-1])
+    assert refused["is_error"] is True
+    assert "limit" in refused["content"]
+    assert len(planner.requests) == 7  # 5 executed + 1 refused + the one that gave up
+
+
+async def test_answer_after_hitting_the_limit_is_returned(
+    http: httpx.AsyncClient, api: respx.MockRouter
+) -> None:
+    many = message([tool_use(f"tu_{i}", "get_sync_status", {}) for i in range(4)])
+    planner = ScriptedPlanner([many, many, text("Here is what I found.")])
+    reply = await assistant(http, planner, max_tool_calls=5).answer(42, "?")
+    assert reply == "Here is what I found."
+    assert api["status"].call_count == 5
+    assert [r.get("is_error", False) for r in tool_results(planner.requests[2])] == [
+        False,
+        True,
+        True,
+        True,
+    ]
+
+
+async def test_timeout_is_enforced(http: httpx.AsyncClient) -> None:
+    class Hanging(ScriptedPlanner):
+        async def create(
+            self, *, system: str, tools: list[BetaToolParam], messages: list[BetaMessageParam]
+        ) -> BetaMessage:
+            await asyncio.Event().wait()
+            raise AssertionError("unreachable")
+
+    planner = Hanging([text("never")])
+    assert await assistant(http, planner, timeout_s=0.01).answer(42, "?") == TIMED_OUT
+
+
+async def test_rate_limited_chat_never_reaches_the_model(http: httpx.AsyncClient) -> None:
+    planner = ScriptedPlanner([text("hello")])
+    assert await assistant(http, planner, limiter=DenyAll()).answer(42, "?") == RATE_LIMITED
+    assert planner.requests == []
+
+
+async def test_refusal_and_api_errors(http: httpx.AsyncClient) -> None:
+    refused = ScriptedPlanner([message([], "refusal")])
+    assert await assistant(http, refused).answer(42, "?") == REFUSED
+
+    class Broken(ScriptedPlanner):
+        async def create(
+            self, *, system: str, tools: list[BetaToolParam], messages: list[BetaMessageParam]
+        ) -> BetaMessage:
+            raise anthropic.APIConnectionError(request=httpx2.Request("POST", "https://x.invalid"))
+
+    assert await assistant(http, Broken([text("x")])).answer(42, "?") == UNAVAILABLE
+    empty = ScriptedPlanner([message([], "end_turn")])
+    assert await assistant(http, empty).answer(42, "?") == UNAVAILABLE
+
+
+def test_tool_schemas_are_strict() -> None:
+    assert [t["name"] for t in TOOLS] == [
+        "get_summary",
+        "get_weekly",
+        "list_activities",
+        "get_sync_status",
+    ]
+    for tool in TOOLS:
+        assert tool.get("strict") is True
+        schema = tool["input_schema"]
+        assert isinstance(schema, dict)
+        assert schema["additionalProperties"] is False
+        assert set(schema.get("required") or []) == set(schema["properties"])  # type: ignore[arg-type]
+
+
+async def test_anthropic_planner_request_shape() -> None:
+    sent: dict[str, Any] = {}
+
+    class FakeMessages:
+        async def create(self, **kwargs: Any) -> BetaMessage:
+            sent.update(kwargs)
+            return text("ok")
+
+    class FakeClient:
+        class beta:  # noqa: N801  # mirrors the SDK's attribute name
+            messages = FakeMessages()
+
+    planner = AnthropicPlanner(FakeClient(), "claude-sonnet-5-5")  # type: ignore[arg-type]
+    reply = await planner.create(
+        system="s", tools=TOOLS, messages=[{"role": "user", "content": "q"}]
+    )
+    assert reply.content[0].type == "text"
+    assert sent["model"] == "claude-sonnet-5-5"
+    assert sent["tools"] == TOOLS
+    assert sent["output_config"] == {"effort": "low"}
+    assert sent["fallbacks"] == "default"
+    assert sent["betas"] == ["server-side-fallback-2026-07-01"]
+    assert "tool_choice" not in sent  # forced tool use is rejected by this model
+
+
+async def test_text_handler_is_off_without_a_key(http: httpx.AsyncClient) -> None:
+    read_api = ReadApi(http, API, SecretStr("k"))
+    async with AsyncExitStack() as stack:
+        off = await bot_main.text_handler(make_settings(), read_api, stack, clock=lambda: NOW)
+        assert off is None
+        settings = make_settings(anthropic_api_key="sk-test-not-real")
+        on = await bot_main.text_handler(settings, read_api, stack, clock=lambda: NOW)
+        assert on is not None
