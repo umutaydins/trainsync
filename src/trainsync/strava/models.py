@@ -47,3 +47,14 @@ class TokenResponse(BaseModel):
         return f"TokenResponse(expires_at={self.expires_at!r}, athlete={self.athlete!r})"
 
     __str__ = __repr__
+
+
+class PushSubscription(BaseModel):
+    """Strava's webhook (push) subscription: one per API application."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: int
+    callback_url: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None

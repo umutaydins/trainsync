@@ -29,7 +29,12 @@ from trainsync.strava.errors import (
     StravaUnauthorized,
     StravaUnavailable,
 )
-from trainsync.strava.models import StravaActivity, StravaAthlete, TokenResponse
+from trainsync.strava.models import (
+    PushSubscription,
+    StravaActivity,
+    StravaAthlete,
+    TokenResponse,
+)
 from trainsync.strava.ratelimit import (
     RateLimitSnapshot,
     next_daily_reset,
@@ -43,6 +48,7 @@ log = get_logger(__name__)
 QueryParams = Mapping[str, str | int]
 
 _activities = TypeAdapter(list[StravaActivity])
+_subscriptions = TypeAdapter(list[PushSubscription])
 
 
 class TokenProvider(Protocol):
@@ -160,6 +166,40 @@ class StravaClient:
         except (StravaRequestError, StravaNotFound) as exc:
             raise StravaAuthError("strava rejected the token request") from exc
         return TokenResponse.model_validate(response.json())
+
+    # ------------------------------------------------- webhook subscription (P7.7)
+    # App-level calls: authenticated with the client id and secret, not an athlete token.
+
+    async def create_push_subscription(
+        self, callback_url: str, verify_token: str
+    ) -> PushSubscription:
+        """Strava verifies `callback_url` with a GET (hub.challenge) before answering."""
+        data = {
+            **self._app_credentials(),
+            "callback_url": callback_url,
+            "verify_token": verify_token,
+        }
+        url = f"{self._settings.strava_api_base_url}/push_subscriptions"
+        response = await self._send("POST", "/push_subscriptions", url, data=data)
+        return PushSubscription.model_validate(response.json())
+
+    async def list_push_subscriptions(self) -> list[PushSubscription]:
+        url = f"{self._settings.strava_api_base_url}/push_subscriptions"
+        response = await self._send(
+            "GET", "/push_subscriptions", url, params=self._app_credentials()
+        )
+        return _subscriptions.validate_python(response.json())
+
+    async def delete_push_subscription(self, subscription_id: int) -> None:
+        url = f"{self._settings.strava_api_base_url}/push_subscriptions/{subscription_id}"
+        template = "/push_subscriptions/{id}"
+        await self._send("DELETE", template, url, params=self._app_credentials())
+
+    def _app_credentials(self) -> dict[str, str]:
+        return {
+            "client_id": self._settings.strava_client_id,
+            "client_secret": self._settings.strava_client_secret.get_secret_value(),
+        }
 
     # ------------------------------------------------------------- plumbing
 

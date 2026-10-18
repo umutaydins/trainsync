@@ -257,6 +257,10 @@ that command on the Mac.
 | 13 | `gh` can read CI on the Mac | `gh auth status && gh run list --workflow ci -L 1` | PENDING | | |
 | 14 | First real deploy | `make deploy`, then `tail -n 1 ~/Library/Logs/trainsync/deploys.log && scripts/deploy.sh status` | PENDING | | |
 | 15 | Rollback drill | after a deploy with no migrations: `make rollback`, then `tail -n 2 ~/Library/Logs/trainsync/deploys.log && scripts/mac-prod.sh status`; then `make deploy` again | PENDING | | |
+| 16 | Strava API application (P7.7) | follow [strava-setup.md](strava-setup.md) §1, then `grep -c '^STRAVA_CLIENT_' .env.prod` (expect 2) | PENDING | | |
+| 17 | Real Strava connected, backfill done (P7.7) | `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/sync/status"` after connecting (strava-setup.md §2) | PENDING | | |
+| 18 | Webhook subscription (P7.7) | `uv run python scripts/strava-subscription.py create` then `… view` (strava-setup.md §3) | PENDING | | |
+| 19 | A real webhook arrives (P7.7) | edit an activity title on strava.com, then `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/activities?limit=1"` | PENDING | | |
 
 ## Backups and restore
 
