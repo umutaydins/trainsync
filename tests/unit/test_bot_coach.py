@@ -1,5 +1,6 @@
-"""P6.11: the coach in chat — pain guard, savage triggers, soft mode — against the fake Telegram
-API and the stubbed trainsync API (ADR 0030)."""
+"""P6.11, P6.13: the coach in chat — distress and pain guards, savage triggers (excuses, food),
+max profanity, unknown commands, soft mode — against the fake Telegram API and the stubbed
+trainsync API (ADR 0030, 0032)."""
 
 # Turkish text: the dotless i (U+0131) is a letter here, not a confusable.
 # ruff: noqa: RUF001
@@ -16,6 +17,7 @@ from pydantic import SecretStr
 
 from tests.support.bot_api import API, FakeApi, install, planned
 from tests.support.state import MemoryStateStore
+from tests.support.swears import swears
 from tests.support.telegram import (
     BOT_TOKEN,
     BOT_URL,
@@ -33,15 +35,17 @@ from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import TelegramApi, Update
 from trainsync.coach.categories import Category
 from trainsync.coach.guardrails import violations
-from trainsync.coach.lines import MemoryRecentStore, load_pack
+from trainsync.coach.lines import SAVAGE, SAVAGE_MAX, MemoryRecentStore, load_pack
 from trainsync.coach.mode import CoachMode, MemorySoftModeStore
 from trainsync.coach.savage_tr import LINES
 from trainsync.coach.voice import CoachVoice
+from trainsync.core.settings import BotLang, BotProfanity
 
 NOW = datetime(2026, 10, 19, 9, 0, tzinfo=UTC)  # Monday 12:00 in Istanbul
 ZONE = ZoneInfo("Europe/Istanbul")
 CHAT = 42
 TR_HARD = Messages(PACKS["hardcore", "tr"])
+HARD: dict[BotLang, Messages] = {"tr": TR_HARD, "en": Messages(PACKS["hardcore", "en"])}
 
 
 @pytest.fixture
@@ -83,13 +87,21 @@ def assistant() -> Assistant:
     return Assistant()
 
 
-def voice(soft: MemorySoftModeStore, *, savage: bool = True, seed: int = 5) -> CoachVoice:
+def voice(
+    soft: MemorySoftModeStore,
+    *,
+    savage: bool = True,
+    seed: int = 5,
+    lang: BotLang = "tr",
+    profanity: BotProfanity = "roast",
+) -> CoachVoice:
     return CoachVoice(
-        msg=TR_HARD,
+        msg=HARD[lang],
         mode=CoachMode(configured=savage, soft=soft),
-        pack=load_pack(None),
+        pack=load_pack(None, lang),
         recent=MemoryRecentStore(),
         rng=random.Random(seed),
+        profanity=profanity,
     )
 
 
@@ -99,22 +111,26 @@ def make(
     assistant: Assistant,
     *,
     savage: bool = True,
+    lang: BotLang = "tr",
+    profanity: BotProfanity = "roast",
 ) -> Dispatcher:
     telegram = TelegramApi(http, SecretStr(BOT_TOKEN), base_url=TELEGRAM, sleep=SleepRecorder())
     api = ReadApi(http, API, SecretStr("bot-key"))
     clock = lambda: NOW  # noqa: E731
-    coach_voice = voice(soft, savage=savage)
+    msg = HARD[lang]
+    coach_voice = voice(soft, savage=savage, lang=lang, profanity=profanity)
     store = MemoryStateStore()
     return Dispatcher(
         telegram,
-        Commands(api, clock, TR_HARD),
+        Commands(api, clock, msg),
         {CHAT},
-        TR_HARD,
+        msg,
         assistant,
         features=[
-            CheckinFlow(api, store, clock, ZONE, TR_HARD, coach_voice),
-            CoachFeature(api, coach_voice, soft, clock, ZONE, TR_HARD, time(18, 0)),
+            CheckinFlow(api, store, clock, ZONE, msg, coach_voice),
+            CoachFeature(api, coach_voice, soft, clock, ZONE, msg, time(18, 0)),
         ],
+        voice=coach_voice,
     )
 
 
@@ -123,7 +139,13 @@ async def say(dispatcher: Dispatcher, router: respx.MockRouter, text: str, updat
     return [m["text"] for m in sent_messages(router["send"])][-1]
 
 
-ROASTS = {line for c in Category for line in LINES[c]}
+ROASTS = {
+    line
+    for pools in (SAVAGE, SAVAGE_MAX)
+    for pool in pools.values()
+    for lines in pool.values()
+    for line in lines
+}
 
 
 def has_roast(text: str) -> bool:
@@ -181,19 +203,154 @@ async def test_an_excuse_without_a_program_gets_the_fallback_action(
     assert reply.endswith(TR_HARD(Key.COACH_ACTION_FALLBACK))
 
 
-async def test_a_craving_gets_the_neutral_food_line_never_a_roast(
+@pytest.mark.parametrize(
+    ("lang", "text"),
+    [("tr", "Bu akşam baklava yiyeceğim"), ("en", "Having a big plate of baklava tonight")],
+)
+async def test_baklava_gets_a_food_roast_a_swap_and_the_unchanged_target(
+    http: httpx.AsyncClient,
+    router: respx.MockRouter,
+    fake: FakeApi,
+    soft: MemorySoftModeStore,
+    assistant: Assistant,
+    lang: BotLang,
+    text: str,
+) -> None:
+    """ADR 0032: the choice is roasted, then one concrete move, then the day's target."""
+    msg = HARD[lang]
+    reply = await say(make(http, soft, assistant, lang=lang), router, text, 1)
+    roast, move, target = reply.split("\n")
+    assert any(roast.startswith(line) for line in SAVAGE[lang][Category.FOOD_ROAST]), roast
+    assert move == msg.neutral(NeutralKey.FOOD_MOVE_SWEET)
+    assert target == msg.neutral(NeutralKey.FOOD_TARGET, target="2600 kcal", remaining="2600 kcal")
+    assert violations(reply) == []
+    assert assistant.questions == []
+
+
+@pytest.mark.parametrize(
+    ("text", "move"),
+    [
+        ("akşam pizza yiyeceğim", NeutralKey.FOOD_MOVE_FAST_FOOD),
+        ("patates kızartması aldım", NeutralKey.FOOD_MOVE_FRIED),
+        ("bu akşam rakı içeceğiz", NeutralKey.FOOD_MOVE_ALCOHOL),
+        ("bir sigara yaktım", NeutralKey.FOOD_MOVE_SMOKING),
+        ("dün gece sabaha kadar dizi izledim", NeutralKey.FOOD_MOVE_LATE),
+    ],
+)
+async def test_each_kind_of_choice_gets_its_own_move(
+    http: httpx.AsyncClient,
+    router: respx.MockRouter,
+    fake: FakeApi,
+    soft: MemorySoftModeStore,
+    assistant: Assistant,
+    text: str,
+    move: NeutralKey,
+) -> None:
+    fake.kcal_target = None
+    reply = await say(make(http, soft, assistant), router, text, 1)
+    assert reply.split("\n")[1:] == [
+        TR_HARD.neutral(move),
+        TR_HARD.neutral(NeutralKey.FOOD_NO_TARGET),
+    ]
+
+
+async def test_without_savage_food_talk_goes_to_the_assistant(
     http: httpx.AsyncClient,
     router: respx.MockRouter,
     fake: FakeApi,
     soft: MemorySoftModeStore,
     assistant: Assistant,
 ) -> None:
-    reply = await say(make(http, soft, assistant), router, "canım tatlı çekti", 1)
-    assert reply == TR_HARD.neutral(NeutralKey.FOOD_CRAVING, remaining="2600 kcal")
+    reply = await say(make(http, soft, assistant, savage=False), router, "baklava yedim", 1)
+    assert reply == "assistant answer"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "yediğime pişmanım, kendimi suçlu hissediyorum",
+        "baklava yedim sonra kustum",
+        "bugün hiçbir şey yemedim",
+        "kendimden nefret ediyorum",
+        "dün gece tıkındım, durduramadım",
+        "I feel so guilty about the cake",
+        "I threw up after dinner",
+        "haven't eaten all day",
+        "I hate myself",
+        "I binged on pizza last night",
+    ],
+)
+@pytest.mark.parametrize("lang", ["tr", "en"])
+async def test_distress_gets_a_calm_reply_without_swearing_even_in_max(
+    http: httpx.AsyncClient,
+    router: respx.MockRouter,
+    fake: FakeApi,
+    soft: MemorySoftModeStore,
+    assistant: Assistant,
+    text: str,
+    lang: BotLang,
+) -> None:
+    """Distress beats food, pain and excuses, in every profanity level (ADR 0032)."""
+    dispatcher = make(http, soft, assistant, lang=lang, profanity="max")
+    reply = await say(dispatcher, router, text, 1)
+    assert reply == HARD[lang].neutral(NeutralKey.SAFETY_DISTRESS)
+    assert not swears(reply)
     assert not has_roast(reply)
-    fake.kcal_target = None
-    reply = await say(make(http, soft, assistant), router, "akşam pizza yiyeceğim", 2)
-    assert reply == TR_HARD.neutral(NeutralKey.FOOD_CRAVING_NO_TARGET)
+    assert assistant.questions == []
+
+
+@pytest.mark.parametrize("text", ["dizim sakatlandı, baklava yedim", "I'm injured", "hastayım"])
+async def test_injury_is_clean_even_in_max(
+    http: httpx.AsyncClient,
+    router: respx.MockRouter,
+    fake: FakeApi,
+    soft: MemorySoftModeStore,
+    assistant: Assistant,
+    text: str,
+) -> None:
+    reply = await say(make(http, soft, assistant, profanity="max"), router, text, 1)
+    assert reply == TR_HARD.neutral(NeutralKey.SAFETY_PAIN)
+    assert not swears(reply)
+
+
+async def test_max_swears_in_a_neutral_reply_and_roasts_from_the_max_pool(
+    http: httpx.AsyncClient,
+    router: respx.MockRouter,
+    fake: FakeApi,
+    soft: MemorySoftModeStore,
+    assistant: Assistant,
+) -> None:
+    dispatcher = make(http, soft, assistant, profanity="max")
+    soft_off = await say(dispatcher, router, "/sert", 1)
+    opener, rest = soft_off.split("\n", 1)
+    assert opener in SAVAGE_MAX["tr"][Category.MAX_OPENER]
+    assert rest == TR_HARD(Key.COACH_SOFT_OFF)
+    # Soft mode is normal intensity: nothing is added, in max too.
+    assert await say(dispatcher, router, "/yumusak", 2) == TR_HARD(Key.COACH_SOFT_ON)
+    await soft.harden()
+    food = await say(dispatcher, router, "baklava yiyeceğim", 3)
+    first = food.split("\n")[0]
+    assert any(first.startswith(line) for line in SAVAGE_MAX["tr"][Category.FOOD_ROAST]), first
+    assert swears(first)
+
+
+async def test_unknown_commands_point_to_help_in_the_current_tone(
+    http: httpx.AsyncClient,
+    router: respx.MockRouter,
+    fake: FakeApi,
+    soft: MemorySoftModeStore,
+    assistant: Assistant,
+) -> None:
+    normal = await say(make(http, soft, assistant, savage=False), router, "/harder", 1)
+    assert normal == TR_HARD(Key.UNKNOWN_COMMAND, command="harder", help="")
+    assert "/help" in normal
+    savage = await say(make(http, soft, assistant), router, "/harder", 2)
+    line, pointer = savage.split("\n")
+    assert any(line.startswith(roast) for roast in LINES[Category.UNKNOWN_COMMAND]), line
+    assert pointer == TR_HARD(Key.HELP_POINTER)
+    maxed = await say(make(http, soft, assistant, profanity="max"), router, "/harder", 3)
+    assert any(maxed.startswith(roast) for roast in SAVAGE_MAX["tr"][Category.UNKNOWN_COMMAND])
+    assert maxed.count("\n") == 1  # no opener on top of a max line
 
 
 async def test_without_savage_excuses_go_to_the_assistant(

@@ -1,14 +1,18 @@
 """Nutrition and scale commands (P6.8): `/eat`, `/kcal`, `/weight`.
 
-Every text here comes from the tone-free layer (`Messages.neutral`): food and the scale are never
-commented on, in any tone. Days are the owner's local days (`CHECKIN_TZ`); the API is asked for
-that date explicitly. `/eat` client ids are `uuid5("tg:{chat}:{update}:eat")`.
+Every text here comes from the tone-free layer (`Messages.neutral`); the scale is never commented
+on. The one exception is the savage coach (ADR 0032): an `/eat` log of a high-sugar (more than
+`HIGH_SUGAR_100G` per 100 g) or NOVA 4 food, or one that takes the day's sugar past
+`SUGAR_LIMIT_G`, gets a `food_roast` line about the choice, one concrete move and the day's kcal
+target, unchanged. Days are the owner's local days (`CHECKIN_TZ`); the API is asked for that date
+explicitly. `/eat` client ids are `uuid5("tg:{chat}:{update}:eat")`.
 """
 
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from trainsync.api.nutrition import FoodOut, LogIn
+from trainsync.api.nutrition import FoodOut, LogIn, LogOut
+from trainsync.bot.coach import target_line
 from trainsync.bot.common import (
     Incoming,
     Pending,
@@ -26,12 +30,17 @@ from trainsync.bot.common import (
 )
 from trainsync.bot.messages import Messages, NeutralKey
 from trainsync.bot.parsing import ParseError, parse_choice, parse_eat, parse_number
-from trainsync.bot.read_api import ReadApi
+from trainsync.bot.read_api import ReadApi, ReadApiError
+from trainsync.coach.categories import Category
+from trainsync.coach.voice import CoachVoice
 from trainsync.core.clock import Clock
 from trainsync.core.localtime import local_now, local_today
 from trainsync.db.models import Meal
 
 NUTRITION_COMMANDS = frozenset({"eat", "kcal", "weight"})
+# "High" sugar on a UK front-of-pack label: more than 22.5 g per 100 g (ADR 0032).
+HIGH_SUGAR_100G = 22.5
+ULTRA_PROCESSED = 4  # NOVA group
 MAX_CHOICES = 8
 _MEAL_LABELS = {
     Meal.BREAKFAST: NeutralKey.MEAL_BREAKFAST,
@@ -68,13 +77,23 @@ class NutritionCommands:
     commands = NUTRITION_COMMANDS
 
     def __init__(
-        self, api: ReadApi, store: StateStore, clock: Clock, zone: ZoneInfo, msg: Messages
+        self,
+        api: ReadApi,
+        store: StateStore,
+        clock: Clock,
+        zone: ZoneInfo,
+        msg: Messages,
+        *,
+        voice: CoachVoice | None = None,
+        sugar_limit_g: float = 50.0,
     ) -> None:
         self._api = api
         self._store = store
         self._clock = clock
         self._zone = zone
         self._msg = msg
+        self._voice = voice
+        self._sugar_limit_g = sugar_limit_g
 
     async def command(self, incoming: Incoming, command: str, args: list[str]) -> Reply:
         if command == "eat":
@@ -138,13 +157,40 @@ class NutritionCommands:
         meal = meal_at(now.hour)
         body = LogIn(date=now.date(), meal=meal, food_id=food_id, grams=float(grams))
         entry = await self._api.put_food_log(client_id(f"tg:{chat_id}:{update_id}:eat"), body)
-        return self._msg.neutral(
+        saved = self._msg.neutral(
             NeutralKey.EAT_SAVED,
             grams=f"{number(grams, 1)} g",
             food=label,
             meal=self._msg.neutral(_MEAL_LABELS[meal]),
             kcal=f"{number(entry.kcal, 0)} kcal",
         )
+        return "\n".join([saved, *await self._roast(entry)])
+
+    async def _roast(self, entry: LogOut) -> list[str]:
+        """Savage only: a high-sugar or ultra-processed item, or a day over the sugar limit."""
+        if self._voice is None or not await self._voice.savage():
+            return []
+        high = (entry.sugars_100g or 0) > HIGH_SUGAR_100G or entry.nova_group == ULTRA_PROCESSED
+        try:
+            day = await self._api.nutrition_summary(entry.date)
+        except ReadApiError:
+            day = None
+        over = day is not None and day.sugars_g > self._sugar_limit_g and bool(entry.sugars_g)
+        if not (high or over):
+            return []
+        neutral = self._msg.neutral
+        lines = [await self._voice.roast(Category.FOOD_ROAST)]
+        if over and day is not None:
+            lines.append(
+                neutral(
+                    NeutralKey.FOOD_SUGAR_DAY,
+                    sugar=f"{number(day.sugars_g, 0)} g",
+                    limit=f"{number(self._sugar_limit_g, 0)} g",
+                )
+            )
+        lines.append(neutral(NeutralKey.FOOD_MOVE_LOGGED))
+        lines.append(target_line(day, self._msg) if day else neutral(NeutralKey.FOOD_NO_TARGET))
+        return lines
 
     async def kcal(self) -> str:
         neutral = self._msg.neutral

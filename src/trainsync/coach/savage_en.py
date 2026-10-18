@@ -1,16 +1,18 @@
-"""The savage English pack (BOT_INTENSITY=savage, BOT_LANG=en or `/lang en`; ADR 0030, 0031):
-original lines, per category, the same categories as `savage_tr`.
+"""The savage English pack (BOT_INTENSITY=savage, BOT_LANG=en or `/lang en`; ADR 0030, 0031,
+0032): original lines, per category, the same categories and pools (`LINES` for profanity
+`roast`, `MAX` for `max`) as `savage_tr`.
 
-The owner opted into unrestricted profanity, in English too. The lines roast the excuse or the
-effort only: never body, weight or appearance, never identity, never food or eating, never a push
-through pain (tests/unit/test_coach_lines.py checks the guardrail blocklist). Lines carry no
-numbers: the facts go in a separate line the code writes. No line quotes or imitates a real person.
+The owner opted into unrestricted profanity, in English too. The lines roast the excuse, the
+effort or an unhealthy choice (`food_roast`): never body, weight or appearance, never identity,
+never restriction or punishment for eating, never a push through pain or distress
+(tests/unit/test_coach_lines.py checks the guardrail blocklists). Lines carry no numbers: the
+facts go in a separate line the code writes. No line quotes or imitates a real person.
 """
 
 from collections.abc import Mapping
 
 from trainsync.coach.categories import Category
-from trainsync.coach.punchlines import PUNCHLINES
+from trainsync.coach.punchlines import MAX_PUNCHLINES, PUNCHLINES
 
 LINES: Mapping[Category, tuple[str, ...]] = {
     Category.EXCUSE: (
@@ -107,5 +109,200 @@ LINES: Mapping[Category, tuple[str, ...]] = {
         "Fine, English. Doesn't make the sets any lighter.",
         "English, done. Excuses sound just as shitty in this language.",
     ),
+    Category.FOOD_ROAST: (
+        "That choice is garbage and you know it. The plan says otherwise.",
+        "You trained all week for this? Hell of a way to throw it away.",
+        "That decision just tripped your next workout. Pick better, damn it.",
+        "Same trap, same excuse. This time, think first.",
+        "This choice doesn't get you to the goal. It gets you to the next excuse.",
+        "Don't trash the work you did under the bar for one bad call.",
+        "Your craving made that call, not you. Take the wheel back.",
+        "Discipline doesn't end at the gym door. This is training too.",
+        "Who made this plan? Not you. Your excuse did.",
+        "Every choice moves you forward or drags you back. This one drags.",
+        "Some reward. There are better ways to treat yourself, for fuck's sake.",
+        "Tomorrow's session is already paying for this one.",
+        "Bad call, excuse ready. Drop the excuse, change the call.",
+        "Clean program, shitty choices. Those two don't meet anywhere.",
+        "Tonight's decision sends the bill to tomorrow morning.",
+        "You set the goal and now you're sabotaging it. Pick a side.",
+        "One minute of fun, one week of backsliding. Do the math.",
+        "The name of this choice is easy. Easy never took you anywhere.",
+        "Would you brag about this choice? No? Then don't make it.",
+        "Fine, you chose it. At least use your head now.",
+        "That's a weak-ass decision. You're better than this one.",
+        "Hell no. Not on a training week.",
+    ),
+    Category.PROFANITY_SET: (
+        "Roast mode. Swearing stays in the roasts, and the roasts stay brutal.",
+        "Fine, profanity only where it's earned. Excuses will still hear it.",
+        "Toned down the language, not the work. Same sets.",
+        "Roast it is. The next excuse gets the full damn treatment.",
+        "Swearing on a leash now. The roasts still bite.",
+    ),
+    Category.UNKNOWN_COMMAND: (
+        "That's not a command. Stop making shit up.",
+        "Inventing commands doesn't finish sets.",
+        "What the hell was that? Don't waste my time with fake commands.",
+        "Wrong command. You're creative with excuses, be creative with sets.",
+        "No such thing. Type a real one or get back to work.",
+    ),
     Category.PUNCHLINE_EN: PUNCHLINES,
+}
+
+# Profanity `max` (ADR 0032): every category, at least as many lines as its roast pool, every
+# line swears; `max_opener` goes in front of every other savage message.
+MAX: Mapping[Category, tuple[str, ...]] = {
+    Category.EXCUSE: (
+        "Another excuse? Fuck that. Shoes on, now.",
+        "You don't feel like it? Nobody gives a shit. Go.",
+        "Excuse factory again? Shut the damn thing down and train.",
+        "'Tomorrow' is bullshit. Today is the only day that counts.",
+        "Fuck motivation. Discipline gets you up, motivation shows up later.",
+        "Tired? Hell, tired goes away when you train.",
+        "Heard this exact shit last week. Not even a new excuse.",
+        "Drop the excuse and get your ass moving.",
+        "That voice telling you to skip is full of shit. Ignore it.",
+    ),
+    Category.MISSED_WORKOUT: (
+        "You skipped it. Fuck. The plan was written for nothing today.",
+        "Day wasted. First thing tomorrow, gym. No goddamn debate.",
+        "The workout waited for you and you fucked it up.",
+        "Another day in the trash. Keep this shit up and the plan goes too.",
+        "You bailed today. Bail tomorrow and it's a damn habit.",
+        "Zero sets, zero sweat. What a shit day.",
+        "The training day came and went while your ass sat on the couch.",
+        "The log is empty as hell. Fill it tomorrow.",
+    ),
+    Category.UNDER_TARGET: (
+        "That set came up short, damn it. Full reps on the next.",
+        "Fuck the ego, finish the reps.",
+        "Target was right there and you bailed halfway. Shit.",
+        "The bar won that one. Win the next, goddamn it.",
+        "Half reps, half-assed work. Fix it.",
+        "Sloppy as hell. Breathe, then nail the next set.",
+        "Short isn't acceptable. One more time, for fuck's sake.",
+    ),
+    Category.WORKOUT_START: (
+        "We're on. Phone down, bar up, damn it.",
+        "Shut the fuck up and warm up.",
+        "Finally. Now finish the damn thing.",
+        "Clock's running. Lift, for fuck's sake.",
+        "Workout's open, excuses are closed. Hell yes.",
+        "No lazy shit today. Every set by the plan.",
+        "You walked in. Half done. The rest is sweat, damn it.",
+    ),
+    Category.REST_OVER: (
+        "Rest's over. Get the fuck up.",
+        "Drop the damn phone. Next set.",
+        "Did you come here to sit? Hell no. Up.",
+        "Time. Get your ass back to the bar.",
+        "You breathed. Enough of that shit. Lift.",
+        "Up, damn it. The set won't do itself.",
+        "This break is way too fucking long. Move.",
+    ),
+    Category.WORKOUT_DONE_GOOD: (
+        "Holy shit, clean session. Every set done.",
+        "Hell yes. You actually lifted today.",
+        "Every planned set, done. Fucking solid work.",
+        "Damn, the excuses got wrecked today. Respect.",
+        "Good shit. Recover, eat, log it, back at it.",
+        "Hell of a session. Raise the bar next time.",
+    ),
+    Category.WORKOUT_DONE_BAD: (
+        "Half a workout, damn it. The missing sets are on the record.",
+        "Shit, you said done but it wasn't.",
+        "The bar won today. Win it next time, goddamn it.",
+        "Ended short as hell. Tomorrow you fix it.",
+        "Sloppy fucking finish. Do the next one in full.",
+        "Half the work, half the result. Simple shit.",
+    ),
+    Category.REMINDER_BEFORE: (
+        "Thirty minutes. Get your shit together.",
+        "Turn off the damn show and get ready.",
+        "Session's coming. Water, shoes, head. Ready, damn it.",
+        "Half an hour, for fuck's sake. Move now.",
+        "Training soon. Leave the bullshit at home.",
+        "Get ready. Today is not a day off, hell no.",
+    ),
+    Category.REMINDER_NOW: (
+        "Time's up. Move your damn ass.",
+        "Now, damn it. Not later.",
+        "Fuck the excuse. Gym.",
+        "Start time. Get the hell going.",
+        "Phone off, shit together, go.",
+        "This is the hour, goddamn it. Go train.",
+    ),
+    Category.ESCALATION: (
+        "Still nothing? What the fuck is the holdup?",
+        "Fuck waiting. Get up.",
+        "The couch is winning right now. Don't let that shit happen.",
+        "Still not moving, damn it. Shoes on.",
+        "Twenty minutes is enough, but it has to be now, for fuck's sake.",
+        "The plan's waiting, I'm waiting. What the hell are you waiting for?",
+        "Every minute of stalling makes it harder. Quit that shit.",
+    ),
+    Category.LANGUAGE_SET: (
+        "English, damn it. Now you get every swear word.",
+        "Fuck yes, English. Excuses don't work in this language either.",
+        "English now. Same shit, new words. Lift.",
+        "Switched to English, goddamn it. Back to work.",
+        "English it is. The roast just got clearer, hell yes.",
+    ),
+    Category.FOOD_ROAST: (
+        "What the fuck is that choice? You're trashing the whole week.",
+        "That decision is shit and you know it. The plan says otherwise.",
+        "Goddamn, same trap again. Don't fall for it this time.",
+        "Some fucking reward. There are better ways to treat yourself.",
+        "Don't piss away the sweat you left under the bar.",
+        "Your craving made that call, not you. Take the damn wheel.",
+        "That choice just fucked up tomorrow's workout. Think.",
+        "You set the goal and now you're sabotaging it. Pick a side, damn it.",
+        "Discipline doesn't stop at the gym door, for fuck's sake.",
+        "One minute of fun, one week of backsliding. Do the damn math.",
+        "Shitty plan. Change it, right now.",
+        "You picked the easy shit again. Easy never got you anywhere.",
+        "Would you brag about this? Hell no. Then don't do it.",
+        "Drop the bullshit excuse and change the choice.",
+        "Sticking to the plan isn't that fucking hard.",
+        "Right now you're spitting on your own plan. Damn.",
+        "The bill for this shit comes due at the gym tomorrow morning.",
+        "Fuck this habit. Break it today.",
+        "The name of this choice is lazy, dressed up as fun. Bullshit.",
+        "Fine, you chose it. Now use your goddamn head.",
+        "Tonight's decision will kick your ass tomorrow.",
+        "Every choice goes forward or back. This shit goes back.",
+        "Hell of a way to undo a training week.",
+    ),
+    Category.PROFANITY_SET: (
+        "Max it is. Every fucking message swears now. You asked for it.",
+        "Holy shit, max is on. Even the good mornings will swear.",
+        "You wanted max, you got max. Every damn line, from now on.",
+        "Brakes are off. Every message comes with a fuck in it now.",
+        "Max mode, goddamn it. Politeness just left the chat.",
+    ),
+    Category.UNKNOWN_COMMAND: (
+        "What the fuck is that? Not a command.",
+        "Shit, that command doesn't exist. Learn the real ones.",
+        "Goddamn, wrong command again. Read the list.",
+        "Hell no, that's made up. Stop wasting time.",
+        "Fuck that command. It doesn't exist.",
+    ),
+    Category.PUNCHLINE_EN: MAX_PUNCHLINES,
+    Category.MAX_OPENER: (
+        "Listen the fuck up:",
+        "Alright, shit, here it is:",
+        "Damn it, read this:",
+        "Hell, here you go:",
+        "Shit, update:",
+        "Goddamn, check this:",
+        "Fuck it, here:",
+        "Holy shit, listen:",
+        "Damn, pay attention:",
+        "Shit, heads up:",
+        "Fuck, okay, here:",
+        "Hell, get this:",
+        "Goddamn it, read:",
+        "Right, fucking listen:",
+    ),
 }

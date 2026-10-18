@@ -1,4 +1,4 @@
-"""P6.11: the hard guardrails and the chat triggers (ADR 0030)."""
+"""P6.11, P6.13: the hard guardrails and the chat triggers (ADR 0030, 0032)."""
 
 # Turkish text: the dotless i (U+0131) is a letter here, not a confusable.
 # ruff: noqa: RUF001
@@ -6,10 +6,13 @@
 import pytest
 
 from trainsync.coach.guardrails import (
+    FoodKind,
     Trigger,
     Violation,
     excuse_kind,
     fold,
+    food_kind,
+    mentions_distress,
     mentions_pain,
     violations,
 )
@@ -108,9 +111,9 @@ def test_regression_everyday_words_never_trigger(text: str) -> None:
         ("bugün pas", Trigger.EXCUSE),
         ("üşendim valla", Trigger.EXCUSE),
         ("I'll do it tomorrow", Trigger.EXCUSE),
-        ("canım tatlı çekti", Trigger.CRAVING),
-        ("akşam pizza yiyeceğim", Trigger.CRAVING),
-        ("craving junk food", Trigger.CRAVING),
+        ("canım tatlı çekti", Trigger.FOOD),
+        ("akşam pizza yiyeceğim", Trigger.FOOD),
+        ("craving junk food", Trigger.FOOD),
         ("bugün ne var?", None),
         ("yarın planda ne var?", None),
     ],
@@ -132,6 +135,15 @@ def test_triggers(text: str, expected: Trigger | None) -> None:
         ("burn it off at the gym", Violation.CALORIE_PUNISHMENT),
         ("bugün aç kal", Violation.CALORIE_PUNISHMENT),
         ("öğün atla", Violation.CALORIE_PUNISHMENT),
+        # ADR 0032: never below the target, never compensate
+        ("eat less tomorrow", Violation.CALORIE_PUNISHMENT),
+        ("stay below your target to make up for it", Violation.CALORIE_PUNISHMENT),
+        ("make up for it with extra cardio", Violation.CALORIE_PUNISHMENT),
+        ("extra cardio to fix the cake", Violation.CALORIE_PUNISHMENT),
+        ("yarın daha az ye", Violation.CALORIE_PUNISHMENT),
+        ("kardiyoyla yak bunu", Violation.CALORIE_PUNISHMENT),
+        ("yarın telafi et", Violation.CALORIE_PUNISHMENT),
+        ("kalori hedefinin altında kal", Violation.CALORIE_PUNISHMENT),
     ],
 )
 def test_violations(text: str, kind: Violation) -> None:
@@ -148,3 +160,90 @@ def test_generated_replies_may_talk_about_the_bar() -> None:
     reply = "Top set weight was 80 kg; your body of work this week: 4 sessions."
     assert violations(reply, line=False) == []
     assert Violation.BODY in violations("lose weight", line=True)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "yediğime pişmanım",
+        "kendimi suçlu hissediyorum",
+        "baklava yedim sonra kustum",
+        "kendimi kusturdum",
+        "bugün hiçbir şey yemedim",
+        "sabahtan beri yemedim",
+        "kendimden nefret ediyorum",
+        "değersizim",
+        "dün gece tıkındım",
+        "kendimi durduramadım",
+        "I feel so guilty",
+        "I threw up",
+        "I made myself sick",
+        "haven't eaten all day",
+        "I didn't eat anything today",
+        "I hate myself",
+        "I'm worthless",
+        "I want to die",
+        "binged last night",
+        "couldn't stop eating",
+    ],
+)
+def test_distress_is_recognised(text: str) -> None:
+    assert mentions_distress(text), text
+    assert mentions_distress(text.upper()), text
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["bugün ne yedim?", "akşam yemeği yedim", "antrenman bitti", "I ate lunch", "bench day"],
+)
+def test_everyday_talk_is_not_distress(text: str) -> None:
+    assert not mentions_distress(text), text
+
+
+@pytest.mark.parametrize(
+    ("text", "kind"),
+    [
+        ("Bu akşam baklava yiyeceğim", FoodKind.SWEET),
+        ("canım çikolata çekti", FoodKind.SWEET),
+        ("bir kutu kola içtim", FoodKind.SWEET),
+        ("enerji içeceği aldım", FoodKind.SWEET),
+        ("doğum günü pastası var", FoodKind.SWEET),
+        ("having dessert", FoodKind.SWEET),
+        ("energy drink before the gym", FoodKind.SWEET),
+        ("akşam hamburger", FoodKind.FAST_FOOD),
+        ("döner yiyeceğim", FoodKind.FAST_FOOD),
+        ("pizza tonight", FoodKind.FAST_FOOD),
+        ("patates kızartması", FoodKind.FRIED),
+        ("cips açtım", FoodKind.FRIED),
+        ("fried chicken", FoodKind.FRIED),
+        ("akşam rakı var", FoodKind.ALCOHOL),
+        ("iki bira içtim", FoodKind.ALCOHOL),
+        ("wine with dinner", FoodKind.ALCOHOL),
+        ("sigara yaktım", FoodKind.SMOKING),
+        ("I smoked two", FoodKind.SMOKING),
+        ("vape bitti", FoodKind.SMOKING),
+        ("sabaha kadar dizi izledim", FoodKind.LATE),
+        ("gece 3te yattım", FoodKind.LATE),
+        ("stayed up late gaming", FoodKind.LATE),
+    ],
+)
+def test_unhealthy_choices_are_recognised(text: str, kind: FoodKind) -> None:
+    assert food_kind(text) is kind
+    assert excuse_kind(text) is Trigger.FOOD
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "birazdan geliyorum",
+        "rakip güçlü",
+        "kolay gelsin",
+        "biraz yorgunum",
+        "makarna ve tavuk",
+        "pasta with chicken",
+        "kale salad",
+        "sweet session today",
+    ],
+)
+def test_ordinary_words_are_not_food_triggers(text: str) -> None:
+    assert food_kind(text) is None, text

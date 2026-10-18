@@ -29,6 +29,7 @@ from trainsync.bot.telegram import (
     TelegramRetryAfterError,
     TelegramUnavailableError,
 )
+from trainsync.coach.voice import CoachVoice
 from trainsync.core.clock import Clock, Sleep
 from trainsync.core.localtime import local_moment
 from trainsync.core.logging import get_logger
@@ -37,7 +38,7 @@ from trainsync.core.settings import Settings
 from trainsync.db.models import NotificationKind
 from trainsync.db.repositories.checkins import CheckinRepository
 from trainsync.db.repositories.notifications import NotificationRepository
-from trainsync.notify.language import in_chat_lang
+from trainsync.notify.language import in_chat_settings
 
 log = get_logger(__name__)
 
@@ -91,6 +92,8 @@ class CheckinDeps:
     zone: ZoneInfo
     at: time
     reminder_minutes: int
+    # Max profanity in savage (ADR 0032): the prompt gets an opener too. None: never.
+    voice: CoachVoice | None = None
 
 
 def build_checkin_deps(
@@ -100,6 +103,7 @@ def build_checkin_deps(
     clock: Clock,
     sleep: Sleep,
     msg: Messages,
+    voice: CoachVoice | None = None,
 ) -> CheckinDeps:
     telegram = None
     if settings.checkin_active:
@@ -119,10 +123,11 @@ def build_checkin_deps(
         zone=settings.checkin_zone,
         at=settings.checkin_time,
         reminder_minutes=settings.checkin_reminder_minutes,
+        voice=voice,
     )
 
 
-@in_chat_lang
+@in_chat_settings
 async def run_checkin(deps: CheckinDeps) -> str:
     """One scheduler tick. Outcome: disabled / nothing / duplicate / sent_prompt /
     sent_reminder / unknown / failed."""
@@ -157,8 +162,9 @@ async def run_checkin(deps: CheckinDeps) -> str:
     if not claimed:
         return _count("duplicate")
     reply = prompt(deps.msg, today, reminder=decision == Decision.REMINDER)
+    text = await deps.voice.decorate(reply.text) if deps.voice else reply.text
     try:
-        await deps.telegram.send_message(deps.chat_id, reply.text, reply.keyboard)
+        await deps.telegram.send_message(deps.chat_id, text, reply.keyboard)
     except TelegramDeliveryUnknownError as exc:
         log.warning("checkin_delivery_unknown", day=today.isoformat(), error=str(exc))
         return _count("unknown")  # keep the claim: better no prompt than two

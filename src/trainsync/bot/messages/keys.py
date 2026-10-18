@@ -126,6 +126,12 @@ class Key(StrEnum):
     LANG_CHOOSE = "lang.choose"
     LANG_SET = "lang.set"
     LANG_USAGE = "lang.usage"
+    # /swear and the /help pointer (P6.13, ADR 0032)
+    SWEAR_CHOOSE = "swear.choose"
+    SWEAR_SET_MAX = "swear.set_max"
+    SWEAR_SET_ROAST = "swear.set_roast"
+    SWEAR_USAGE = "swear.usage"
+    HELP_POINTER = "help_pointer"
     COACH_FACT_SESSION = "coach.fact.session"
     COACH_FACT_UNDER = "coach.fact.under"
     COACH_FACT_MISSING = "coach.fact.missing"
@@ -240,6 +246,11 @@ FIELDS: Mapping[Key, frozenset[str]] = {
     Key.LANG_CHOOSE: _fields(),
     Key.LANG_SET: _fields(),
     Key.LANG_USAGE: _fields(),
+    Key.SWEAR_CHOOSE: _fields(),
+    Key.SWEAR_SET_MAX: _fields(),
+    Key.SWEAR_SET_ROAST: _fields(),
+    Key.SWEAR_USAGE: _fields(),
+    Key.HELP_POINTER: _fields(),
     Key.COACH_FACT_SESSION: _fields("day", "time"),
     Key.COACH_FACT_UNDER: _fields("exercise", "done", "target"),
     Key.COACH_FACT_MISSING: _fields("missing"),

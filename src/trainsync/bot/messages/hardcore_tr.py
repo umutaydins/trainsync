@@ -30,10 +30,11 @@ PACK = MessagePack(
             "/plates 102.5: bir tarafa takılacak plakalar\n"
             "/report: günlük rapor\n"
             "/yumusak: 24 saat yumuşak koç · /sert: normale dön\n"
-            "/lang: Türkçe / English",
+            "/lang: Türkçe / English\n"
+            "/swear: max / roast (savage profanity)",
         ),
         Key.NO_ASSISTANT: ("Sohbet yok, sadece komut.\n\n{help}",),
-        Key.UNKNOWN_COMMAND: ("/{command} diye bir şey yok lan.\n\n{help}",),
+        Key.UNKNOWN_COMMAND: ("/{command} diye bir şey yok lan. Gerçek komutlar: /help",),
         Key.USAGE_STATS: ("Yanlış. Kullanım: /stats [4w|12w|52w] [spor], ör. /stats 12w run",),
         Key.API_DOWN: (
             "trainsync API'ye ulaşamıyorum. Bu sefer suç sende değil. Bir dakika sonra dene.",
@@ -181,6 +182,11 @@ PACK = MessagePack(
         Key.LANG_CHOOSE: ("Dilini seç. Sonra işine dön.",),
         Key.LANG_SET: ("Tamam, Türkçe. Kurallar aynı, bahane yok.",),
         Key.LANG_USAGE: ("/lang, /lang en ya da /lang tr. Bu kadar basit lan.",),
+        Key.SWEAR_CHOOSE: ("Savage küfür ayarı: max mı, her yerde; roast mu, sadece fırçada?",),
+        Key.SWEAR_SET_MAX: ("Max. Savage koç açıkken her mesajda.",),
+        Key.SWEAR_SET_ROAST: ("Roast. Küfür fırçalarda kalıyor.",),
+        Key.SWEAR_USAGE: ("/swear, /swear max ya da /swear roast. Seç birini.",),
+        Key.HELP_POINTER: ("Gerçek komutlar: /help",),
         Key.COACH_FACT_SESSION: NEUTRAL.texts[Key.COACH_FACT_SESSION],
         Key.COACH_FACT_UNDER: NEUTRAL.texts[Key.COACH_FACT_UNDER],
         Key.COACH_FACT_MISSING: NEUTRAL.texts[Key.COACH_FACT_MISSING],

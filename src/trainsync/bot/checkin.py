@@ -55,7 +55,7 @@ from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import Button, Keyboard
 from trainsync.bot.training import plan_text, record_lines, suggested_load, todays_workout
 from trainsync.coach.categories import Category
-from trainsync.coach.guardrails import Trigger, excuse_kind, mentions_pain
+from trainsync.coach.guardrails import Trigger, excuse_kind, mentions_distress, mentions_pain
 from trainsync.coach.voice import CoachVoice
 from trainsync.core.clock import Clock
 from trainsync.core.localtime import local_today
@@ -416,8 +416,10 @@ class CheckinFlow:
         return await self._ask(chat_id, day, state, "scale", lines)
 
     async def _reason_reply(self, reason: str) -> list[str]:
-        """Pain or illness: calm, in every tone (ADR 0030). An excuse in savage: roasted.
-        Anything else: noted."""
+        """Distress, pain or illness: calm, in every tone and profanity level (ADR 0030, 0032).
+        An excuse in savage: roasted. Anything else: noted."""
+        if mentions_distress(reason):
+            return [self._msg.neutral(NeutralKey.SAFETY_DISTRESS)]
         if mentions_pain(reason):
             return [self._msg(Key.CHECKIN_SICK_SAVED), self._msg.neutral(NeutralKey.SAFETY_PAIN)]
         if self._voice and await self._voice.savage() and excuse_kind(reason) is Trigger.EXCUSE:

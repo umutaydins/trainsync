@@ -4,7 +4,6 @@ every reply in the chat's language, help in English, confirmations in the curren
 
 # Turkish text: the dotless i (U+0131) is a letter here, not a confusable.
 
-import json
 import random
 from collections.abc import AsyncIterator, Iterator
 from typing import Any
@@ -15,9 +14,10 @@ import respx
 from pydantic import SecretStr
 
 from tests.conftest import make_settings
+from tests.support.chat_settings import ChatSettingsApi
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, message_update, ok, sent_messages
 from trainsync.bot.handlers import Commands, Dispatcher
-from trainsync.bot.language import LanguageFeature, LanguageStore
+from trainsync.bot.language import ChatSettingsStore, LanguageFeature
 from trainsync.bot.messages import LANGUAGES, PACKS, Key, Messages, messages_for, using_lang
 from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import TelegramApi, Update
@@ -31,28 +31,6 @@ API = "http://trainsync-api"
 CHAT = 42
 
 
-class ChatSettingsApi:
-    """`/v1/chats/{id}/settings` backed by a dict: the database, as far as the bot can tell."""
-
-    def __init__(self) -> None:
-        self.rows: dict[int, str] = {}
-        self.reads = 0
-        self.down = False
-
-    def get(self, request: httpx.Request, chat_id: str) -> httpx.Response:
-        self.reads += 1
-        if self.down:
-            return httpx.Response(503, json={"detail": "down"})
-        return httpx.Response(
-            200, json={"chat_id": int(chat_id), "lang": self.rows.get(int(chat_id))}
-        )
-
-    def put(self, request: httpx.Request, chat_id: str) -> httpx.Response:
-        lang = json.loads(request.content)["lang"]
-        self.rows[int(chat_id)] = lang
-        return httpx.Response(200, json={"chat_id": int(chat_id), "lang": lang})
-
-
 @pytest.fixture
 def db() -> ChatSettingsApi:
     return ChatSettingsApi()
@@ -61,8 +39,7 @@ def db() -> ChatSettingsApi:
 @pytest.fixture
 def router(db: ChatSettingsApi) -> Iterator[respx.MockRouter]:
     with respx.mock(assert_all_called=False) as router:
-        router.get(url__regex=rf"{API}/v1/chats/(?P<chat_id>\d+)/settings").mock(side_effect=db.get)
-        router.put(url__regex=rf"{API}/v1/chats/(?P<chat_id>\d+)/settings").mock(side_effect=db.put)
+        db.install(router, API)
         router.post(f"{BOT_URL}/sendMessage", name="send").mock(return_value=ok({}))
         router.post(f"{BOT_URL}/answerCallbackQuery").mock(return_value=ok(True))
         router.post(f"{BOT_URL}/editMessageReplyMarkup").mock(return_value=ok({}))
@@ -89,7 +66,7 @@ class Bot:
             packs=load_packs(None),
         )
         api = ReadApi(http, API, SecretStr("bot-key"))
-        self.store = LanguageStore(api)
+        self.store = ChatSettingsStore(api)
         telegram = TelegramApi(http, SecretStr(BOT_TOKEN), base_url=TELEGRAM)
         self.dispatcher = Dispatcher(
             telegram,
@@ -97,7 +74,7 @@ class Bot:
             {CHAT},
             self.msg,
             features=[LanguageFeature(self.store, self.msg, self.voice)],
-            languages=self.store,
+            chat_settings=self.store,
         )
         self._update = 0
 
@@ -147,7 +124,7 @@ async def test_a_button_switches_and_confirms_in_the_new_language(
 ) -> None:
     bot = Bot(http, router)
     assert (await bot.press("lang:tr"))["text"] == neutral("tr")(Key.LANG_SET)
-    assert db.rows == {CHAT: "tr"}
+    assert db.lang(CHAT) == "tr"
     # Every later reply is Turkish: an unknown command, for example.
     reply = await bot.say("/nope")
     assert reply["text"].startswith("Bilinmeyen komut: /nope.")
@@ -160,7 +137,7 @@ async def test_lang_with_an_argument_and_a_bad_argument(
     assert (await bot.say("/lang en"))["text"] == neutral("en")(Key.LANG_SET)
     assert (await bot.say("/lang TR"))["text"] == neutral("tr")(Key.LANG_SET)
     assert (await bot.say("/lang de"))["text"] == neutral("tr")(Key.LANG_USAGE)
-    assert db.rows == {CHAT: "tr"}
+    assert db.lang(CHAT) == "tr"
 
 
 async def test_without_a_stored_choice_the_bot_speaks_bot_lang(
@@ -186,7 +163,7 @@ async def test_the_choice_survives_a_restart(
 async def test_an_unreachable_api_falls_back_to_bot_lang_and_asks_again(
     http: httpx.AsyncClient, router: respx.MockRouter, db: ChatSettingsApi
 ) -> None:
-    db.rows[CHAT] = "tr"
+    db.rows[CHAT] = {"lang": "tr"}
     db.down = True
     bot = Bot(http, router, bot_lang="en")
     assert (await bot.say("/nope"))["text"].startswith("Unknown command")

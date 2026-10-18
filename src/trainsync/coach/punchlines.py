@@ -1,5 +1,6 @@
 """`punchline_en` (ADR 0030, 0031): short, original English lines appended to about 1 in 4 savage
-messages in both languages. Never sent alone, never a quote of a real person."""
+messages in both languages. Never sent alone, never a quote of a real person. `MAX_PUNCHLINES`
+are the profanity-`max` pool (ADR 0032): every one swears."""
 
 PUNCHLINES: tuple[str, ...] = (
     "Nobody's coming. Get up.",
@@ -24,4 +25,30 @@ PUNCHLINES: tuple[str, ...] = (
     "Soft days build soft habits.",
     "Consistency is the whole trick.",
     "Get uncomfortable. Stay there.",
+)
+
+MAX_PUNCHLINES: tuple[str, ...] = (
+    "Nobody's coming. Get the fuck up.",
+    "Your excuses don't lift shit.",
+    "Earn the damn rest.",
+    "The bar doesn't give a fuck.",
+    "Comfort is the enemy, damn it.",
+    "Show the fuck up. Again.",
+    "Discipline is a daily vote. Vote, damn it.",
+    "Tired is a feeling, not a fucking plan.",
+    "The plan only works if you do, damn it.",
+    "Do the rep you're scared of. Hell yes.",
+    "Talk less. Lift more, damn it.",
+    "Your future self is watching. Don't fuck up.",
+    "Results don't negotiate, damn it.",
+    "The set won't do itself, for fuck's sake.",
+    "Quit waiting. Start fucking lifting.",
+    "Excuses are heavier than the damn bar.",
+    "Skipped sets cost. Pay the damn bill.",
+    "Earn it today, goddamn it.",
+    "Soft days build soft shit.",
+    "Consistency is the whole damn trick.",
+    "Get uncomfortable. Stay the hell there.",
+    "No shortcuts. No bullshit.",
+    "Less talk, more fucking reps.",
 )

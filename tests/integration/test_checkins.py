@@ -3,7 +3,9 @@ hand-computed fixture), the evening scheduler (once, not when answered, one remi
 restarts) and the conversation with the real API behind it (duplicate deliveries)."""
 
 import json
+import random
 from collections.abc import AsyncIterator
+from dataclasses import replace
 from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
@@ -29,13 +31,18 @@ from tests.support.telegram import (
     ok,
     sent_messages,
 )
-from trainsync.bot.checkin import CheckinFlow
+from trainsync.bot.checkin import CheckinFlow, prompt
 from trainsync.bot.handlers import Commands, Dispatcher
 from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import TelegramApi, Update
 from trainsync.bot.training import TrainingCommands
+from trainsync.coach.categories import Category
+from trainsync.coach.lines import MemoryRecentStore, load_packs
+from trainsync.coach.mode import CoachMode, MemorySoftModeStore
+from trainsync.coach.voice import CoachVoice
 from trainsync.core.settings import Settings
 from trainsync.db.models import DailyCheckin, WorkoutSet
+from trainsync.db.repositories.chat_settings import ChatSettingsRepository
 from trainsync.db.repositories.training import BodyMetricRepository
 from trainsync.main import create_app
 from trainsync.notify.checkin import CheckinDeps, run_checkin
@@ -353,3 +360,29 @@ async def test_duplicate_deliveries_store_one_check_in_and_one_set_each(
     ]
     assert texts[-1].startswith("Check-in saved for 18 Oct: ✅ Done\nWorkout: 3 sets · 1,200 kg")
     assert texts[-1].endswith("Check-in streak: 1 days")
+
+
+async def test_in_max_the_prompt_swears_read_at_send_time(
+    scheduler: tuple[CheckinDeps, respx.Route],
+    clock: Clock,
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    """ADR 0032: the chat chose /swear max; the savage coach is on: the prompt gets an opener."""
+    deps, send = scheduler
+    packs = load_packs(None)
+    voice = CoachVoice(
+        msg=MSG,
+        mode=CoachMode(configured=True, soft=MemorySoftModeStore()),
+        pack=packs["en"],
+        recent=MemoryRecentStore(),
+        rng=random.Random(1),
+        packs=packs,
+    )
+    deps = replace(deps, voice=voice)
+    async with sessionmaker.begin() as session:
+        await ChatSettingsRepository(session).set(CHAT, clock(), lang="en", profanity="max")
+    clock.now = datetime(2026, 10, 18, 18, 0, tzinfo=UTC)
+    assert await run_checkin(deps) == "sent_prompt"
+    opener, rest = sent_messages(send)[-1]["text"].split("\n", 1)
+    assert opener in packs["en"].max[Category.MAX_OPENER]
+    assert rest.startswith(prompt(MSG, date(2026, 10, 18)).text.split("\n")[0])

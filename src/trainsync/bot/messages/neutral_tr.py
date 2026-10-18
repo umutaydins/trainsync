@@ -24,10 +24,11 @@ PACK = MessagePack(
             "/plates 102.5: bir tarafa takılacak plakalar\n"
             "/report: günlük rapor\n"
             "/yumusak: 24 saat yumuşak koç · /sert: normale dön\n"
-            "/lang: Türkçe / English",
+            "/lang: Türkçe / English\n"
+            "/swear: max / roast (savage profanity)",
         ),
         Key.NO_ASSISTANT: ("Şimdilik yalnızca komutları anlıyorum.\n\n{help}",),
-        Key.UNKNOWN_COMMAND: ("Bilinmeyen komut: /{command}.\n\n{help}",),
+        Key.UNKNOWN_COMMAND: ("Bilinmeyen komut: /{command}. Neler yapabildiğim: /help",),
         Key.USAGE_STATS: ("Kullanım: /stats [4w|12w|52w] [spor], ör. /stats 12w run",),
         Key.API_DOWN: ("Üzgünüm, şu an trainsync API'ye ulaşamıyorum. Bir dakika sonra dene.",),
         Key.WEEK_THIS: ("Bu hafta ({range})",),
@@ -148,6 +149,13 @@ PACK = MessagePack(
         Key.LANG_CHOOSE: ("Botun dilini seç.",),
         Key.LANG_SET: ("Dil ayarlandı: Türkçe.",),
         Key.LANG_USAGE: ("Kullanım: /lang, /lang en veya /lang tr.",),
+        Key.SWEAR_CHOOSE: (
+            "Savage modda küfür: max (her mesajda) mı, roast (sadece fırçalarda) mı?",
+        ),
+        Key.SWEAR_SET_MAX: ("Küfür: max. Savage koç açıkken geçerli.",),
+        Key.SWEAR_SET_ROAST: ("Küfür: roast. Sadece fırçalarda küfür var.",),
+        Key.SWEAR_USAGE: ("Kullanım: /swear, /swear max veya /swear roast.",),
+        Key.HELP_POINTER: ("Neler yapabildiğim: /help",),
         Key.COACH_FACT_SESSION: ("{day} · {time}",),
         Key.COACH_FACT_UNDER: ("{exercise}: {done}, hedef {target}.",),
         Key.COACH_FACT_MISSING: ("{missing} planlı set eksik.",),

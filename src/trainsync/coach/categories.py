@@ -16,9 +16,18 @@ class Category(StrEnum):
     ESCALATION = "escalation"
     # The confirmation after /lang (ADR 0031).
     LANGUAGE_SET = "language_set"
+    # ADR 0032: junk, sugar, alcohol, cigarettes, staying up late; the confirmation after /swear;
+    # an unknown command.
+    FOOD_ROAST = "food_roast"
+    PROFANITY_SET = "profanity_set"
+    UNKNOWN_COMMAND = "unknown_command"
     # Short English lines appended to about 1 in 4 savage messages; never sent alone.
     PUNCHLINE_EN = "punchline_en"
+    # Max profanity only (ADR 0032): a line put in front of every other savage message.
+    MAX_OPENER = "max_opener"
 
 
-# Categories that are messages of their own (everything except the punchline add-on).
-MESSAGE_CATEGORIES = tuple(c for c in Category if c is not Category.PUNCHLINE_EN)
+# Categories with roast lines (every category except the max-only opener).
+ROAST_CATEGORIES = tuple(c for c in Category if c is not Category.MAX_OPENER)
+# Categories that are messages of their own (no punchline add-on, no max-only opener).
+MESSAGE_CATEGORIES = tuple(c for c in ROAST_CATEGORIES if c is not Category.PUNCHLINE_EN)

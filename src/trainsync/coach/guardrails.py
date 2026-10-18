@@ -1,10 +1,14 @@
-"""Hard guardrails of the coach (ADR 0030): the only limits that also hold in savage.
+"""Hard guardrails of the coach (ADR 0030, 0032): the only limits that also hold in savage and
+in max profanity.
 
+- `mentions_distress`: guilt spiral, throwing up, not eating, self-hate, binge talk → a calm
+  reply, no swearing, no roast (checked first).
 - `mentions_pain`: pain, injury, illness, dizziness, chest pain and the like → no roast, no push.
 - `violations`: body/weight/appearance words, identity slurs (ethnicity, religion, sexual
-  orientation, disability, gender) and calorie-punishment phrases. Profanity is not on the list
-  and is never filtered.
-- `excuse_kind`: the excuse / craving phrases that trigger the savage replies.
+  orientation, disability, gender) and calorie-punishment or restriction phrases. Profanity is
+  not on the list and is never filtered.
+- `excuse_kind` / `food_kind`: the excuse and unhealthy-choice phrases that trigger the savage
+  replies.
 
 Matching works on `fold()`ed text: Turkish-aware lower case, and ASCII stand-ins for Turkish
 letters, so "Göğsüm ağrıyor", "gogsum agriyor" and "GÖĞSÜM AĞRIYOR" are the same.
@@ -100,6 +104,78 @@ PAIN = _words(
 def mentions_pain(text: str) -> bool:
     """True when the message talks about pain, injury or illness: never roast, never push."""
     return PAIN.search(fold(text)) is not None
+
+
+# ---------------------------------------------------------------- distress (ADR 0032)
+
+DISTRESS = _words(
+    # guilt spiral (Turkish, folded)
+    r"kendimi suclu hiss\w*",
+    r"cok sucluyum",
+    r"sucluluk\w*",
+    r"vicdan azab\w*",
+    r"yedigim(?:e|den) pisman\w*",
+    r"her seyi mahvett\w*",
+    r"kendimden igren\w*",
+    # threw up / purging
+    r"kustum",
+    r"kusturdum",
+    r"kendimi kustur\w*",
+    r"kusmak istiyorum",
+    r"parmak att\w*",
+    # not eating
+    r"(?:bugun )?(?:hic ?bir sey|hic) yemedim",
+    r"sabahtan beri (?:bir sey |hic )?yemedim",
+    r"gunlerdir (?:bir sey )?yemiyorum",
+    r"yemek yemiyorum",
+    r"ac kaldim",
+    # self-hate
+    r"kendimden nefret\w*",
+    r"kendimi sevmiyorum",
+    r"berbat biriyim",
+    r"degersizim",
+    r"ise yaramazin\w*",
+    r"olmek istiyorum",
+    r"kendimi oldur\w*",
+    r"intihar\w*",
+    # binge talk
+    r"tikin\w*",
+    r"kendimi durduramad\w*",
+    r"durduramadim",
+    r"kontrolu kaybett\w*",
+    r"bir oturusta (?:hepsini|butun)\w*",
+    # English
+    r"(?:feel|feeling|felt) (?:so |really |very )?guilty",
+    r"guilt\w*",
+    r"ashamed",
+    r"disgusted (?:with|by) myself",
+    r"ruined everything",
+    r"threw up",
+    r"throw(?:ing)? up",
+    r"made myself (?:sick|throw up|vomit)",
+    r"purg\w*",
+    r"haven'?t eaten",
+    r"have not eaten",
+    r"didn'?t eat (?:anything|all day|today)",
+    r"not eating",
+    r"starving myself",
+    r"hate myself",
+    r"i'?m (?:worthless|disgusting|useless)",
+    r"want to die",
+    r"kill myself",
+    r"suicid\w*",
+    r"self.?harm\w*",
+    r"binge\w*",
+    r"bingi\w*",
+    r"couldn'?t stop eating",
+    r"lost control",
+)
+
+
+def mentions_distress(text: str) -> bool:
+    """True for guilt, purging, not eating, self-hate or binge talk: a calm reply only, never a
+    roast and never a swear word, whatever the intensity and profanity (ADR 0032)."""
+    return DISTRESS.search(fold(text)) is not None
 
 
 # ---------------------------------------------------------------- never in any line
@@ -198,6 +274,17 @@ CALORIE_PUNISHMENT = _words(
     r"ogun atla\w*",
     r"yeme(?:yeceksin|me lazim)?\b",
     r"kalori(?:yi)? kes\w*",
+    # ADR 0032: never eat below the target, never compensate with cardio
+    r"eat(?:ing)? less\b",
+    r"eat(?:ing)? below",
+    r"below (?:your|the) (?:kcal |calorie )?target",
+    r"make up for (?:it|that) (?:with|by)",
+    r"(?:extra|more) cardio (?:to|for)",
+    r"daha az ye\b",
+    r"az ye\b",
+    r"(?:kalori|kcal) hedef\w* altin\w*",
+    r"kardiyo(?:yla| ile) (?:yak|telafi)\w*",
+    r"telafi (?:et|icin)\w*",
 )
 
 
@@ -226,7 +313,18 @@ def violations(text: str, *, line: bool = True) -> list[Violation]:
 
 class Trigger(StrEnum):
     EXCUSE = "excuse"
-    CRAVING = "craving"
+    FOOD = "food"
+
+
+class FoodKind(StrEnum):
+    """What the unhealthy choice is about: picks the one concrete move (ADR 0032)."""
+
+    SWEET = "sweet"
+    FAST_FOOD = "fast_food"
+    FRIED = "fried"
+    ALCOHOL = "alcohol"
+    SMOKING = "smoking"
+    LATE = "late"
 
 
 EXCUSE = _words(
@@ -257,22 +355,116 @@ EXCUSE = _words(
     r"too tired",
     r"no time",
 )
-CRAVING = _words(
-    r"canim (?:tatli|cikolata|pizza|hamburger|burger|dondurma|cips|kola|baklava)\w* cek\w*",
-    r"(?:tatli|cikolata|pizza|hamburger|burger|dondurma|cips|baklava|abur cubur)\w* "
-    r"(?:yiyece\w*|yicem|yiyorum|yedim|istiyorum|cekti)",
-    r"abur cubur",
-    r"craving\w*",
-    r"junk food",
-    r"(?:pizza|burger|ice cream|chocolate|candy|chips) (?:tonight|now)",
-)
+FOOD: dict[FoodKind, re.Pattern[str]] = {
+    FoodKind.SWEET: _words(
+        r"baklava\w*",
+        r"kunefe\w*",
+        r"tatli(?:lar|lari|yi|ya|ci|cik)?\b",
+        r"cikolata\w*",
+        r"dondurma\w*",
+        r"kurabiye\w*",
+        r"gofret\w*",
+        r"lokum\w*",
+        r"seker(?:leme|lemeler|li)?\b",
+        r"kek(?:i|ler)?\b",
+        r"pasta(?:yi|ya|si|lar\w*|ne\w*)\b",
+        r"(?:coca )?kola(?:yi|ya|lar)?\b",
+        r"gazli icecek\w*",
+        r"enerji icece\w*",
+        r"red ?bull\w*",
+        r"dessert\w*",
+        r"chocolate\w*",
+        r"candy",
+        r"sweets",
+        r"cake\w*",
+        r"cookie\w*",
+        r"donut\w*",
+        r"doughnut\w*",
+        r"ice cream",
+        r"soda\b",
+        r"coke\b",
+        r"cola\b",
+        r"energy drink\w*",
+        r"sugar\w*",
+    ),
+    FoodKind.FAST_FOOD: _words(
+        r"hamburger\w*",
+        r"burger\w*",
+        r"pizza\w*",
+        r"doner(?:ci|e|i)?\b",
+        r"durum(?:cu|e|u)?\b",
+        r"fast ?food\w*",
+        r"mcdonald\w*",
+        r"burger king",
+        r"kfc\b",
+        r"nugget\w*",
+        r"hot ?dog\w*",
+        r"abur cubur",
+        r"junk food",
+        r"takeaway",
+    ),
+    FoodKind.FRIED: _words(
+        r"kizartma\w*",
+        r"kizarmis\w*",
+        r"cips\w*",
+        r"chips\b",
+        r"fries\b",
+        r"fried\b",
+        r"deep.?fr\w*",
+    ),
+    FoodKind.ALCOHOL: _words(
+        r"bira(?:yi|ya|lar\w*|cigim|cagim)?\b",
+        r"raki(?:yi|ya)?\b",
+        r"sarap\w*",
+        r"alkol\w*",
+        r"votka\w*",
+        r"viski\w*",
+        r"sarhos\w*",
+        r"beer\w*",
+        r"wine\b",
+        r"vodka\w*",
+        r"whisk(?:e)?y\w*",
+        r"alcohol\w*",
+        r"drunk\b",
+        r"shots\b",
+        r"cocktail\w*",
+        r"tequila\w*",
+    ),
+    FoodKind.SMOKING: _words(
+        r"sigara\w*",
+        r"nargile\w*",
+        r"vape\w*",
+        r"vaping",
+        r"cigarette\w*",
+        r"smok(?:e|es|ed|ing)\b",
+    ),
+    FoodKind.LATE: _words(
+        r"gec yat\w*",
+        r"sabaha kadar",
+        r"uyumadim",
+        r"uykusuz\w*",
+        r"gece (?:[1-4]|bir|iki|uc|dort)(?:te|de|e|ye)?\b",
+        r"stay(?:ing|ed)? up late",
+        r"up (?:all night|late)",
+        r"all.?nighter",
+        r"didn'?t sleep",
+        r"no sleep",
+    ),
+}
+
+
+def food_kind(text: str) -> FoodKind | None:
+    """The unhealthy choice a chat message talks about, or None. Callers check
+    `mentions_distress` and `mentions_pain` first."""
+    folded = fold(text)
+    return next((kind for kind, pattern in FOOD.items() if pattern.search(folded)), None)
 
 
 def excuse_kind(text: str) -> Trigger | None:
-    """The savage trigger in a chat message, or None. Callers check `mentions_pain` first."""
-    folded = fold(text)
-    if CRAVING.search(folded):
-        return Trigger.CRAVING
-    if EXCUSE.search(folded):
+    """The savage trigger in a chat message, or None. Callers check `mentions_distress` and
+    `mentions_pain` first."""
+    if food_kind(text) is not None:
+        return Trigger.FOOD
+    if EXCUSE.search(fold(text)):
         return Trigger.EXCUSE
     return None

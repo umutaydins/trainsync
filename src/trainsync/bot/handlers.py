@@ -10,7 +10,7 @@ from datetime import date, timedelta
 
 from trainsync.bot import formatting
 from trainsync.bot.common import Feature, Incoming, Press, PressResult, Reply
-from trainsync.bot.language import LanguageStore
+from trainsync.bot.language import ChatSettingsStore
 from trainsync.bot.messages import Key, Messages, using_lang
 from trainsync.bot.read_api import ReadApi, ReadApiError
 from trainsync.bot.telegram import (
@@ -20,9 +20,13 @@ from trainsync.bot.telegram import (
     TelegramUnavailableError,
     Update,
 )
+from trainsync.coach.categories import Category
+from trainsync.coach.mode import using_profanity
+from trainsync.coach.voice import CoachVoice
 from trainsync.core.clock import Clock
 from trainsync.core.logging import get_logger
 from trainsync.core.metrics import BOT_UPDATES
+from trainsync.db.repositories.chat_settings import ChatPrefs
 from trainsync.db.repositories.reads import week_start
 
 log = get_logger(__name__)
@@ -144,7 +148,8 @@ class Dispatcher:
         text_handler: TextHandler | None = None,
         *,
         features: Sequence[Feature] = (),
-        languages: LanguageStore | None = None,
+        chat_settings: ChatSettingsStore | None = None,
+        voice: CoachVoice | None = None,
     ) -> None:
         self._telegram = telegram
         self._commands = commands
@@ -152,17 +157,22 @@ class Dispatcher:
         self._allowed = allowed_chat_ids
         self._text_handler = text_handler
         self._features = tuple(features)
-        self._languages = languages
+        self._chat_settings = chat_settings
+        # Savage replies to unknown commands and max-profanity openers (ADR 0032).
+        self._voice = voice
         self._known = COMMANDS.union(*(f.commands for f in self._features))
 
     async def handle(self, update: Update) -> None:
-        """Everything for this update is rendered in the chat's language (ADR 0031)."""
-        lang = None
-        chat_id = _chat_of(update)
-        if self._languages is not None and chat_id in self._allowed:
-            lang = await self._languages.get(chat_id)
-        with using_lang(lang):
+        """Everything for this update is rendered in the chat's language (ADR 0031) and at its
+        profanity level (ADR 0032)."""
+        prefs = await self._prefs(_chat_of(update))
+        with using_lang(prefs.lang), using_profanity(prefs.profanity):
             await self._handle(update)
+
+    async def _prefs(self, chat_id: int | None) -> ChatPrefs:
+        if self._chat_settings is None or chat_id is None or chat_id not in self._allowed:
+            return ChatPrefs()
+        return await self._chat_settings.prefs(chat_id)
 
     async def _handle(self, update: Update) -> None:
         if update.callback_query is not None:
@@ -188,8 +198,13 @@ class Dispatcher:
     async def _send(self, chat_id: int, reply: Reply, label: str, outcome: str) -> str:
         if not reply.text:
             return "duplicate"  # a feature recognised a redelivered update: nothing to say
+        text = reply.text
+        if self._voice is not None and not reply.plain:
+            # The level as stored now: a /swear switch in this update already counts.
+            with using_profanity((await self._prefs(chat_id)).profanity):
+                text = await self._voice.decorate(text)
         try:
-            await self._telegram.send_message(chat_id, reply.text, reply.keyboard)
+            await self._telegram.send_message(chat_id, text, reply.keyboard)
         except (TelegramError, TelegramUnavailableError) as exc:
             log.warning("bot_reply_failed", chat_id=chat_id, command=label, error=str(exc))
             return "send_failed"
@@ -207,19 +222,26 @@ class Dispatcher:
                         return claimed, "ok"
                 if self._text_handler is None:
                     return Reply(msg(Key.NO_ASSISTANT, help=msg.help())), "ok"
-                return Reply(await self._text_handler(incoming.chat_id, incoming.text)), "ok"
+                answer = await self._text_handler(incoming.chat_id, incoming.text)
+                return Reply(answer, plain=True), "ok"
             for feature in self._features:
                 if command in feature.commands:
                     return await feature.command(incoming, command, args), "ok"
             if command not in COMMANDS:
-                unknown = msg(Key.UNKNOWN_COMMAND, command=command, help=msg.help())
-                return Reply(unknown), "unknown"
+                return Reply(await self._unknown(command)), "unknown"
             return Reply(await self._commands.run(command, args)), "ok"
         except UsageError as exc:
             return Reply(msg(exc.key)), "usage"
         except ReadApiError as exc:
             log.warning("bot_read_api_failed", chat_id=incoming.chat_id, error=str(exc))
             return Reply(msg(Key.API_DOWN)), "error"
+
+    async def _unknown(self, command: str) -> str:
+        """In the current tone, pointing to /help: a savage line in savage mode (ADR 0032)."""
+        if self._voice is not None and await self._voice.savage():
+            line = await self._voice.roast(Category.UNKNOWN_COMMAND)
+            return f"{line}\n{self._msg(Key.HELP_POINTER)}"
+        return self._msg(Key.UNKNOWN_COMMAND, command=command, help=self._msg.help())
 
     async def _handle_press(self, update_id: int, query: CallbackQuery) -> None:
         message = query.message

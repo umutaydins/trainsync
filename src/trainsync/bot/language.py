@@ -1,9 +1,11 @@
-"""`/lang` (P6.12, ADR 0031): the chat's language, chosen at runtime.
+"""`/lang` (P6.12, ADR 0031): the chat's language, chosen at runtime, and the store of every
+per-chat setting (also the profanity level of `/swear`, ADR 0032).
 
-The choice is stored through the API (`chat_settings`), so it survives restarts and redeploys,
-and is cached in the process. No stored choice, or an API that cannot be reached, means
-`BOT_LANG`. The dispatcher sets the language for each update (`using_lang`); every reply, the
-coach lines and the assistant follow it. Command names and help stay English.
+The choices are stored through the API (`chat_settings`), so they survive restarts and
+redeploys, and are cached in the process. No stored choice, or an API that cannot be reached,
+means the default (`BOT_LANG`, `BOT_PROFANITY`). The dispatcher sets both for each update
+(`using_lang`, `using_profanity`); every reply, the coach lines and the assistant follow them.
+Command names and help stay English.
 """
 
 from trainsync.api.chats import ChatSettingsIn
@@ -14,7 +16,8 @@ from trainsync.bot.telegram import Button, Keyboard
 from trainsync.coach.categories import Category
 from trainsync.coach.voice import CoachVoice
 from trainsync.core.logging import get_logger
-from trainsync.core.settings import BotLang
+from trainsync.core.settings import BotLang, BotProfanity
+from trainsync.db.repositories.chat_settings import ChatPrefs
 
 log = get_logger(__name__)
 
@@ -27,28 +30,41 @@ def parse_lang(value: str) -> BotLang | None:
     return next((lang for lang in LANGUAGES if lang == value), None)
 
 
-class LanguageStore:
-    """The stored language per chat, read once per process and kept in memory."""
+class ChatSettingsStore:
+    """The stored settings per chat, read once per process and kept in memory."""
 
     def __init__(self, api: ReadApi) -> None:
         self._api = api
-        self._cache: dict[int, BotLang | None] = {}
+        self._cache: dict[int, ChatPrefs] = {}
 
-    async def get(self, chat_id: int) -> BotLang | None:
+    async def prefs(self, chat_id: int) -> ChatPrefs:
         if chat_id in self._cache:
             return self._cache[chat_id]
         try:
-            lang = (await self._api.chat_settings(chat_id)).lang
+            stored = await self._api.chat_settings(chat_id)
         except ReadApiError as exc:
             # Not cached: the next update asks again.
-            log.warning("bot_language_unavailable", chat_id=chat_id, error=str(exc))
-            return None
-        self._cache[chat_id] = lang
-        return lang
+            log.warning("bot_chat_settings_unavailable", chat_id=chat_id, error=str(exc))
+            return ChatPrefs()
+        prefs = ChatPrefs(stored.lang, stored.profanity)
+        self._cache[chat_id] = prefs
+        return prefs
 
-    async def set(self, chat_id: int, lang: BotLang) -> None:
-        await self._api.put_chat_settings(chat_id, ChatSettingsIn(lang=lang))
-        self._cache[chat_id] = lang
+    async def get(self, chat_id: int) -> BotLang | None:
+        """The stored language (None: `BOT_LANG`)."""
+        return (await self.prefs(chat_id)).lang
+
+    async def set(
+        self,
+        chat_id: int,
+        lang: BotLang | None = None,
+        *,
+        profanity: BotProfanity | None = None,
+    ) -> None:
+        stored = await self._api.put_chat_settings(
+            chat_id, ChatSettingsIn(lang=lang, profanity=profanity)
+        )
+        self._cache[chat_id] = ChatPrefs(stored.lang, stored.profanity)
 
 
 def keyboard() -> Keyboard:
@@ -61,7 +77,7 @@ class LanguageFeature:
 
     commands = frozenset({"lang"})
 
-    def __init__(self, store: LanguageStore, msg: Messages, voice: CoachVoice | None) -> None:
+    def __init__(self, store: ChatSettingsStore, msg: Messages, voice: CoachVoice | None) -> None:
         self._store = store
         self._msg = msg
         self._voice = voice

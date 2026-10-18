@@ -11,6 +11,7 @@ Koç burada. Komutlar var, bahane yok.
 /report: günlük rapor
 /yumusak: 24 saat yumuşak koç · /sert: normale dön
 /lang: Türkçe / English
+/swear: max / roast (savage profanity)
 /eat <yiyecek> <gram>: yiyecek kaydet, ör. /eat yulaf 60
 /kcal: bugünkü alım ve makrolar
 /weight 78.4: bugünkü tartı
@@ -30,28 +31,13 @@ Koç burada. Komutlar var, bahane yok.
 /report: günlük rapor
 /yumusak: 24 saat yumuşak koç · /sert: normale dön
 /lang: Türkçe / English
+/swear: max / roast (savage profanity)
 /eat <yiyecek> <gram>: yiyecek kaydet, ör. /eat yulaf 60
 /kcal: bugünkü alım ve makrolar
 /weight 78.4: bugünkü tartı
 
 ## unknown command
-/foo diye bir şey yok lan.
-
-Koç burada. Komutlar var, bahane yok.
-/week: bu hafta ve geçen hafta
-/last: son aktivite
-/stats [4w|12w|52w] [spor]: toplamlar ve en iyi hafta, ör. /stats 12w run
-/status: senkron durumu
-/today: bugünkü planlı antrenman
-/log bench 80x5x3: set kaydet (80x5,5,4 ya da bw x12x3 de olur)
-/done: antrenmanı bitir
-/plates 102.5: bir tarafa takılacak plakalar
-/report: günlük rapor
-/yumusak: 24 saat yumuşak koç · /sert: normale dön
-/lang: Türkçe / English
-/eat <yiyecek> <gram>: yiyecek kaydet, ör. /eat yulaf 60
-/kcal: bugünkü alım ve makrolar
-/weight 78.4: bugünkü tartı
+/foo diye bir şey yok lan. Gerçek komutlar: /help
 
 ## usage
 Yanlış. Kullanım: /stats [4w|12w|52w] [spor], ör. /stats 12w run

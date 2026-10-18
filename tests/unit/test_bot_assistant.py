@@ -33,7 +33,7 @@ from trainsync.bot.assistant import (
 )
 from trainsync.bot.messages import PACKS, Key, Messages, messages_for, using_lang
 from trainsync.bot.read_api import ReadApi
-from trainsync.coach.mode import CoachMode, MemorySoftModeStore
+from trainsync.coach.mode import CoachMode, MemorySoftModeStore, using_profanity
 from trainsync.core.redis import create_redis
 from trainsync.core.settings import BotTone
 
@@ -520,3 +520,44 @@ async def test_the_chat_language_reaches_the_prompt(
         await bot.answer(42, "?")
     assert "Reply in English." in planner.systems[0]
     assert "Reply in Turkish." in planner.systems[1]
+
+
+# ---------------------------------------------------------------- food and profanity (P6.13)
+
+
+def test_max_profanity_is_in_the_prompt_only_with_savage_and_max() -> None:
+    """ADR 0032: in max the assistant swears in every reply; the hard limits still win."""
+    assert "Profanity: MAX" not in system_prompt(NOW, "hardcore", "tr", savage=True)
+    assert "Profanity: MAX" not in system_prompt(NOW, "hardcore", "tr", profanity="max")
+    maxed = system_prompt(NOW, "hardcore", "tr", savage=True, profanity="max")
+    assert "Swear naturally in every reply" in maxed
+    assert "praise and good news too" in maxed
+    assert maxed.index("Hard limits") < maxed.index("Profanity: MAX")
+
+
+def test_the_prompt_roasts_choices_and_keeps_distress_calm() -> None:
+    plain = system_prompt(NOW, "hardcore", "en")
+    assert "Food: eat it, log it" not in plain  # the old rule is gone (ADR 0032)
+    assert "skipping meals or eating less to make up for it" in plain
+    assert "throwing up, not eating, hating themselves or bingeing" in plain
+    savage = system_prompt(NOW, "hardcore", "en", savage=True)
+    assert "hard roast of the choice, never of the body" in savage
+    assert "the day's kcal target stays the target" in savage
+
+
+async def test_the_chat_profanity_reaches_the_prompt(
+    http: httpx.AsyncClient, api: respx.MockRouter
+) -> None:
+    """`/swear max` changes the prompt at runtime; `BOT_PROFANITY` is the default."""
+    planner = ScriptedPlanner([text("ok"), text("ok"), text("ok")])
+    coach = Messages(PACKS["hardcore", "tr"])
+    mode = CoachMode(configured=True, soft=MemorySoftModeStore())
+    bot = assistant(http, planner, msg=coach, mode=mode)
+    await bot.answer(42, "?")
+    with using_profanity("max"):
+        await bot.answer(42, "?")
+    assert "Profanity: MAX" not in planner.systems[0]
+    assert "Profanity: MAX" in planner.systems[1]
+    default_max = assistant(http, planner, msg=coach, mode=mode, profanity="max")
+    await default_max.answer(42, "?")
+    assert "Profanity: MAX" in planner.systems[2]

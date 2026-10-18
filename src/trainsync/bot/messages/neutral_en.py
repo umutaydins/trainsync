@@ -21,10 +21,11 @@ PACK = MessagePack(
             "/plates 102.5: plates per side\n"
             "/report: daily check-in\n"
             "/yumusak: soft coach for 24 h · /sert: back to normal\n"
-            "/lang: Türkçe / English",
+            "/lang: Türkçe / English\n"
+            "/swear: max / roast (savage profanity)",
         ),
         Key.NO_ASSISTANT: ("I only understand commands for now.\n\n{help}",),
-        Key.UNKNOWN_COMMAND: ("Unknown command /{command}.\n\n{help}",),
+        Key.UNKNOWN_COMMAND: ("Unknown command /{command}. Everything I can do: /help",),
         Key.USAGE_STATS: ("Usage: /stats [4w|12w|52w] [sport], e.g. /stats 12w run",),
         Key.API_DOWN: ("Sorry, I can't reach the trainsync API right now. Try again in a minute.",),
         Key.WEEK_THIS: ("This week ({range})",),
@@ -147,6 +148,13 @@ PACK = MessagePack(
         Key.LANG_CHOOSE: ("Choose the bot's language.",),
         Key.LANG_SET: ("Language set: English.",),
         Key.LANG_USAGE: ("Usage: /lang, /lang en or /lang tr.",),
+        Key.SWEAR_CHOOSE: (
+            "Profanity in savage mode: max (every message) or roast (only the roasts)?",
+        ),
+        Key.SWEAR_SET_MAX: ("Profanity: max. It applies while the savage coach is on.",),
+        Key.SWEAR_SET_ROAST: ("Profanity: roast. Only the roasts swear.",),
+        Key.SWEAR_USAGE: ("Usage: /swear, /swear max or /swear roast.",),
+        Key.HELP_POINTER: ("Everything I can do: /help",),
         Key.COACH_FACT_SESSION: ("{day} · {time}",),
         Key.COACH_FACT_UNDER: ("{exercise}: {done}, target {target}.",),
         Key.COACH_FACT_MISSING: ("{missing} planned sets missing.",),
