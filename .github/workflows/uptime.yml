@@ -1,0 +1,79 @@
+name: uptime
+
+# P7.8 (ADR 0027): from outside the Mac, GET /health/ready on the real and the demo URL every 15
+# minutes; a Telegram message after 2 consecutive failures and one when the target is back
+# (state machine: src/trainsync/ops/uptime.py, docs/diagrams.md §24). Flapping never alerts.
+#
+# Repository variables (Settings > Secrets and variables > Actions > Variables): UPTIME_URL and
+# UPTIME_DEMO_URL, the public base URLs; an empty one is not checked, both empty = clean skip.
+# Repository secrets: TELEGRAM_BOT_TOKEN and TELEGRAM_ALERT_CHAT_ID. The token reaches the script
+# only through the environment, never a command line.
+#
+# Alert state between runs lives in the Actions cache: cache entries cannot be overwritten, so
+# every run saves a new `uptime-state-<run id>-<attempt>` entry and the next run restores the
+# newest one by the `uptime-state-` prefix. A lost cache (evicted, 7 days unused) starts fresh at
+# "up": at most one repeated alert. The run is red only when an alert could not be sent.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  uptime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      UPTIME_URL: ${{ vars.UPTIME_URL }}
+      UPTIME_DEMO_URL: ${{ vars.UPTIME_DEMO_URL }}
+    steps:
+      - name: URLs configured?
+        id: cfg
+        run: |
+          if [ -z "$UPTIME_URL$UPTIME_DEMO_URL" ]; then
+            echo "::notice::UPTIME_URL and UPTIME_DEMO_URL are not set; skipping the uptime check"
+            echo "set=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "set=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v7
+        if: steps.cfg.outputs.set == 'true'
+      - name: Restore the alert state
+        if: steps.cfg.outputs.set == 'true'
+        uses: actions/cache/restore@v5
+        with:
+          path: .uptime/state.json
+          key: uptime-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: uptime-state-
+      - name: Check and alert
+        if: steps.cfg.outputs.set == 'true'
+        env:
+          # Standard library only: the runner's python3 (3.12 on ubuntu-24.04), nothing to install.
+          PYTHONPATH: src
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_NOTIFY_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+        run: |
+          mkdir -p .uptime
+          python3 -m trainsync.ops.uptime --state .uptime/state.json
+      - name: Summary
+        if: always() && steps.cfg.outputs.set == 'true' && hashFiles('.uptime/state.json') != ''
+        run: |
+          {
+            echo '### Uptime state'
+            echo '```json'
+            cat .uptime/state.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Save the alert state
+        if: always() && steps.cfg.outputs.set == 'true' && hashFiles('.uptime/state.json') != ''
+        uses: actions/cache/save@v5
+        with:
+          path: .uptime/state.json
+          key: uptime-state-${{ github.run_id }}-${{ github.run_attempt }}
