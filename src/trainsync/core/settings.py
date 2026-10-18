@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     bot_metrics_port: int = Field(default=9101, ge=0, le=65535)
     # Base URL of the web dashboard; notifications link to `<url>/activities/<id>`. Empty = no link.
     dashboard_public_url: str = ""
+    # Natural-language questions in the bot (P5.7, ADR 0014); off while the key is empty.
+    anthropic_api_key: SecretStr = SecretStr("")
+    assistant_model: str = "claude-opus-5-5"
+    assistant_rate_limit_per_hour: int = Field(default=20, ge=1)
 
     @field_validator("telegram_allowed_chat_ids", mode="before")
     @classmethod
@@ -85,6 +89,10 @@ class Settings(BaseSettings):
     @property
     def bot_enabled(self) -> bool:
         return bool(self.telegram_bot_token.get_secret_value())
+
+    @property
+    def assistant_enabled(self) -> bool:
+        return bool(self.anthropic_api_key.get_secret_value())
 
     def bot_read_api_key(self) -> SecretStr:
         return self.bot_api_key if self.bot_api_key.get_secret_value() else self.api_keys[0]

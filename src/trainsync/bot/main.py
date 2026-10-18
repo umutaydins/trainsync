@@ -11,14 +11,17 @@ import logging
 import signal
 from contextlib import AsyncExitStack
 
+import anthropic
 from prometheus_client import start_http_server
 
+from trainsync.bot.assistant import TIMEOUT_S, AnthropicPlanner, Assistant, RedisRateLimiter
 from trainsync.bot.handlers import Commands, Dispatcher, TextHandler
 from trainsync.bot.polling import Poller
 from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import TelegramApi
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.logging import configure_logging, get_logger
+from trainsync.core.redis import create_redis
 from trainsync.core.settings import Settings, get_settings
 from trainsync.strava.http import build_http_client
 
@@ -64,9 +67,24 @@ async def run(
 async def text_handler(
     settings: Settings, read_api: ReadApi, stack: AsyncExitStack, *, clock: Clock
 ) -> TextHandler | None:
-    """The natural-language assistant (P5.7), or None when it is not configured."""
-    del settings, read_api, stack, clock
-    return None
+    """The natural-language assistant (P5.7), or None without `ANTHROPIC_API_KEY`."""
+    if not settings.assistant_enabled:
+        log.info("assistant_disabled", reason="ANTHROPIC_API_KEY is empty")
+        return None
+    client = anthropic.AsyncAnthropic(
+        api_key=settings.anthropic_api_key.get_secret_value(), timeout=TIMEOUT_S, max_retries=1
+    )
+    stack.push_async_callback(client.close)
+    redis = create_redis(settings)
+    stack.push_async_callback(redis.aclose)
+    assistant = Assistant(
+        AnthropicPlanner(client, settings.assistant_model),
+        read_api,
+        RedisRateLimiter(redis, settings.assistant_rate_limit_per_hour, clock),
+        clock,
+    )
+    log.info("assistant_enabled", model=settings.assistant_model)
+    return assistant.answer
 
 
 def main() -> None:

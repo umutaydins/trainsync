@@ -25,7 +25,8 @@ being up or my rate-limit budget being available at read time.
   retries, rate-limit accounting and the circuit breaker.
 - **Bot process** (`python -m trainsync.bot`, Phase 5): Telegram long polling, deterministic
   summary commands, chat allowlist. A client of the read API (HTTP + API key), never of the
-  database (ADR 0012, ADR 0013).
+  database (ADR 0012, ADR 0013). Optional natural-language questions: Claude chooses read-API
+  calls through four validated tools, every number comes from the API (ADR 0014).
 - **fake_strava**: a small FastAPI app that mimics the endpoints we use, with configurable
   latency, error rate and rate-limit headers. Used for local dev, integration tests and load tests.
 

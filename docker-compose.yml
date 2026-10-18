@@ -110,6 +110,7 @@ services:
       BOT_API_BASE_URL: http://api:8000
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_ALLOWED_CHAT_IDS: ${TELEGRAM_ALLOWED_CHAT_IDS:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}  # empty = no natural-language questions
     ports: ["9101:9101"]  # bot /metrics (BOT_METRICS_PORT)
     depends_on:
       api: { condition: service_healthy }
