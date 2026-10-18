@@ -95,10 +95,10 @@ class CoachVoice:
             return text
         if not await self.swears_everywhere():
             return text
-        pack = self.lines
-        if any(line in text for pool in pack.max.values() for line in pool):
-            return text  # already a max line in it: never two
-        opener = await pick(pack, Category.MAX_OPENER, self.recent, self.rng, "max")
+        packs = [self.pack, *self.packs.values()]
+        if any(line in text for pack in packs for pool in pack.max.values() for line in pool):
+            return text  # already a max line in it (any language): never two
+        opener = await pick(self.lines, Category.MAX_OPENER, self.recent, self.rng, "max")
         return f"{opener}\n{text}"
 
 

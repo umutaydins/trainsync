@@ -266,3 +266,15 @@ async def test_a_plain_log_is_not_roasted_and_a_day_over_the_sugar_limit_is(
 async def test_help_lists_swear(http: httpx.AsyncClient, router: respx.MockRouter) -> None:
     help_text = await Bot(http, router).say("/help")
     assert "/swear: max / roast" in help_text
+
+
+async def test_a_language_switch_in_max_gets_no_opener_in_the_old_language(
+    http: httpx.AsyncClient, router: respx.MockRouter, fake: FakeApi
+) -> None:
+    bot = Bot(http, router)
+    await bot.say("/swear max")
+    english = await bot.say("/lang en")
+    assert "\n" not in english, english
+    assert any(english.startswith(line) for line in SAVAGE_MAX["en"][Category.LANGUAGE_SET])
+    eat = await bot.say("/eat oats 50")  # now English, with an English opener
+    assert eat.split("\n", 1)[0] in SAVAGE_MAX["en"][Category.MAX_OPENER], eat

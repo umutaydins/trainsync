@@ -200,8 +200,9 @@ class Dispatcher:
             return "duplicate"  # a feature recognised a redelivered update: nothing to say
         text = reply.text
         if self._voice is not None and not reply.plain:
-            # The level as stored now: a /swear switch in this update already counts.
-            with using_profanity((await self._prefs(chat_id)).profanity):
+            # The settings as stored now: a /lang or /swear switch in this update already counts.
+            prefs = await self._prefs(chat_id)
+            with using_lang(prefs.lang), using_profanity(prefs.profanity):
                 text = await self._voice.decorate(text)
         try:
             await self._telegram.send_message(chat_id, text, reply.keyboard)
