@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { serverEnv } from "@/lib/env";
+import { clientIp, loginLimiter } from "@/lib/login-limit";
 import {
   SESSION_COOKIE,
   SESSION_MAX_AGE_S,
@@ -12,13 +13,27 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** Form or JSON body `{password, next?}`. 303 to `next` with a session cookie, or 401. */
+/**
+ * Form or JSON body `{password, next?}`. 303 to `next` with a session cookie, or 401.
+ * 429 with `Retry-After` after LOGIN_MAX_FAILURES failures from one address in LOGIN_WINDOW_MS,
+ * even for the right password, so a blocked address cannot keep guessing.
+ */
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const ip = clientIp(request.headers);
+  const retryAfter = loginLimiter.retryAfterS(ip);
+  if (retryAfter !== null) {
+    return NextResponse.json(
+      { error: "too many failed attempts" },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
+  }
   const { password, next } = await readCredentials(request);
   const env = serverEnv();
   if (!passwordMatches(password, env.dashboardPassword)) {
+    loginLimiter.recordFailure(ip);
     return NextResponse.json({ error: "wrong password" }, { status: 401 });
   }
+  loginLimiter.reset(ip);
   const response = new NextResponse(null, seeOther(safeNextPath(next)));
   response.cookies.set(SESSION_COOKIE, createSessionToken(env.sessionSecret, new Date()), {
     httpOnly: true,

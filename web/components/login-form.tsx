@@ -18,7 +18,7 @@ export function LoginForm({ next }: { next: string }) {
         window.location.assign(response.url);
         return;
       }
-      setError(response.status === 401 ? "Wrong password." : "Sign-in failed. Try again.");
+      setError(errorMessage(response));
     } catch {
       setError("Network error. Try again.");
     }
@@ -58,4 +58,13 @@ export function LoginForm({ next }: { next: string }) {
       </button>
     </form>
   );
+}
+
+function errorMessage(response: Response): string {
+  if (response.status === 401) return "Wrong password.";
+  if (response.status === 429) {
+    const minutes = Math.ceil(Number(response.headers.get("retry-after") ?? "900") / 60);
+    return `Too many failed attempts. Try again in ${minutes} min.`;
+  }
+  return "Sign-in failed. Try again.";
 }

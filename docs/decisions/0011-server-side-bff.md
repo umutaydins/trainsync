@@ -24,6 +24,14 @@ dashboard is single-user and private, so it also needs its own access gate.
   on every page and BFF call. `/login` checks `DASHBOARD_PASSWORD` with a constant-time compare and
   sets an `httpOnly`, `sameSite=lax`, `secure` (in production) cookie signed with HMAC-SHA256
   (`DASHBOARD_SESSION_SECRET`), valid for 7 days. Logout deletes it.
+- Login rate limit: at most 5 failed attempts per client address per 15 minutes (a fixed window
+  from the first failure, `lib/login-limit.ts`). Then `/api/auth/login` answers 429 with
+  `Retry-After` until the window ends, even for the right password, so a blocked address cannot
+  keep guessing; a successful login clears the address's failures. The counter lives in the `web`
+  process's memory: there is one `web` process, and a restart only forgets failures, which is
+  acceptable for one user (no Redis dependency for the web app). The client address is the last
+  `X-Forwarded-For` entry: Next.js fills the header from the socket when it is absent, and a
+  reverse proxy appends the address it saw.
 - Response types are generated from `docs/openapi.json` (`pnpm gen:api`, committed); a test fails
   when they are stale.
 
@@ -40,6 +48,8 @@ dashboard is single-user and private, so it also needs its own access gate.
 - Every browser read costs one extra hop (web → API) inside the same network; negligible here.
 - New read endpoints must be added to the allowlist in `lib/upstream.ts` deliberately.
 - The dashboard password is the only secret between the internet and the data if `web` is exposed:
-  use a long password and TLS (the cookie is `Secure` in production). There is no login rate limit;
-  put the app behind a reverse proxy or VPN if it is reachable from the internet.
+  use a long password and TLS (the cookie is `Secure` in production). The login rate limit slows
+  guessing to 5 tries per address per 15 minutes, but it trusts `X-Forwarded-For`: exposed without
+  a reverse proxy, a client can send its own header and rotate addresses. Put the app behind a
+  reverse proxy that sets the header (or a VPN) if it is reachable from the internet.
 - Rotating `DASHBOARD_SESSION_SECRET` signs everyone out, which is the intended way to revoke.

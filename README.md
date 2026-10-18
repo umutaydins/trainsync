@@ -174,7 +174,7 @@ optional for the API and the worker; the web app needs its three required ones (
 | `TRAINSYNC_API_KEY` | web | required | Sent as `X-API-Key` by the web server only; one of `API_KEYS` |
 | `TRAINSYNC_PUBLIC_API_URL` | web | `http://localhost:8000` | Browser-facing API URL (the Connect Strava link) |
 | `WEB_PUBLIC_URL` | web | `http://localhost:3000` | Browser-facing dashboard URL (the OAuth `return_to`) |
-| `DASHBOARD_PASSWORD` | web | required | The single-user login password |
+| `DASHBOARD_PASSWORD` | web | required | The single-user login password (5 failed attempts per address per 15 min, then 429) |
 | `DASHBOARD_SESSION_SECRET` | web | required | Signs the session cookie; at least 32 characters |
 | `DASHBOARD_COOKIE_SECURE` | web | `true` in production | Session cookie `Secure` flag; set `false` only for plain-HTTP setups other than localhost |
 | `NEXT_PUBLIC_TZ` | web (build time) | `Europe/Istanbul` | Display time zone |
