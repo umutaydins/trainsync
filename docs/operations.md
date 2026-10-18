@@ -232,6 +232,13 @@ scheduled workflow `.github/workflows/public-check.yml` runs it every 6 hours fr
 network once the repository variable `PUBLIC_CHECK_URL` is set (it skips while it is not).
 GitHub runs schedules only from the default branch, so it starts after the Phase 7 merge.
 
+Run from the Mac itself (or any tailnet device), the Funnel name resolves to the Mac's tailnet
+address and the request never touches Funnel's public relays. `public_check.py` then prints
+`WARN … resolves to the tailnet` (or `… Tailscale-User-Login`, a header only tailnet traffic
+gets) and `NOT A PUBLIC CHECK`: the route matrix is still valid, public reachability is not
+shown. Prove that from outside: a phone on mobile data, `gh workflow run public-check.yml`, or a
+multi-location probe such as check-host.net (HTTP check on `<url>/health/live`).
+
 ### Limits and the fallback
 
 - Funnel is a Tailscale beta feature: behaviour and limits can change, and it can be switched off

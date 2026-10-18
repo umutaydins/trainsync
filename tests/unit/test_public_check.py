@@ -31,6 +31,14 @@ def _load(name: str) -> ModuleType:
 public_check = _load("public_check")
 
 
+@pytest.fixture(autouse=True)
+def public_dns(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """No real DNS in tests: the host resolves to one of Funnel's public relays."""
+    addresses = ["185.40.234.75"]
+    monkeypatch.setattr(public_check, "resolve_host", lambda host: addresses)
+    return addresses
+
+
 @pytest.fixture
 def gateway() -> Iterator[respx.MockRouter]:
     """A healthy public gateway: allowlisted probes answer, everything else is 404."""
@@ -147,3 +155,42 @@ def test_url_from_the_environment(
     monkeypatch.setenv("PUBLIC_CHECK_URL", BASE)
     code, out = _run(capsys)
     assert code == 0, out
+
+
+@pytest.mark.parametrize("address", ["100.101.102.103", "fd7a:115c:a1e0::1234"])
+def test_a_tailnet_address_warns_loudly(
+    gateway: respx.MockRouter,
+    capsys: pytest.CaptureFixture[str],
+    public_dns: list[str],
+    address: str,
+) -> None:
+    public_dns[:] = [address]
+    code, out = _run(capsys, "--url", BASE)
+    assert code == 0  # the gateway itself is fine; only the proof is missing
+    assert f"WARN  mac.tail1234.ts.net resolves to the tailnet ({address})" in out
+    assert "NOT A PUBLIC CHECK" in out
+
+
+def test_a_tailscale_user_header_warns_loudly(
+    gateway: respx.MockRouter, capsys: pytest.CaptureFixture[str]
+) -> None:
+    headers = {**SECURITY_HEADERS, "Tailscale-User-Login": "owner@example.com"}
+    _serve(gateway, "/health/live").respond(200, headers=headers)
+    code, out = _run(capsys, "--url", BASE)
+    assert code == 0
+    assert "Tailscale-User-Login (owner@example.com)" in out
+    assert "NOT A PUBLIC CHECK" in out
+
+
+def test_a_public_run_has_no_warning(
+    gateway: respx.MockRouter, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _, out = _run(capsys, "--url", BASE)
+    assert "WARN" not in out
+    assert "NOT A PUBLIC CHECK" not in out
+
+
+def test_tailnet_ranges() -> None:
+    assert public_check.tailnet_addresses(
+        ["100.64.0.1", "100.127.255.254", "100.128.0.1", "185.40.234.55", "fd7a:115c:a1e0::1", "x"]
+    ) == ["100.64.0.1", "100.127.255.254", "fd7a:115c:a1e0::1"]
