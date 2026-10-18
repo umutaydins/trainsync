@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST as login } from "@/app/api/auth/login/route";
 import { POST as logout } from "@/app/api/auth/logout/route";
+import { CSRF_COOKIE } from "@/lib/csrf-cookie";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 import { TEST_PASSWORD, TEST_SECRET, stubServerEnv } from "./support/env";
 
@@ -36,6 +37,16 @@ describe("POST /api/auth/login", () => {
     expect(cookie?.maxAge).toBe(7 * 24 * 60 * 60);
     expect(cookie?.secure).toBe(false);
     expect(verifySessionToken(cookie?.value, TEST_SECRET, new Date())).toBe(true);
+  });
+
+  it("issues a readable strict CSRF cookie with the session", async () => {
+    const response = await login(form(TEST_PASSWORD));
+    const csrf = response.cookies.get(CSRF_COOKIE);
+    expect(csrf?.value).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(csrf?.httpOnly).toBe(false);
+    expect(csrf?.sameSite).toBe("strict");
+    const again = await login(form(TEST_PASSWORD));
+    expect(again.cookies.get(CSRF_COOKIE)?.value).not.toBe(csrf?.value);
   });
 
   it("accepts JSON and never redirects off-site", async () => {
@@ -73,5 +84,6 @@ describe("POST /api/auth/logout", () => {
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe("/login");
     expect(response.headers.get("set-cookie")).toMatch(new RegExp(`${SESSION_COOKIE}=;`));
+    expect(response.headers.get("set-cookie")).toMatch(new RegExp(`${CSRF_COOKIE}=;`));
   });
 });

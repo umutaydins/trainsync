@@ -3,6 +3,15 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 export const SESSION_COOKIE = "ts_session";
 export const SESSION_MAX_AGE_S = 7 * 24 * 60 * 60;
 
+/**
+ * Whether cookies get `Secure`: `DASHBOARD_COOKIE_SECURE` if set, otherwise only in production.
+ * Here rather than in lib/env.ts because proxy.ts needs it and must not import server-only modules.
+ */
+export function cookieSecureFromEnv(): boolean {
+  const override = process.env.DASHBOARD_COOKIE_SECURE;
+  return override ? override === "true" : process.env.NODE_ENV === "production";
+}
+
 /** `<expires_at_unix>.<hmac-sha256(secret, "v1.<expires_at_unix>")>` (base64url). */
 export function createSessionToken(secret: string, now: Date): string {
   const expiresAt = Math.floor(now.getTime() / 1000) + SESSION_MAX_AGE_S;
