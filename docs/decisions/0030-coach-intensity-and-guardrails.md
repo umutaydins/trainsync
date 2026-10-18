@@ -13,7 +13,8 @@ no matter what he configures.
 ## Decision
 - **Intensity is a separate axis from tone.** `BOT_INTENSITY=normal|savage` (default `normal`).
   `savage` takes effect with `BOT_TONE=hardcore` and `BOT_LANG=tr`; other combinations fall back
-  to the existing packs. It is an explicit opt-in that the owner sets in `.env.prod` himself, and
+  to the existing packs. (Since [ADR 0031](0031-runtime-bot-language.md): with `BOT_TONE=hardcore`
+  in either language; the chat's `/lang` choice picks savage/tr or savage/en.) It is an explicit opt-in that the owner sets in `.env.prod` himself, and
   the assistant's system prompt says so. `/yumusak` sets a Redis key (`coach:soft_until`, 24 h)
   read by both bot and worker; while it is set the effective intensity is `normal`; `/sert`
   deletes it.

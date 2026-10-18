@@ -31,7 +31,8 @@ being up or my rate-limit budget being available at read time.
   (replies, notifications, the assistant's persona) comes from a message pack chosen by
   `BOT_TONE` × `BOT_LANG` (ADR 0016). `BOT_INTENSITY=savage` adds the owner's opt-in brutal
   coach (savage line pack, excuse roasts, timed messages from the worker), and hard guardrails
-  (body, slurs, pain/illness, food) hold in every intensity (ADR 0030).
+  (body, slurs, pain/illness, food) hold in every intensity (ADR 0030). `BOT_LANG` is the
+  default; `/lang` stores a language per chat that the bot and the worker follow (ADR 0031).
 - **Web dashboard** (`web/`, Next.js): server-side BFF that holds the API key and forwards
   allowlisted method + path combinations to the API (reads, and CSRF-checked JSON writes to
   training, nutrition and check-ins); the browser never sees the key (ADR 0011). Phase 6 pages:
@@ -50,6 +51,7 @@ being up or my rate-limit budget being available at read time.
 | `sync_runs` | `id`, `athlete_id`, `kind` (backfill / incremental), `status`, `cursor` (jsonb), `pages`, `upserted`, `error`, `started_at`, `updated_at`, `finished_at` | `cursor` makes backfill resumable; `updated_at` is a per-page heartbeat |
 | `webhook_events` | `id`, `dedup_key` (unique), `payload` (jsonb), `status`, `attempts`, `received_at`, `last_attempt_at`, `processed_at` | dedup on (subscription_id, object_type, object_id, aspect_type, event_time) |
 | `notifications` | `id`, `kind` (`new_activity`, `checkin_prompt`, `checkin_reminder`), `object_id`, `sent_at`; unique (`kind`, `object_id`) | claimed before sending, released on a failed send (ADR 0012); check-in kinds use the local date `yyyymmdd` as `object_id` (ADR 0020) |
+| `chat_settings` | `chat_id` PK, `lang` (`en`/`tr`, CHECK), `updated_at` | the language a chat chose with `/lang`; no row = `BOT_LANG` (ADR 0031) |
 
 Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sport_type, start_date)`,
 `webhook_events (status, received_at)`.
@@ -191,6 +193,8 @@ The remote call happens outside any DB session, so a slow lookup never holds a c
 - `GET /v1/sync/status`: last sync runs, last webhook, webhook retry and dead-letter counts, current
   rate-limit usage, circuit state of every process (each publishes its breaker transitions to Redis).
 - Responses include `last_synced_at`, so the client knows how fresh the data is when Strava is degraded.
+- `GET/PUT /v1/chats/{chat_id}/settings`: the chat's bot language (`en`/`tr`, null = `BOT_LANG`),
+  written by the bot's `/lang` and read by the bot (cached) and the worker at send time (ADR 0031).
 
 ### 7b. Training API (Phase 6, `/v1/training`, API key)
 Routers in `api/training/`; every number (volume, e1RM, records, weekly muscle volume) comes from

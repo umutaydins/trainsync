@@ -29,6 +29,7 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [24. State — uptime and stack alerts](#24-state--uptime-and-stack-alerts-p78-adr-0027)
 - [25. Deployment — public read-only demo](#25-deployment--public-read-only-demo-p79-adr-0028)
 - [26. Sequence — the coach during a workout](#26-sequence--the-coach-during-a-workout-p611-adr-0030)
+- [27. Sequence — /lang and the chat's language](#27-sequence--lang-and-the-chats-language-p612-adr-0031)
 
 ---
 
@@ -246,6 +247,11 @@ erDiagram
         text kind "new_activity"
         bigint object_id "strava_activity_id, UK with kind"
         timestamptz sent_at
+    }
+    chat_settings {
+        bigint chat_id PK "Telegram chat"
+        text lang "en | tr (ADR 0031)"
+        timestamptz updated_at
     }
 
     foods ||--o{ food_logs : "logged as"
@@ -1417,4 +1423,31 @@ sequenceDiagram
     API->>Q: coach_workout_finished:{id}
     Q->>W: coach_workout_finished
     W->>T: summary + PRs + verdict (good / missing sets)
+```
+
+## 27. Sequence — /lang and the chat's language (P6.12, ADR 0031)
+
+`BOT_LANG` is the default; a stored choice wins. The bot sets the language once per update, the
+worker once per job, read at send time.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as Owner (Telegram)
+    participant B as Bot
+    participant API as API
+    participant DB as Postgres (chat_settings)
+    participant W as Worker
+
+    U->>B: /lang
+    B->>API: GET /v1/chats/{chat}/settings (first update only, then cached)
+    API->>DB: SELECT lang
+    B-->>U: "Türkçe" / "English" buttons
+    U->>B: press "English"
+    B->>API: PUT /v1/chats/{chat}/settings {"lang": "en"}
+    API->>DB: upsert
+    B-->>U: confirmation in English (savage line in savage mode)
+    Note over W: a reminder, check-in, notification or alert is due
+    W->>DB: SELECT lang for TELEGRAM_NOTIFY_CHAT_ID
+    W-->>U: message in English
 ```
