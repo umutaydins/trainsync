@@ -191,7 +191,14 @@ export function WorkoutScreen({
     inFlight.current.add(row.clientId);
     setLocal((s) => ({
       ...s,
-      rows: s.rows.map((r) => (r.clientId === row.clientId ? { ...r, completedAt, status: "saving", error: undefined } : r)),
+      rows: s.rows.map((r) => {
+        if (r.clientId === row.clientId) return { ...r, completedAt, status: "saving", error: undefined };
+        // Later empty sets of the same exercise take this set's numbers as their starting point.
+        if (r.exerciseId === row.exerciseId && r.setIndex > row.setIndex && r.status === "idle") {
+          return { ...r, reps: r.reps || row.reps, weightKg: r.weightKg || row.weightKg };
+        }
+        return r;
+      }),
       rest: correction ? s.rest : startRest(t, group.restSeconds, `${group.name} · set ${row.setIndex}`),
     }));
     const result = await send(path, body);
@@ -357,8 +364,11 @@ function ExerciseCard({
 }) {
   const planned = group.planned;
   const headingId = `exercise-${group.exerciseId}`;
-  const next = group.rows.find((r) => r.status !== "saved") ?? group.rows[group.rows.length - 1];
-  const plateKg = next ? Number(next.weightKg.replace(",", ".")) : NaN;
+  // Plates for the next set to do, else the last weight entered.
+  const weightOf = (r: SetDraft) => Number(r.weightKg.replace(",", ".")) || 0;
+  const next = group.rows.find((r) => r.status !== "saved" && weightOf(r) > 0);
+  const lastEntered = [...group.rows].reverse().find((r) => weightOf(r) > 0);
+  const plateKg = next ? weightOf(next) : lastEntered ? weightOf(lastEntered) : 0;
   const last = planned?.last_performance?.sets ?? [];
   return (
     <section aria-labelledby={headingId} className="rounded-2xl border border-border bg-surface p-4" data-exercise-id={group.exerciseId}>

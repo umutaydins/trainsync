@@ -79,6 +79,8 @@ services:
       GYM_PLATES: ${GYM_PLATES:-25x2,20x2,15x2,10x2,5x2,2.5x2,1.25x2}
       PROGRESSION_INCREMENT_KG: ${PROGRESSION_INCREMENT_KG:-2.5}
       PROGRESSION_LOWER_BODY_INCREMENT_KG: ${PROGRESSION_LOWER_BODY_INCREMENT_KG:-5}
+      # Food lookups (P6.4, ADR 0019); `make web-e2e` sets false so the stack never reaches the internet.
+      OPENFOODFACTS_ENABLED: ${OPENFOODFACTS_ENABLED:-true}
     ports: ["8000:8000"]
     depends_on:
       migrate: { condition: service_completed_successfully }

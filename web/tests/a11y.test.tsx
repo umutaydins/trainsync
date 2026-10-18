@@ -13,13 +13,21 @@ import { SportBreakdown } from "@/components/dashboard/sport-breakdown";
 import { WeeklyChart } from "@/components/dashboard/weekly-chart";
 import { LoginForm } from "@/components/login-form";
 import { SyncStatusView } from "@/components/sync/sync-status-view";
+import { AddFood } from "@/components/nutrition/add-food";
+import { MealList } from "@/components/nutrition/meal-list";
+import { ProfileForm } from "@/components/nutrition/profile-form";
+import { DailyRings, EnergyBalanceCard, WeeklyAverages } from "@/components/nutrition/summary-cards";
+import { HistoryList } from "@/components/training/history-list";
 import { PlateBar } from "@/components/training/plate-bar";
+import { PrBoard } from "@/components/training/pr-board";
+import { ExerciseProgressChart, WeeklyMuscleChart } from "@/components/training/progress-charts";
 import { ProgramBuilder } from "@/components/training/program-builder";
 import { RestTimerPanel } from "@/components/training/rest-timer";
 import { WorkoutScreen } from "@/components/training/workout-screen";
 import { WorkoutSummaryCard } from "@/components/training/workout-summary";
 import { ErrorState } from "@/components/ui";
 import { activity, page, summary, syncStatus, week } from "./support/fixtures";
+import { CHICKEN, OATS, UNKNOWN_EXERCISE, daySummary, entry, profile, weekly } from "./support/nutrition-fixtures";
 import { BENCH, CURL, PLATES_MIXED, memoryStore, workout } from "./support/training-fixtures";
 
 vi.mock("next/navigation", () => ({
@@ -60,6 +68,31 @@ describe("accessibility (axe)", () => {
     ["plate drawing", <PlateBar key="pb" answer={PLATES_MIXED} />],
     ["workout summary", <WorkoutSummaryCard key="sum" workout={workout({ ended_at: "2026-10-18T18:35:00Z" })} />],
     ["program builder", <ProgramBuilder key="pbld" initial={[]} exercises={[BENCH, CURL]} />],
+    [
+      "workout history",
+      <HistoryList
+        key="hl"
+        initial={{ items: [{ id: 1, program_day_id: null, program_day_name: null, started_at: "2026-10-18T17:30:00Z", ended_at: null, notes: "", set_count: 3, exercise_count: 1, volume_kg: 1200 }], next_cursor: "c" }}
+      />,
+    ],
+    [
+      "exercise progress",
+      <ExerciseProgressChart
+        key="ep"
+        progress={{ exercise: BENCH, sessions: [{ workout_id: 1, started_at: "2026-10-18T17:30:00Z", best_set: { reps: 8, weight_kg: 80, e1rm_kg: 101.3 }, e1rm_kg: 101.3, volume_kg: 1920, working_sets: 3 }] }}
+      />,
+    ],
+    ["muscle volume", <WeeklyMuscleChart key="mv" items={[{ week_start: "2026-10-12", muscle: "chest", sets: 9, volume_kg: 7740 }]} />],
+    [
+      "records",
+      <PrBoard key="pr" records={[{ exercise_id: 20, exercise_name: "Bench Press", kind: "e1rm", value: 101.3, previous: null, reps: null, workout_id: 1, achieved_at: "2026-10-18T17:30:00Z" }]} />,
+    ],
+    ["daily totals", <DailyRings key="dr" summary={daySummary()} />],
+    ["energy balance", <EnergyBalanceCard key="eb" summary={daySummary(UNKNOWN_EXERCISE)} />],
+    ["nutrition week", <WeeklyAverages key="nw" weekly={weekly()} />],
+    ["meals", <MealList key="ml" entries={[entry()]} />],
+    ["add food", <AddFood key="af" date="2026-10-18" favorites={[OATS]} recent={[CHICKEN]} />],
+    ["profile form", <ProfileForm key="pf" profile={profile({ warning: "kcal_target is below the estimated basal metabolic rate." })} date="2026-10-18" />],
   ])("%s has no violations", async (_name, ui) => {
     expect(await violations(ui)).toEqual([]);
   });

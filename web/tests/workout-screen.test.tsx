@@ -7,7 +7,7 @@ import { readQueue } from "@/lib/retry-queue";
 import type { KeyValueStore } from "@/lib/timers";
 import type { WorkoutDetail } from "@/lib/training-types";
 import { jsonResponse } from "./support/env";
-import { BENCH, CURL, PLATES_100, idSequence, memoryStore, workout } from "./support/training-fixtures";
+import { BENCH, CURL, PLATES_100, idSequence, memoryStore, planned, workout } from "./support/training-fixtures";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), usePathname: () => "/training" }));
 
@@ -114,10 +114,10 @@ describe("workout screen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Log Dumbbell Curl set 1" }));
     await flush();
     expect(screen.getByTestId("rest-remaining")).toHaveTextContent("1:00");
-    fireEvent.click(screen.getByRole("button", { name: "Rest 15 seconds longer" }));
+    fireEvent.click(screen.getByRole("button", { name: "+15 s rest" }));
     expect(screen.getByTestId("rest-remaining")).toHaveTextContent("1:15");
-    fireEvent.click(screen.getByRole("button", { name: "Rest 15 seconds shorter" }));
-    fireEvent.click(screen.getByRole("button", { name: "Rest 15 seconds shorter" }));
+    fireEvent.click(screen.getByRole("button", { name: "−15 s rest" }));
+    fireEvent.click(screen.getByRole("button", { name: "−15 s rest" }));
     expect(screen.getByTestId("rest-remaining")).toHaveTextContent("0:45");
     fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     expect(screen.queryByTestId("rest-timer")).not.toBeInTheDocument();
@@ -211,6 +211,19 @@ describe("workout screen", () => {
     fireEvent.change(screen.getByLabelText("Weight in kg, Bench Press set 1"), { target: { value: "82,5" } });
     fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
     expect(send.mock.calls[0]![1]).toMatchObject({ weight_kg: 82.5 });
+  });
+
+  it("a logged weight fills the later empty sets of that exercise", async () => {
+    const fresh = planned(BENCH, { suggestion: { action: "start", weight_kg: null, previous_weight_kg: null }, start_weight_kg: null, last_performance: null });
+    setup({ initial: workout({ planned: [fresh] }) });
+    expect(screen.getByLabelText("Weight in kg, Bench Press set 2")).toHaveValue("");
+    expect(screen.queryByRole("button", { name: "Plates" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Weight in kg, Bench Press set 1"), { target: { value: "50" } });
+    fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
+    await flush();
+    expect(screen.getByLabelText("Weight in kg, Bench Press set 2")).toHaveValue("50");
+    expect(screen.getByLabelText("Weight in kg, Bench Press set 3")).toHaveValue("50");
+    expect(screen.getByRole("button", { name: "Plates" })).toBeInTheDocument();
   });
 
   it("adds a set and an exercise", async () => {

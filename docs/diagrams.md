@@ -37,7 +37,7 @@ flowchart LR
         direction LR
         subgraph web["Web process (Next.js, web/)"]
             gate["proxy.ts<br/>session-cookie gate"]
-            pages["server components<br/>dashboard · activities · sync"]
+            pages["server components<br/>dashboard · activities · sync<br/>training · nutrition (PWA)"]
             bff["BFF route /api/ts/v1/*<br/>method + path allowlist, CSRF on writes"]
             upstream["lib/upstream.ts<br/>adds X-API-Key"]
         end

@@ -22,7 +22,8 @@ export function RestTimerPanel({
   const done = isFinished(rest, now);
   const left = remainingSeconds(rest, now);
   const progress = restProgress(rest, now);
-  const big = "min-h-12 flex-1 rounded-xl border border-border bg-surface text-base font-semibold active:bg-surface-2";
+  const base = "min-h-12 flex-1 rounded-xl text-base font-semibold";
+  const big = `${base} border border-border bg-surface active:bg-surface-2`;
 
   return (
     <div
@@ -53,13 +54,13 @@ export function RestTimerPanel({
           {done ? "Rest over" : ""}
         </p>
         <div className="mt-3 flex gap-2">
-          <button type="button" className={big} onClick={() => onAdjust(-REST_STEP_S)} aria-label="Rest 15 seconds shorter">
+          <button type="button" className={big} onClick={() => onAdjust(-REST_STEP_S)} aria-label="−15 s rest">
             −15 s
           </button>
-          <button type="button" className={big} onClick={() => onAdjust(REST_STEP_S)} aria-label="Rest 15 seconds longer">
+          <button type="button" className={big} onClick={() => onAdjust(REST_STEP_S)} aria-label="+15 s rest">
             +15 s
           </button>
-          <button type="button" className={`${big} bg-accent text-accent-contrast`} onClick={onSkip}>
+          <button type="button" className={`${base} bg-accent text-accent-contrast active:opacity-90`} onClick={onSkip}>
             {done ? "Done" : "Skip"}
           </button>
         </div>

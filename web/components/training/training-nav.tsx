@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 export const TRAINING_LINKS = [
   { href: "/training", label: "Today" },
   { href: "/training/programs", label: "Programs" },
+  { href: "/training/history", label: "History" },
+  { href: "/training/progress", label: "Progress" },
 ] as const;
 
 /** Section tabs under /training. Horizontally scrollable on narrow screens. */

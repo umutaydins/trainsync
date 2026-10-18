@@ -112,12 +112,12 @@ export function ProgramBuilder({ initial, exercises }: { initial: ProgramSummary
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <button type="button" className={`${secondaryButtonClass} min-h-11`} onClick={() => void edit(p.id)} disabled={busy !== null}>
-                    Edit <span className="sr-only">{p.name}</span>
+                  <button type="button" className={`${secondaryButtonClass} min-h-11`} onClick={() => void edit(p.id)} disabled={busy !== null} aria-label={`Edit ${p.name}`}>
+                    Edit
                   </button>
                   {p.active ? null : (
-                    <button type="button" className={`${buttonClass} min-h-11`} onClick={() => void activate(p.id)} disabled={busy !== null}>
-                      Activate <span className="sr-only">{p.name}</span>
+                    <button type="button" className={`${buttonClass} min-h-11`} onClick={() => void activate(p.id)} disabled={busy !== null} aria-label={`Activate ${p.name}`}>
+                      Activate
                     </button>
                   )}
                 </div>
@@ -273,7 +273,7 @@ function ProgramEditor({
           </label>
         </div>
         {draft.days.map((day, d) => (
-          <fieldset key={day.key} className="rounded-xl border border-border p-3" data-testid="editor-day">
+          <fieldset key={day.key} className="min-w-0 rounded-xl border border-border p-3" data-testid="editor-day">
             <legend className="px-1 text-sm font-semibold">
               Day {d + 1}
               {minutes?.[d] !== undefined ? <span className="font-normal text-muted"> · about {Math.round(minutes[d] ?? 0)} min</span> : null}
@@ -345,14 +345,14 @@ function ExerciseRow({
 }) {
   const small = "min-h-11 min-w-11 rounded-lg border border-border text-sm disabled:opacity-40";
   const field = (name: keyof DraftExercise, text: string, mode: "numeric" | "decimal" = "numeric") => (
-    <label className="block text-xs text-muted">
-      {text}
+    <label className="block min-w-0 text-xs text-muted">
+      <span className="block truncate">{text}</span>
       <input
         inputMode={mode}
         value={String(exercise[name])}
         onChange={(e) => onChange({ [name]: e.target.value } as Partial<DraftExercise>)}
         aria-label={`${text}, ${exercise.name}`}
-        className="mt-0.5 h-11 w-full rounded-lg border border-border bg-surface px-2 text-center text-sm text-text tabular-nums"
+        className="mt-0.5 h-11 w-full min-w-0 rounded-lg border border-border bg-surface px-1 text-center text-sm text-text tabular-nums"
       />
     </label>
   );

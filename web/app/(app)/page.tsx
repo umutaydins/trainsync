@@ -11,6 +11,7 @@ import {
   WeeklySkeleton,
 } from "@/components/dashboard/blocks";
 import { DashboardFilters } from "@/components/dashboard/filters";
+import { TrainingTilesBlock, TrainingTilesSkeleton } from "@/components/dashboard/training-tiles";
 import { PageHeader } from "@/components/ui";
 import { formatDay, sportLabel } from "@/lib/format";
 import { parseRange } from "@/lib/range";
@@ -46,6 +47,9 @@ export default async function DashboardPage({
         <DashboardFilters key={key} range={range} sports={sports} />
         <Suspense key={`kpi-${key}`} fallback={<KpiSkeleton />}>
           <KpiBlock range={range} />
+        </Suspense>
+        <Suspense fallback={<TrainingTilesSkeleton />}>
+          <TrainingTilesBlock />
         </Suspense>
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">

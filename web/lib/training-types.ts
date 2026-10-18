@@ -40,6 +40,9 @@ export const EQUIPMENT: readonly Equipment[] = [
   "bodyweight",
 ];
 
+/** Workouts per history page (server render and "Load more"). */
+export const HISTORY_PAGE_SIZE = 20;
+
 export const GOALS: readonly ProgramGoal[] = ["strength", "hypertrophy", "general"];
 
 /** `push_pull_legs` → `Push pull legs`. */
