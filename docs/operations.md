@@ -118,6 +118,63 @@ still there, so `build` is quick). A migration that is not backwards compatible 
 `scripts/mac-prod.sh down` stops the stack; it comes back at the next login. To keep it down
 across logins, also run `scripts/mac-prod.sh uninstall-agent` (and `install-agent` later).
 
+## Funnel (public HTTPS)
+
+Tailscale Funnel gives the Mac a public HTTPS name without a domain or open router ports:
+`https://<mac>.<tailnet>.ts.net`. TLS terminates on the Mac (Tailscale fetches a Let's Encrypt
+certificate for the ts.net name); Funnel forwards plain HTTP to the gateway, which serves only the
+allowlisted routes (ADR 0022, ADR 0025).
+
+```
+scripts/funnel.sh on            # https://<host>/      -> gateway 127.0.0.1:8080 (real)
+scripts/funnel.sh on demo       # https://<host>:8443/ -> demo gateway 127.0.0.1:8081 (P7.9)
+scripts/funnel.sh on all        # both
+scripts/funnel.sh status        # Funnel config, public URLs, the values for Strava and Vercel
+scripts/funnel.sh off [real|demo|all]
+make public-check URL=https://<host>.<tailnet>.ts.net
+```
+
+The Funnel config is stored by tailscaled (`--bg`) and survives reboots and Tailscale restarts.
+
+One-time prerequisites (Tailscale admin console, by the owner): MagicDNS and HTTPS certificates
+enabled for the tailnet, and the `funnel` node attribute granted in the tailnet policy. The
+first `scripts/funnel.sh on` prints a login.tailscale.com link if either is missing.
+
+`PUBLIC_API_BASE_URL` in `.env.prod` must equal `https://<host>.<tailnet>.ts.net` (no trailing
+slash; `funnel.sh status` warns when it differs). Everything public derives from it:
+
+| Use | Value |
+| --- | --- |
+| Strava OAuth redirect URI (compose sets `STRAVA_REDIRECT_URI`) | `$PUBLIC_API_BASE_URL/auth/strava/callback` |
+| Strava "Authorization Callback Domain" | the host part, `<host>.<tailnet>.ts.net` |
+| Strava webhook subscription `callback_url` (P7.7) | `$PUBLIC_API_BASE_URL/webhooks/strava` |
+| Vercel `TRAINSYNC_API_URL` / `TRAINSYNC_PUBLIC_API_URL` (P7.6) | `$PUBLIC_API_BASE_URL` |
+
+The web app calls the backend from its server-side BFF, so no CORS configuration is involved.
+
+`make public-check` (`scripts/public_check.py`) builds its matrix from
+`deploy/gateway/routes.toml`: the URL must be https with a certificate that verifies, every
+allowlisted route's probe is forwarded (not 404, not 5xx), every blocked probe (`/metrics`,
+`/docs`, `/`, …) is 404, and `/health/live` carries the gateway's security headers. The
+scheduled workflow `.github/workflows/public-check.yml` runs it every 6 hours from GitHub's
+network once the repository variable `PUBLIC_CHECK_URL` is set (it skips while it is not).
+GitHub runs schedules only from the default branch, so it starts after the Phase 7 merge.
+
+### Limits and the fallback
+
+- Funnel is a Tailscale beta feature: behaviour and limits can change, and it can be switched off
+  for the tailnet.
+- Funnel traffic is relayed through Tailscale's servers with bandwidth limits that are not
+  published as numbers; fine for an API, webhooks and a personal dashboard, not for bulk
+  downloads. Only ports 443, 8443 and 10000 can be public.
+- The hostname is tied to the tailnet name; renaming the machine or the tailnet changes the URL
+  (and with it Strava's callback domain and the webhook subscription).
+- Fallback: **Cloudflare Tunnel** with an own domain. `cloudflared` runs as one more compose
+  service (or a LaunchAgent) with an outbound tunnel to Cloudflare, routed to the same gateway
+  `127.0.0.1:8080`; set `PUBLIC_API_BASE_URL` to the new `https://api.<domain>`, update Strava's
+  callback domain, re-create the webhook subscription, update Vercel, and point
+  `PUBLIC_CHECK_URL` at it. Nothing in the app or the gateway changes.
+
 ## Owner checks
 
 Manual checks only the owner can perform. Each one stays PENDING until the owner runs the
@@ -133,6 +190,11 @@ that command on the Mac.
 | 5 | LaunchAgent installed | `scripts/mac-prod.sh install-agent && launchctl print gui/$(id -u)/com.trainsync.stack \| head -5` | PENDING | | |
 | 6 | Doctor clean | `scripts/mac-prod.sh doctor` | PENDING | | |
 | 7 | Reboot test | the Reboot test procedure above | PENDING | | |
+| 8 | Funnel prerequisites (MagicDNS, HTTPS certificates, `funnel` node attribute) | Tailscale admin console, then `tailscale funnel status` | PENDING | | (agent read-only look on 2026-10-18: Tailscale up as `trainsync`, `No serve config`) |
+| 9 | Funnel on | `scripts/funnel.sh on && scripts/funnel.sh status` | PENDING | | |
+| 10 | `PUBLIC_API_BASE_URL` set | put the value from `funnel.sh status` into `.env.prod`, `scripts/mac-prod.sh up` (recreates the containers with the new env; `restart` would not), then `grep PUBLIC_API_BASE_URL .env.prod` | PENDING | | |
+| 11 | Public check from outside (real URL) | `make public-check URL=https://<host>.<tailnet>.ts.net` | PENDING | | |
+| 12 | Scheduled public check | `gh variable set PUBLIC_CHECK_URL --body https://<host>.<tailnet>.ts.net && gh workflow run public-check.yml`, then `gh run list --workflow public-check.yml -L 1` | PENDING | | |
 
 ## Backups and restore
 

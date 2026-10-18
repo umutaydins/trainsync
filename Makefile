@@ -71,7 +71,7 @@ loadtest: ## Compose stack + 5,000 activities, locust 50 users for 2 min, CSV + 
 
 # ---------------------------------------------------------------- Mac production host (Phase 7)
 
-.PHONY: shellcheck doctor
+.PHONY: shellcheck doctor public-check
 
 SHELLCHECK_IMAGE := koalaman/shellcheck:v0.10.0
 SHELL_SCRIPTS = $(shell find scripts deploy -name '*.sh' | sort)
@@ -81,6 +81,10 @@ shellcheck: ## shellcheck every scripts/ and deploy/ shell script (pinned Docker
 
 doctor: ## Mac production host health: Docker, sleep, disk, Tailscale/Funnel, agent, backups
 	./scripts/mac-prod.sh doctor
+
+public-check: ## From outside: TLS, allowlisted routes forwarded, the rest 404 (URL=https://<host>.ts.net)
+	@test -n "$(URL)" || { echo "usage: make public-check URL=https://<host>.ts.net" >&2; exit 2; }
+	$(UV) run python scripts/public_check.py --url "$(URL)"
 
 # ---------------------------------------------------------------- web dashboard (web/)
 

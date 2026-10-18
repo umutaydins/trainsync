@@ -23,6 +23,7 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [18. Sequence — evening check-in prompt](#18-sequence--evening-check-in-prompt)
 - [19. Sequence — log a set with retry](#19-sequence--log-a-set-with-retry)
 - [20. Sequence — rest timer and a backgrounded tab](#20-sequence--rest-timer-and-a-backgrounded-tab)
+- [21. Deployment — production on the MacBook (Phase 7)](#21-deployment--production-on-the-macbook-phase-7)
 
 ---
 
@@ -1192,4 +1193,43 @@ sequenceDiagram
     U->>UI: reload the page
     UI->>LS: read state for workout 42
     LS-->>UI: endsAt, alerted (timer restored, no repeated alert)
+```
+
+## 21. Deployment — production on the MacBook (Phase 7)
+
+```mermaid
+flowchart TB
+    strava[("Strava<br/>OAuth + webhooks")]
+    vercel["Vercel<br/>web/ BFF (server-side)"]
+    gha["GitHub Actions<br/>public-check (every 6 h)"]
+
+    subgraph ts["Tailscale"]
+        funnel["Funnel · TLS for &lt;mac&gt;.&lt;tailnet&gt;.ts.net<br/>:443 real · :8443 demo"]
+    end
+
+    subgraph mac["MacBook (always on, no AC sleep)"]
+        agent["LaunchAgent com.trainsync.stack<br/>at login: wait for Docker → mac-prod.sh up"]
+        subgraph dd["Docker Desktop · compose.prod.yml"]
+            gw["gateway (Caddy)<br/>127.0.0.1:8080 · route allowlist"]
+            api["api"]
+            worker["worker"]
+            bot["bot"]
+            subgraph backend["backend network (internal)"]
+                pg[("postgres")]
+                rd[("redis")]
+            end
+        end
+    end
+
+    strava -- "https://host/auth/strava/callback<br/>https://host/webhooks/strava" --> funnel
+    vercel -- "https://host/v1/* + X-API-Key" --> funnel
+    gha -- "allowlisted → forwarded<br/>everything else → 404" --> funnel
+    funnel -- "http 127.0.0.1:8080" --> gw
+    gw --> api
+    api --> pg
+    api --> rd
+    worker --> pg
+    worker --> rd
+    bot --> api
+    agent -. "docker compose up" .-> dd
 ```
