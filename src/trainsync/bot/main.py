@@ -26,7 +26,7 @@ from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import TelegramApi
 from trainsync.bot.training import TrainingCommands
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
-from trainsync.core.logging import configure_logging, get_logger
+from trainsync.core.logging import configure_logging, get_logger, warn_dev_secrets
 from trainsync.core.redis import create_redis
 from trainsync.core.settings import Settings, get_settings
 from trainsync.strava.http import build_http_client
@@ -42,6 +42,7 @@ async def run(
     sleep: Sleep = real_sleep,
 ) -> None:
     configure_logging(settings)
+    warn_dev_secrets(settings, log)
     # httpx logs request URLs at INFO, and Telegram URLs contain the bot token.
     logging.getLogger("httpx").setLevel(logging.WARNING)
     async with AsyncExitStack() as stack:

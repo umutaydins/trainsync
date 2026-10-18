@@ -64,3 +64,18 @@ def configure_logging(settings: Settings) -> None:
 
 def get_logger(name: str | None = None) -> FilteringBoundLogger:
     return cast(FilteringBoundLogger, structlog.get_logger(name))
+
+
+def warn_dev_secrets(settings: Settings, logger: FilteringBoundLogger) -> list[str]:
+    """With ENV=prod, warn about secrets still at a docker-compose dev default. Logs the
+    variable names only (under `variables`, which the redaction leaves readable)."""
+    if settings.env != "prod":
+        return []
+    names = settings.dev_secrets_in_use()
+    if names:
+        logger.warning(
+            "dev_default_secrets_in_prod",
+            variables=names,
+            hint="set your own values in .env; the docker-compose defaults are DEV-ONLY",
+        )
+    return names

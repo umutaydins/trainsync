@@ -15,7 +15,8 @@ NAME=${LOADTEST_NAME:-run}
 OUT=loadtest/results
 export FAKE_STRAVA_SEED_ACTIVITIES=${FAKE_STRAVA_SEED_ACTIVITIES:-5000}
 export POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-15433} REDIS_HOST_PORT=${REDIS_HOST_PORT:-16380}
-compose() { docker compose -p "$PROJECT" "$@"; }
+# An empty env file: the run uses the compose dev defaults whatever your .env overrides.
+compose() { docker compose --env-file /dev/null -p "$PROJECT" "$@"; }
 
 cleanup() {
   status=$?

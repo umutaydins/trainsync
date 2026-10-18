@@ -102,6 +102,14 @@ make compose-smoke                             # or: scripted end-to-end check, 
 ```
 If ports 5432/6379 are taken on your machine, set `POSTGRES_HOST_PORT` / `REDIS_HOST_PORT`.
 
+Every secret in `docker-compose.yml` is `${VAR:-dev-only default}`: `TOKEN_ENCRYPTION_KEY`,
+`STATE_SIGNING_KEY`, `API_KEYS`, `STRAVA_CLIENT_SECRET`, `STRAVA_WEBHOOK_VERIFY_TOKEN`,
+`TRAINSYNC_API_KEY`, `DASHBOARD_PASSWORD` and `DASHBOARD_SESSION_SECRET` take your own values from
+`.env` or the shell, and fall back to clearly labelled DEV-ONLY dummies. The compose stack runs with
+`ENV=prod`, so the API, worker and bot (and the web server in production) log a
+`dev_default_secrets_in_prod` warning naming every variable still on a dummy. `make compose-smoke`,
+`make web-e2e` and `make loadtest` ignore `.env` and always use the dummies.
+
 For development against a real Strava app, copy `.env.example` to `.env`, fill it in and run
 `uv run alembic upgrade head` and `uv run uvicorn trainsync.main:create_app --factory --reload`.
 The bot runs with `uv run python -m trainsync.bot`, the dashboard with `cd web && pnpm install &&

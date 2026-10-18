@@ -27,7 +27,7 @@ from trainsync.api.errors import VALIDATION_ERROR_EXAMPLE
 from trainsync.api.middleware import MetricsMiddleware, RequestIdMiddleware
 from trainsync.core.clock import utc_now
 from trainsync.core.crypto import TokenCipher
-from trainsync.core.logging import configure_logging, get_logger
+from trainsync.core.logging import configure_logging, get_logger, warn_dev_secrets
 from trainsync.core.redis import create_redis
 from trainsync.core.settings import Settings, get_settings
 from trainsync.db.session import create_engine, create_sessionmaker
@@ -69,6 +69,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             # Food lookup (P6.4): the same shared client, its own timeout per request.
             app.state.openfoodfacts = OpenFoodFactsClient(http, settings)
             log.info("app_startup", env=settings.env)
+            warn_dev_secrets(settings, log)
             yield
             log.info("app_shutdown")
 

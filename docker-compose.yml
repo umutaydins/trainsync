@@ -1,4 +1,7 @@
-# Local stack. Every secret below is a DEV-ONLY dummy value, never use them anywhere else.
+# Local stack. Every secret is `${VAR:-dev-only default}`: the default after `:-` is a DEV-ONLY
+# dummy value, never use it anywhere else. Set your own in `.env` (or the shell) to override it;
+# with ENV=prod the API, worker, bot and web log a warning while any dev default is still in use.
+# The smoke, e2e and load-test scripts pass an empty env file, so they always run on these defaults.
 
 x-trainsync-env: &trainsync-env
   ENV: prod
@@ -9,14 +12,15 @@ x-trainsync-env: &trainsync-env
   STRAVA_OAUTH_BASE_URL: http://fake-strava:8001/oauth
   STRAVA_OAUTH_PUBLIC_BASE_URL: http://localhost:8001/oauth
   STRAVA_CLIENT_ID: "12345"
-  STRAVA_CLIENT_SECRET: dev-only-client-secret
+  STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:-dev-only-client-secret}
   STRAVA_REDIRECT_URI: http://localhost:8000/auth/strava/callback
-  STRAVA_WEBHOOK_VERIFY_TOKEN: dev-only-verify-token
+  STRAVA_WEBHOOK_VERIFY_TOKEN: ${STRAVA_WEBHOOK_VERIFY_TOKEN:-dev-only-verify-token}
   STRAVA_WEBHOOK_SUBSCRIPTION_ID: "1"
-  # DEV-ONLY Fernet key, generated once for this compose file. Generate your own for real use.
-  TOKEN_ENCRYPTION_KEY: 7gj1mwRHcdCfctPGMZgPxrd5SGl3jGrhm3bMbFZuTi0=
-  STATE_SIGNING_KEY: dev-only-state-signing-key
-  API_KEYS: dev-key-1
+  # DEV-ONLY Fernet key: base64 of "dev-only-fernet-key-not-for-use!". Generate your own for real use.
+  TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-ZGV2LW9ubHktZmVybmV0LWtleS1ub3QtZm9yLXVzZSE=}
+  STATE_SIGNING_KEY: ${STATE_SIGNING_KEY:-dev-only-state-signing-key}
+  # DEV-ONLY key; TRAINSYNC_API_KEY (web) must be one of these.
+  API_KEYS: ${API_KEYS:-dev-key-1}
 
 x-trainsync-image: &trainsync-image
   build: .
@@ -140,17 +144,17 @@ services:
     depends_on:
       api: { condition: service_healthy }
 
-  # Web dashboard (web/). DEV-ONLY dummy password and session secret.
+  # Web dashboard (web/). The defaults are DEV-ONLY dummy values (see the top of this file).
   web:
     build: ./web
     image: trainsync-web:dev
     environment:
       TRAINSYNC_API_URL: http://api:8000
-      TRAINSYNC_API_KEY: dev-key-1
+      TRAINSYNC_API_KEY: ${TRAINSYNC_API_KEY:-dev-key-1}
       TRAINSYNC_PUBLIC_API_URL: http://localhost:8000
       WEB_PUBLIC_URL: http://localhost:3000
-      DASHBOARD_PASSWORD: dev-only-dashboard-password
-      DASHBOARD_SESSION_SECRET: dev-only-dashboard-session-secret-not-for-real-use
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-dev-only-dashboard-password}
+      DASHBOARD_SESSION_SECRET: ${DASHBOARD_SESSION_SECRET:-dev-only-dashboard-session-secret-not-for-real-use}
     ports: ["3000:3000"]
     depends_on:
       api: { condition: service_healthy }

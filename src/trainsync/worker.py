@@ -14,7 +14,7 @@ from prometheus_client import start_http_server
 from trainsync.bot.messages import messages_for
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.crypto import TokenCipher
-from trainsync.core.logging import configure_logging, get_logger
+from trainsync.core.logging import configure_logging, get_logger, warn_dev_secrets
 from trainsync.core.settings import Settings, get_settings
 from trainsync.db.repositories.tokens import SqlTokenStore
 from trainsync.db.session import create_engine, create_sessionmaker
@@ -108,6 +108,7 @@ async def startup(ctx: dict[str, Any]) -> None:
         notifier=notifier.channel,
         checkin=settings.checkin_active,
     )
+    warn_dev_secrets(settings, log)
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:

@@ -1,5 +1,7 @@
 """Typed application settings, loaded from environment variables (and `.env`)."""
 
+import base64
+import binascii
 from datetime import time
 from decimal import Decimal
 from functools import lru_cache
@@ -10,6 +12,30 @@ from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from trainsync.training.plates import DEFAULT_INVENTORY, parse_inventory
+
+# The DEV-ONLY defaults in docker-compose.yml (`${VAR:-default}`) are labelled, so they are found
+# by their label instead of by a copy of the values: plain ones start with `dev-`, and the dev
+# Fernet key decodes to `dev-only-…`. Running with ENV=prod while one of them is still in use logs
+# a warning at startup (tests/unit/test_dev_defaults.py checks every compose default is labelled).
+DEV_ONLY_PREFIX = "dev-"
+DEV_ONLY_SECRETS = (
+    "STRAVA_CLIENT_SECRET",
+    "STRAVA_WEBHOOK_VERIFY_TOKEN",
+    "TOKEN_ENCRYPTION_KEY",
+    "STATE_SIGNING_KEY",
+    "API_KEYS",
+)
+
+
+def is_dev_default(value: str) -> bool:
+    """A labelled dummy: `dev-…`, or a key whose base64 decodes to `dev-only…`."""
+    if value.startswith(DEV_ONLY_PREFIX):
+        return True
+    try:
+        return base64.urlsafe_b64decode(value.encode()).startswith(b"dev-only")
+    except (binascii.Error, ValueError):
+        return False
+
 
 # Wording of every bot reply, notification and assistant prompt (ADR 0016).
 BotTone = Literal["neutral", "hardcore"]
@@ -56,6 +82,25 @@ class Settings(BaseSettings):
     @classmethod
     def _empty_as_none(cls, value: object) -> object:
         return None if value == "" else value
+
+    def dev_secrets_in_use(self) -> list[str]:
+        """Names (never values) of secrets still set to a docker-compose dev default."""
+        current = {
+            "STRAVA_CLIENT_SECRET": [self.strava_client_secret],
+            "STRAVA_WEBHOOK_VERIFY_TOKEN": [self.strava_webhook_verify_token],
+            # Every key of a rotation list decrypts, so a dev key anywhere in it is a problem.
+            "TOKEN_ENCRYPTION_KEY": [
+                SecretStr(k.strip())
+                for k in self.token_encryption_key.get_secret_value().split(",")
+            ],
+            "STATE_SIGNING_KEY": [self.state_signing_key],
+            "API_KEYS": self.api_keys,
+        }
+        return [
+            name
+            for name, secrets in current.items()
+            if any(is_dev_default(s.get_secret_value()) for s in secrets)
+        ]
 
     @model_validator(mode="after")
     def _default_public_oauth_url(self) -> "Settings":
