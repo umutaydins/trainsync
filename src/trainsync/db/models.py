@@ -16,6 +16,7 @@ from sqlalchemy import (
     MetaData,
     String,
     Text,
+    UniqueConstraint,
     func,
     text,
 )
@@ -48,6 +49,10 @@ class WebhookStatus(StrEnum):
     PROCESSING = "processing"
     PROCESSED = "processed"
     FAILED = "failed"
+
+
+class NotificationKind(StrEnum):
+    NEW_ACTIVITY = "new_activity"
 
 
 def _check_in(column: str, enum: type[StrEnum]) -> str:
@@ -153,3 +158,19 @@ class WebhookEvent(Base):
     # Set on every claim; drives the retry backoff and the stuck-in-processing check.
     last_attempt_at: Mapped[datetime | None] = _utc_timestamp(nullable=True)
     processed_at: Mapped[datetime | None] = _utc_timestamp(nullable=True)
+
+
+class Notification(Base):
+    """One row per notification ever sent: the unique `(kind, object_id)` makes sending
+    idempotent (claimed before sending, released if the send fails; ADR 0012)."""
+
+    __tablename__ = "notifications"
+    __table_args__ = (
+        CheckConstraint(_check_in("kind", NotificationKind), name="kind"),
+        UniqueConstraint("kind", "object_id", name="uq_notifications_kind_object_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    kind: Mapped[str] = mapped_column(String(32))
+    object_id: Mapped[int] = mapped_column(BigInteger)
+    sent_at: Mapped[datetime] = _utc_timestamp(default_now=True)

@@ -6,8 +6,10 @@ latest state (ADR 0007). A 404 on fetch means the activity is gone: soft delete.
 """
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 from typing import Any, Protocol
 
 from arq.worker import func
@@ -25,6 +27,7 @@ from trainsync.strava.errors import CircuitOpen, RateLimited, StravaNotFound
 from trainsync.strava.models import StravaActivity
 from trainsync.sync.common import SYNC_MAX_TRIES, retry_after, short_error
 from trainsync.sync.context import job_log_context, worker_context
+from trainsync.sync.queue import enqueue_new_activity_notification
 
 log = get_logger(__name__)
 
@@ -40,6 +43,9 @@ class WebhookDeps:
     sessionmaker: async_sessionmaker[AsyncSession]
     strava: ActivityFetcher
     clock: Clock
+    # Called with the Strava id after an `activity create` was upserted (P5.6: enqueues the
+    # new-activity notification). Only live create events: history imports never call it.
+    on_new_activity: Callable[[int], Awaitable[object]] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +117,8 @@ async def _apply(deps: WebhookDeps, payload: dict[str, Any]) -> str:
         if not await AthleteRepository(session).is_active_locked(athlete.id):
             return "ignored"
         await ActivityRepository(session).upsert_many(athlete.id, [activity])
+    if aspect == "create" and deps.on_new_activity is not None:
+        await deps.on_new_activity(activity_id)
     return "upserted"
 
 
@@ -143,7 +151,8 @@ async def _set(
 async def process_webhook_event(ctx: dict[str, Any], event_id: int) -> str:
     with job_log_context(ctx, "process_webhook_event", event_id=event_id):
         wc = worker_context(ctx)
-        deps = WebhookDeps(wc.sessionmaker, wc.strava, wc.clock)
+        notify = partial(enqueue_new_activity_notification, wc.redis)
+        deps = WebhookDeps(wc.sessionmaker, wc.strava, wc.clock, on_new_activity=notify)
         outcome = await process_event(deps, event_id)
         retry = retry_after(outcome.resume_at, wc.clock())
         if retry is not None:

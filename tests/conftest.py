@@ -42,6 +42,13 @@ def settings() -> Settings:
 
 
 @pytest.fixture(autouse=True)
+def _no_real_anthropic(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Backstop: an Anthropic client built in a test can never reach the real API."""
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", "http://anthropic.invalid")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+
+@pytest.fixture(autouse=True)
 def _clear_settings_cache() -> Iterator[None]:
     get_settings.cache_clear()
     yield

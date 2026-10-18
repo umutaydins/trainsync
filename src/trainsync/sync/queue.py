@@ -21,6 +21,18 @@ def webhook_job_id(event_id: int) -> str:
     return f"webhook:{event_id}"
 
 
+def notify_job_id(strava_activity_id: int) -> str:
+    return f"notify:{strava_activity_id}"
+
+
+async def enqueue_new_activity_notification(pool: ArqRedis, strava_activity_id: int) -> bool:
+    """`False` when this activity's notification job is already queued (or recently done)."""
+    job = await pool.enqueue_job(
+        "notify_new_activity", strava_activity_id, _job_id=notify_job_id(strava_activity_id)
+    )
+    return job is not None
+
+
 class ArqJobQueue:
     def __init__(self, pool: ArqRedis) -> None:
         self.pool = pool
