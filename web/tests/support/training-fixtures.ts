@@ -44,6 +44,7 @@ export function planned(ex: Exercise, overrides: Partial<PlannedExercise> = {}):
 export function workout(overrides: Partial<WorkoutDetail> = {}): WorkoutDetail {
   return {
     id: 42,
+    client_id: "2d7f6c0a-5b1e-4c3a-8f0e-9a4b1c2d3e4f",
     program_day_id: 11,
     program_day_name: "Upper A",
     started_at: "2026-10-18T17:30:00Z",

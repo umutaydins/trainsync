@@ -92,12 +92,14 @@ class ReadApi:
         return await self._get(f"/v1/training/workouts/{workout_id}", {}, WorkoutDetail)
 
     async def start_workout(
-        self, started_at: datetime, program_day_id: int | None = None
+        self, client_id: uuid.UUID, started_at: datetime, program_day_id: int | None = None
     ) -> WorkoutDetail:
+        """Idempotent by `client_id`: a redelivered update starts nothing new (ADR 0017)."""
         body: dict[str, Any] = {"started_at": started_at.isoformat()}
         if program_day_id is not None:
             body["program_day_id"] = program_day_id
-        return await self._send("POST", "/v1/training/workouts", body, WorkoutDetail)
+        path = f"/v1/training/workouts/{client_id}"
+        return await self._send("PUT", path, body, WorkoutDetail)
 
     async def put_set(self, workout_id: int, client_id: uuid.UUID, body: SetIn) -> SetOut:
         path = f"/v1/training/workouts/{workout_id}/sets/{client_id}"

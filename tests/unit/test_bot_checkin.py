@@ -4,7 +4,7 @@ trainsync API (both respx), with the state store in memory."""
 import json
 import random
 from collections.abc import AsyncIterator, Iterator
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -17,7 +17,15 @@ from tests.support.bot_api import API, FakeApi, install, planned
 from tests.support.messages import NEUTRAL_EN as MSG
 from tests.support.state import MemoryStateStore
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, message_update, ok, sent_messages
-from trainsync.bot.checkin import MINUS, STATE_TTL_S, CheckinFlow, prompt, set_id, state_key
+from trainsync.bot.checkin import (
+    MINUS,
+    STATE_TTL_S,
+    CheckinFlow,
+    prompt,
+    set_id,
+    state_key,
+    workout_client_id,
+)
 from trainsync.bot.handlers import Commands, Dispatcher
 from trainsync.bot.messages import PACKS, Key, Messages
 from trainsync.bot.read_api import ReadApi
@@ -161,6 +169,9 @@ async def test_done_with_program_walks_the_plan(chat: Chat, fake: FakeApi) -> No
     reply = await chat.tap("✅ Done")
     assert fake.checkins[DAY]["status"] == "done"  # stored at once: no reminder after this
     assert fake.started == 1
+    # Started under the day's deterministic id: a retry or an edit reuses this workout.
+    day = date.fromisoformat(DAY)
+    assert [w.client_id for w in fake.workouts.values()] == [str(workout_client_id(day))]
     assert reply == (
         "1/3 Bench Press\nPlan: 3 x 5 · 80 kg\nTap a button or type 80x5x3, 80x5,5,4 or bw x12x3."
     )

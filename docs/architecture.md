@@ -60,7 +60,7 @@ Training (Phase 6, single user, no `athlete_id`):
 | `programs` | `id`, `name`, `goal` (strength / hypertrophy / general), `days_per_week`, `weeks`, `active`, `created_at` | partial unique index: at most one active program |
 | `program_days` | `id`, `program_id` (FK cascade), `day_index`, `name`; unique (`program_id`, `day_index`) | |
 | `program_exercises` | `id`, `program_day_id` (FK cascade), `exercise_id`, `position`, `sets`, `rep_min`, `rep_max`, `rest_seconds`, `start_weight_kg`, `progression` | |
-| `workouts` | `id`, `program_day_id` (nullable, set null), `started_at`, `ended_at`, `notes`, `strava_activity_id` (link, no FK) | |
+| `workouts` | `id`, `client_id` (uuid, unique), `program_day_id` (nullable, set null), `started_at`, `ended_at`, `notes`, `strava_activity_id` (link, no FK) | started with `PUT` by `client_id`: a retried start is one workout (ADR 0017) |
 | `workout_sets` | `id`, `client_id` (uuid, unique), `workout_id` (FK cascade), `exercise_id`, `set_index`, `reps`, `weight_kg` numeric(6,2), `rpe`, `is_warmup`, `completed_at`, `rest_seconds` | upsert on `client_id`: a retried log is one row |
 | `body_metrics` | `date` (PK), `weight_kg` | only what the user enters |
 | `daily_checkins` | `id`, `date` (unique, local day), `status` (done / partial / skipped / rest / sick_or_injured), `workout_id` (nullable, set null), `reason_note`, `sleep_hours`, `energy_1_5`, `body_weight_kg`, `created_at`, `updated_at` | upsert on `date`; a body weight is also written to `body_metrics` (P6.9, ADR 0020) |
@@ -198,8 +198,9 @@ RPE 1–10 in 0.5 steps) and JSON numbers in responses.
   `PATCH /exercises/{id}` (built-ins are read-only, `409`).
 - Programs: CRUD under `/programs`, `GET /programs/active`, `POST /programs/{id}/activate`
   (one active at a time).
-- Workouts: `POST /workouts` (free or `program_day_id`), `GET /workouts` (keyset on
-  `(started_at, id)`, ADR 0009), `GET /workouts/{id}`, `POST /workouts/{id}/finish`, `DELETE`.
+- Workouts: `PUT /workouts/{client_id}` (idempotent start, free or `program_day_id`),
+  `GET /workouts` (keyset on `(started_at, id)`, ADR 0009), `GET /workouts/{id}`,
+  `POST /workouts/{id}/finish`, `DELETE`.
   Start, get and finish return one shape: summary (`volume_kg`, `set_count`), `planned` (the day's
   exercises with `last_performance`), `sets` and `records` (PRs the sets beat against all earlier
   workouts).

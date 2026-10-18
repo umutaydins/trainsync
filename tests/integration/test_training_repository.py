@@ -79,7 +79,7 @@ async def test_put_set_is_idempotent_by_client_id(
 ) -> None:
     async with sessionmaker.begin() as session:
         bench = await exercise_id(session, "bench-press")
-        workout = await WorkoutRepository(session).start(T0)
+        workout, _ = await WorkoutRepository(session).start(uuid.uuid4(), T0)
     client_id = uuid.uuid4()
     values = SetValues(bench, 0, 5, Decimal("100"), T0 + timedelta(minutes=5))
 
@@ -111,7 +111,7 @@ async def test_concurrent_puts_store_one_set(
 ) -> None:
     async with sessionmaker.begin() as session:
         bench = await exercise_id(session, "bench-press")
-        workout = await WorkoutRepository(session).start(T0)
+        workout, _ = await WorkoutRepository(session).start(uuid.uuid4(), T0)
     client_id = uuid.uuid4()
     values = SetValues(bench, 0, 5, Decimal("100"), T0)
 
@@ -133,7 +133,10 @@ async def test_a_client_id_cannot_move_to_another_workout(
     async with sessionmaker.begin() as session:
         bench = await exercise_id(session, "bench-press")
         repo = WorkoutRepository(session)
-        first, second = await repo.start(T0), await repo.start(T0 + timedelta(days=1))
+        (first, _), (second, _) = (
+            await repo.start(uuid.uuid4(), T0),
+            await repo.start(uuid.uuid4(), T0 + timedelta(days=1)),
+        )
     client_id = uuid.uuid4()
     values = SetValues(bench, 0, 5, Decimal("100"), T0)
     async with sessionmaker.begin() as session:
@@ -149,10 +152,10 @@ async def test_last_performance_is_the_latest_other_workout_without_warmups(
         bench = await exercise_id(session, "bench-press")
         squat = await exercise_id(session, "back-squat")
         repo = WorkoutRepository(session)
-        older, newer, current = (
-            await repo.start(T0),
-            await repo.start(T0 + timedelta(days=2)),
-            await repo.start(T0 + timedelta(days=4)),
+        (older, _), (newer, _), (current, _) = (
+            await repo.start(uuid.uuid4(), T0),
+            await repo.start(uuid.uuid4(), T0 + timedelta(days=2)),
+            await repo.start(uuid.uuid4(), T0 + timedelta(days=4)),
         )
         for workout, weight in ((older, "90"), (newer, "95"), (current, "100")):
             await repo.put_set(

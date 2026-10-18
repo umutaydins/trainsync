@@ -1,6 +1,8 @@
 """P6.8 against the real API (Postgres via testcontainers, in-process ASGI): the program day
 rotation behind `/today`, and a redelivered `/log` that must store its sets once."""
 
+import re
+import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -19,13 +21,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.support.messages import NEUTRAL_EN as MSG
 from tests.support.state import MemoryStateStore
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, message_update, ok, sent_messages
-from trainsync.bot.common import RedisStateStore
+from trainsync.bot.common import RedisStateStore, client_id
 from trainsync.bot.handlers import Commands, Dispatcher
 from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import TelegramApi, Update
 from trainsync.bot.training import TrainingCommands
 from trainsync.core.settings import Settings
-from trainsync.db.models import WorkoutSet
+from trainsync.db.models import Workout, WorkoutSet
 from trainsync.db.repositories.training import ExerciseRepository
 from trainsync.main import create_app
 
@@ -92,8 +94,9 @@ async def test_next_day_rotates_through_the_program(
     # A workout following day A is open: A stays current, with that workout.
     started = (NOW - timedelta(hours=1)).isoformat()
     workout = (
-        await api.post(
-            "/v1/training/workouts", json={"program_day_id": day_a, "started_at": started}
+        await api.put(
+            f"/v1/training/workouts/{uuid.uuid4()}",
+            json={"program_day_id": day_a, "started_at": started},
         )
     ).json()
     current = (await api.get("/v1/training/programs/active/next-day")).json()
@@ -103,7 +106,9 @@ async def test_next_day_rotates_through_the_program(
     await api.post(f"/v1/training/workouts/{workout['id']}/finish")
     after_a = (await api.get("/v1/training/programs/active/next-day")).json()
     assert (after_a["day_id"], after_a["day_name"]) == (day_b, "B")
-    b = (await api.post("/v1/training/workouts", json={"program_day_id": day_b})).json()
+    b = (
+        await api.put(f"/v1/training/workouts/{uuid.uuid4()}", json={"program_day_id": day_b})
+    ).json()
     await api.post(f"/v1/training/workouts/{b['id']}/finish")
     again = (await api.get("/v1/training/programs/active/next-day")).json()
     assert again["day_id"] == day_a
@@ -152,3 +157,60 @@ async def test_redis_state_store(redis: Redis) -> None:
     assert 0 < await redis.ttl("bot:test") <= 60
     await store.delete("bot:test")
     assert await store.get("bot:test") is None
+
+
+class LoseFirstStartAnswer(httpx.AsyncBaseTransport):
+    """Forwards everything, but the first workout start reaches the API and its answer is lost,
+    like a gym Wi-Fi drop after the request went out."""
+
+    def __init__(self, inner: httpx.AsyncBaseTransport) -> None:
+        self._inner = inner
+        self.lost = 0
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        response = await self._inner.handle_async_request(request)
+        is_start = request.method == "PUT" and re.search(
+            r"/workouts/[0-9a-f-]{36}$", request.url.path
+        )
+        if is_start and not self.lost:
+            self.lost += 1
+            raise httpx.ReadTimeout("answer lost", request=request)
+        return response
+
+
+async def test_start_retries_and_lost_answers_make_one_workout(
+    app: FastAPI, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    transport = LoseFirstStartAnswer(httpx.ASGITransport(app=app))
+    async with (
+        httpx.AsyncClient(transport=transport) as api_http,
+        httpx.AsyncClient() as telegram_http,
+        respx.mock(assert_all_called=False) as telegram_mock,
+    ):
+        send = telegram_mock.post(f"{BOT_URL}/sendMessage").mock(return_value=ok({}))
+        api = ReadApi(api_http, "http://api", SecretStr(KEY))
+        telegram = TelegramApi(telegram_http, SecretStr(BOT_TOKEN), base_url=TELEGRAM)
+        training = TrainingCommands(
+            api, MemoryStateStore(), lambda: NOW, ZoneInfo("Europe/Istanbul"), MSG
+        )
+        bot = Dispatcher(
+            telegram, Commands(api, lambda: NOW, MSG), {CHAT}, MSG, features=[training]
+        )
+        update = Update.model_validate(message_update(502, CHAT, "/log bench 80x5x3"))
+        await bot.handle(update)  # the start's answer is lost: a friendly error
+        await bot.handle(update)  # Telegram redelivers
+        assert transport.lost == 1
+
+        # A plain retry of the same start returns the same workout.
+        start_id = client_id(f"tg:{CHAT}:502:start")
+        again = await api.start_workout(start_id, NOW)
+        assert (await api.start_workout(start_id, NOW + timedelta(minutes=5))).id == again.id
+
+    async with sessionmaker() as session:
+        workouts = list(await session.scalars(select(Workout)))
+        sets = await session.scalar(select(func.count()).select_from(WorkoutSet))
+    assert [w.client_id for w in workouts] == [start_id]
+    assert workouts[0].id == again.id
+    assert sets == 3
+    texts = [m["text"] for m in sent_messages(send)]
+    assert texts[-1] == "Logged Bench Press: 80 kg x 5, 5, 5. Workout volume 1,200 kg."

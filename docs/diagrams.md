@@ -341,6 +341,7 @@ erDiagram
     }
     workouts {
         bigint id PK
+        uuid client_id UK "client-generated start"
         bigint program_day_id FK "nullable"
         timestamptz started_at
         timestamptz ended_at "nullable"
@@ -1133,6 +1134,7 @@ sequenceDiagram
     participant API as API
     participant DB as Postgres
 
+    Note over UI,API: the workout itself was started the same way: PUT /v1/training/workouts/{uuid W}
     UI->>UI: tap ✓ (row already has client_id = uuid A)
     UI->>BFF: PUT /v1/training/workouts/42/sets/A (CSRF token, JSON)
     BFF->>API: PUT … + X-API-Key

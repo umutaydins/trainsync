@@ -97,6 +97,7 @@ describe("progress charts render the API's numbers exactly", () => {
 describe("workout history", () => {
   const summary = (id: number, overrides: Partial<WorkoutSummary> = {}): WorkoutSummary => ({
     id,
+    client_id: `00000000-0000-4000-8000-${String(id).padStart(12, "0")}`,
     program_day_id: 11,
     program_day_name: "Upper A",
     started_at: "2026-10-18T17:30:00Z",
@@ -143,6 +144,7 @@ describe("workout history", () => {
 describe("dashboard tiles", () => {
   const w = (id: number, started: string, volume: number): WorkoutSummary => ({
     id,
+    client_id: `00000000-0000-4000-8000-${String(id).padStart(12, "0")}`,
     program_day_id: null,
     program_day_name: null,
     started_at: started,

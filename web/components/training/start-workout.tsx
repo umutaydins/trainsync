@@ -1,37 +1,59 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { buttonClass, secondaryButtonClass } from "@/components/ui";
-import { post } from "@/lib/mutate";
+import { put, type MutationResult } from "@/lib/mutate";
 import type { WorkoutDetail } from "@/lib/training-types";
 
-/** Starts a workout (from a program day, or empty) and opens the workout screen. */
+type Send = (path: string, body: unknown) => Promise<MutationResult<WorkoutDetail>>;
+
+const defaultSend: Send = (path, body) => put<WorkoutDetail>(path, body);
+
+/**
+ * Starts a workout (from a program day, or empty) and opens the workout screen.
+ *
+ * The start is an idempotent `PUT /v1/training/workouts/{client_id}` (ADR 0017). One client id is
+ * created per start and kept until it succeeds, so a double tap or a retry after a lost answer
+ * returns the same workout instead of starting a second one.
+ */
 export function StartWorkoutButton({
   programDayId,
   label,
   secondary = false,
+  send = defaultSend,
+  newId = () => crypto.randomUUID(),
 }: {
   programDayId?: number;
   label: string;
   secondary?: boolean;
+  /** Test seams. */
+  send?: Send;
+  newId?: () => string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const clientId = useRef<string | null>(null);
+  // State updates land after the click handler, so a double tap needs a synchronous guard.
+  const inFlight = useRef(false);
 
   async function start() {
-    if (busy) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setError(null);
-    const result = await post<WorkoutDetail>("/v1/training/workouts", programDayId ? { program_day_id: programDayId } : {});
+    clientId.current ??= newId();
+    const body = programDayId ? { program_day_id: programDayId } : {};
+    const result = await send(`/v1/training/workouts/${clientId.current}`, body);
     if (result.ok && result.data) {
       router.push(`/training/workout/${result.data.id}`);
       return;
     }
+    inFlight.current = false;
     setBusy(false);
-    setError(result.ok ? "No answer from the API" : result.error);
+    setError(`${result.ok ? "No answer from the API" : result.error}. Tap again to retry.`);
   }
 
   return (

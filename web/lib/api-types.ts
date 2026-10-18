@@ -741,11 +741,27 @@ export interface paths {
          */
         get: operations["list_workouts_v1_training_workouts_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/training/workouts/{client_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
         /**
-         * Start a workout
-         * @description Starts a workout, free or from a program day. The response lists the day's planned exercises with the last performance of each (working sets of the most recent other workout that logged it).
+         * Start a workout (idempotent)
+         * @description Starts a workout, free or from a program day, under a client-generated `client_id` (ADR 0017): `201` when it started the workout, `200` when a workout with this id already exists (a retry, a double tap or a check-in edit), returned unchanged: the first start wins, whatever the repeat's body says. The response lists the day's planned exercises with the last performance of each (working sets of the most recent other workout that logged it).
          */
-        post: operations["start_workout_v1_training_workouts_post"];
+        put: operations["start_workout_v1_training_workouts__client_id__put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3366,6 +3382,7 @@ export interface components {
         /**
          * WorkoutDetail
          * @example {
+         *       "client_id": "2d7f6c0a-5b1e-4c3a-8f0e-9a4b1c2d3e4f",
          *       "ended_at": "2026-10-18T18:35:00Z",
          *       "exercise_count": 5,
          *       "id": 42,
@@ -3446,6 +3463,12 @@ export interface components {
          */
         WorkoutDetail: {
             /**
+             * Client Id
+             * Format: uuid
+             * @description The id the client started it with (ADR 0017)
+             */
+            client_id: string;
+            /**
              * Ended At
              * @description null while the workout is in progress
              */
@@ -3512,6 +3535,7 @@ export interface components {
          * @example {
          *       "items": [
          *         {
+         *           "client_id": "2d7f6c0a-5b1e-4c3a-8f0e-9a4b1c2d3e4f",
          *           "ended_at": "2026-10-18T18:35:00Z",
          *           "exercise_count": 5,
          *           "id": 42,
@@ -3563,6 +3587,7 @@ export interface components {
         /**
          * WorkoutSummary
          * @example {
+         *       "client_id": "2d7f6c0a-5b1e-4c3a-8f0e-9a4b1c2d3e4f",
          *       "ended_at": "2026-10-18T18:35:00Z",
          *       "exercise_count": 5,
          *       "id": 42,
@@ -3575,6 +3600,12 @@ export interface components {
          *     }
          */
         WorkoutSummary: {
+            /**
+             * Client Id
+             * Format: uuid
+             * @description The id the client started it with (ADR 0017)
+             */
+            client_id: string;
             /**
              * Ended At
              * @description null while the workout is in progress
@@ -6152,11 +6183,13 @@ export interface operations {
             };
         };
     };
-    start_workout_v1_training_workouts_post: {
+    start_workout_v1_training_workouts__client_id__put: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                client_id: string;
+            };
             cookie?: never;
         };
         requestBody?: {
@@ -6166,6 +6199,15 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkoutDetail"];
+                };
+            };
+            /** @description Started */
             201: {
                 headers: {
                     [name: string]: unknown;

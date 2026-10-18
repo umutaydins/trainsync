@@ -202,12 +202,34 @@ class WorkoutRepository:
         return await self._session.get(Workout, workout_id)
 
     async def start(
-        self, started_at: datetime, program_day_id: int | None = None, notes: str = ""
-    ) -> Workout:
-        workout = Workout(started_at=started_at, program_day_id=program_day_id, notes=notes)
-        self._session.add(workout)
-        await self._session.flush()
-        return workout
+        self,
+        client_id: uuid.UUID,
+        started_at: datetime,
+        program_day_id: int | None = None,
+        notes: str = "",
+    ) -> tuple[Workout, bool]:
+        """Idempotent start by `client_id`: (workout, created). The first start wins; a repeat
+        returns that workout unchanged."""
+        stmt = (
+            insert(Workout)
+            .values(
+                client_id=client_id,
+                started_at=started_at,
+                program_day_id=program_day_id,
+                notes=notes,
+            )
+            .on_conflict_do_nothing(index_elements=[Workout.client_id])
+            .returning(Workout.id)
+        )
+        created = await self._session.scalar(stmt) is not None
+        workout = await self._session.scalar(
+            select(Workout)
+            .where(Workout.client_id == client_id)
+            .execution_options(populate_existing=True)
+        )
+        if workout is None:  # pragma: no cover - inserted or already there
+            raise LookupError(client_id)
+        return workout, created
 
     async def open_workout(self) -> Workout | None:
         """The latest unfinished workout, if any."""

@@ -15,7 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from trainsync.core.settings import Settings
-from trainsync.db.models import WorkoutSet
+from trainsync.db.models import Workout, WorkoutSet
 from trainsync.db.repositories.training import ExerciseRepository
 from trainsync.main import create_app
 from trainsync.training.math import (
@@ -53,7 +53,7 @@ async def slug_ids(sessionmaker: async_sessionmaker[AsyncSession], *slugs: str) 
 
 
 async def start(api: httpx.AsyncClient, **body: Any) -> dict[str, Any]:
-    response = await api.post("/v1/training/workouts", json=body)
+    response = await api.put(f"/v1/training/workouts/{uuid.uuid4()}", json=body)
     assert response.status_code == 201, response.text
     result: dict[str, Any] = response.json()
     return result
@@ -116,6 +116,34 @@ async def test_same_put_twice_and_concurrently_stores_one_set(
     for _ in range(2):  # deleting is idempotent too
         assert (await api.delete(url)).status_code == 204
     assert await set_count(sessionmaker) == 1
+
+
+async def test_starting_a_workout_is_idempotent(
+    api: httpx.AsyncClient, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    url = f"/v1/training/workouts/{uuid.uuid4()}"
+    body = {"started_at": "2026-10-18T17:00:00Z", "notes": "gym"}
+
+    first = await api.put(url, json=body)
+    double_tap = await api.put(url, json=body)
+    assert (first.status_code, double_tap.status_code) == (201, 200)
+    assert first.json() == double_tap.json()
+    assert first.json()["client_id"] == url[-36:]
+
+    # A late retry with another body returns the workout as first started.
+    late = await api.put(url, json={"started_at": "2026-10-18T17:05:00Z", "notes": "retry"})
+    assert late.status_code == 200
+    assert (late.json()["id"], late.json()["notes"]) == (first.json()["id"], "gym")
+
+    concurrent = f"/v1/training/workouts/{uuid.uuid4()}"
+    responses = await asyncio.gather(*(api.put(concurrent, json=body) for _ in range(5)))
+    assert sorted(r.status_code for r in responses) == [200, 200, 200, 200, 201]
+    assert len({r.json()["id"] for r in responses}) == 1
+
+    async with sessionmaker() as session:
+        assert await session.scalar(select(func.count()).select_from(Workout)) == 2
+    # The old non-idempotent start is gone.
+    assert (await api.post("/v1/training/workouts", json=body)).status_code == 405
 
 
 @pytest.mark.parametrize(
@@ -227,7 +255,9 @@ async def test_start_from_a_program_day_returns_the_plan_with_last_performance(
     assert (again.json()["ended_at"], again.json()["set_count"]) == ("2026-10-18T18:00:00Z", 0)
     assert again.json()["notes"] == "rest day after all"
 
-    unknown_day = await api.post("/v1/training/workouts", json={"program_day_id": 999999})
+    unknown_day = await api.put(
+        f"/v1/training/workouts/{uuid.uuid4()}", json={"program_day_id": 999999}
+    )
     assert unknown_day.status_code == 400
     early = await start(api, started_at=NOW.isoformat())
     too_early = await api.post(

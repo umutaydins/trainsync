@@ -146,6 +146,7 @@ def planned(
 class Workout:
     id: int
     started_at: datetime
+    client_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     program_day_id: int | None = None
     ended_at: datetime | None = None
     sets: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -208,6 +209,7 @@ class FakeApi:
         )
         return {
             "id": workout.id,
+            "client_id": workout.client_id,
             "program_day_id": workout.program_day_id,
             "program_day_name": "Upper A" if planned_list else None,
             "started_at": workout.started_at.isoformat(),
@@ -259,12 +261,18 @@ def install(router: respx.MockRouter, clock: Any) -> FakeApi:
         return httpx.Response(200, json={"items": summaries, "next_cursor": None})
 
     def start(request: httpx.Request) -> httpx.Response:
+        """Idempotent by the client id in the path, like the real API: a repeat returns 200."""
         body = _json(request)
+        client_id = request.url.path.rsplit("/", 1)[-1]
+        for existing in api.workouts.values():
+            if existing.client_id == client_id:
+                return httpx.Response(200, json=api.detail(existing))
         api.started += 1
         workout = Workout(
             id=api.next_workout_id,
             started_at=datetime.fromisoformat(body["started_at"]),
             program_day_id=body.get("program_day_id"),
+            client_id=client_id,
         )
         api.next_workout_id += 1
         api.workouts[workout.id] = workout
@@ -444,7 +452,9 @@ def install(router: respx.MockRouter, clock: Any) -> FakeApi:
         side_effect=next_day
     )
     router.get(f"{base}/training/workouts", name="workouts").mock(side_effect=workouts)
-    router.post(f"{base}/training/workouts", name="start").mock(side_effect=start)
+    router.put(url__regex=rf"{base}/training/workouts/[0-9a-f-]{{36}}$", name="start").mock(
+        side_effect=start
+    )
     router.get(url__regex=rf"{base}/training/workouts/\d+$", name="workout").mock(
         side_effect=get_workout
     )

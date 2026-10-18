@@ -1,8 +1,9 @@
 """Training commands (P6.8): `/today`, `/plates`, `/log`, `/done`.
 
 `/log` adds to today's open workout (started on the owner's local day, `CHECKIN_TZ`) or starts
-a free one. Set client ids are `uuid5("tg:{chat}:{update}:{n}")`, so a redelivered update writes
-the same sets again instead of new ones (ADR 0017).
+a free one with `uuid5("tg:{chat}:{update}:start")`. Set client ids are
+`uuid5("tg:{chat}:{update}:{n}")`, so a redelivered update writes the same workout and sets again
+instead of new ones (ADR 0017).
 """
 
 import uuid
@@ -246,7 +247,10 @@ class TrainingCommands:
     ) -> str:
         now = self._clock()
         workout = await todays_workout(self._api, self._clock, self._zone)
-        workout_id = workout.id if workout else (await self._api.start_workout(now)).id
+        if workout is None:
+            start_id = client_id(f"tg:{chat_id}:{update_id}:start")
+            workout = await self._api.start_workout(start_id, now)
+        workout_id = workout.id
         ids = [client_id(f"tg:{chat_id}:{update_id}:{n}") for n in range(len(sets))]
         detail = await log_sets(self._api, workout_id, exercise_id, sets, ids, now)
         return self._msg(

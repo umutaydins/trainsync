@@ -138,7 +138,9 @@ async def test_starting_a_workout_suggests_the_next_weights(
     for days_ago, logged in zip((4, 2), history, strict=True):
         started = NOW - timedelta(days=days_ago)
         workout = (
-            await api.post("/v1/training/workouts", json={"started_at": started.isoformat()})
+            await api.put(
+                f"/v1/training/workouts/{uuid.uuid4()}", json={"started_at": started.isoformat()}
+            )
         ).json()
         for slug, (weight, reps) in logged.items():
             for index in range(3):
@@ -154,7 +156,9 @@ async def test_starting_a_workout_suggests_the_next_weights(
                 )
                 assert response.status_code == 201
 
-    today = (await api.post("/v1/training/workouts", json={"program_day_id": day_id})).json()
+    today = (
+        await api.put(f"/v1/training/workouts/{uuid.uuid4()}", json={"program_day_id": day_id})
+    ).json()
     suggestions = {p["exercise"]["slug"]: p["suggestion"] for p in today["planned"]}
     assert suggestions == {
         "bench-press": {"action": "increase", "weight_kg": 82.5, "previous_weight_kg": 80.0},

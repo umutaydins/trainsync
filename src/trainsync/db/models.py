@@ -365,6 +365,8 @@ class Workout(Base):
     __table_args__ = (Index("ix_workouts_started_at", text("started_at DESC"), "id"),)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    # Client-generated, so a retried or double-tapped start is one workout (ADR 0017).
+    client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
     program_day_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("program_days.id", ondelete="SET NULL")
     )

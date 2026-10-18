@@ -61,6 +61,7 @@ PLANNED_EXAMPLE: dict[str, Any] = {
     "suggestion": {"action": "hold", "weight_kg": 77.5, "previous_weight_kg": 77.5},
 }
 SUMMARY_EXAMPLE: dict[str, Any] = {
+    "client_id": "2d7f6c0a-5b1e-4c3a-8f0e-9a4b1c2d3e4f",
     "id": 42,
     "program_day_id": 11,
     "program_day_name": "Upper A",
@@ -131,6 +132,7 @@ class WorkoutSummary(BaseModel):
     model_config = ConfigDict(json_schema_extra={"examples": [SUMMARY_EXAMPLE]})
 
     id: int
+    client_id: uuid.UUID = Field(description="The id the client started it with (ADR 0017)")
     program_day_id: int | None
     program_day_name: str | None
     started_at: datetime
@@ -223,6 +225,7 @@ def _summary_fields(
 ) -> dict[str, Any]:
     return {
         "id": workout.id,
+        "client_id": workout.client_id,
         "program_day_id": workout.program_day_id,
         "program_day_name": day_name,
         "started_at": workout.started_at,
@@ -327,22 +330,31 @@ async def _day_name(session: AsyncSession, workout: Workout) -> str | None:
     return day.name if day else None
 
 
-@router.post(
-    "/workouts",
-    summary="Start a workout",
+@router.put(
+    "/workouts/{client_id}",
+    summary="Start a workout (idempotent)",
     description=(
-        "Starts a workout, free or from a program day. The response lists the day's planned "
-        "exercises with the last performance of each (working sets of the most recent other "
-        "workout that logged it)."
+        "Starts a workout, free or from a program day, under a client-generated `client_id` "
+        "(ADR 0017): `201` when it started the workout, `200` when a workout with this id "
+        "already exists (a retry, a double tap or a check-in edit), returned unchanged: the "
+        "first start wins, whatever the repeat's body says. The response lists the day's "
+        "planned exercises with the last performance of each (working sets of the most recent "
+        "other workout that logged it)."
     ),
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
     response_model=WorkoutDetail,
-    responses={**UNAUTHORIZED, 400: error("Unknown program day", "program day not found")},
+    responses={
+        **UNAUTHORIZED,
+        201: {"description": "Started", "model": WorkoutDetail},
+        400: error("Unknown program day", "program day not found"),
+    },
 )
 async def start_workout(
     sessionmaker: SessionmakerDep,
     settings: SettingsDep,
     clock: ClockDep,
+    response: Response,
+    client_id: Annotated[uuid.UUID, Path(examples=[SUMMARY_EXAMPLE["client_id"]])],
     body: Annotated[
         WorkoutStart | None,
         Body(
@@ -360,9 +372,10 @@ async def start_workout(
             and await ProgramRepository(session).day(body.program_day_id) is None
         ):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "program day not found")
-        workout = await WorkoutRepository(session).start(
-            as_utc(body.started_at) or clock(), body.program_day_id, body.notes
+        workout, created = await WorkoutRepository(session).start(
+            client_id, as_utc(body.started_at) or clock(), body.program_day_id, body.notes
         )
+        response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
         return await workout_detail(session, workout, progression_rules(settings))
 
 

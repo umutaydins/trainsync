@@ -12,8 +12,9 @@ from an older message (or a double tap, or a redelivered press) no longer matche
 with a polite "that button is from an earlier question". A text answer redelivered by Telegram
 has an `update_id` the state has already seen and is ignored.
 
-Writes are idempotent: sets use `uuid5("checkin:{date}:{exercise_id}:{set_index}")` and the
-check-in itself is `PUT /v1/checkins/{date}`, so "edit" and retries overwrite instead of adding.
+Writes are idempotent: the workout is started with `uuid5("checkin:{date}:workout")`, sets use
+`uuid5("checkin:{date}:{exercise_id}:{set_index}")` and the check-in itself is
+`PUT /v1/checkins/{date}`, so "edit" and retries overwrite instead of adding.
 """
 
 import json
@@ -125,6 +126,11 @@ class FlowState(BaseModel):
     sleep_hours: Decimal | None = None
     energy: int | None = None
     last_update_id: int = 0
+
+
+def workout_client_id(day: date) -> uuid.UUID:
+    """The id the check-in starts the day's workout with: a retry or an edit reuses it."""
+    return client_id(f"checkin:{day.isoformat()}:workout")
 
 
 def set_id(day: date, exercise_id: int, set_index: int) -> uuid.UUID:
@@ -248,7 +254,11 @@ class CheckinFlow:
         if workout is None:
             workout_id = (
                 program_day.open_workout_id
-                or (await self._api.start_workout(self._clock(), program_day.day_id)).id
+                or (
+                    await self._api.start_workout(
+                        workout_client_id(day), self._clock(), program_day.day_id
+                    )
+                ).id
             )
         else:
             workout_id = workout.id
@@ -380,7 +390,8 @@ class CheckinFlow:
         sets: list[ParsedSet],
     ) -> Reply:
         if state.workout_id is None:
-            state.workout_id = (await self._api.start_workout(self._clock())).id
+            start_id = workout_client_id(day)
+            state.workout_id = (await self._api.start_workout(start_id, self._clock())).id
         start = state.logged.get(exercise_id, 0) + 1
         await self._put_sets(day, state, exercise_id, sets, start=start)
         state.logged[exercise_id] = start - 1 + len(sets)

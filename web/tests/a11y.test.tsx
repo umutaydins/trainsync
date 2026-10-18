@@ -72,7 +72,7 @@ describe("accessibility (axe)", () => {
       "workout history",
       <HistoryList
         key="hl"
-        initial={{ items: [{ id: 1, program_day_id: null, program_day_name: null, started_at: "2026-10-18T17:30:00Z", ended_at: null, notes: "", set_count: 3, exercise_count: 1, volume_kg: 1200 }], next_cursor: "c" }}
+        initial={{ items: [{ id: 1, client_id: "00000000-0000-4000-8000-000000000001", program_day_id: null, program_day_name: null, started_at: "2026-10-18T17:30:00Z", ended_at: null, notes: "", set_count: 3, exercise_count: 1, volume_kg: 1200 }], next_cursor: "c" }}
       />,
     ],
     [
