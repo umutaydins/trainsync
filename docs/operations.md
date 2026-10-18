@@ -254,6 +254,18 @@ multi-location probe such as check-host.net (HTTP check on `<url>/health/live`).
   callback domain, re-create the webhook subscription, update Vercel, and point
   `PUBLIC_CHECK_URL` at it. Nothing in the app or the gateway changes.
 
+### Known issues
+
+- **Funnel relay 185.40.234.55 resets TLS** (seen 2026-10-18/19 with check-host.net): it closes
+  the connection right after the ClientHello, while relays 185.40.234.75 and 185.40.234.198
+  answer 200 from everywhere. Clients that DNS sends to that relay fail; nothing on the Mac
+  causes or fixes it. Support step: open a ticket at <https://tailscale.com/contact/support>
+  with the Funnel host name, the relay IP, the UTC time and the check-host.net report link.
+  Reproduce from outside the tailnet with
+  `curl -v --resolve <host>:443:185.40.234.55 https://<host>/health/live` (compare with
+  `.75`). If it persists and Strava webhooks or the dashboard fail, use the Cloudflare Tunnel
+  fallback above.
+
 ## Alerts
 
 Design: [ADR 0027](decisions/0027-uptime-and-stack-alerts.md); state machines in
@@ -445,15 +457,15 @@ that command on the Mac.
 | 8 | Funnel prerequisites (MagicDNS, HTTPS certificates, `funnel` node attribute) | Tailscale admin console, then `tailscale funnel status` | PENDING | | (agent read-only look on 2026-10-18: Tailscale up as `trainsync`, `No serve config`) |
 | 9 | Funnel on | `scripts/funnel.sh on && scripts/funnel.sh status` | PENDING | | |
 | 10 | `PUBLIC_API_BASE_URL` set | put the value from `funnel.sh status` into `.env.prod`, `scripts/mac-prod.sh up` (recreates the containers with the new env; `restart` would not), then `grep PUBLIC_API_BASE_URL .env.prod` | PENDING | | |
-| 11 | Public check from outside (real URL) | `make public-check URL=https://<host>.<tailnet>.ts.net` | PENDING | | |
-| 12 | Scheduled public check | `gh variable set PUBLIC_CHECK_URL --body https://<host>.<tailnet>.ts.net && gh workflow run public-check.yml`, then `gh run list --workflow public-check.yml -L 1` | PENDING | | |
+| 11 | Public check from outside (real URL) | `make public-check URL=https://<host>.<tailnet>.ts.net` | PASS | 2026-10-18/19 | owner: 16/16 OK, but run from the Mac over the tailnet (not public proof, see Funnel → Known issues). External proof: check-host.net HTTP check, Funnel relays 185.40.234.75 and 185.40.234.198 answer 200 from every location; relay 185.40.234.55 resets TLS after ClientHello (Tailscale side, open) |
+| 12 | Scheduled public check | `gh variable set PUBLIC_CHECK_URL --body https://<host>.<tailnet>.ts.net && gh workflow run public-check.yml`, then `gh run list --workflow public-check.yml -L 1` | PASS | 2026-10-18/19 | owner: repository variable `PUBLIC_CHECK_URL` set (a workflow run result is not recorded yet) |
 | 13 | `gh` can read CI on the Mac | `gh auth status && gh run list --workflow ci -L 1` | PENDING | | |
-| 14 | First real deploy | `make deploy`, then `tail -n 1 ~/Library/Logs/trainsync/deploys.log && scripts/deploy.sh status` | PENDING | | |
+| 14 | First real deploy | `make deploy`, then `tail -n 1 ~/Library/Logs/trainsync/deploys.log && scripts/deploy.sh status` | PASS | 2026-10-18/19 | owner: first `make deploy` of d3e1af2 succeeded (deploys.log success line; smoke: ready, `/v1/sync/status`, Telegram `getMe`). Later deploys succeeded too: 4f87a42 (coach, migration 0010) and the PR #6 merge 5dfaf89 (bot language, migration 0011) |
 | 15 | Rollback drill | after a deploy with no migrations: `make rollback`, then `tail -n 2 ~/Library/Logs/trainsync/deploys.log && scripts/mac-prod.sh status`; then `make deploy` again | PENDING | | |
-| 16 | Strava API application (P7.7) | follow [strava-setup.md](strava-setup.md) §1, then `grep -c '^STRAVA_CLIENT_' .env.prod` (expect 2) | PENDING | | |
-| 17 | Real Strava connected, backfill done (P7.7) | `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/sync/status"` after connecting (strava-setup.md §2) | PENDING | | |
-| 18 | Webhook subscription (P7.7) | `uv run python scripts/strava-subscription.py create` then `… view` (strava-setup.md §3) | PENDING | | |
-| 19 | A real webhook arrives (P7.7) | edit an activity title on strava.com, then `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/activities?limit=1"` | PENDING | | |
+| 16 | Strava API application (P7.7) | follow [strava-setup.md](strava-setup.md) §1, then `grep -c '^STRAVA_CLIENT_' .env.prod` (expect 2) | PASS | 2026-10-18/19 | owner: Strava API application created, client id and secret in `.env.prod` |
+| 17 | Real Strava connected, backfill done (P7.7) | `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/sync/status"` after connecting (strava-setup.md §2) | PASS | 2026-10-18/19 | owner: account connected, backfill done, 79 activities |
+| 18 | Webhook subscription (P7.7) | `uv run python scripts/strava-subscription.py create` then `… view` (strava-setup.md §3) | PASS | 2026-10-18/19 | owner: subscription id 377572 |
+| 19 | A real webhook arrives (P7.7) | edit an activity title on strava.com, then `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/activities?limit=1"` | PASS | 2026-10-18/19 | owner: a real `update` webhook processed end to end in about 1 s |
 | 20 | Vercel project and env (P7.6) | follow [deploy-vercel.md](deploy-vercel.md) §1–3; paste `vercel env ls` (or a screenshot list of names per environment, no values) | PENDING | | |
 | 21 | Production on Vercel shows real data (P7.6) | open `https://<project>.vercel.app`, log in; record the dashboard's activity count and `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/stats/summary"` count | PENDING | | |
 | 22 | Preview shows demo data, CSRF passes on Vercel (P7.6) | open a PR preview, log in with the demo password, log one set in /training (expect 403 "demo" from the read-only demo, not "cross-origin") | PENDING | | |
@@ -467,6 +479,9 @@ that command on the Mac.
 | 30 | Coach intensity chosen (P6.11) | set `BOT_INTENSITY` (and, for savage, `BOT_TONE=hardcore`) in `.env.prod`, `scripts/mac-prod.sh up`, then `scripts/mac-prod.sh logs bot \| grep bot_startup` (shows `intensity`) | PENDING | | |
 | 31 | Program days scheduled (P6.11) | set `weekday` / `start_time` on the active program's days (API), then wait for the 30-minute reminder on the next training day | PENDING | | |
 | 32 | Bot language switch (P6.12) | in the chat: `/lang`, press "English", then `/week` (English); `/lang tr`, `/week` (Turkish); `scripts/mac-prod.sh restart bot`, `/week` (still Turkish) | PENDING | | |
+| 33 | Gateway logs carry no webhook secret (ops-fixes) | after deploying it: `scripts/mac-prod.sh compose logs gateway \| grep -c -e verify_token -e X-Api-Key` (expect 0); if older logs left the Mac, rotate `STRAVA_WEBHOOK_VERIFY_TOKEN` | PENDING | | |
+| 34 | Prod commands without `TRAINSYNC_TAG` (ops-fixes) | in a fresh shell: `scripts/mac-prod.sh tag && scripts/mac-prod.sh status && make backup-now && make restore-check` | PENDING | | |
+| 35 | Public check from outside the tailnet (ops-fixes) | from a device off the tailnet: `make public-check URL=…` shows no `NOT A PUBLIC CHECK`; or `gh workflow run public-check.yml` and `gh run list --workflow public-check.yml -L 1` | PENDING | | |
 
 ## Backups and restore
 
@@ -536,8 +551,8 @@ make restore-check-ci                # CI variant: seeded DB, throwaway key, bad
 ### Owner checks
 
 - [ ] Key pair generated, identity in the password manager and at `BACKUP_AGE_IDENTITY_FILE`.
-- [ ] `make backup-now` wrote a `.dump.age` + `.counts.json` into iCloud Drive (date, size).
-- [ ] `make restore-check` passed on it (date, output line "row counts match …").
+- [x] `make backup-now` wrote a `.dump.age` + `.counts.json` into iCloud Drive (date, size). PASS 2026-10-18/19 (owner).
+- [x] `make restore-check` passed on it (date, output line "row counts match …"). PASS 2026-10-18/19 (owner): 18 tables, row counts match.
 - [ ] The container can read the `chmod 600` identity file through Docker Desktop's file
       sharing (`make restore-check` would say "no age identity" otherwise).
 - [ ] After the first Sunday: the weekly result arrived on Telegram.
