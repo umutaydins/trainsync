@@ -23,6 +23,8 @@ cleanup() {
 trap cleanup EXIT
 
 echo "e2e: installing web dependencies and the Playwright browser"
+# PLAYWRIGHT_INSTALL_ARGS is zero or more flags (CI: --with-deps), so it is split on purpose.
+# shellcheck disable=SC2086
 (cd web && pnpm install --frozen-lockfile && pnpm exec playwright install ${PLAYWRIGHT_INSTALL_ARGS:-} chromium)
 
 echo "e2e: starting stack"

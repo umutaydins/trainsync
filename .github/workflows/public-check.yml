@@ -1,0 +1,50 @@
+name: public-check
+
+# P7.3: from outside the Mac, check the public Funnel URL: valid TLS, allowlisted routes
+# forwarded, everything else 404 (scripts/public_check.py, routes from deploy/gateway/routes.toml).
+# The URL comes from the repository variable PUBLIC_CHECK_URL (Settings > Secrets and variables >
+# Actions > Variables), or the workflow_dispatch input. Without either the job skips cleanly.
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Public base URL, e.g. https://<host>.<tailnet>.ts.net (default: vars.PUBLIC_CHECK_URL)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-check
+  cancel-in-progress: false
+
+jobs:
+  public-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      URL: ${{ inputs.url || vars.PUBLIC_CHECK_URL }}
+    steps:
+      - name: URL configured?
+        id: url
+        run: |
+          if [ -z "$URL" ]; then
+            echo "::notice::PUBLIC_CHECK_URL is not set; skipping the public check"
+            echo "set=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "set=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v7
+        if: steps.url.outputs.set == 'true'
+      - uses: astral-sh/setup-uv@v9.0.0
+        if: steps.url.outputs.set == 'true'
+        with:
+          enable-cache: true
+      - if: steps.url.outputs.set == 'true'
+        run: uv python install 3.12
+      - if: steps.url.outputs.set == 'true'
+        run: make public-check URL="$URL"

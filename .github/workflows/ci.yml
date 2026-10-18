@@ -93,6 +93,14 @@ jobs:
       - run: uv python install 3.12
       - run: make prod-check
 
+  shellcheck:
+    # Every scripts/ and deploy/ shell script, with the pinned koalaman/shellcheck image.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - run: make shellcheck
+
   compose:
     runs-on: ubuntu-latest
     timeout-minutes: 20
