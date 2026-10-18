@@ -65,7 +65,8 @@ PAIN = _words(
     r"kus(?:tum|uyorum|ma)\w*",
     r"migren\w*",
     r"doktor\w*",
-    r"acil\w*",
+    # "acil" (emergency), "acile", "acilde"; not "acildi" ("opened", folded)
+    r"acil(?:e|de|den|i|in)?\b",
     # English
     r"pain\w*",
     r"hurt\w*",

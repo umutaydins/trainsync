@@ -45,7 +45,14 @@ def test_pain_injury_illness_is_recognised(text: str) -> None:
 
 @pytest.mark.parametrize(
     "text",
-    ["chest day bugün", "heart rate 150 civarı", "canım istemiyor", "broke my PR!", "80x5x3"],
+    [
+        "chest day bugün",
+        "heart rate 150 civarı",
+        "canım istemiyor",
+        "broke my PR!",
+        "80x5x3",
+        "antrenman açıldı",  # "acildi" is not "acil" (emergency)
+    ],
 )
 def test_training_talk_is_not_pain(text: str) -> None:
     assert not mentions_pain(text)

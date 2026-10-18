@@ -552,3 +552,14 @@ class NutritionProfile(Base):
     kcal_target: Mapped[int | None] = mapped_column(Integer)
     protein_target_g: Mapped[int | None] = mapped_column(Integer)
     updated_at: Mapped[datetime] = _utc_timestamp(default_now=True)
+
+
+class ChatSetting(Base):
+    """Per-chat bot settings (ADR 0031): the language chosen with `/lang`. No row = `BOT_LANG`."""
+
+    __tablename__ = "chat_settings"
+    __table_args__ = (CheckConstraint("lang IN ('en', 'tr')", name="lang"),)
+
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
+    lang: Mapped[str] = mapped_column(String(2))
+    updated_at: Mapped[datetime] = _utc_timestamp(default_now=True)

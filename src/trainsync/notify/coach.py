@@ -61,6 +61,7 @@ from trainsync.db.models import NotificationKind, ProgramDay, Workout, WorkoutSe
 from trainsync.db.repositories.notifications import NotificationRepository
 from trainsync.db.repositories.training import ProgramRepository
 from trainsync.notify.checkin import day_key
+from trainsync.notify.language import in_chat_lang
 from trainsync.training.progression import Rules
 
 log = get_logger(__name__)
@@ -186,6 +187,7 @@ async def _started_today(session: AsyncSession, now: datetime, zone: ZoneInfo) -
     return found is not None
 
 
+@in_chat_lang
 async def run_reminders(deps: CoachDeps) -> str:
     """One tick. Outcome: disabled / no_plan / started / nothing / quiet / duplicate / sent /
     unknown / failed."""
@@ -262,6 +264,7 @@ def _day_name(deps: CoachDeps, detail: WorkoutDetail) -> str:
     return detail.program_day_name or deps.msg(Key.COACH_FREE_WORKOUT)
 
 
+@in_chat_lang
 async def workout_started(deps: CoachDeps, workout_id: int) -> str:
     detail = _live(deps, await _detail(deps, workout_id))
     if detail is None:
@@ -276,6 +279,7 @@ def _set_text(logged: SetOut) -> str:
     return f"{load} x {logged.reps}"
 
 
+@in_chat_lang
 async def set_logged(deps: CoachDeps, set_id: int, pool: ArqRedis | None) -> str:
     """Under target → one message per exercise per workout; then the rest-over job."""
     async with deps.sessionmaker() as session:
@@ -308,6 +312,7 @@ async def set_logged(deps: CoachDeps, set_id: int, pool: ArqRedis | None) -> str
     return outcome
 
 
+@in_chat_lang
 async def rest_over(deps: CoachDeps, set_id: int) -> str:
     async with deps.sessionmaker() as session:
         row = await session.get(WorkoutSet, set_id)
@@ -329,6 +334,7 @@ async def rest_over(deps: CoachDeps, set_id: int) -> str:
     return await send(deps, NotificationKind.COACH_REST_OVER, set_id, text)
 
 
+@in_chat_lang
 async def workout_finished(deps: CoachDeps, workout_id: int) -> str:
     detail = await _detail(deps, workout_id)
     if detail is None or detail.ended_at is None or is_checkin_workout(deps, detail):

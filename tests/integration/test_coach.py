@@ -19,16 +19,19 @@ from pydantic import SecretStr
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from tests.conftest import make_settings
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, error, ok, sent_messages
 from trainsync.bot.common import client_id
-from trainsync.bot.messages import PACKS, Key, Messages
+from trainsync.bot.messages import PACKS, Key, Messages, messages_for
 from trainsync.bot.telegram import TelegramApi
 from trainsync.coach.categories import Category
-from trainsync.coach.lines import MemoryRecentStore, load_pack
+from trainsync.coach.lines import MemoryRecentStore, load_pack, load_packs
 from trainsync.coach.mode import CoachMode, MemorySoftModeStore
 from trainsync.coach.savage_tr import LINES
 from trainsync.coach.voice import CoachVoice
+from trainsync.core.settings import BotLang
 from trainsync.db.models import Notification, Program, ProgramDay, ProgramExercise
+from trainsync.db.repositories.chat_settings import ChatSettingsRepository
 from trainsync.db.repositories.training import (
     ExerciseRepository,
     ProgramRepository,
@@ -365,3 +368,55 @@ async def test_check_in_workouts_get_no_live_messages(
         await WorkoutRepository(session).finish(workout, clock.now)
     assert await workout_finished(deps, workout) == "skipped"
     assert texts(send) == []
+
+
+# ---------------------------------------------------------------- the chat's language (P6.12)
+
+
+async def store_lang(sessionmaker: async_sessionmaker[AsyncSession], lang: BotLang) -> None:
+    async with sessionmaker.begin() as session:
+        await ChatSettingsRepository(session).set_lang(CHAT, lang, MONDAY_18)
+
+
+@pytest.mark.parametrize("savage", [False, True])
+async def test_the_worker_speaks_the_language_stored_for_the_chat(
+    coach: tuple[CoachDeps, respx.Route],
+    clock: Clock,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    savage: bool,
+) -> None:
+    """BOT_LANG is Turkish, the chat chose English with /lang: the reminder is English, read at
+    send time (ADR 0031)."""
+    deps, send = coach
+    tone = "hardcore" if savage else "neutral"
+    msg = messages_for(make_settings(bot_lang="tr", bot_tone=tone))
+    packs = load_packs(None)
+    deps = replace(
+        deps,
+        msg=msg,
+        voice=CoachVoice(
+            msg=msg,
+            mode=CoachMode(configured=savage, soft=MemorySoftModeStore()),
+            pack=packs["tr"],
+            recent=MemoryRecentStore(),
+            rng=random.Random(4),
+            packs=packs,
+        ),
+    )
+    await program(sessionmaker)
+    clock.local(17, 30)
+    await store_lang(sessionmaker, "en")
+    assert await run_reminders(deps) == "sent"
+    english = texts(send)[-1]
+    if savage:
+        fact, line = english.split("\n", 1)
+        assert fact == "Push A · 18:00"
+        assert any(line.startswith(x) for x in packs["en"].lines[Category.REMINDER_BEFORE]), line
+    else:
+        en = Messages(PACKS["neutral", "en"])
+        assert english == en(Key.COACH_REMINDER_BEFORE, day="Push A", time="18:00")
+    await store_lang(sessionmaker, "tr")  # switched back: the next stage is Turkish again
+    clock.local(18, 0)
+    assert await run_reminders(deps) == "sent"
+    if not savage:
+        assert texts(send)[-1] == MSG(Key.COACH_REMINDER_NOW, day="Push A", time="18:00")

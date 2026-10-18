@@ -535,6 +535,64 @@
         "title": "ChallengeResponse",
         "type": "object"
       },
+      "ChatSettingsIn": {
+        "examples": [
+          {
+            "lang": "en"
+          }
+        ],
+        "properties": {
+          "lang": {
+            "enum": [
+              "en",
+              "tr"
+            ],
+            "title": "Lang",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lang"
+        ],
+        "title": "ChatSettingsIn",
+        "type": "object"
+      },
+      "ChatSettingsOut": {
+        "examples": [
+          {
+            "chat_id": 123456789,
+            "lang": "tr"
+          }
+        ],
+        "properties": {
+          "chat_id": {
+            "title": "Chat Id",
+            "type": "integer"
+          },
+          "lang": {
+            "anyOf": [
+              {
+                "enum": [
+                  "en",
+                  "tr"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null: never chosen, the bot uses BOT_LANG",
+            "title": "Lang"
+          }
+        },
+        "required": [
+          "chat_id",
+          "lang"
+        ],
+        "title": "ChatSettingsOut",
+        "type": "object"
+      },
       "CheckinIn": {
         "description": "Replaces the day's check-in (every field; omitted ones become null).",
         "examples": [
@@ -5926,6 +5984,140 @@
         "summary": "Get one activity",
         "tags": [
           "activities"
+        ]
+      }
+    },
+    "/v1/chats/{chat_id}/settings": {
+      "get": {
+        "description": "The language the chat chose with `/lang`, or null.",
+        "operationId": "get_chat_settings_v1_chats__chat_id__settings_get",
+        "parameters": [
+          {
+            "description": "Telegram chat id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "description": "Telegram chat id",
+              "examples": [
+                123456789
+              ],
+              "title": "Chat Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Settings of a chat",
+        "tags": [
+          "chats"
+        ]
+      },
+      "put": {
+        "description": "Idempotent: the same body twice stores one row.",
+        "operationId": "put_chat_settings_v1_chats__chat_id__settings_put",
+        "parameters": [
+          {
+            "description": "Telegram chat id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "description": "Telegram chat id",
+              "examples": [
+                123456789
+              ],
+              "title": "Chat Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatSettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "missing or invalid API key"
+                }
+              }
+            },
+            "description": "Missing or invalid `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Store the settings of a chat",
+        "tags": [
+          "chats"
         ]
       }
     },

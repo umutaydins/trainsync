@@ -37,6 +37,7 @@ from trainsync.core.settings import Settings
 from trainsync.db.models import NotificationKind
 from trainsync.db.repositories.checkins import CheckinRepository
 from trainsync.db.repositories.notifications import NotificationRepository
+from trainsync.notify.language import in_chat_lang
 
 log = get_logger(__name__)
 
@@ -121,6 +122,7 @@ def build_checkin_deps(
     )
 
 
+@in_chat_lang
 async def run_checkin(deps: CheckinDeps) -> str:
     """One scheduler tick. Outcome: disabled / nothing / duplicate / sent_prompt /
     sent_reminder / unknown / failed."""

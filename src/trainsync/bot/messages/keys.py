@@ -122,6 +122,10 @@ class Key(StrEnum):
     COACH_DONE_BAD = "coach.done_bad"
     COACH_SOFT_ON = "coach.soft_on"
     COACH_SOFT_OFF = "coach.soft_off"
+    # /lang (P6.12, ADR 0031)
+    LANG_CHOOSE = "lang.choose"
+    LANG_SET = "lang.set"
+    LANG_USAGE = "lang.usage"
     COACH_FACT_SESSION = "coach.fact.session"
     COACH_FACT_UNDER = "coach.fact.under"
     COACH_FACT_MISSING = "coach.fact.missing"
@@ -233,6 +237,9 @@ FIELDS: Mapping[Key, frozenset[str]] = {
     Key.COACH_DONE_BAD: _fields("missing"),
     Key.COACH_SOFT_ON: _fields(),
     Key.COACH_SOFT_OFF: _fields(),
+    Key.LANG_CHOOSE: _fields(),
+    Key.LANG_SET: _fields(),
+    Key.LANG_USAGE: _fields(),
     Key.COACH_FACT_SESSION: _fields("day", "time"),
     Key.COACH_FACT_UNDER: _fields("exercise", "done", "target"),
     Key.COACH_FACT_MISSING: _fields("missing"),
