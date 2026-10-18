@@ -120,6 +120,15 @@ class Settings(BaseSettings):
             return self.telegram_notify_chat_id
         return self.telegram_allowed_chat_ids[0] if self.telegram_allowed_chat_ids else None
 
+    # ---------------------------------------------------------------- nutrition (P6.4, ADR 0019)
+    # Open Food Facts lookup (public API, no key). Off = only the local food list is searched.
+    openfoodfacts_enabled: bool = True
+    openfoodfacts_base_url: str = "https://world.openfoodfacts.org"
+    # OFF asks every client to identify itself: app name, version and a contact URL.
+    openfoodfacts_user_agent: str = "trainsync/0.1 (+https://github.com/umutaydins/trainsync)"
+    # Whole-request budget; on a timeout the endpoint answers with local results only.
+    openfoodfacts_timeout_s: float = Field(default=3.0, gt=0, le=30)
+
 
 @lru_cache
 def get_settings() -> Settings:

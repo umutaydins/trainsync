@@ -10,7 +10,7 @@ from trainsync.core.settings import Settings
 from trainsync.main import create_app
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TAGS = {"auth", "webhooks", "activities", "stats", "sync", "health"}
+TAGS = {"auth", "webhooks", "activities", "stats", "sync", "health", "nutrition"}
 
 
 @pytest.fixture
@@ -66,6 +66,19 @@ def test_every_endpoint_is_documented(spec: dict[str, Any]) -> None:
         "GET /v1/stats/weekly",
         "GET /v1/stats/summary",
         "GET /v1/sync/status",
+        "GET /v1/nutrition/foods",
+        "POST /v1/nutrition/foods",
+        "GET /v1/nutrition/foods/lookup",
+        "PATCH /v1/nutrition/foods/{food_id}",
+        "PUT /v1/nutrition/foods/{food_id}/favorite",
+        "DELETE /v1/nutrition/foods/{food_id}/favorite",
+        "GET /v1/nutrition/log",
+        "PUT /v1/nutrition/log/{client_id}",
+        "DELETE /v1/nutrition/log/{client_id}",
+        "GET /v1/nutrition/profile",
+        "PUT /v1/nutrition/profile",
+        "GET /v1/nutrition/summary",
+        "GET /v1/nutrition/summary/weekly",
     }
 
 

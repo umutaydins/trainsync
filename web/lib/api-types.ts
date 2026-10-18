@@ -118,6 +118,199 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/nutrition/foods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search stored foods
+         * @description Local foods only (manual entries and cached Open Food Facts products): case-insensitive substring of name or brand, or an exact barcode. Favorites first, then by name.
+         */
+        get: operations["search_foods_v1_nutrition_foods_get"];
+        put?: never;
+        /**
+         * Create a food
+         * @description A manual food with per-100 g values. Unknown macros may be null.
+         */
+        post: operations["create_food_v1_nutrition_foods_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/nutrition/foods/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Look a food up in Open Food Facts
+         * @description Exactly one of `barcode` or `q`. A barcode already stored is answered locally (`remote=cached`). Otherwise Open Food Facts is asked (3 s budget) and every usable product (barcode, name and kcal known) is cached in the food list. If Open Food Facts is slow or down the answer still comes, with local matches only and `remote=unavailable`.
+         */
+        get: operations["lookup_food_v1_nutrition_foods_lookup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/nutrition/foods/{food_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a food
+         * @description Changes only the fields sent. Editing a cached Open Food Facts food turns it into a `manual` one, so a later lookup never overwrites the edit. Logged entries use the food's current values.
+         */
+        patch: operations["update_food_v1_nutrition_foods__food_id__patch"];
+        trace?: never;
+    };
+    "/v1/nutrition/foods/{food_id}/favorite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Mark a food as favorite
+         * @description Idempotent.
+         */
+        put: operations["favorite_food_v1_nutrition_foods__food_id__favorite_put"];
+        post?: never;
+        /**
+         * Unmark a favorite food
+         * @description Idempotent.
+         */
+        delete: operations["unfavorite_food_v1_nutrition_foods__food_id__favorite_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/nutrition/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Food log of a day
+         * @description Entries of one day (default: today, UTC), in meal order, then as logged.
+         */
+        get: operations["day_log_v1_nutrition_log_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/nutrition/log/{client_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Log food (idempotent)
+         * @description Upsert by the client-generated `client_id`: `201` when it created the entry, `200` when an entry with this id already existed and was updated. Retrying the same request stores one entry.
+         */
+        put: operations["put_log_v1_nutrition_log__client_id__put"];
+        post?: never;
+        /** Delete a food log entry */
+        delete: operations["delete_log_v1_nutrition_log__client_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/nutrition/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Nutrition profile
+         * @description Profile, targets and today's BMR estimate.
+         */
+        get: operations["get_profile_v1_nutrition_profile_get"];
+        /**
+         * Set the nutrition profile
+         * @description Replaces the profile. A `kcal_target` below the estimated BMR is accepted and comes back with a `warning`.
+         */
+        put: operations["put_profile_v1_nutrition_profile_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/nutrition/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Daily nutrition summary and energy balance
+         * @description One day (default: today, UTC). All energy figures are estimates: BMR by Mifflin-St Jeor from the profile and the latest body weight on or before the day, times the everyday-activity multiplier (1.2 / 1.375 / 1.55) without exercise; exercise from synced activities (`raw.calories`, else for rides `raw.kilojoules` ≈ kcal, else unknown). Balance = intake - (baseline + known exercise). Unknown inputs are flagged, never guessed. Days are UTC days.
+         */
+        get: operations["day_summary_v1_nutrition_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/nutrition/summary/weekly": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Nutrition summary per day for a range
+         * @description One summary per day in `from`..`to` (both inclusive, at most 92 days) plus totals. Defaults to the current ISO week (Monday to Sunday, UTC). All energy figures are estimates: BMR by Mifflin-St Jeor from the profile and the latest body weight on or before the day, times the everyday-activity multiplier (1.2 / 1.375 / 1.55) without exercise; exercise from synced activities (`raw.calories`, else for rides `raw.kilojoules` ≈ kcal, else unknown). Balance = intake - (baseline + known exercise). Unknown inputs are flagged, never guessed. Days are UTC days.
+         */
+        get: operations["range_summary_v1_nutrition_summary_weekly_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/stats/summary": {
         parameters: {
             query?: never;
@@ -220,6 +413,12 @@ export interface components {
             status: "queued" | "duplicate" | "ignored";
         };
         /**
+         * ActivityBaseline
+         * @description Everyday activity outside logged exercise; picks the BMR multiplier (P6.4).
+         * @enum {string}
+         */
+        ActivityBaseline: "sedentary" | "light" | "moderate";
+        /**
          * ActivityDetail
          * @example {
          *       "activity": {
@@ -245,6 +444,40 @@ export interface components {
              * @description When data was last written by any sync path; tells how fresh this is
              */
             last_synced_at: string | null;
+        };
+        /**
+         * ActivityEnergyOut
+         * @example {
+         *       "kcal": 650,
+         *       "kcal_known": true,
+         *       "kcal_source": "kilojoules",
+         *       "name": "Evening Ride",
+         *       "sport_type": "Ride",
+         *       "start_date": "2026-10-14T16:00:00Z",
+         *       "strava_activity_id": 10000000123
+         *     }
+         */
+        ActivityEnergyOut: {
+            /**
+             * Kcal
+             * @description null = unknown (not guessed)
+             */
+            kcal: number | null;
+            /** Kcal Known */
+            kcal_known: boolean;
+            /** @description `calories` (Strava's estimate) or `kilojoules` (rides: kJ ≈ kcal) */
+            kcal_source: components["schemas"]["KcalSource"] | null;
+            /** Name */
+            name: string;
+            /** Sport Type */
+            sport_type: string;
+            /**
+             * Start Date
+             * Format: date-time
+             */
+            start_date: string;
+            /** Strava Activity Id */
+            strava_activity_id: number;
         };
         /**
          * ActivityOut
@@ -399,6 +632,348 @@ export interface components {
             strava_athlete_id: number;
         };
         /**
+         * DayLog
+         * @example {
+         *       "date": "2026-10-14",
+         *       "entries": [
+         *         {
+         *           "brand": "Acme",
+         *           "carbs_g": 47,
+         *           "client_id": "0b6f1f9e-4c1e-4a8e-9a43-2f1d8f0c6a11",
+         *           "created_at": "2026-10-14T07:12:03Z",
+         *           "date": "2026-10-14",
+         *           "fat_g": 5.6,
+         *           "food_id": 7,
+         *           "food_name": "Rolled oats",
+         *           "grams": 80,
+         *           "kcal": 297.6,
+         *           "meal": "breakfast",
+         *           "protein_g": 10.8
+         *         }
+         *       ]
+         *     }
+         */
+        DayLog: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Entries
+             * @description In meal order, then as logged
+             */
+            entries: components["schemas"]["LogOut"][];
+        };
+        /**
+         * DaySummary
+         * @example {
+         *       "activities": [
+         *         {
+         *           "kcal": 650,
+         *           "kcal_known": true,
+         *           "kcal_source": "kilojoules",
+         *           "name": "Evening Ride",
+         *           "sport_type": "Ride",
+         *           "start_date": "2026-10-14T16:00:00Z",
+         *           "strava_activity_id": 10000000123
+         *         }
+         *       ],
+         *       "activity_baseline": "light",
+         *       "balance_complete": true,
+         *       "balance_kcal": -707.6,
+         *       "baseline_kcal": 2468.1,
+         *       "bmr_kcal": 1795,
+         *       "carbs_g": 270,
+         *       "date": "2026-10-14",
+         *       "entry_count": 9,
+         *       "exercise_complete": true,
+         *       "exercise_kcal": 650,
+         *       "exercise_unknown_count": 0,
+         *       "expenditure_kcal": 3118.1,
+         *       "fat_g": 80.4,
+         *       "intake_kcal": 2410.5,
+         *       "kcal_remaining": 189.5,
+         *       "kcal_target": 2600,
+         *       "macros_complete": true,
+         *       "protein_g": 131.2,
+         *       "protein_target_g": 140,
+         *       "weight_date": "2026-10-12",
+         *       "weight_kg": 80
+         *     }
+         */
+        DaySummary: {
+            /**
+             * Activities
+             * @description Synced activities, UTC day
+             */
+            activities: components["schemas"]["ActivityEnergyOut"][];
+            activity_baseline: components["schemas"]["ActivityBaseline"] | null;
+            /**
+             * Balance Complete
+             * @description False when the balance leaves out unknown exercise or cannot be computed
+             */
+            balance_complete: boolean;
+            /**
+             * Balance Kcal
+             * @description intake_kcal - expenditure_kcal; negative = deficit
+             */
+            balance_kcal: number | null;
+            /**
+             * Baseline Kcal
+             * @description BMR x activity_baseline multiplier, logged exercise excluded
+             */
+            baseline_kcal: number | null;
+            /**
+             * Bmr Kcal
+             * @description Mifflin-St Jeor estimate; null if unknown
+             */
+            bmr_kcal: number | null;
+            /** Carbs G */
+            carbs_g: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Entry Count */
+            entry_count: number;
+            /** @description Why BMR/baseline/expenditure/balance are null */
+            estimate_unavailable_reason: components["schemas"]["EstimateGap"] | null;
+            /**
+             * Exercise Complete
+             * @description Every activity of the day has a known energy
+             */
+            exercise_complete: boolean;
+            /**
+             * Exercise Kcal
+             * @description Sum over activities whose energy is known
+             */
+            exercise_kcal: number;
+            /**
+             * Exercise Unknown Count
+             * @description Activities whose energy is unknown
+             */
+            exercise_unknown_count: number;
+            /**
+             * Expenditure Kcal
+             * @description baseline_kcal + exercise_kcal
+             */
+            expenditure_kcal: number | null;
+            /** Fat G */
+            fat_g: number;
+            /** Intake Kcal */
+            intake_kcal: number;
+            /**
+             * Kcal Remaining
+             * @description kcal_target - intake_kcal
+             */
+            kcal_remaining: number | null;
+            /** Kcal Target */
+            kcal_target: number | null;
+            /**
+             * Macros Complete
+             * @description False if a logged food has an unknown macro (missing from the sums)
+             */
+            macros_complete: boolean;
+            /** Protein G */
+            protein_g: number;
+            /** Protein Target G */
+            protein_target_g: number | null;
+            /** Weight Date */
+            weight_date: string | null;
+            /**
+             * Weight Kg
+             * @description Latest body weight on or before the day
+             */
+            weight_kg: number | null;
+        };
+        /**
+         * EstimateGap
+         * @description Why BMR and the everyday baseline could not be estimated for a day.
+         * @enum {string}
+         */
+        EstimateGap: "no_profile" | "no_body_weight";
+        /**
+         * FoodIn
+         * @example {
+         *       "carbs_100g": 0,
+         *       "fat_100g": 3.6,
+         *       "favorite": false,
+         *       "kcal_100g": 165,
+         *       "name": "Chicken breast, cooked",
+         *       "protein_100g": 31
+         *     }
+         */
+        FoodIn: {
+            /** Barcode */
+            barcode?: string | null;
+            /** Brand */
+            brand?: string | null;
+            /**
+             * Carbs 100G
+             * @description g per 100 g; null = unknown
+             */
+            carbs_100g?: number | null;
+            /**
+             * Fat 100G
+             * @description g per 100 g; null = unknown
+             */
+            fat_100g?: number | null;
+            /**
+             * Favorite
+             * @default false
+             */
+            favorite: boolean;
+            /**
+             * Kcal 100G
+             * @description kcal per 100 g
+             */
+            kcal_100g: number;
+            /** Name */
+            name: string;
+            /**
+             * Protein 100G
+             * @description g per 100 g; null = unknown
+             */
+            protein_100g?: number | null;
+        };
+        /**
+         * FoodList
+         * @example {
+         *       "items": [
+         *         {
+         *           "barcode": "8690000000017",
+         *           "brand": "Acme",
+         *           "carbs_100g": 58.7,
+         *           "fat_100g": 7,
+         *           "favorite": true,
+         *           "id": 7,
+         *           "kcal_100g": 372,
+         *           "name": "Rolled oats",
+         *           "protein_100g": 13.5,
+         *           "source": "openfoodfacts"
+         *         }
+         *       ]
+         *     }
+         */
+        FoodList: {
+            /** Items */
+            items: components["schemas"]["FoodOut"][];
+        };
+        /**
+         * FoodLookup
+         * @example {
+         *       "items": [
+         *         {
+         *           "barcode": "8690000000017",
+         *           "brand": "Acme",
+         *           "carbs_100g": 58.7,
+         *           "fat_100g": 7,
+         *           "favorite": true,
+         *           "id": 7,
+         *           "kcal_100g": 372,
+         *           "name": "Rolled oats",
+         *           "protein_100g": 13.5,
+         *           "source": "openfoodfacts"
+         *         }
+         *       ],
+         *       "remote": "ok"
+         *     }
+         */
+        FoodLookup: {
+            /** Items */
+            items: components["schemas"]["FoodOut"][];
+            /**
+             * Remote
+             * @description Open Food Facts outcome: `ok` (asked, results cached), `cached` (barcode already stored, not asked), `not_found`, `unavailable` (timeout / error: local results only), `disabled` (`OPENFOODFACTS_ENABLED=false`: local results only)
+             * @enum {string}
+             */
+            remote: "ok" | "cached" | "not_found" | "unavailable" | "disabled";
+        };
+        /**
+         * FoodOut
+         * @example {
+         *       "barcode": "8690000000017",
+         *       "brand": "Acme",
+         *       "carbs_100g": 58.7,
+         *       "fat_100g": 7,
+         *       "favorite": true,
+         *       "id": 7,
+         *       "kcal_100g": 372,
+         *       "name": "Rolled oats",
+         *       "protein_100g": 13.5,
+         *       "source": "openfoodfacts"
+         *     }
+         */
+        FoodOut: {
+            /** Barcode */
+            barcode: string | null;
+            /** Brand */
+            brand: string | null;
+            /**
+             * Carbs 100G
+             * @description null = unknown
+             */
+            carbs_100g: number | null;
+            /**
+             * Fat 100G
+             * @description null = unknown
+             */
+            fat_100g: number | null;
+            /** Favorite */
+            favorite: boolean;
+            /** Id */
+            id: number;
+            /** Kcal 100G */
+            kcal_100g: number;
+            /** Name */
+            name: string;
+            /**
+             * Protein 100G
+             * @description null = unknown
+             */
+            protein_100g: number | null;
+            /** @description `openfoodfacts` rows are cached lookups */
+            source: components["schemas"]["FoodSource"];
+        };
+        /**
+         * FoodPatch
+         * @description Only the fields sent are changed.
+         * @example {
+         *       "kcal_100g": 380,
+         *       "protein_100g": 13
+         *     }
+         */
+        FoodPatch: {
+            /** Brand */
+            brand?: string | null;
+            /**
+             * Carbs 100G
+             * @description g per 100 g; null = unknown
+             */
+            carbs_100g?: number | null;
+            /**
+             * Fat 100G
+             * @description g per 100 g; null = unknown
+             */
+            fat_100g?: number | null;
+            /** Kcal 100G */
+            kcal_100g?: number | null;
+            /** Name */
+            name?: string | null;
+            /**
+             * Protein 100G
+             * @description g per 100 g; null = unknown
+             */
+            protein_100g?: number | null;
+        };
+        /**
+         * FoodSource
+         * @enum {string}
+         */
+        FoodSource: "manual" | "openfoodfacts";
+        /**
          * HTTPValidationError
          * @example {
          *       "detail": [
@@ -417,6 +992,275 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * KcalSource
+         * @enum {string}
+         */
+        KcalSource: "calories" | "kilojoules";
+        /**
+         * LogIn
+         * @example {
+         *       "date": "2026-10-14",
+         *       "food_id": 7,
+         *       "grams": 80,
+         *       "meal": "breakfast"
+         *     }
+         */
+        LogIn: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Food Id */
+            food_id: number;
+            /** Grams */
+            grams: number;
+            meal: components["schemas"]["Meal"];
+        };
+        /**
+         * LogOut
+         * @example {
+         *       "brand": "Acme",
+         *       "carbs_g": 47,
+         *       "client_id": "0b6f1f9e-4c1e-4a8e-9a43-2f1d8f0c6a11",
+         *       "created_at": "2026-10-14T07:12:03Z",
+         *       "date": "2026-10-14",
+         *       "fat_g": 5.6,
+         *       "food_id": 7,
+         *       "food_name": "Rolled oats",
+         *       "grams": 80,
+         *       "kcal": 297.6,
+         *       "meal": "breakfast",
+         *       "protein_g": 10.8
+         *     }
+         */
+        LogOut: {
+            /** Brand */
+            brand: string | null;
+            /**
+             * Carbs G
+             * @description null when the food's value is unknown
+             */
+            carbs_g: number | null;
+            /**
+             * Client Id
+             * Format: uuid
+             */
+            client_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Fat G
+             * @description null when the food's value is unknown
+             */
+            fat_g: number | null;
+            /** Food Id */
+            food_id: number;
+            /** Food Name */
+            food_name: string;
+            /** Grams */
+            grams: number;
+            /** Kcal */
+            kcal: number;
+            meal: components["schemas"]["Meal"];
+            /**
+             * Protein G
+             * @description null when the food's value is unknown
+             */
+            protein_g: number | null;
+        };
+        /**
+         * Meal
+         * @enum {string}
+         */
+        Meal: "breakfast" | "lunch" | "dinner" | "snack";
+        /**
+         * ProfileIn
+         * @example {
+         *       "activity_baseline": "light",
+         *       "birth_year": 1991,
+         *       "height_cm": 180,
+         *       "kcal_target": 2600,
+         *       "protein_target_g": 140,
+         *       "sex": "male"
+         *     }
+         */
+        ProfileIn: {
+            /** @description Everyday activity outside logged exercise: BMR x 1.2 / 1.375 / 1.55 */
+            activity_baseline: components["schemas"]["ActivityBaseline"];
+            /** Birth Year */
+            birth_year: number;
+            /** Height Cm */
+            height_cm: number;
+            /** Kcal Target */
+            kcal_target?: number | null;
+            /** Protein Target G */
+            protein_target_g?: number | null;
+            /** @description Only used by the BMR equation */
+            sex: components["schemas"]["Sex"];
+        };
+        /**
+         * ProfileOut
+         * @example {
+         *       "activity_baseline": "light",
+         *       "birth_year": 1991,
+         *       "bmr_kcal": 1795,
+         *       "height_cm": 180,
+         *       "kcal_target": 2600,
+         *       "protein_target_g": 140,
+         *       "sex": "male",
+         *       "updated_at": "2026-10-12T19:00:00Z",
+         *       "weight_date": "2026-10-12",
+         *       "weight_kg": 80
+         *     }
+         */
+        ProfileOut: {
+            activity_baseline: components["schemas"]["ActivityBaseline"];
+            /** Birth Year */
+            birth_year: number;
+            /**
+             * Bmr Kcal
+             * @description Estimated BMR today (Mifflin-St Jeor, latest body weight); null if unknown
+             */
+            bmr_kcal: number | null;
+            /** @description Why `bmr_kcal` is null (`no_body_weight`) */
+            estimate_unavailable_reason: components["schemas"]["EstimateGap"] | null;
+            /** Height Cm */
+            height_cm: number;
+            /** Kcal Target */
+            kcal_target: number | null;
+            /** Protein Target G */
+            protein_target_g: number | null;
+            sex: components["schemas"]["Sex"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Warning
+             * @description Set when `kcal_target` is below the estimated BMR; the target is kept
+             */
+            warning: string | null;
+            /** Weight Date */
+            weight_date: string | null;
+            /**
+             * Weight Kg
+             * @description The body weight the estimate used
+             */
+            weight_kg: number | null;
+        };
+        /**
+         * RangeSummary
+         * @example {
+         *       "days": [
+         *         {
+         *           "activities": [
+         *             {
+         *               "kcal": 650,
+         *               "kcal_known": true,
+         *               "kcal_source": "kilojoules",
+         *               "name": "Evening Ride",
+         *               "sport_type": "Ride",
+         *               "start_date": "2026-10-14T16:00:00Z",
+         *               "strava_activity_id": 10000000123
+         *             }
+         *           ],
+         *           "activity_baseline": "light",
+         *           "balance_complete": true,
+         *           "balance_kcal": -707.6,
+         *           "baseline_kcal": 2468.1,
+         *           "bmr_kcal": 1795,
+         *           "carbs_g": 270,
+         *           "date": "2026-10-14",
+         *           "entry_count": 9,
+         *           "exercise_complete": true,
+         *           "exercise_kcal": 650,
+         *           "exercise_unknown_count": 0,
+         *           "expenditure_kcal": 3118.1,
+         *           "fat_g": 80.4,
+         *           "intake_kcal": 2410.5,
+         *           "kcal_remaining": 189.5,
+         *           "kcal_target": 2600,
+         *           "macros_complete": true,
+         *           "protein_g": 131.2,
+         *           "protein_target_g": 140,
+         *           "weight_date": "2026-10-12",
+         *           "weight_kg": 80
+         *         }
+         *       ],
+         *       "from": "2026-10-12",
+         *       "to": "2026-10-18",
+         *       "totals": {
+         *         "avg_intake_kcal": 2315.8,
+         *         "balance_complete": false,
+         *         "balance_days": 7,
+         *         "balance_kcal": -2105.3,
+         *         "days_logged": 7,
+         *         "exercise_kcal": 1850,
+         *         "intake_kcal": 16210.4
+         *       }
+         *     }
+         */
+        RangeSummary: {
+            /** Days */
+            days: components["schemas"]["DaySummary"][];
+            /**
+             * From
+             * Format: date
+             */
+            from: string;
+            /**
+             * To
+             * Format: date
+             */
+            to: string;
+            totals: components["schemas"]["RangeTotals"];
+        };
+        /** RangeTotals */
+        RangeTotals: {
+            /**
+             * Avg Intake Kcal
+             * @description Over days_logged; null if none
+             */
+            avg_intake_kcal: number | null;
+            /**
+             * Balance Complete
+             * @description Every day has a complete balance
+             */
+            balance_complete: boolean;
+            /**
+             * Balance Days
+             * @description Days included in balance_kcal
+             */
+            balance_days: number;
+            /**
+             * Balance Kcal
+             * @description Sum over the days that have a balance; null if none has
+             */
+            balance_kcal: number | null;
+            /**
+             * Days Logged
+             * @description Days with at least one food log entry
+             */
+            days_logged: number;
+            /**
+             * Exercise Kcal
+             * @description Known exercise energy only
+             */
+            exercise_kcal: number;
+            /** Intake Kcal */
+            intake_kcal: number;
         };
         /** RateLimitOut */
         RateLimitOut: {
@@ -463,6 +1307,12 @@ export interface components {
             /** Upserted */
             upserted: number;
         };
+        /**
+         * Sex
+         * @description Only what the Mifflin-St Jeor equation distinguishes.
+         * @enum {string}
+         */
+        Sex: "male" | "female";
         /** SportTotalsOut */
         SportTotalsOut: {
             /** Count */
@@ -1000,6 +1850,745 @@ export interface operations {
                     /**
                      * @example {
                      *       "detail": "activity not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_foods_v1_nutrition_foods_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                /** @description Only favorites */
+                favorites?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoodList"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_food_v1_nutrition_foods_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FoodIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoodOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Barcode already stored */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "barcode already exists"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lookup_food_v1_nutrition_foods_lookup_get: {
+        parameters: {
+            query?: {
+                barcode?: string | null;
+                q?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoodLookup"];
+                };
+            };
+            /** @description Neither or both of barcode and q */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "pass barcode or q"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_food_v1_nutrition_foods__food_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                food_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FoodPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoodOut"];
+                };
+            };
+            /** @description A required field set to null */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "name cannot be null"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown food */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "food not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    favorite_food_v1_nutrition_foods__food_id__favorite_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                food_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoodOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown food */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "food not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unfavorite_food_v1_nutrition_foods__food_id__favorite_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                food_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoodOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown food */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "food not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    day_log_v1_nutrition_log_get: {
+        parameters: {
+            query?: {
+                date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayLog"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_log_v1_nutrition_log__client_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogOut"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown food */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "food not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_log_v1_nutrition_log__client_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unknown client id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "log entry not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_profile_v1_nutrition_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description No profile yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "profile not set"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    put_profile_v1_nutrition_profile_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    day_summary_v1_nutrition_summary_get: {
+        parameters: {
+            query?: {
+                date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DaySummary"];
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    range_summary_v1_nutrition_summary_weekly_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RangeSummary"];
+                };
+            };
+            /** @description `to` before `from`, or over 92 days */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "`to` is before `from`"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Missing or invalid `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "missing or invalid API key"
                      *     }
                      */
                     "application/json": unknown;

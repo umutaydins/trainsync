@@ -63,6 +63,43 @@ Training (Phase 6, single user, no `athlete_id`):
 Training math (`training/math.py`): volume = reps × weight without warm-ups; Epley e1RM for 1–12
 reps (none above); records per exercise for weight at a rep count, e1RM and session volume.
 
+Nutrition (Phase 6, P6.4, single user, no `athlete_id`; ADR 0019):
+
+| Table | Key columns | Notes |
+|---|---|---|
+| `foods` | `id`, `name`, `brand`, `barcode` (unique, nullable), `kcal_100g` numeric(6,1), `protein_100g` / `carbs_100g` / `fat_100g` (numeric(5,1), nullable = unknown), `source` (manual / openfoodfacts), `favorite`, `created_at` | Open Food Facts results are cached here, upserted on `barcode`; editing a cached row turns it `manual`, so later lookups leave it alone |
+| `food_logs` | `id`, `client_id` (uuid, unique), `date`, `meal` (breakfast / lunch / dinner / snack), `food_id` (FK), `grams` numeric(6,1), `created_at` | upsert on `client_id`: a retried log is one row; index (`date`, `meal`) |
+| `nutrition_profile` | `id` (always 1), `sex`, `birth_year`, `height_cm`, `activity_baseline` (sedentary / light / moderate), `kcal_target`, `protein_target_g`, `updated_at` | one row; body weight is not here, it comes from `body_metrics` |
+
+Energy balance (`nutrition/energy.py`, pure, all values are estimates; `nutrition/summary.py` reads
+the tables):
+- **Days are UTC days**, like the rest of the read API: an activity counts on the UTC date of its
+  `start_date`; a food log on the `date` the client sent.
+- **BMR**: Mifflin–St Jeor (`10w + 6.25h − 5a + 5`, female `− 161`), `w` = latest `body_metrics`
+  weight on or before the day, `a` = day's year − birth year. No profile or no weight → BMR,
+  baseline, expenditure and balance are null and `estimate_unavailable_reason` says why
+  (`no_profile` / `no_body_weight`). Nothing is guessed.
+- **Baseline** = BMR × 1.2 / 1.375 / 1.55 (everyday activity, logged exercise excluded).
+- **Exercise** per activity of active athletes, soft-deleted excluded: `raw.calories` when > 0, else
+  for `sport_type` containing `Ride` `raw.kilojoules` (≈ kcal), else unknown (`kcal: null`,
+  `kcal_known: false`). Known values are summed into `exercise_kcal`; unknowns are counted
+  (`exercise_unknown_count`, `exercise_complete`).
+- **Balance** = intake − (baseline + known exercise); `balance_complete` is false when an activity's
+  energy is unknown or there is no baseline. kcal and grams are rounded to 0.1 at the end.
+- A `kcal_target` below the estimated BMR is stored as entered and the profile answers with a
+  neutral `warning`; the API never suggests a deficit.
+
+Endpoints (`/v1/nutrition`, API key): `GET/POST /foods`, `GET /foods/lookup?barcode=|q=`,
+`PATCH /foods/{id}`, `PUT/DELETE /foods/{id}/favorite`, `GET /log?date=`,
+`PUT/DELETE /log/{client_id}` (PUT → 201 created / 200 updated), `GET/PUT /profile`,
+`GET /summary?date=`, `GET /summary/weekly?from=&to=` (default: current ISO week, ≤ 92 days).
+
+Open Food Facts (`nutrition/off_client.py`, the only module that calls it): public API, no key,
+`OPENFOODFACTS_USER_AGENT`, the process's shared `httpx.AsyncClient` with a 3 s whole-request
+timeout, no retries. Timeouts, network errors and non-200/404 answers → the lookup still answers
+with local matches and `remote: "unavailable"`; `OPENFOODFACTS_ENABLED=false` → `remote: "disabled"`.
+The remote call happens outside any DB session, so a slow lookup never holds a connection.
+
 ## Flows
 
 ### 1. OAuth connect
