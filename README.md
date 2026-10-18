@@ -216,6 +216,7 @@ A separate process (`python -m trainsync.bot`, compose service `bot`) that long-
 | `/kcal` | today's intake vs target, macros |
 | `/weight 78.4` | today's body weight |
 | `/report` (or "rapor") | start the daily check-in now |
+| `/yumusak`, `/sert` | coach soft mode for 24 hours, and back ([ADR 0030](docs/decisions/0030-coach-intensity-and-guardrails.md)) |
 
 **Daily check-in**: at `CHECKIN_TIME` (local, `CHECKIN_TZ`) the worker asks once whether you
 trained, unless today's check-in exists, and reminds once after `CHECKIN_REMINDER_MINUTES`. With
@@ -223,6 +224,14 @@ buttons you walk the planned exercises (as planned, ±2.5 kg, skip, or type `80x
 reason when you skipped, and optionally body weight, sleep and energy. Telegram retries and
 double taps never store anything twice. Nutrition and body-weight messages are neutral in every
 `BOT_TONE`; rest and sick days are never pushed.
+
+**Coach**: with `BOT_INTENSITY=savage` (and `BOT_TONE=hardcore`, `BOT_LANG=tr`) the coach is
+deliberately brutal: unrestricted Turkish swearing, excuses and missed work roasted, then one
+concrete action for today. The worker also speaks up on its own: before and at a scheduled
+workout, nudges when it does not start, "rest is over", and a verdict at the end (any
+intensity; quiet hours 23:00–07:00). Hard guardrails hold in every intensity: never body,
+weight or appearance, no slurs, no push through pain or illness, food is never roasted
+([ADR 0030](docs/decisions/0030-coach-intensity-and-guardrails.md)).
 
 **Natural-language questions** (optional): with `ANTHROPIC_API_KEY` set, any plain text such as
 "how far did I run in September?" goes to Claude with four tools that map 1:1 to read endpoints
@@ -280,6 +289,9 @@ optional for the API and the worker; the web app needs its three required ones (
 | `ASSISTANT_MODEL` | bot | `claude-sonnet-5-5` | Claude model for questions |
 | `ASSISTANT_RATE_LIMIT_PER_HOUR` | bot | `20` | Questions per chat per hour (counted in Redis) |
 | `BOT_TONE`, `BOT_LANG` | bot, worker | `neutral`, `en` | Wording of replies, notifications and the assistant: `neutral` or `hardcore` (a blunt coach, mild profanity, pushes on effort only), `en` or `tr`; compose passes both through ([ADR 0016](docs/decisions/0016-bot-message-packs-and-tone.md)) |
+| `BOT_INTENSITY` | bot, worker | `normal` | `savage`: the owner's opt-in to an unrestricted, roasting coach (with `hardcore` + `tr`); guardrails always hold ([ADR 0030](docs/decisions/0030-coach-intensity-and-guardrails.md)) |
+| `WORKOUT_REMINDER_TIME`, `QUIET_HOURS` | worker, bot | `18:00`, `23:00-07:00` | Default start of program days; local window with no proactive coach message |
+| `COACH_MESSAGES_ENABLED`, `COACH_MESSAGES_FILE` | worker, bot | on with a bot token, `config/messages.local.yaml` | Timed coach messages; your own extra lines (git-ignored, example in `config/`) |
 
 In compose, the `bot` service takes `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_CHAT_IDS`,
 `ANTHROPIC_API_KEY` and `ASSISTANT_MODEL` from your shell or `.env`, and the `worker` takes the Telegram variables and
@@ -410,6 +422,7 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 | [0027](docs/decisions/0027-uptime-and-stack-alerts.md) | Uptime check from GitHub Actions, stack alerts from the worker |
 | [0028](docs/decisions/0028-read-only-demo-with-a-synthetic-seed.md) | Public demo: read-only by middleware, synthetic seed as code |
 | [0029](docs/decisions/0029-backend-on-a-personal-mac-and-how-to-move-it.md) | Backend on a personal Mac behind Tailscale Funnel; how to move it to a VPS |
+| [0030](docs/decisions/0030-coach-intensity-and-guardrails.md) | Coach intensity (savage), timed coach messages and hard guardrails |
 
 ## Status
 - [x] Phase 1 — Foundation, OAuth, Strava client
