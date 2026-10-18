@@ -22,10 +22,10 @@ preview  ──> https://<project>-<hash>-<team>.vercel.app ──────�
 | Variable | Production | Preview |
 |---|---|---|
 | `TRAINSYNC_API_URL` | `https://<mac>.<tailnet>.ts.net` | `https://<mac>.<tailnet>.ts.net:8443` (demo backend) |
-| `TRAINSYNC_API_KEY` | one of the real `API_KEYS` (`.env.prod`) | the demo key (P7.9) |
+| `TRAINSYNC_API_KEY` | one of the real `API_KEYS` (`.env.prod`) | `DEMO_API_KEY` from `.env.demo` (P7.9) |
 | `TRAINSYNC_PUBLIC_API_URL` | same as `TRAINSYNC_API_URL` | same as `TRAINSYNC_API_URL` |
 | `WEB_PUBLIC_URL` | `https://<project>.vercel.app` | `https://<project>.vercel.app` (previews also accept their own URL, below) |
-| `DASHBOARD_PASSWORD` | your password | the public demo password (README) |
+| `DASHBOARD_PASSWORD` | your password | `trainsync-demo` (public on purpose: README "Live demo") |
 | `DASHBOARD_SESSION_SECRET` | 32+ random characters | a different 32+ random string |
 | `NEXT_PUBLIC_TZ` | `Europe/Istanbul` | `Europe/Istanbul` |
 | `UPSTREAM_TIMEOUT_MS` | optional, default 8000 | optional |
@@ -47,6 +47,15 @@ DASHBOARD_PUBLIC_URL=https://<project>.vercel.app
 ## 3. Protect previews
 Settings → Deployment Protection → **Vercel Authentication** for Preview deployments (Standard
 Protection), so only you can open a preview. Production stays public (it has its own login).
+
+**The public demo (P7.9)** is a preview, so with this protection on, visitors from the README
+hit a Vercel login. Previews only ever get the demo backend (`:8443`, read-only, synthetic data,
+ADR 0028) and the demo key and password, which are public anyway, so it is safe to turn Vercel
+Authentication **off for previews** (Deployment Protection → Disabled). Keep Production on its
+own login as before. The README link should be a stable branch URL
+(`https://<project>-git-<branch>-<team>.vercel.app`, e.g. a `demo` branch that tracks `main`)
+rather than a per-commit preview URL. This is the owner's call (owner check 29 in
+[operations.md](operations.md#owner-checks)).
 
 ## 4. Deploy and check
 Deploy `main`. Then (owner checks in operations.md):

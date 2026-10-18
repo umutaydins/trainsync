@@ -93,6 +93,18 @@ jobs:
       - run: uv python install 3.12
       - run: make prod-check
 
+  demo-check:
+    # compose.demo.yml (P7.9): own project, DEMO_MODE, seeded reads and 403 writes via the gateway.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: make demo-check
+
   shellcheck:
     # Every scripts/ and deploy/ shell script, with the pinned koalaman/shellcheck image.
     runs-on: ubuntu-latest

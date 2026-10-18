@@ -5,7 +5,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 UV ?= uv
 
-.PHONY: help install lint format typecheck test-unit test-integration test-fault coverage audit verify prod-check \
+.PHONY: help install lint format typecheck test-unit test-integration test-fault coverage audit verify prod-check demo-check \
         compose-up compose-down compose-smoke loadtest
 
 help: ## Show targets
@@ -65,6 +65,9 @@ compose-smoke: ## Start the stack, run the OAuth smoke test, tear it down
 
 prod-check: ## Production compose with dummy secrets: private DB/Redis, gateway allowlist, fail-fast secrets
 	uv run python scripts/prod_check.py
+
+demo-check: ## Demo compose: own project, DEMO_MODE, seeded reads and 403 writes through the gateway
+	uv run python scripts/demo_check.py
 
 .PHONY: backup-now restore-check restore-check-ci
 

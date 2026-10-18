@@ -1,0 +1,148 @@
+# Public read-only demo stack (P7.9, ADR 0028): run with
+#   docker compose --env-file .env.demo -f compose.demo.yml up -d --build
+# Synthetic data only: the one-shot `seed` service wipes the database and writes the dataset of
+# src/trainsync/demo/seed.py, and the demo worker does the same every night at 03:00 UTC.
+# DEMO_MODE=true makes the API answer every write with 403. Its own project name, volumes and
+# networks, so it never touches the production stack. No bot, no backups, no Telegram. Strava is
+# fake_strava on the internal network (the connect flow is refused anyway). Postgres, Redis and
+# fake_strava publish nothing; the only published port is the gateway on 127.0.0.1:8081 (same
+# image and routes.toml as production), which `scripts/funnel.sh on demo` exposes on :8443.
+#
+# Secrets: none worth keeping. DEMO_API_KEY (for the Vercel preview BFF) comes from .env.demo
+# (git-ignored; template .env.demo.example); the token-encryption and OAuth-state keys are
+# generated per process start by `python -m trainsync.demo exec`; the rest are labelled public
+# demo values.
+
+name: trainsync-demo
+
+x-demo-env: &demo-env
+  ENV: prod
+  DEMO_MODE: "true"
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  DATABASE_URL: postgresql+asyncpg://trainsync:demo-public-postgres-password@postgres:5432/trainsync
+  REDIS_URL: redis://redis:6379/0
+  STRAVA_API_BASE_URL: http://fake-strava:8001/api/v3
+  STRAVA_OAUTH_BASE_URL: http://fake-strava:8001/oauth
+  STRAVA_CLIENT_ID: "12345"
+  STRAVA_CLIENT_SECRET: demo-public-not-a-secret
+  STRAVA_WEBHOOK_VERIFY_TOKEN: demo-public-not-a-secret
+  API_KEYS: ${DEMO_API_KEY:?set DEMO_API_KEY in .env.demo}
+  OPENFOODFACTS_ENABLED: "false"
+  CHECKIN_TZ: ${DEMO_TZ:-Europe/Istanbul}
+
+x-demo-app: &demo-app
+  image: trainsync-demo:${TRAINSYNC_TAG:-local}
+  build: .
+  environment: *demo-env
+  networks: [backend]
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trainsync
+      POSTGRES_PASSWORD: demo-public-postgres-password
+      POSTGRES_DB: trainsync
+    volumes: [demo-pgdata:/var/lib/postgresql/data]
+    networks: [backend]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trainsync -d trainsync"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes: [demo-redisdata:/data]
+    networks: [backend]
+    mem_limit: 64m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  fake-strava:
+    <<: *demo-app
+    restart: unless-stopped
+    command: ["uvicorn", "fake_strava.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8001", "--no-access-log"]
+    environment:
+      FAKE_STRAVA_SEED_ACTIVITIES: "0"
+      HEALTHCHECK_URL: http://127.0.0.1:8001/_control/stats
+    mem_limit: 128m
+
+  migrate:
+    <<: *demo-app
+    restart: "no"
+    command: ["python", "-m", "trainsync.demo", "exec", "alembic", "upgrade", "head"]
+    healthcheck: { disable: true }
+    mem_limit: 256m
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  # Wipes and seeds on every `up` (the nightly reset is the worker's cron).
+  seed:
+    <<: *demo-app
+    restart: "no"
+    command: ["python", "-m", "trainsync.demo", "exec", "python", "-m", "trainsync.demo", "reset"]
+    healthcheck: { disable: true }
+    mem_limit: 256m
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  api:
+    <<: *demo-app
+    restart: unless-stopped
+    command: ["python", "-m", "trainsync.demo", "exec", "uvicorn", "trainsync.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+    # backend for Postgres/Redis; edge so the gateway can reach it.
+    networks: [backend, edge]
+    mem_limit: 384m
+    depends_on:
+      seed: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      fake-strava: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+
+  worker:
+    <<: *demo-app
+    restart: unless-stopped
+    command: ["python", "-m", "trainsync.demo", "exec", "arq", "trainsync.demo.worker.DemoWorkerSettings"]
+    environment:
+      <<: *demo-env
+      HEALTHCHECK_URL: http://127.0.0.1:9100/metrics
+    mem_limit: 256m
+    depends_on:
+      seed: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
+  gateway:
+    build: deploy/gateway
+    image: trainsync-demo-gateway:${TRAINSYNC_TAG:-local}
+    restart: unless-stopped
+    environment:
+      # The API docs are part of what the demo shows.
+      EXPOSE_DOCS: ${DEMO_EXPOSE_DOCS:-true}
+    ports: ["127.0.0.1:${DEMO_GATEWAY_PORT:-8081}:8080"]
+    networks: [edge]
+    mem_limit: 64m
+    depends_on:
+      api: { condition: service_healthy }
+
+networks:
+  # No route out and nothing published: Postgres, Redis, fake_strava and the app containers.
+  backend:
+    internal: true
+  # The gateway's published port and its hop to the API.
+  edge: {}
+
+volumes:
+  demo-pgdata:
+  demo-redisdata:

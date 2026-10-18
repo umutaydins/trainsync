@@ -47,6 +47,9 @@ class Settings(BaseSettings):
 
     env: Literal["dev", "test", "prod"] = "dev"
     log_level: str = "INFO"
+    # Public read-only demo (P7.9, ADR 0028): every write answers 403; `python -m trainsync.demo
+    # reset` (and the demo worker's nightly cron) refuse to run unless this is on.
+    demo_mode: bool = False
 
     database_url: str = "postgresql+asyncpg://trainsync:trainsync@localhost:5432/trainsync"
     redis_url: str = "redis://localhost:6379/0"

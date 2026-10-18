@@ -75,6 +75,9 @@ export function isAllowedPath(path: string): boolean {
   return isAllowed("GET", path);
 }
 
+const DEMO_HEADER = "x-trainsync-demo";
+export const DEMO_READ_ONLY = "This is a read-only demo.";
+
 export type UpstreamResult =
   | { ok: true; status: number; data: unknown }
   | { ok: false; status: number; error: string; detail?: unknown };
@@ -128,6 +131,11 @@ export async function upstreamRequest(
 
   const data: unknown = await response.json().catch(() => null);
   if (response.ok) return { ok: true, status: response.status, data };
+  // The public read-only demo (P7.9) refuses writes with a 403 marked by this header; say so
+  // instead of reporting an authorization problem.
+  if (response.status === 403 && response.headers.get(DEMO_HEADER) === "read-only") {
+    return { ok: false, status: 403, error: DEMO_READ_ONLY };
+  }
   const error = errorMessage(response.status, data);
   // Field-level details (409 conflicts, 422 validation) help forms; auth failures stay opaque.
   if (!isAuthFailure(response.status) && data && typeof data === "object" && "detail" in data) {

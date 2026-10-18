@@ -269,6 +269,12 @@ The bot stays an API client (read and write, same API key). Commands live in `Fe
   `WORKER_METRICS_PORT` (default 9100). One registry per process, no multiprocess mode (ADR 0010).
 - JSON logs with `request_id` (API) / `job_id`, `job_name`, `athlete_id` or `event_id` (worker)
   correlation.
+- Public demo (P7.9, ADR 0028): `compose.demo.yml` runs the same image with `DEMO_MODE=true`.
+  `DemoReadOnlyMiddleware` answers every non-GET request and `/auth/strava/*` with
+  `403 This is a read-only demo.` (header `X-Trainsync-Demo: read-only`) before routing. The data
+  is `trainsync.demo.seed` (synthetic, fixed RNG, twelve weeks before today), written by
+  `python -m trainsync.demo reset` (wipe + seed in one transaction, DEMO_MODE only) on `up` and
+  nightly by the demo worker (`trainsync.demo.worker`, reset cron only).
 
 ## Failure modes this design handles
 
