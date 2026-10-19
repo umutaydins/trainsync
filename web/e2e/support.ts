@@ -42,6 +42,9 @@ export const APP_PAGES = [
   "/onboarding",
 ] as const;
 
+/** A signed-in URL that renders the not-found page (no workout has this id). */
+export const NOT_FOUND_PAGE = "/training/history/2147483647";
+
 /** Pages without a session. */
 export const PUBLIC_PAGES = ["/login", "/register", "/forgot-password", "/privacy", "/terms", "/offline"] as const;
 
@@ -226,6 +229,6 @@ export async function noHorizontalScroll(page: Page, what = "page"): Promise<voi
 
 /** The signed-in app's not-found page. */
 export async function expectNotFound(page: Page): Promise<void> {
-  await expect(page.getByRole("main").getByText("Page not found", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Back to Today" })).toBeVisible();
 }

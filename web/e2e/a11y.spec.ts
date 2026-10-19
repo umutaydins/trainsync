@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import {
   APP_PAGES,
+  NOT_FOUND_PAGE,
   NARROW,
   PHONE,
   PUBLIC_PAGES,
@@ -37,6 +38,7 @@ test("axe and no sideways scroll on every signed-in page, dark and light", async
   const activities = await apiGet<{ items: { id: number }[] }>(request, "/v1/activities", { limit: "1" });
   const workouts = await apiGet<{ items: { id: number }[] }>(request, "/v1/training/workouts", { limit: "1" });
   const detail = [
+    NOT_FOUND_PAGE,
     ...activities.items.slice(0, 1).map((a) => `/activities/${a.id}`),
     ...workouts.items.slice(0, 1).map((w) => `/training/history/${w.id}`),
   ];

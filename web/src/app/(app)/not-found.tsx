@@ -8,6 +8,7 @@ export default async function NotFound() {
   const t = await getTranslations("common.states");
   return (
     <Empty
+      titleAs="h1"
       title={t("notFoundTitle")}
       action={
         <Button asChild variant="secondary">

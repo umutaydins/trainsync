@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/cn";
+import { LinkPending } from "@/features/shell/components/link-pending";
 import { Logo } from "@/features/shell/components/logo";
 import { isActive, visibleNav } from "@/features/shell/nav";
 
@@ -30,12 +31,13 @@ export function Sidebar({ isOwner, name }: { isOwner: boolean; name: string }) {
                   href={href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex h-touch items-center gap-3 rounded-control px-3 text-sm font-semibold transition",
+                    "relative flex h-touch items-center gap-3 rounded-control px-3 text-sm font-semibold transition",
                     active ? "bg-accent text-accent-contrast" : "text-muted hover:bg-surface-2 hover:text-text",
                   )}
                 >
                   <Icon aria-hidden className="size-5" />
                   {t(key)}
+                  <LinkPending />
                 </Link>
               </li>
             );

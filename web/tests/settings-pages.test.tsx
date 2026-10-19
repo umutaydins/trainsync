@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import CoachPage from "@/app/(app)/me/coach/page";
 import ConnectionsPage from "@/app/(app)/me/connections/page";
 import DataPage from "@/app/(app)/me/data/page";
-import MeLoading from "@/app/(app)/me/loading";
 import MePage from "@/app/(app)/me/page";
 import ProfilePage from "@/app/(app)/me/profile/page";
 import SecurityPage from "@/app/(app)/me/security/page";
@@ -33,7 +32,6 @@ const PAGES: [string, () => Promise<ReactElement>][] = [
   ["coach", () => CoachPage()],
   ["connections", () => ConnectionsPage({ searchParams: NO_PARAMS })],
   ["data", () => DataPage()],
-  ["loading", () => MeLoading()],
 ];
 
 async function renderPage(page: () => Promise<ReactElement>, lang: "en" | "tr" = "en") {

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/cn";
+import { LinkPending } from "@/features/shell/components/link-pending";
 import { NAV, isActive } from "@/features/shell/nav";
 
 /** The phone's bottom tab bar: thumb-reachable, above the home indicator (safe area). */
@@ -25,7 +26,7 @@ export function TabBar() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex h-full flex-col items-center justify-center gap-1 text-[0.7rem] font-semibold transition",
+                  "relative flex h-full flex-col items-center justify-center gap-1 text-[0.7rem] font-semibold transition",
                   active ? "text-accent-ink" : "text-muted",
                 )}
               >
@@ -38,6 +39,7 @@ export function TabBar() {
                   <Icon aria-hidden className="size-5" strokeWidth={active ? 2.5 : 2} />
                 </span>
                 {t(key)}
+                <LinkPending />
               </Link>
             </li>
           );

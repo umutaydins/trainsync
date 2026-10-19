@@ -2,14 +2,12 @@ import { cleanup, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import ProgressLoading from "@/app/(app)/progress/loading";
 import ProgressPage from "@/app/(app)/progress/page";
 import { progressApi } from "@/features/progress/api";
 import { BodyBlock, ConsistencyBlock, NutritionBlock } from "@/features/progress/components/habit-blocks";
 import { KcalChart } from "@/features/progress/components/kcal-chart";
 import { LiftsBlock } from "@/features/progress/components/lifts-block";
 import { PeriodSwitcher } from "@/features/progress/components/period-switcher";
-import { ProgressSkeleton } from "@/features/progress/components/progress-skeleton";
 import { StrengthBlock } from "@/features/progress/components/strength-block";
 import { VolumeChart } from "@/features/progress/components/volume-chart";
 import { WeightChart } from "@/features/progress/components/weight-chart";
@@ -63,11 +61,6 @@ describe("progress route", () => {
     expect(progressApi.heatmap).toHaveBeenCalledWith(2026);
   });
 
-  it("loading has the page's shape", async () => {
-    locale.current = "tr";
-    renderWithIntl(await ProgressLoading(), "tr");
-    expect(screen.getByRole("status", { name: "İlerlemen yükleniyor" })).toBeInTheDocument();
-  });
 });
 
 describe("accessibility (axe)", () => {
@@ -87,7 +80,6 @@ describe("accessibility (axe)", () => {
       "lifts",
       <LiftsBlock key="l" allRecords={{ ok: true, data: records(ALL_RECORDS) }} periodRecords={{ ok: true, data: records(ALL_RECORDS) }} exercises={s.strength.by_exercise} query={{ period: "month" }} />,
     ],
-    ["skeleton", <ProgressSkeleton key="sk" label="Loading" />],
   ])("%s", async (_name, ui) => {
     expect(await violations(ui)).toEqual([]);
     cleanup();

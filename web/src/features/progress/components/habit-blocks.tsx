@@ -90,7 +90,7 @@ export function NutritionBlock({ nutrition, period, children }: { nutrition: Nut
           <StatCard label={t("loggingRate")} value={percent(n.logging_rate.value)} unit="%" change={n.logging_rate} better={BETTER.loggingRate} period={period} />
         </StatGrid>
       )}
-      {children}
+      {empty ? null : children}
     </Block>
   );
 }
@@ -112,7 +112,7 @@ export function BodyBlock({ body, period, children }: { body: BodyStats; period:
           <StatCard label={t("bodyFat")} text={body.body_fat_pct == null ? null : String(body.body_fat_pct)} unit="%" period={period} hint={<Badge>{t("soon")}</Badge>} />
         </StatGrid>
       )}
-      {children}
+      {empty ? null : children}
     </Block>
   );
 }

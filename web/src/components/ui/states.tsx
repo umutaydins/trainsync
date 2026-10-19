@@ -8,11 +8,14 @@ export function Empty({
   children,
   action,
   className,
+  titleAs: Title = "p",
 }: {
   title: ReactNode;
   children?: ReactNode;
   action?: ReactNode;
   className?: string;
+  /** `h1` when the empty state is the whole page (the not-found page), so the page has a heading. */
+  titleAs?: "p" | "h1" | "h2";
 }) {
   return (
     <div
@@ -22,7 +25,7 @@ export function Empty({
       )}
     >
       <Inbox aria-hidden className="size-8 text-muted" />
-      <p className="font-semibold">{title}</p>
+      <Title className="font-semibold">{title}</Title>
       {children ? <div className="max-w-sm text-sm text-muted">{children}</div> : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>

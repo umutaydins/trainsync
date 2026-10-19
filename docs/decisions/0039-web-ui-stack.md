@@ -37,6 +37,13 @@ must be installable and pass accessibility checks.
 - **Boundaries.** ESLint rules extend ADR 0033: `app/` routes are thin; `features/<domain>/`
   hold components, hooks and server actions; `i18n/` and `styles/` are leaves.
 
+- **Loading states.** The tab roots (Today, Workout, Food, Progress, Me) have no route-level
+  `loading.tsx`: its Suspense boundary held the server-rendered content back until a reveal script
+  ran, which pushed the largest paint to ~4 s on a throttled phone (Lighthouse mobile 77–88).
+  Without it the content is in the first HTML (Lighthouse 91–98); a thin pending bar on the tab and
+  sidebar links (`useLinkStatus`) gives feedback between a tap and the next page. Deeper pages keep
+  their skeletons. Page entrance is a CSS rise (no opacity fade that waits for JavaScript).
+
 ## Alternatives considered
 - A component kit (MUI, Chakra, Mantine) — heavier bundles, a look that is hard to make our own,
   and a second styling system next to Tailwind.

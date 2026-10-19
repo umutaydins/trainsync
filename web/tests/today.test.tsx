@@ -2,7 +2,6 @@ import { screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import TodayPage from "@/app/(app)/(today)/page";
-import TodayLoading from "@/app/(app)/(today)/loading";
 import { nutritionApi } from "@/features/nutrition/api";
 import { progressApi } from "@/features/progress/api";
 import { settingsApi } from "@/features/settings/api";
@@ -163,10 +162,6 @@ describe("Today", () => {
     expect(screen.getByText("No program yet")).toBeInTheDocument();
   });
 
-  it("loading has the page's shape", async () => {
-    renderWithIntl(await TodayLoading());
-    expect(screen.getByRole("status", { name: "Loading today" })).toBeInTheDocument();
-  });
 
   it.each([
     ["full", "en", todayData()],

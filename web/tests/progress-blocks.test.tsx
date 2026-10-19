@@ -270,4 +270,21 @@ describe("progress page", () => {
     expect(screen.getByRole("heading", { name: "Kuvvet" })).toBeInTheDocument();
     expect(screen.getByTestId("stat-distance")).toHaveTextContent("98,4");
   });
+
+  it("an empty food or body block shows its empty message once, without the chart", () => {
+    const s = progressSummary();
+    const noFood = { ...s.nutrition, logged_days: { ...s.nutrition.logged_days, value: 0 } };
+    renderWithIntl(
+      <>
+        <NutritionBlock nutrition={noFood} period="month">
+          <p>food chart</p>
+        </NutritionBlock>
+        <BodyBlock body={{ ...s.body, last_kg: null }} period="month">
+          <p>weight chart</p>
+        </BodyBlock>
+      </>,
+    );
+    expect(screen.queryByText("food chart")).not.toBeInTheDocument();
+    expect(screen.queryByText("weight chart")).not.toBeInTheDocument();
+  });
 });

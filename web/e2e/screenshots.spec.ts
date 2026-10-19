@@ -5,6 +5,7 @@ import { test, type Page } from "@playwright/test";
 
 import {
   APP_PAGES,
+  NOT_FOUND_PAGE,
   DESKTOP,
   PHONE,
   OWNER,
@@ -74,6 +75,7 @@ test("every signed-in page as the owner", async ({ page, request }) => {
       await shoot(page, url);
     });
   }
+  await shoot(page, NOT_FOUND_PAGE, "not-found");
 });
 
 test("empty states of Today and Progress for a fresh account", async ({ page, request }) => {
