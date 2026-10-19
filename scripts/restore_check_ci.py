@@ -10,6 +10,7 @@ keypair is generated inside the image for this run and deleted afterwards.
 5. The loop: with the slot already passed today it backs up, runs the weekly restore check
    (today is the check day), and stops cleanly on `docker stop`.
 6. Retention runs inside the image's Python.
+7. A pre-Phase-8 backup restores and migrates to head (scripts/restore_upgrade.py).
 
     uv run python scripts/restore_check_ci.py [--keep]
 """
@@ -303,6 +304,9 @@ def main() -> int:
         check_bad_backups(work, dump, identity)
         check_loop(work, recipient, identity)
         check_retention(work)
+        from restore_upgrade import check_pre_phase_upgrade  # imports this module back
+
+        check_pre_phase_upgrade(work, recipient, identity)
     finally:
         if not args.keep:
             cleanup()
