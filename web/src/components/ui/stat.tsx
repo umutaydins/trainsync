@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -11,7 +11,8 @@ export function Stat({
   hint,
   className,
   size = "stat",
-}: {
+  ...props
+}: Omit<ComponentProps<"div">, "children"> & {
   label: ReactNode;
   value: ReactNode;
   unit?: ReactNode;
@@ -21,7 +22,7 @@ export function Stat({
   size?: "stat" | "hero";
 }) {
   return (
-    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-1", className)} {...props}>
       <dt className="text-label font-semibold uppercase tracking-[0.08em] text-muted">{label}</dt>
       <dd className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
         <span

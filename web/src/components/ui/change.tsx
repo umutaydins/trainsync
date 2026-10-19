@@ -29,6 +29,7 @@ export function ChangeBadge({
   const Icon = direction === "up" ? ArrowUpRight : direction === "down" ? ArrowDownRight : Minus;
   return (
     <span
+      role="img"
       aria-label={label}
       className={cn(
         "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold tabular",

@@ -21,12 +21,15 @@ const defaultSend: Send = (path, body) => put<WorkoutDetail>(path, body);
 export function StartWorkoutButton({
   programDayId,
   label,
+  busyLabel = "Starting…",
   secondary = false,
   send = defaultSend,
   newId = () => crypto.randomUUID(),
 }: {
   programDayId?: number;
   label: string;
+  /** Shown while the start is in flight (pages with translations pass their own). */
+  busyLabel?: string;
   secondary?: boolean;
   /** Test seams. */
   send?: Send;
@@ -64,7 +67,7 @@ export function StartWorkoutButton({
         disabled={busy}
         className={`${secondary ? secondaryButtonClass : buttonClass} min-h-11 w-full sm:w-auto`}
       >
-        {busy ? "Starting…" : label}
+        {busy ? busyLabel : label}
       </button>
       {error ? (
         <p role="alert" className="mt-1 text-xs text-bad">

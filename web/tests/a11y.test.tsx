@@ -4,11 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import { ActivityDetailCard } from "@/features/activities/components/activity-detail";
 import { ActivityFiltersForm } from "@/features/activities/components/activity-filters";
 import { ActivityList } from "@/features/activities/components/activity-list";
-import { WeeklySkeleton } from "@/features/dashboard/components/blocks";
-import { DashboardFilters } from "@/features/dashboard/components/filters";
-import { KpiTiles } from "@/features/dashboard/components/kpi-tiles";
-import { SportBreakdown } from "@/features/dashboard/components/sport-breakdown";
-import { WeeklyChart } from "@/features/dashboard/components/weekly-chart";
 import { LoginForm } from "@/features/auth/components/login-form";
 import { SyncStatusView } from "@/features/sync/components/sync-status-view";
 import { AddFood } from "@/features/nutrition/components/add-food";
@@ -24,7 +19,7 @@ import { RestTimerPanel } from "@/features/training/components/rest-timer";
 import { WorkoutScreen } from "@/features/training/components/workout-screen";
 import { WorkoutSummaryCard } from "@/features/training/components/workout-summary";
 import { ErrorState } from "@/components/ui";
-import { activity, page, summary, syncStatus, week } from "./support/fixtures";
+import { activity, page, syncStatus } from "./support/fixtures";
 import { violations } from "./support/axe";
 import { CHICKEN, OATS, UNKNOWN_EXERCISE, daySummary, entry, profile, weekly } from "./support/nutrition-fixtures";
 import { BENCH, CURL, PLATES_MIXED, memoryStore, workout } from "./support/training-fixtures";
@@ -34,15 +29,8 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
 
-const RANGE = { preset: "12w" as const, from: "2026-07-27", to: "2026-10-18" };
-
 describe("accessibility (axe)", () => {
   it.each<[string, ReactElement]>([
-    ["dashboard filters", <DashboardFilters key="f" range={RANGE} sports={["Ride", "Run"]} />],
-    ["KPI tiles", <KpiTiles key="k" summary={summary()} />],
-    ["weekly chart", <WeeklyChart key="w" weeks={[week("2026-09-07"), week("2026-09-14", 2, 21_000)]} />],
-    ["weekly skeleton", <WeeklySkeleton key="s" />],
-    ["sport breakdown", <SportBreakdown key="b" summary={summary()} />],
     ["activity filters", <ActivityFiltersForm key="a" filters={{ sport_type: "Run" }} sports={["Ride", "Run"]} />],
     ["activity list", <ActivityList key="l" initial={page([1, 2], "c")} query={{}} />],
     ["activity detail", <ActivityDetailCard key="d" activity={activity(1)} />],

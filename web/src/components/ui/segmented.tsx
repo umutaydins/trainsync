@@ -7,6 +7,8 @@ import { cn } from "@/lib/cn";
 export interface SegmentOption<T extends string> {
   value: T;
   label: string;
+  /** The spoken name when `label` is an abbreviation ("M" → "This month"). */
+  ariaLabel?: string;
 }
 
 /** A single choice among a few options (the period switcher): arrow keys move, one is always on. */
@@ -40,6 +42,7 @@ export function Segmented<T extends string>({
         <ToggleGroup.Item
           key={option.value}
           value={option.value}
+          aria-label={option.ariaLabel}
           className="h-9 min-w-11 flex-1 whitespace-nowrap rounded-full px-3 text-sm font-semibold text-muted transition data-[state=on]:bg-accent data-[state=on]:text-accent-contrast"
         >
           {option.label}

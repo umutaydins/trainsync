@@ -3,12 +3,17 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { TrainingTilesSkeleton } from "@/features/dashboard/components/training-tiles";
 import { AddFood } from "@/features/nutrition/components/add-food";
 import { MealList } from "@/features/nutrition/components/meal-list";
 import { ProfileForm } from "@/features/nutrition/components/profile-form";
 import { DailyRings, EnergyBalanceCard, WeeklyAverages } from "@/features/nutrition/components/summary-cards";
 import { BodyWeightChart } from "@/features/training/components/progress-charts";
+import { BodyBlock, NutritionBlock } from "@/features/progress/components/habit-blocks";
+import { KcalChart } from "@/features/progress/components/kcal-chart";
+import { WeightChart } from "@/features/progress/components/weight-chart";
+import { FoodToday } from "@/features/today/components/today-blocks";
+import { renderWithIntl } from "./support/intl";
+import { progressSummary, series, weightSeries } from "./support/progress-fixtures";
 import { ESTIMATE_GAP_TEXT } from "@/features/nutrition/types";
 import { CHICKEN, NO_PROFILE, OATS, UNKNOWN_EXERCISE, daySummary, entry, profile, weekly } from "./support/nutrition-fixtures";
 
@@ -80,7 +85,6 @@ describe("neutral nutrition copy", () => {
     ["profile with the below-BMR note", <ProfileForm key="p2" profile={profile({ warning: TARGET_NOTE })} date="2026-10-18" />],
     ["profile, new", <ProfileForm key="p3" profile={null} date="2026-10-18" />],
     ["body weight", <BodyWeightChart key="bw" items={[{ date: "2026-10-17", weight_kg: 78.4 }]} />],
-    ["dashboard tiles loading", <TrainingTilesSkeleton key="t" />],
   ])("%s has no judgement words", (_name, ui) => {
     expect(judgementWords(ui)).toEqual([]);
   });
@@ -98,5 +102,23 @@ describe("neutral nutrition copy", () => {
 
   it("every estimate-gap text is neutral", () => {
     for (const text of Object.values(ESTIMATE_GAP_TEXT)) expect(text).not.toMatch(PATTERN);
+  });
+});
+
+describe("neutral copy on Progress and Today (P8.15)", () => {
+  const s = progressSummary();
+  it.each<[string, ReactElement]>([
+    ["progress food", <NutritionBlock key="n" nutrition={s.nutrition} period="month" />],
+    ["progress body", <BodyBlock key="b" body={s.body} period="month" />],
+    ["kcal chart", <KcalChart key="k" series={series("kcal", [3100, 0, 1200], { target: 2400 })} />],
+    ["weight chart", <WeightChart key="w" series={weightSeries()} />],
+    ["today's food", <FoodToday key="f" food={{ ok: true, data: daySummary({ intake_kcal: 3100, kcal_remaining: -700 }) }} />],
+    ["today's food, empty", <FoodToday key="f2" food={{ ok: true, data: daySummary({ entry_count: 0 }) }} />],
+  ])("%s has no judgement words", (_name, ui) => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("reduce"), addEventListener: () => undefined, removeEventListener: () => undefined }));
+    const { container, unmount } = renderWithIntl(<main>{ui}</main>);
+    const found = visibleStrings(container).flatMap((text) => text.match(new RegExp(PATTERN, "gi")) ?? []);
+    unmount();
+    expect(found).toEqual([]);
   });
 });

@@ -1,0 +1,248 @@
+{
+  "title": "Progress",
+  "loading": "Loading your progress",
+  "failed": "Could not load this block",
+  "vs": "vs",
+  "period": {
+    "label": "Period",
+    "short": {
+      "week": "W",
+      "month": "M",
+      "3m": "3M",
+      "6m": "6M",
+      "year": "Y",
+      "all": "All",
+      "custom": "Custom"
+    },
+    "long": {
+      "week": "This week",
+      "month": "This month",
+      "3m": "Last 3 months",
+      "6m": "Last 6 months",
+      "year": "This year",
+      "all": "All time",
+      "custom": "Custom range"
+    },
+    "customTitle": "Custom range",
+    "customHint": "Pick the first and the last day. The change compares with the same number of days right before.",
+    "close": "Close",
+    "from": "From",
+    "to": "To",
+    "apply": "Show this range",
+    "editRange": "Change range",
+    "errors": {
+      "missing": "Pick both days.",
+      "order": "The first day must be on or before the last day."
+    }
+  },
+  "chart": {
+    "showData": "Show data"
+  },
+  "volume": {
+    "title": "Volume",
+    "metricLabel": "Volume metric",
+    "metric": {
+      "distance": "Distance",
+      "tonnage": "Tonnage"
+    },
+    "unit": {
+      "distance": "km",
+      "tonnage": "kg"
+    },
+    "bucket": {
+      "week": "Week of {start}",
+      "month": "{start}"
+    },
+    "empty": {
+      "distance": "No distance in this period.",
+      "tonnage": "No lifting in this period."
+    },
+    "summary": "{metric}: {total} {unit} in total, {count, plural, one {# bar} other {# bars}}.",
+    "columns": {
+      "when": "When"
+    }
+  },
+  "weight": {
+    "title": "Weight",
+    "empty": "No weigh-ins in this period.",
+    "summary": "Weight: {count, plural, one {# weigh-in} other {# weigh-ins}}, from {first} kg to {last} kg.",
+    "columns": {
+      "day": "Day",
+      "weight": "Weight (kg)",
+      "average": "7-day average (kg)"
+    },
+    "tooltip": {
+      "weight": "Weigh-in {value} kg",
+      "average": "7-day average {value} kg"
+    },
+    "legend": {
+      "weighIns": "Weigh-ins",
+      "average": "7-day average"
+    }
+  },
+  "kcal": {
+    "title": "Energy per day",
+    "empty": "No food logged in this period.",
+    "summary": "Energy logged on {count, plural, one {# day} other {# days}}, {average} kcal per logged day on average.",
+    "summaryTarget": "Energy logged on {count, plural, one {# day} other {# days}}, {average} kcal per logged day on average; the daily target is {target} kcal.",
+    "columns": {
+      "day": "Day",
+      "kcal": "kcal"
+    },
+    "notLogged": "Nothing logged",
+    "value": "{value} kcal",
+    "target": "Target {value}"
+  },
+  "endurance": {
+    "title": "Endurance",
+    "empty": "No activities in this period.",
+    "distance": "Distance",
+    "time": "Moving time",
+    "elevation": "Elevation",
+    "count": "Activities",
+    "km": "km",
+    "hours": "h",
+    "meters": "m",
+    "bpm": "bpm",
+    "pace": "Avg pace",
+    "speed": "Avg speed",
+    "heartrate": "Avg HR",
+    "effort": {
+      "perKm": "/km",
+      "per100m": "/100 m",
+      "kmh": "km/h"
+    },
+    "groups": {
+      "run": "Run",
+      "ride": "Ride",
+      "walk": "Walk",
+      "swim": "Swim",
+      "other": "Other"
+    },
+    "group": "Sport",
+    "activities": "{count, plural, one {# activity} other {# activities}}",
+    "barsTitle": "Distance per sport",
+    "barsSummary": "Distance per sport: {groups}."
+  },
+  "strength": {
+    "title": "Strength",
+    "empty": "No workouts in this period.",
+    "sessions": "Workouts",
+    "tonnage": "Tonnage",
+    "kg": "kg",
+    "prs": "PRs",
+    "sets": "Sets",
+    "reps": "Reps",
+    "muscle": "Muscle",
+    "setCount": "{count, plural, one {# set} other {# sets}}",
+    "musclesTitle": "Sets per muscle",
+    "musclesSummary": "Sets per muscle: {muscles}.",
+    "muscles": {
+      "chest": "Chest",
+      "back": "Back",
+      "shoulders": "Shoulders",
+      "biceps": "Biceps",
+      "triceps": "Triceps",
+      "forearms": "Forearms",
+      "quads": "Quads",
+      "hamstrings": "Hamstrings",
+      "glutes": "Glutes",
+      "calves": "Calves",
+      "core": "Core"
+    },
+    "adherence": "Program adherence",
+    "adherenceLabel": "{program}: {value} of the planned sessions done",
+    "adherenceSessions": "{done} of {planned} sessions",
+    "adherenceSets": "{done} of {planned} sets"
+  },
+  "e1rm": {
+    "title": "Lifts and PRs",
+    "none": "No lifts yet. Log a workout and your records show up here.",
+    "pick": "Lift",
+    "empty": "No records for {lift} yet.",
+    "summary": "{lift}: {count, plural, one {# record} other {# records}}, best estimated 1RM {best} kg on {date}.",
+    "caption": "Estimated 1RM records of {lift}",
+    "columns": {
+      "date": "Date",
+      "e1rm": "e1RM (kg)",
+      "previous": "Previous (kg)"
+    },
+    "first": "First record",
+    "tooltip": "e1RM {value} kg",
+    "beat": "Beat {value} kg",
+    "best": "Best e1RM in the period",
+    "kg": "kg",
+    "sets": "Sets in the period"
+  },
+  "prs": {
+    "title": "{count, plural, =0 {Records} one {# record} other {# records}} in the period",
+    "empty": "No new records in this period.",
+    "emptyAll": "No records yet.",
+    "first": "first record",
+    "previous": "was {value} kg",
+    "kg": "kg"
+  },
+  "consistency": {
+    "title": "Consistency",
+    "activeDays": "Active days",
+    "trainingStreak": "Training streak",
+    "weeks": "{count, plural, one {week} other {weeks}}",
+    "checkinStreak": "Check-in streak",
+    "days": "{count, plural, one {day} other {days}}",
+    "longest": "Longest {value}",
+    "checkinRate": "Check-in rate",
+    "sickDays": "{count, plural, one {# sick day} other {# sick days}}"
+  },
+  "heatmap": {
+    "title": "Training year",
+    "label": "Training minutes per day in {year}",
+    "yearPicker": "Year",
+    "year": "Show {year}",
+    "activeDays": "{count, plural, one {# day} other {# days}} with training",
+    "minutes": "{value} min, {sessions, plural, one {# session} other {# sessions}}",
+    "rest": "no training",
+    "checkin": {
+      "done": "check-in done",
+      "partial": "check-in partly done",
+      "skipped": "check-in skipped",
+      "rest": "rest day",
+      "sick_or_injured": "sick or injured"
+    },
+    "less": "Less",
+    "more": "More"
+  },
+  "nutrition": {
+    "title": "Food",
+    "empty": "No food logged in this period.",
+    "avgKcal": "Avg energy",
+    "kcal": "kcal",
+    "target": "Target {value, number} kcal",
+    "noTarget": "No daily target",
+    "protein": "Avg protein",
+    "carbs": "Avg carbs",
+    "fat": "Avg fat",
+    "grams": "g",
+    "sugarDays": "Days above {limit, number} g sugar",
+    "loggingRate": "Days logged"
+  },
+  "body": {
+    "title": "Body",
+    "empty": "No weigh-ins in this period.",
+    "last": "Weight",
+    "kg": "kg",
+    "first": "From {value, number} kg",
+    "change": "Change",
+    "average": "7-day average",
+    "rate": "Per week",
+    "kgPerWeek": "kg/wk",
+    "bodyFat": "Body fat",
+    "soon": "Coming soon"
+  },
+  "fresh": {
+    "title": "Nothing here yet",
+    "body": "Your progress fills in as soon as there is something to count. Start with one of these:",
+    "strava": "Connect Strava",
+    "workout": "Start a workout",
+    "food": "Log food"
+  }
+}

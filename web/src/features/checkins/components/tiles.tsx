@@ -1,10 +1,6 @@
-import Link from "next/link";
-
-import { ErrorState, StatTile } from "@/components/ui";
-import { load } from "@/lib/api";
+import { StatTile } from "@/components/ui";
 import type { CheckinSummary } from "@/features/checkins/checkins";
 import { formatAdherence, plural } from "@/features/checkins/checkins";
-import { checkinsApi } from "@/features/checkins/api";
 
 /** Streak and adherence (P6.9): two stat tiles. */
 export function CheckinTiles({ summary }: { summary: CheckinSummary }) {
@@ -21,19 +17,5 @@ export function CheckinTiles({ summary }: { summary: CheckinSummary }) {
       />
       <StatTile label="Adherence" value={formatAdherence(summary)} hint={adherenceHint} />
     </dl>
-  );
-}
-
-/** Dashboard block: the last four ISO weeks, linking to the calendar. */
-export async function CheckinTilesBlock() {
-  const result = await load(() => checkinsApi.summary());
-  if (!result.ok) return <ErrorState title="Could not load check-ins" message={result.error} />;
-  return (
-    <div>
-      <CheckinTiles summary={result.data} />
-      <Link href="/training/checkins" className="mt-1.5 inline-block text-xs font-medium text-accent hover:underline">
-        Check-in calendar →
-      </Link>
-    </div>
   );
 }

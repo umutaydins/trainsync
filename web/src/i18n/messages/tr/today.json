@@ -1,0 +1,71 @@
+{
+  "loading": "Bugün yükleniyor",
+  "greeting": {
+    "morning": "Günaydın, {name}",
+    "afternoon": "İyi günler, {name}",
+    "evening": "İyi akşamlar, {name}"
+  },
+  "greetingNoName": {
+    "morning": "Günaydın",
+    "afternoon": "İyi günler",
+    "evening": "İyi akşamlar"
+  },
+  "sync": {
+    "synced": "Son eşitleme {ago}",
+    "never": "Henüz eşitlenmedi"
+  },
+  "workout": {
+    "title": "Bugünün antrenmanı",
+    "failed": "Programın yüklenemedi",
+    "freeWorkout": "Serbest antrenman",
+    "inProgress": "Devam ediyor · {sets} set kaydedildi",
+    "resume": "Antrenmana devam et",
+    "noProgram": "Henüz program yok",
+    "noProgramHint": "Bir program seç ya da oluştur, bugünün antrenmanı burada görünsün.",
+    "pickProgram": "Program seç",
+    "rest": "Dinlenme günü",
+    "next": "Sıradaki: {weekday} günü {day}",
+    "seeProgram": "Programı gör",
+    "more": "+{count} hareket daha",
+    "start": "Antrenmana başla",
+    "starting": "Başlatılıyor…"
+  },
+  "week": {
+    "title": "Bu hafta",
+    "failed": "Bu hafta yüklenemedi",
+    "more": "İlerleme",
+    "distance": "Mesafe",
+    "km": "km",
+    "workouts": "Antrenman",
+    "activeDays": "Aktif gün",
+    "streak": "Seri",
+    "weeks": "hafta"
+  },
+  "food": {
+    "title": "Bugünkü beslenme",
+    "failed": "Bugünkü beslenme yüklenemedi",
+    "empty": "Bugün henüz kayıt yok",
+    "log": "Yemek kaydet",
+    "open": "Beslenme",
+    "target": "Günlük hedef: {value} kcal",
+    "ringLabel": "{target} kcal’den {value}",
+    "of": "/ {value}",
+    "noTarget": "Günlük hedef belirlenmedi",
+    "left": "Hedefe {value} kcal var",
+    "above": "Hedefin {value} kcal üstünde",
+    "macros": "Protein {protein} g · Karbonhidrat {carbs} g · Yağ {fat} g",
+    "entries": "{count} kayıt"
+  },
+  "activity": {
+    "title": "Son aktivite",
+    "failed": "Aktivitelerin yüklenemedi",
+    "all": "Tümü",
+    "km": "{value} km",
+    "noStrava": "Strava’yı bağla",
+    "noStravaHint": "Strava bağlandığında bisiklet, koşu ve yüzmelerin buraya kendiliğinden gelir.",
+    "connect": "Strava’yı bağla",
+    "waiting": "Henüz aktivite yok",
+    "waitingHint": "Strava bağlı. Yeni aktiviteler bir sonraki eşitlemeden sonra burada görünür.",
+    "sync": "Eşitlemeyi aç"
+  }
+}
