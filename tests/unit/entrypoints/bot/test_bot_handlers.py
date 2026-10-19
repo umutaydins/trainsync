@@ -359,3 +359,39 @@ async def test_main_with_token_polls_and_replies() -> None:
     ChatLinksApi().link(ALLOWED, lang="tr").install(respx.mock, API)
     await asyncio.wait_for(bot_main.run(settings, stop, sleep=SleepRecorder()), timeout=5)
     assert sent_messages(send)[0]["text"] == MSG.help()
+
+
+async def test_link_and_unlink_from_the_chat(
+    http: httpx.AsyncClient, telegram: TelegramApi
+) -> None:
+    """P8.4, ADR 0036: `/link CODE` binds an unknown chat once; `/unlink` ends it."""
+    with respx.mock(assert_all_called=False) as router:
+        links = ChatLinksApi()
+        links.codes["K7Q2M9XD"] = 5
+        links.names[5] = "Ayşe"
+        links.install(router, API)
+        replies = router.post(f"{BOT_URL}/sendMessage").mock(return_value=ok({}))
+        read_api = ReadApi(http, API, SecretStr("bot-key"))
+        bot = Dispatcher(
+            telegram,
+            Commands(read_api, lambda: NOW, MSG),
+            chat_links(http, API, lambda: NOW),
+            MSG,
+            dashboard_url=DASHBOARD,
+        )
+        texts: list[str] = []
+        for n, text in enumerate(
+            ["/link", "/link WRONG234", "/link k7q2m9xd", "/link K7Q2M9XD", "/unlink", "/week"]
+        ):
+            await bot.handle(update(STRANGER, text, n + 1))
+            texts.append(sent_messages(replies)[-1]["text"])
+    neutral = MSG.neutral
+    assert texts == [
+        neutral(NeutralKey.LINK_USAGE),
+        neutral(NeutralKey.LINK_INVALID),
+        neutral(NeutralKey.LINK_DONE, name="Ayşe"),
+        neutral(NeutralKey.LINK_ALREADY),
+        neutral(NeutralKey.UNLINKED),
+        neutral(NeutralKey.LINK_HINT, url=DASHBOARD),
+    ]
+    assert links.chats == {}

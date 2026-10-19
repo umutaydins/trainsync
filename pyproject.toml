@@ -140,6 +140,9 @@ forbidden_modules = [
 [tool.coverage.run]
 branch = true
 source = ["trainsync"]
+# SQLAlchemy's asyncio layer runs on greenlets: without this, lines after an `await` on the
+# database are not traced.
+concurrency = ["thread", "greenlet"]
 
 [tool.coverage.report]
 fail_under = 85
