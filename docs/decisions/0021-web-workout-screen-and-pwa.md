@@ -12,7 +12,7 @@ right, what happens to a set that could not be sent, and how much of a PWA to bu
 ## Decision
 - **Timers are timestamps.** The rest timer is `{endsAt, durationS, label, alerted}` and the
   workout timer is the API's `started_at`; the screen renders `endsAt − now()` (pure functions in
-  `web/lib/timers.ts`, `now` injected). An interval only triggers re-renders (250 ms), and
+  `web/src/features/training/timers.ts`, `now` injected). An interval only triggers re-renders (250 ms), and
   `visibilitychange`/`focus` re-render at once, so a locked phone or a frozen tab shows the right
   value the moment it is back. The zero alert (vibration, a short WebAudio beep, and a
   notification only if permission was already granted from a button tap) fires once; an alert
@@ -25,7 +25,7 @@ right, what happens to a set that could not be sent, and how much of a PWA to bu
 - **Set logging**: the client id is made once per row (`crypto.randomUUID`); ✓ is optimistic
   (rest timer starts at once) and sends `PUT …/sets/{client_id}`. A tap while that row's request
   is in flight is ignored. No answer (status 0), 5xx, 408 or 429 → the PUT goes into a small
-  localStorage retry queue (`web/lib/retry-queue.ts`, one entry per path, newest body wins), which
+  localStorage retry queue (`web/src/features/training/retry-queue.ts`, one entry per path, newest body wins), which
   is flushed on the `online` event, after the next successful PUT, on page load and before
   finishing; a 4xx leaves the queue and shows as an error. Finishing is refused while the
   workout still has queued sets.

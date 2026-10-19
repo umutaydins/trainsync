@@ -1,15 +1,15 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TrainingTilesBlock, gymWeek } from "@/components/dashboard/training-tiles";
-import { HistoryList } from "@/components/training/history-list";
-import { PrBoard } from "@/components/training/pr-board";
-import { BodyWeightChart, ExerciseProgressChart, WeeklyMuscleChart, pivotWeeks } from "@/components/training/progress-charts";
-import { WorkoutSets } from "@/components/training/workout-sets";
+import { TrainingTilesBlock, gymWeek } from "@/features/dashboard/components/training-tiles";
+import { HistoryList } from "@/features/training/components/history-list";
+import { PrBoard } from "@/features/training/components/pr-board";
+import { BodyWeightChart, ExerciseProgressChart, WeeklyMuscleChart, pivotWeeks } from "@/features/training/components/progress-charts";
+import { WorkoutSets } from "@/features/training/components/workout-sets";
 import { ApiError } from "@/lib/api";
-import { nutritionApi } from "@/lib/nutrition-api";
-import { trainingApi } from "@/lib/training-api";
-import type { CurrentRecord, ExerciseProgress, MuscleWeek, WorkoutSummary } from "@/lib/training-types";
+import { nutritionApi } from "@/features/nutrition/api";
+import { trainingApi } from "@/features/training/api";
+import type { CurrentRecord, ExerciseProgress, MuscleWeek, WorkoutSummary } from "@/features/training/types";
 import { jsonResponse } from "./support/env";
 import { daySummary } from "./support/nutrition-fixtures";
 import { BENCH, CURL, workout } from "./support/training-fixtures";

@@ -1,5 +1,5 @@
-import type { KeyValueStore } from "@/lib/timers";
-import type { Exercise, PlannedExercise, PlatesOut, ProgramPreview, WorkoutDetail } from "@/lib/training-types";
+import type { KeyValueStore } from "@/features/training/timers";
+import type { Exercise, PlannedExercise, PlatesOut, ProgramPreview, WorkoutDetail } from "@/features/training/types";
 
 export function exercise(id: number, overrides: Partial<Exercise> = {}): Exercise {
   return {

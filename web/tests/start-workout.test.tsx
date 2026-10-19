@@ -1,9 +1,9 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { StartWorkoutButton } from "@/components/training/start-workout";
+import { StartWorkoutButton } from "@/features/training/components/start-workout";
 import type { MutationResult } from "@/lib/mutate";
-import type { WorkoutDetail } from "@/lib/training-types";
+import type { WorkoutDetail } from "@/features/training/types";
 import { idSequence, workout } from "./support/training-fixtures";
 
 const push = vi.fn();

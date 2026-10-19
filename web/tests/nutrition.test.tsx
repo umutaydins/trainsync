@@ -2,12 +2,12 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AddFood } from "@/components/nutrition/add-food";
-import { MealList } from "@/components/nutrition/meal-list";
-import { ProfileForm } from "@/components/nutrition/profile-form";
-import { DailyRings, EnergyBalanceCard, WeeklyAverages } from "@/components/nutrition/summary-cards";
+import { AddFood } from "@/features/nutrition/components/add-food";
+import { MealList } from "@/features/nutrition/components/meal-list";
+import { ProfileForm } from "@/features/nutrition/components/profile-form";
+import { DailyRings, EnergyBalanceCard, WeeklyAverages } from "@/features/nutrition/components/summary-cards";
 import { CSRF_COOKIE } from "@/lib/csrf-cookie";
-import { addDays, scaled, weekStart } from "@/lib/nutrition-types";
+import { addDays, scaled, weekStart } from "@/features/nutrition/types";
 import { jsonResponse } from "./support/env";
 import { CHICKEN, NO_PROFILE, OATS, UNKNOWN_EXERCISE, daySummary, entry, profile, weekly } from "./support/nutrition-fixtures";
 

@@ -2,8 +2,8 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
-import { formatCount, formatDuration, formatKm, formatMeters } from "../lib/format";
-import type { StatsSummary, WeeklyStats } from "../lib/types";
+import { formatCount, formatDuration, formatKm, formatMeters } from "@/lib/format";
+import type { StatsSummary, WeeklyStats } from "@/lib/types";
 
 const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
 const API_KEY = process.env.E2E_API_KEY ?? "dev-key-1";

@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { ActivityList } from "@/components/activities/activity-list";
+import { ActivityList } from "@/features/activities/components/activity-list";
 import { jsonResponse } from "./support/env";
 import { page } from "./support/fixtures";
 

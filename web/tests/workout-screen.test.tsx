@@ -1,11 +1,11 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { WorkoutScreen } from "@/components/training/workout-screen";
+import { WorkoutScreen } from "@/features/training/components/workout-screen";
 import type { MutationResult } from "@/lib/mutate";
-import { readQueue } from "@/lib/retry-queue";
-import type { KeyValueStore } from "@/lib/timers";
-import type { WorkoutDetail } from "@/lib/training-types";
+import { readQueue } from "@/features/training/retry-queue";
+import type { KeyValueStore } from "@/features/training/timers";
+import type { WorkoutDetail } from "@/features/training/types";
 import { jsonResponse } from "./support/env";
 import { BENCH, CURL, PLATES_100, idSequence, memoryStore, planned, workout } from "./support/training-fixtures";
 

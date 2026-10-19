@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { WorkoutLocalState } from "@/lib/timers";
-import { buildRows, defaults, groupRows, loggedVolume, parseSet } from "@/lib/workout-rows";
+import type { WorkoutLocalState } from "@/features/training/timers";
+import { buildRows, defaults, groupRows, loggedVolume, parseSet } from "@/features/training/workout-rows";
 import { BENCH, CURL, idSequence, planned, workout } from "./support/training-fixtures";
 
 describe("workout rows", () => {

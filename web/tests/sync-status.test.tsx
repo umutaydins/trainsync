@@ -1,7 +1,7 @@
 import { act, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { REFRESH_MS, SyncStatusView } from "@/components/sync/sync-status-view";
+import { REFRESH_MS, SyncStatusView } from "@/features/sync/components/sync-status-view";
 import { jsonResponse } from "./support/env";
 import { syncStatus } from "./support/fixtures";
 

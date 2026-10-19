@@ -5,11 +5,11 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { CheckinDayEditor } from "@/components/checkins/day-editor";
-import { CheckinHeatmap } from "@/components/checkins/heatmap";
-import { CheckinTiles } from "@/components/checkins/tiles";
-import type { Checkin, CheckinStatus, CheckinSummary } from "@/lib/checkins";
-import { dayLabel, formatAdherence, heatmapWeeks, plural } from "@/lib/checkins";
+import { CheckinDayEditor } from "@/features/checkins/components/day-editor";
+import { CheckinHeatmap } from "@/features/checkins/components/heatmap";
+import { CheckinTiles } from "@/features/checkins/components/tiles";
+import type { Checkin, CheckinStatus, CheckinSummary } from "@/features/checkins/checkins";
+import { dayLabel, formatAdherence, heatmapWeeks, plural } from "@/features/checkins/checkins";
 
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));

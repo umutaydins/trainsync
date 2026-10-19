@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseActivityFilters, toApiQuery } from "@/lib/activities-query";
+import { parseActivityFilters, toApiQuery } from "@/features/activities/query";
 
 describe("activity filters", () => {
   it("keeps valid filters and drops junk", () => {

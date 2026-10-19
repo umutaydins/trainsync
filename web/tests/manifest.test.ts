@@ -17,13 +17,13 @@ describe("web app manifest", () => {
   it("opens the training page standalone", () => {
     expect(m).toMatchObject({ name: "trainsync", short_name: "trainsync", start_url: "/training", display: "standalone" });
     // The accent design token.
-    expect(readFileSync(root("app/globals.css"), "utf8")).toContain(`--accent: ${m.theme_color};`);
+    expect(readFileSync(root("src/styles/globals.css"), "utf8")).toContain(`--accent: ${m.theme_color};`);
   });
 
   it("lists icons that exist, including 192, 512 and a maskable one", () => {
     const icons = m.icons ?? [];
     for (const icon of icons) {
-      const file = icon.src === "/icon.svg" ? root("app/icon.svg") : root(`public${icon.src}`);
+      const file = icon.src === "/icon.svg" ? root("src/app/icon.svg") : root(`public${icon.src}`);
       expect(existsSync(file), icon.src).toBe(true);
     }
     expect(icons.map((i) => `${i.sizes}:${i.purpose}`)).toEqual(

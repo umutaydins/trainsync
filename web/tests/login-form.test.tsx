@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { LoginForm } from "@/components/login-form";
+import { LoginForm } from "@/features/auth/components/login-form";
 
 describe("LoginForm", () => {
   it("shows an error on 401", async () => {

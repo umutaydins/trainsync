@@ -1,4 +1,4 @@
-import type { DaySummary, Food, LogEntry, Profile, RangeSummary } from "@/lib/nutrition-types";
+import type { DaySummary, Food, LogEntry, Profile, RangeSummary } from "@/features/nutrition/types";
 
 export function food(id: number, overrides: Partial<Food> = {}): Food {
   return {

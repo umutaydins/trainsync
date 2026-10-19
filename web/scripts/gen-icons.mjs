@@ -1,4 +1,4 @@
-// Renders the PWA icons in public/icons from the same shape as app/icon.svg (accent square with a
+// Renders the PWA icons in public/icons from the same shape as src/app/icon.svg (accent square with a
 // white rising line), without an image library: a tiny rasterizer with 4x4 supersampling and a
 // PNG encoder on node:zlib. Run after changing the icon: `node scripts/gen-icons.mjs`.
 import { mkdirSync, writeFileSync } from "node:fs";
