@@ -8,6 +8,7 @@ import type {
   ActivitiesQuery,
   ActivityDetail,
   ActivityPage,
+  Me,
   RangeQuery,
   StatsSummary,
   SyncStatus,
@@ -56,6 +57,7 @@ export const api = {
     getJson<StatsSummary>("/v1/stats/summary", rangeQuery(from, to, sportType)),
   ),
   syncStatus: cache(() => getJson<SyncStatus>("/v1/sync/status")),
+  me: cache(() => getJson<Me>("/v1/me")),
 };
 
 export type Loaded<T> = { ok: true; data: T } | { ok: false; status: number; error: string };

@@ -17,6 +17,8 @@ export type SportTotals = Schemas["SportTotalsOut"];
 export type SyncStatus = Schemas["SyncStatusOut"];
 export type SyncRun = Schemas["RunOut"];
 export type BreakerState = Schemas["BreakerState"];
+export type Me = Schemas["MeOut"];
+export type UserSettings = Schemas["SettingsOut"];
 
 type QueryOf<P extends keyof paths> = paths[P] extends { get: { parameters: { query?: infer Q } } }
   ? NonNullable<Q>

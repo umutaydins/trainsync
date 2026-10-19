@@ -4,6 +4,7 @@ import { checkCsrf } from "@/lib/csrf";
 import { CSRF_COOKIE } from "@/lib/csrf-cookie";
 import { endSession, tokenFromCookie } from "@/lib/auth";
 import { serverEnv } from "@/lib/env";
+import { preferencesIn, rememberPreferences } from "@/lib/preferences";
 import { SESSION_COOKIE } from "@/lib/session";
 import {
   MAX_BODY_BYTES,
@@ -38,7 +39,7 @@ async function handle(method: Method, request: NextRequest, { params }: Context)
   const search = request.nextUrl.searchParams;
   const token = tokenFromCookie(request.cookies.get(SESSION_COOKIE)?.value);
   if (method === "GET") {
-    return reply(await upstreamRequest("GET", target, search, null, token), false);
+    return reply(target, await upstreamRequest("GET", target, search, null, token), false);
   }
 
   const failure = checkCsrf(
@@ -51,7 +52,7 @@ async function handle(method: Method, request: NextRequest, { params }: Context)
 
   const body = await readJsonBody(request, method);
   if (!body.ok) return error(body.status, body.error);
-  return reply(await upstreamRequest(method, target, search, body.text, token), true);
+  return reply(target, await upstreamRequest(method, target, search, body.text, token), true);
 }
 
 type Body = { ok: true; text: string | null } | { ok: false; status: number; error: string };
@@ -107,7 +108,7 @@ async function readCapped(stream: ReadableStream<Uint8Array> | null, limit: numb
   return Buffer.concat(chunks).toString("utf8");
 }
 
-function reply(result: UpstreamResult, isMutation: boolean): NextResponse {
+function reply(target: string, result: UpstreamResult, isMutation: boolean): NextResponse {
   if (!result.ok) {
     const body =
       isMutation && result.detail !== undefined
@@ -120,7 +121,9 @@ function reply(result: UpstreamResult, isMutation: boolean): NextResponse {
   if (result.status === 204 || result.status === 205 || result.status === 304) {
     return new NextResponse(null, { status: result.status, headers: NO_STORE });
   }
-  return NextResponse.json(result.data, { status: result.status, headers: NO_STORE });
+  const response = NextResponse.json(result.data, { status: result.status, headers: NO_STORE });
+  rememberPreferences(response, preferencesIn(target, result.data));
+  return response;
 }
 
 function error(status: number, message: string, headers: Record<string, string> = {}): NextResponse {

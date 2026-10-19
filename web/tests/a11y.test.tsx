@@ -1,5 +1,3 @@
-import { render } from "@testing-library/react";
-import axe from "axe-core";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -27,6 +25,7 @@ import { WorkoutScreen } from "@/features/training/components/workout-screen";
 import { WorkoutSummaryCard } from "@/features/training/components/workout-summary";
 import { ErrorState } from "@/components/ui";
 import { activity, page, summary, syncStatus, week } from "./support/fixtures";
+import { violations } from "./support/axe";
 import { CHICKEN, OATS, UNKNOWN_EXERCISE, daySummary, entry, profile, weekly } from "./support/nutrition-fixtures";
 import { BENCH, CURL, PLATES_MIXED, memoryStore, workout } from "./support/training-fixtures";
 
@@ -34,15 +33,6 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
   usePathname: () => "/",
 }));
-
-async function violations(ui: ReactElement): Promise<string[]> {
-  const { container } = render(<main>{ui}</main>);
-  const result = await axe.run(container, {
-    // jsdom cannot compute colours; contrast is covered by the design tokens.
-    rules: { "color-contrast": { enabled: false } },
-  });
-  return result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
-}
 
 const RANGE = { preset: "12w" as const, from: "2026-07-27", to: "2026-10-18" };
 

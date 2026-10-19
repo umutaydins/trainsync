@@ -42,11 +42,11 @@ export function PlateBar({ answer }: { answer: PlatesOut }) {
         aria-label={`Bar ${formatKg(answer.bar_kg)} with ${plateList(side)} kg on each side`}
       >
         {/* sleeves and shaft */}
-        <rect x={2} y={mid - 4} width={sleeve + 4} height={8} rx={2} fill="#9aa4b2" />
-        <rect x={width - sleeve - 6} y={mid - 4} width={sleeve + 4} height={8} rx={2} fill="#9aa4b2" />
-        <rect x={sleeve + 6} y={mid - 2.5} width={shaft} height={5} fill="#6b7280" />
-        <rect x={sleeve + 3} y={mid - 9} width={3} height={18} fill="#6b7280" />
-        <rect x={sleeve + 6 + shaft} y={mid - 9} width={3} height={18} fill="#6b7280" />
+        <rect x={2} y={mid - 4} width={sleeve + 4} height={8} rx={2} fill="var(--bar-sleeve)" />
+        <rect x={width - sleeve - 6} y={mid - 4} width={sleeve + 4} height={8} rx={2} fill="var(--bar-sleeve)" />
+        <rect x={sleeve + 6} y={mid - 2.5} width={shaft} height={5} fill="var(--bar-shaft)" />
+        <rect x={sleeve + 3} y={mid - 9} width={3} height={18} fill="var(--bar-shaft)" />
+        <rect x={sleeve + 6 + shaft} y={mid - 9} width={3} height={18} fill="var(--bar-shaft)" />
         {[...left.map((p) => ({ ...p, side: "left" })), ...right.map((p) => ({ ...p, side: "right" }))].map((p, i) => {
           const look = plateLook(p.kg);
           const h = (HEIGHT - 8) * look.height;

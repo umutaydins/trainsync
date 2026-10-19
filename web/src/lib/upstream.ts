@@ -29,7 +29,7 @@ export const RULES: readonly { pattern: RegExp; methods: readonly Method[] }[] =
   { pattern: /^\/v1\/activities$/, methods: READ },
   { pattern: /^\/v1\/activities\/\d{1,20}$/, methods: READ },
   { pattern: /^\/v1\/stats\/weekly$/, methods: READ },
-  { pattern: /^\/v1\/stats\/summary$/, methods: READ },
+  { pattern: /^\/v1\/stats\/(?:summary|series|heatmap|prs)$/, methods: READ },
   { pattern: /^\/v1\/sync\/status$/, methods: READ },
   // The account (P8.1-P8.6). The web app deletes it and signs out through its own route
   // handlers, which also end the browser session.

@@ -2,8 +2,8 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
-// Layer boundaries (ADR 0033): app/ routes compose features; features use lib and components/ui;
-// lib and components/ui never reach up.
+// Layer boundaries (ADR 0033, 0039): app/ routes compose features; features use lib, i18n and
+// components/ui; lib and components/ui never reach up; i18n (messages, locale config) is a leaf.
 const restrict = (...groups) => ({
   "no-restricted-imports": [
     "error",
@@ -22,6 +22,7 @@ export default defineConfig([
   { files: ["src/lib/**"], rules: restrict("app", "features", "components") },
   { files: ["src/components/ui/**"], rules: restrict("app", "features") },
   { files: ["src/features/**"], rules: restrict("app") },
+  { files: ["src/i18n/**"], rules: restrict("app", "features", "components", "lib") },
   globalIgnores([
     ".next/**",
     "out/**",

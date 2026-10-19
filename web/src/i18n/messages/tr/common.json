@@ -1,0 +1,50 @@
+{
+  "appName": "trainsync",
+  "actions": {
+    "save": "Kaydet",
+    "saving": "Kaydediliyor…",
+    "cancel": "Vazgeç",
+    "retry": "Tekrar dene",
+    "close": "Kapat",
+    "back": "Geri",
+    "next": "İleri",
+    "skip": "Atla",
+    "done": "Tamam",
+    "delete": "Sil",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı",
+    "signOut": "Çıkış yap",
+    "refresh": "Yenile"
+  },
+  "states": {
+    "loading": "Yükleniyor…",
+    "errorTitle": "Bu yüklenemedi",
+    "emptyTitle": "Burada henüz bir şey yok",
+    "notFoundTitle": "Sayfa bulunamadı",
+    "notFoundBody": "Taşınmış olabilir ya da başka birine ait.",
+    "notFoundHome": "Bugün'e dön",
+    "offlineTitle": "Çevrimdışısın",
+    "offlineBody": "trainsync verilerin için bağlantıya ihtiyaç duyuyor. Bağlanıp tekrar dene.",
+    "backendDown": "trainsync sunucusu yanıt vermiyor (uyuyor ya da çevrimdışı olabilir). Verilerin güvende; birkaç dakika sonra tekrar dene.",
+    "backendDownTitle": "Sunucuya ulaşılamıyor"
+  },
+  "change": {
+    "up": "{value} arttı",
+    "down": "{value} azaldı",
+    "same": "değişmedi",
+    "vsPrevious": "önceki döneme göre"
+  },
+  "theme": {
+    "label": "Tema",
+    "system": "Sistem",
+    "dark": "Koyu",
+    "light": "Açık"
+  },
+  "units": {
+    "km": "{value} km",
+    "kg": "{value} kg",
+    "kcal": "{value} kcal",
+    "minutes": "{value} dk"
+  },
+  "manifestDescription": "Antrenman, beslenme ve ilerleme, Strava ile senkron"
+}

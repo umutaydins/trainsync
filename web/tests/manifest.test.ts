@@ -3,21 +3,25 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import manifest from "@/app/manifest";
+import { THEME_COLORS } from "@/lib/theme";
 import { config } from "@/proxy";
+
+vi.mock("next-intl/server", async () => ({ getTranslations: (await import("./support/intl")).translatorFor("en") }));
 
 const web = fileURLToPath(new URL("..", import.meta.url));
 const root = (path: string) => join(web, path);
 
-describe("web app manifest", () => {
-  const m = manifest();
+describe("web app manifest", async () => {
+  const m = await manifest();
 
   it("opens the training page standalone", () => {
     expect(m).toMatchObject({ name: "trainsync", short_name: "trainsync", start_url: "/training", display: "standalone" });
-    // The accent design token.
-    expect(readFileSync(root("src/styles/globals.css"), "utf8")).toContain(`--accent: ${m.theme_color};`);
+    // The dark base design token, as the splash and the status bar.
+    expect(m.theme_color).toBe(THEME_COLORS.dark);
+    expect(readFileSync(root("src/styles/tokens.css"), "utf8")).toContain(`--bg: ${m.background_color};`);
   });
 
   it("lists icons that exist, including 192, 512 and a maskable one", () => {

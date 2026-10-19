@@ -1,9 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-import { ErrorState, secondaryButtonClass } from "@/components/ui";
-import { BACKEND_UNREACHABLE_TITLE, BACKEND_UNREACHABLE_TEXT } from "@/lib/backend-copy";
+import { Button } from "@/components/ui/button";
+import { Failure } from "@/components/ui/states";
 
 type Reachability = "checking" | "reachable" | "unreachable";
 
@@ -14,6 +15,7 @@ type Reachability = "checking" | "reachable" | "unreachable";
  */
 export default function Error({ reset }: { error: Error; reset: () => void }) {
   const [reachability, setReachability] = useState<Reachability>("checking");
+  const t = useTranslations("common");
 
   useEffect(() => {
     let cancelled = false;
@@ -28,14 +30,14 @@ export default function Error({ reset }: { error: Error; reset: () => void }) {
 
   const offline = reachability === "unreachable";
   return (
-    <div className="space-y-3">
-      <ErrorState
-        title={offline ? BACKEND_UNREACHABLE_TITLE : "Something went wrong"}
-        message={offline ? BACKEND_UNREACHABLE_TEXT : "The page could not be rendered."}
-      />
-      <button type="button" onClick={reset} className={secondaryButtonClass}>
-        Try again
-      </button>
-    </div>
+    <Failure
+      title={offline ? t("states.backendDownTitle") : t("states.errorTitle")}
+      message={offline ? t("states.backendDown") : undefined}
+      action={
+        <Button variant="secondary" onClick={reset}>
+          {t("actions.retry")}
+        </Button>
+      }
+    />
   );
 }

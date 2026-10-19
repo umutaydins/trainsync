@@ -12,17 +12,17 @@ const AXIS = { tickLine: false, axisLine: false, tick: { fill: "var(--muted)", f
 
 /** Muscle colours for the stacked bars, fixed per muscle so a week-to-week comparison holds. */
 export const MUSCLE_COLORS: Record<string, string> = {
-  chest: "#2f6fde",
-  back: "#1a7f4b",
-  shoulders: "#a15c00",
-  biceps: "#8b5cf6",
-  triceps: "#db2777",
-  forearms: "#64748b",
-  quads: "#0891b2",
-  hamstrings: "#65a30d",
-  glutes: "#c2410c",
-  calves: "#0d9488",
-  core: "#9333ea",
+  chest: "var(--muscle-chest)",
+  back: "var(--muscle-back)",
+  shoulders: "var(--muscle-shoulders)",
+  biceps: "var(--muscle-biceps)",
+  triceps: "var(--muscle-triceps)",
+  forearms: "var(--muscle-forearms)",
+  quads: "var(--muscle-quads)",
+  hamstrings: "var(--muscle-hamstrings)",
+  glutes: "var(--muscle-glutes)",
+  calves: "var(--muscle-calves)",
+  core: "var(--muscle-core)",
 };
 
 function Details({ summary, children }: { summary: string; children: React.ReactNode }) {
@@ -52,7 +52,7 @@ export function ExerciseProgressChart({ progress }: { progress: ExerciseProgress
             <Tooltip formatter={(v) => (typeof v === "number" ? formatKg(v, 1) : String(v))} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
             <Line type="monotone" dataKey="e1rm" name="e1RM" stroke="var(--chart-1)" strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
-            <Line type="monotone" dataKey="best" name="Best set kg" stroke="#1a7f4b" strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
+            <Line type="monotone" dataKey="best" name="Best set kg" stroke="var(--chart-2)" strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -126,7 +126,7 @@ export function WeeklyMuscleChart({ items }: { items: MuscleWeek[] }) {
             <Tooltip formatter={(v) => (typeof v === "number" ? formatVolume(v) : String(v))} />
             <Legend wrapperStyle={{ fontSize: 12 }} formatter={(v: string) => label(v)} />
             {muscles.map((m) => (
-              <Bar key={m} dataKey={m} name={m} stackId="kg" fill={MUSCLE_COLORS[m] ?? "#9aa4b2"} isAnimationActive={false} />
+              <Bar key={m} dataKey={m} name={m} stackId="kg" fill={MUSCLE_COLORS[m] ?? "var(--muted)"} isAnimationActive={false} />
             ))}
           </BarChart>
         </ResponsiveContainer>
