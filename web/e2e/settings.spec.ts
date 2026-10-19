@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { BASE_URL, PHONE, apiGet, createUser, gotoReady, login, settled } from "./support";
+import { BASE_URL, PHONE, apiGet, createUser, gotoReady, login, settled, toast } from "./support";
 
 interface VoiceSettings {
   tone: string;
@@ -51,7 +51,7 @@ test("settings: language, theme, coach voice, sign out another device", async ({
     await expect(voice.getByRole("radio", { name: /Neutral/ })).toBeChecked();
     await voice.getByText("Hardcore", { exact: true }).click();
     await voice.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+    await expect(toast(page, "Saved")).toBeVisible();
     await page.reload();
     await settled(page);
     await expect(page.getByRole("region", { name: "Coach voice" }).getByRole("radio", { name: /Hardcore/ })).toBeChecked();
@@ -70,7 +70,7 @@ test("settings: language, theme, coach voice, sign out another device", async ({
     await row.getByRole("button", { name: /^Sign out/ }).click();
     const confirm = page.getByRole("dialog", { name: "Sign out this device?" });
     await confirm.getByRole("button", { name: "Sign out" }).click();
-    await expect(page.getByText("Device signed out")).toBeVisible();
+    await expect(toast(page, "Device signed out")).toBeVisible();
     await expect(row).toHaveCount(0);
     await expect(devices.getByText("This device")).toBeVisible();
 

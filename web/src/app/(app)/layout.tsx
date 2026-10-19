@@ -15,7 +15,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <ToastProvider>
       <div className="flex min-h-dvh">
-        <Sidebar isOwner={isOwner} name={me.ok ? me.data.display_name : ""} />
+        <Sidebar isOwner={isOwner} account={me.ok ? me.data : null} />
         <main className="mx-auto w-full min-w-0 max-w-6xl px-4 pb-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom)+1.5rem)] pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-6 md:pb-10 md:pt-8">
           {children}
         </main>

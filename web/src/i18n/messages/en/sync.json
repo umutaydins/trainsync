@@ -61,5 +61,29 @@
   "freshness": {
     "synced": "Last synced {ago}",
     "never": "Not synced yet"
+  },
+  "errors": {
+    "strava_auth": {
+      "title": "Strava connection expired",
+      "body": "Strava no longer accepts trainsync's access. Reconnect to keep syncing."
+    },
+    "deauthorized": {
+      "title": "Strava access was removed",
+      "body": "trainsync's access was revoked in Strava. Reconnect to sync again."
+    },
+    "strava_unavailable": {
+      "title": "Strava was unreachable",
+      "body": "Strava did not answer. The next sync tries again on its own."
+    },
+    "strava_rejected": {
+      "title": "Strava turned down a request",
+      "body": "The next sync tries again. If this keeps happening, reconnect Strava."
+    },
+    "internal": {
+      "title": "Sync failed",
+      "body": "Something went wrong on our side. The next sync tries again on its own."
+    },
+    "reconnect": "Reconnect Strava",
+    "details": "Technical details"
   }
 }

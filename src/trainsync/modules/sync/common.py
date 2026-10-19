@@ -23,6 +23,7 @@ from trainsync.integrations.strava.models import StravaActivity
 from trainsync.modules.activities.repository import ActivityRepository
 from trainsync.modules.strava.repository import AthleteRepository
 from trainsync.modules.sync.context import SyncDeps
+from trainsync.modules.sync.errors import DEAUTHORIZED_ERROR
 from trainsync.modules.sync.models import SyncStatus
 from trainsync.modules.sync.repository import SyncRunRepository
 
@@ -122,7 +123,7 @@ async def run_guarded(
         log.warning(f"{kind}_auth_failed", athlete_id=athlete_id)
         return SyncOutcome("failed", runs.run_id)
     except AthleteInactiveError:
-        await runs.finish(SyncStatus.FAILED, error="athlete deauthorized during sync")
+        await runs.finish(SyncStatus.FAILED, error=DEAUTHORIZED_ERROR)
         log.info(f"{kind}_stopped_athlete_inactive", athlete_id=athlete_id)
         return SyncOutcome("skipped", runs.run_id)
     except asyncio.CancelledError:

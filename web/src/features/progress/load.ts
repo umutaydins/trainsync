@@ -28,7 +28,8 @@ export interface ProgressData {
 export async function loadProgress(query: PeriodQuery, today: string): Promise<ProgressData> {
   const { period, from, to } = query;
   const thisYear = Number(today.slice(0, 4));
-  const year = query.year !== undefined && query.year <= thisYear ? query.year : thisYear;
+  // No year (or one still to come): the last 12 months up to today.
+  const year = query.year !== undefined && query.year <= thisYear ? query.year : undefined;
   const [summary, distance, tonnage, weight, kcal, heatmap, prs, allPrs] = await Promise.all([
     load(() => progressApi.summary(period, from, to)),
     load(() => progressApi.series("distance_m", period, from, to)),

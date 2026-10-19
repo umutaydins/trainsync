@@ -61,5 +61,29 @@
   "freshness": {
     "synced": "Son senkron {ago}",
     "never": "Henüz senkron yok"
+  },
+  "errors": {
+    "strava_auth": {
+      "title": "Strava bağlantısının süresi doldu",
+      "body": "Strava artık trainsync erişimini kabul etmiyor. Senkronun sürmesi için yeniden bağlan."
+    },
+    "deauthorized": {
+      "title": "Strava erişimi kaldırıldı",
+      "body": "trainsync'in erişimi Strava'da iptal edildi. Yeniden senkron için tekrar bağlan."
+    },
+    "strava_unavailable": {
+      "title": "Strava'ya ulaşılamadı",
+      "body": "Strava yanıt vermedi. Bir sonraki senkron kendiliğinden yeniden dener."
+    },
+    "strava_rejected": {
+      "title": "Strava bir isteği reddetti",
+      "body": "Bir sonraki senkron yeniden dener. Sorun sürerse Strava'yı yeniden bağla."
+    },
+    "internal": {
+      "title": "Senkron başarısız",
+      "body": "Bizim tarafta bir şeyler ters gitti. Bir sonraki senkron kendiliğinden yeniden dener."
+    },
+    "reconnect": "Strava'yı yeniden bağla",
+    "details": "Teknik ayrıntılar"
   }
 }

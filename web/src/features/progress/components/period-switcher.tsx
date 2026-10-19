@@ -30,7 +30,13 @@ export function PeriodSwitcher({ query, today }: { query: PeriodQuery; today: st
     startTransition(() => router.push(progressHref({ ...query, ...next }), { scroll: false }));
   };
   const choices: Choice[] = [...PERIOD_TABS, "custom"];
-  const options = choices.map((value) => ({ value, label: t(`short.${value}`), ariaLabel: t(`long.${value}`) }));
+  // Custom is a calendar icon on phones (its name stays spoken), so all seven fit from 360 px.
+  const options = choices.map((value) => ({
+    value,
+    label: t(`short.${value}`),
+    ariaLabel: t(`long.${value}`),
+    ...(value === "custom" ? { icon: CalendarRange, iconOnPhone: true } : {}),
+  }));
   const current: Choice = isChoice(query.period) ? query.period : "custom";
 
   return (

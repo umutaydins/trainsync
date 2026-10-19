@@ -28,7 +28,7 @@ test("log in, connect Strava, backfill, Today and Progress match the API, activi
     await gotoReady(page, "/sync");
     await page.getByRole("link", { name: "Connect Strava" }).click();
     await arrived(page, /\/sync\?connected=1$/);
-    await expect(page.getByText("Strava connected.")).toBeVisible();
+    await expect(page.getByTestId("strava-connected")).toContainText("Strava connected.");
   });
 
   await test.step("the backfill succeeds", async () => {

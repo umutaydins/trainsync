@@ -2928,7 +2928,13 @@
               }
             ],
             "max_value": 182.0,
+            "rolling": false,
             "timezone": "Europe/Berlin",
+            "window": {
+              "days": 292,
+              "from": "2026-01-01",
+              "to": "2026-10-19"
+            },
             "year": 2026
           }
         ],
@@ -2944,17 +2950,29 @@
             "title": "Max Value",
             "type": "number"
           },
+          "rolling": {
+            "description": "true: the last 12 months up to today (no `year` given)",
+            "title": "Rolling",
+            "type": "boolean"
+          },
           "timezone": {
             "title": "Timezone",
             "type": "string"
           },
+          "window": {
+            "$ref": "#/components/schemas/WindowOut",
+            "description": "The days in `days`; never past today"
+          },
           "year": {
+            "description": "The chosen year; for the last 12 months, the year of today",
             "title": "Year",
             "type": "integer"
           }
         },
         "required": [
           "year",
+          "rolling",
+          "window",
           "timezone",
           "max_value",
           "days"
@@ -5858,7 +5876,19 @@
                 "type": "null"
               }
             ],
+            "description": "The technical error text; only the owner sees it",
             "title": "Error"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncErrorCode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the run failed, for a translated message; null without an error"
           },
           "finished_at": {
             "anyOf": [
@@ -5904,6 +5934,7 @@
           "status",
           "pages",
           "upserted",
+          "error_code",
           "error",
           "started_at",
           "updated_at",
@@ -7334,6 +7365,17 @@
         ],
         "title": "SuggestionOut",
         "type": "object"
+      },
+      "SyncErrorCode": {
+        "enum": [
+          "strava_auth",
+          "deauthorized",
+          "strava_unavailable",
+          "strava_rejected",
+          "internal"
+        ],
+        "title": "SyncErrorCode",
+        "type": "string"
       },
       "SyncStatusOut": {
         "examples": [
@@ -11740,7 +11782,7 @@
     },
     "/v1/stats/heatmap": {
       "get": {
-        "description": "One entry per local day of `year` (default: this year): training minutes (activities' moving time plus workout durations), sessions and the check-in status.",
+        "description": "One entry per local day: of `year` (1 January to 31 December, cut at today), or without `year` of the last 12 months up to today. Training minutes (activities' moving time plus workout durations), sessions and the check-in status; never a future day.",
         "operationId": "heatmap_v1_stats_heatmap_get",
         "parameters": [
           {
@@ -11813,7 +11855,7 @@
             "APIKeyHeader": []
           }
         ],
-        "summary": "Training calendar of a year",
+        "summary": "Training calendar",
         "tags": [
           "stats"
         ]

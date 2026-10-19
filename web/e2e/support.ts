@@ -5,7 +5,7 @@
 import { randomUUID } from "node:crypto";
 
 import AxeBuilder from "@axe-core/playwright";
-import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
 export const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 export const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
@@ -225,6 +225,14 @@ export async function expectNoAxe(page: Page, what: string): Promise<void> {
 export async function noHorizontalScroll(page: Page, what = "page"): Promise<void> {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect.soft(overflow, `${what} scrolls sideways`).toBeLessThanOrEqual(0);
+}
+
+/**
+ * The toast with `text`. Never `getByText` for a toast: Radix also copies its text into a hidden
+ * live region, so the text is on the page twice and a strict locator fails.
+ */
+export function toast(page: Page, text: string | RegExp): Locator {
+  return page.getByTestId("toast").filter({ hasText: text });
 }
 
 /** The signed-in app's not-found page. */

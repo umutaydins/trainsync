@@ -44,8 +44,8 @@ export function BlockFailure({ error }: { error: string }) {
 }
 
 /** A quiet "nothing in this period" line inside a block. */
-export function BlockEmpty({ children }: { children: ReactNode }) {
-  return <p className="rounded-control border border-dashed border-border px-4 py-6 text-center text-sm text-muted">{children}</p>;
+export function BlockEmpty({ children, testId }: { children: ReactNode; testId?: string }) {
+  return <p data-testid={testId} className="rounded-control border border-dashed border-border px-4 py-6 text-center text-sm text-muted">{children}</p>;
 }
 
 /** The grid of stat cards of a block (a `<dl>`, each StatCard is one term and its value). */

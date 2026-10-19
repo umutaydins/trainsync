@@ -174,10 +174,11 @@ async def series(
 
 @router.get(
     "/heatmap",
-    summary="Training calendar of a year",
+    summary="Training calendar",
     description=(
-        "One entry per local day of `year` (default: this year): training minutes (activities' "
-        "moving time plus workout durations), sessions and the check-in status."
+        "One entry per local day: of `year` (1 January to 31 December, cut at today), or without "
+        "`year` of the last 12 months up to today. Training minutes (activities' moving time "
+        "plus workout durations), sessions and the check-in status; never a future day."
     ),
     response_model=HeatmapOut,
     responses={**UNAUTHORIZED, 400: error("Year out of range", "year out of range")},
@@ -192,8 +193,7 @@ async def heatmap(
 ) -> HeatmapOut:
     request = views.Request(principal, clock(), settings, redis)
     this_year = local_today(request.now, views.zone_of(principal)).year
-    year = year or this_year
-    if abs(year - this_year) > MAX_YEAR_OFFSET:
+    if year is not None and not 0 <= this_year - year <= MAX_YEAR_OFFSET:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "year out of range")
     async with sessionmaker() as session:
         return await views.heatmap(session, request, year)

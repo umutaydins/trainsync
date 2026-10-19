@@ -10,13 +10,14 @@ import { Empty, Failure } from "@/components/ui/states";
 import { useActivityFormat } from "@/features/activities/use-activity-format";
 import { StatGrid } from "@/features/progress/components/block";
 import { StatCard } from "@/features/progress/components/stat-card";
-import { formatDuration, formatNumber, km } from "@/features/progress/format";
+import { formatNumber, km } from "@/features/progress/format";
 import type { ProgressSummary } from "@/features/progress/types";
 import { BETTER } from "@/features/progress/types";
 import type { DaySummary } from "@/features/nutrition/types";
 import type { StravaConnection } from "@/features/settings/types";
 import type { Loaded } from "@/lib/api";
 import type { ActivityPage } from "@/lib/types";
+import { useDuration } from "@/lib/use-duration";
 
 const KM_DIGITS = 1;
 const RING_PX = 128;
@@ -120,6 +121,7 @@ export function LatestActivity({ latest, strava }: { latest: Loaded<ActivityPage
   const format = useFormatter();
   const locale = useLocale();
   const fmt = useActivityFormat();
+  const duration = useDuration();
   if (!latest.ok) return <Failure title={t("failed")} message={latest.error} />;
   const activity = latest.data.items[0];
   if (!activity) {
@@ -161,7 +163,7 @@ export function LatestActivity({ latest, strava }: { latest: Loaded<ActivityPage
         </span>
         <span className="shrink-0 text-right tabular">
           <span className="block text-xl font-black">{t("km", { value: formatNumber(locale, km(activity.distance_m), KM_DIGITS) })}</span>
-          <span className="block text-xs text-muted">{formatDuration(activity.moving_time_s)}</span>
+          <span className="block text-xs text-muted">{duration(activity.moving_time_s)}</span>
         </span>
       </Link>
     </Card>

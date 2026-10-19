@@ -19,6 +19,12 @@ export function formatClock(seconds: number): string {
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${secs}` : `${minutes}:${secs}`;
 }
 
+/** Whole hours and minutes of a duration (seconds dropped, so totals never run ahead). */
+export function durationParts(seconds: number): { hours: number; minutes: number } {
+  const total = Math.max(0, Math.floor(seconds));
+  return { hours: Math.floor(total / SECONDS_PER_HOUR), minutes: Math.floor((total % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE) };
+}
+
 export type PaceKind = "pace" | "swim-pace" | "speed";
 
 /** Running and on-foot sports → min/km, swimming → min/100 m, everything else → km/h. */

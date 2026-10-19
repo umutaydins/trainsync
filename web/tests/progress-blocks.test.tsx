@@ -148,6 +148,27 @@ describe("charts", () => {
     expect(screen.getByTestId("sport-bars")).toHaveAttribute("aria-label", "Distance per sport: Run 86.4 km, Ride 12 km.");
   });
 
+  it("e1RM with a single record: a short line instead of a one-dot chart", () => {
+    const squat = ALL_RECORDS[1]!;
+    renderWithIntl(
+      <LiftsBlock
+        allRecords={{ ok: true, data: records([squat]) }}
+        periodRecords={{ ok: true, data: records([]) }}
+        exercises={[]}
+        query={{ period: "month" }}
+      />,
+    );
+    expect(screen.queryByTestId("e1rm-chart")).not.toBeInTheDocument();
+    expect(screen.getByTestId("e1rm-single")).toHaveTextContent("One record for Squat so far: 140 kg on Sep 30, 2026. The chart starts with the second.");
+  });
+
+  it("the endurance time is hours and minutes in words", () => {
+    renderWithIntl(<EnduranceBlock endurance={progressSummary().endurance} period="month" />);
+    const time = screen.getByText("Moving time").closest("div");
+    expect(time?.textContent).toMatch(/\d+h \d+m|\d+h|\d+m/);
+    expect(time?.textContent).not.toMatch(/\d:\d\d/);
+  });
+
   it("e1RM: the lift's records over time, and the picker moves the URL", () => {
     renderWithIntl(
       <LiftsBlock
@@ -166,9 +187,9 @@ describe("charts", () => {
 
 describe("heatmap", () => {
   it("lays out weeks as columns and scales intensity from the busiest day", () => {
-    const grid = heatmapGrid(heatmap().days);
+    const grid = heatmapGrid(heatmap(2025).days);
     expect(grid.weeks).toBe(53);
-    expect(grid.rows[3]![0]?.day).toBe("2026-01-01"); // a Thursday
+    expect(grid.rows[2]![0]?.day).toBe("2025-01-01"); // a Wednesday
     expect(grid.months).toHaveLength(12);
     expect([level(0, 100), level(1, 100), level(60, 100), level(100, 100)]).toEqual([0, 1, 3, 4]);
     expect(moveFocus(10, "ArrowRight", 365)).toBe(17);
@@ -177,8 +198,8 @@ describe("heatmap", () => {
   });
 
   it("labels every day and moves with the arrow keys", () => {
-    renderWithIntl(<YearHeatmap heatmap={heatmap()} today="2026-10-19" firstYear={2024} query={{ period: "month" }} />);
-    const grid = screen.getByRole("grid", { name: "Training minutes per day in 2026" });
+    renderWithIntl(<YearHeatmap heatmap={heatmap(2026, undefined, { rolling: true })} today="2026-10-19" firstYear={2024} query={{ period: "month" }} />);
+    const grid = screen.getByRole("grid", { name: "Training minutes per day in the last 12 months" });
     const today = within(grid).getByRole("gridcell", { name: "Mon, Oct 19: 182 min, 1 session, check-in done" });
     expect(today).toHaveAttribute("tabindex", "0");
     expect(today).toHaveAttribute("data-level", "4");
@@ -190,8 +211,34 @@ describe("heatmap", () => {
     expect(screen.getByTestId("heatmap-day")).toHaveTextContent("Mon, Oct 12");
     fireEvent.keyDown(before, { key: "ArrowUp" });
     expect(within(grid).getByRole("gridcell", { name: "Sun, Oct 11: no training" })).toHaveFocus();
+    expect(screen.getByRole("link", { name: "Show 2026" })).toHaveAttribute("href", "/progress?period=month&year=2026");
+    expect(screen.queryByRole("link", { name: "Show the last 12 months" })).not.toBeInTheDocument();
+  });
+
+  it("the last 12 months end today: no future day is drawn", () => {
+    renderWithIntl(<YearHeatmap heatmap={heatmap(2026, undefined, { rolling: true })} today="2026-10-19" firstYear={2024} query={{ period: "month" }} />);
+    const days = [...document.querySelectorAll("[data-day]")].map((cell) => cell.getAttribute("data-day") ?? "").sort();
+    expect(days).toHaveLength(365);
+    expect(days[0]).toBe("2025-10-20");
+    expect(days.at(-1)).toBe("2026-10-19");
+    expect(screen.getByTestId("heatmap-range")).toHaveTextContent("Last 12 months");
+  });
+
+  it("this year stops at today and links back to the last 12 months", () => {
+    renderWithIntl(<YearHeatmap heatmap={heatmap(2026)} today="2026-10-19" firstYear={2024} query={{ period: "month", year: 2026 }} />);
+    const days = [...document.querySelectorAll("[data-day]")].map((cell) => cell.getAttribute("data-day") ?? "").sort();
+    expect([days[0], days.at(-1)]).toEqual(["2026-01-01", "2026-10-19"]);
+    expect(document.querySelector('[data-day="2026-10-20"]')).toBeNull();
+    expect(screen.getByRole("link", { name: "Show the last 12 months" })).toHaveAttribute("href", "/progress?period=month");
     expect(screen.getByRole("link", { name: "Show 2025" })).toHaveAttribute("href", "/progress?period=month&year=2025");
-    expect(screen.queryByRole("link", { name: "Show 2027" })).not.toBeInTheDocument();
+  });
+
+  it("a past year is January to December", () => {
+    renderWithIntl(<YearHeatmap heatmap={heatmap(2024, {})} today="2026-10-19" firstYear={2024} query={{ period: "month", year: 2024 }} />);
+    const days = [...document.querySelectorAll("[data-day]")].map((cell) => cell.getAttribute("data-day") ?? "").sort();
+    expect([days.length, days[0], days.at(-1)]).toEqual([366, "2024-01-01", "2024-12-31"]);
+    expect(screen.getByRole("link", { name: "Show 2025" })).toHaveAttribute("href", "/progress?period=month&year=2025");
+    expect(screen.queryByRole("link", { name: "Show 2023" })).not.toBeInTheDocument();
   });
 });
 

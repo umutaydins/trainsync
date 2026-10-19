@@ -122,6 +122,8 @@ SERIES_EXAMPLE: dict[str, Any] = {
 
 HEATMAP_EXAMPLE: dict[str, Any] = {
     "year": 2026,
+    "rolling": False,
+    "window": {"from": "2026-01-01", "to": "2026-10-19", "days": 292},
     "timezone": EXAMPLE_TZ,
     "max_value": 182.0,
     "days": [

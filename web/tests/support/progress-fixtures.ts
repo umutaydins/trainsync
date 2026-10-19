@@ -165,15 +165,40 @@ export function weightSeries(): Series {
   return { ...s, points: s.points.map((p, i) => ({ ...p, moving_average: i === 0 ? null : 81 - i * 0.05 })) };
 }
 
-export function heatmap(year = 2026, active: Record<string, number> = { "2026-10-12": 64.5, "2026-10-19": 182 }): Heatmap {
+const ROLLING_DAYS = 365;
+
+function shiftDay(day: string, delta: number): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + delta);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * The API's heatmap as of `today`: `year` from 1 January, cut at today; `rolling`, the 365 days up
+ * to today (`year` is then today's).
+ */
+export function heatmap(
+  year = 2026,
+  active: Record<string, number> = { "2026-10-12": 64.5, "2026-10-19": 182 },
+  { today = "2026-10-19", rolling = false }: { today?: string; rolling?: boolean } = {},
+): Heatmap {
+  const from = rolling ? shiftDay(today, 1 - ROLLING_DAYS) : `${year}-01-01`;
+  const yearEnd = `${year}-12-31`;
+  const to = rolling || yearEnd > today ? today : yearEnd;
   const days: Heatmap["days"] = [];
-  for (let d = new Date(Date.UTC(year, 0, 1)); d.getUTCFullYear() === year; d.setUTCDate(d.getUTCDate() + 1)) {
-    const day = d.toISOString().slice(0, 10);
+  for (let day = from; day <= to; day = shiftDay(day, 1)) {
     const value = active[day] ?? 0;
     days.push({ day, value, sessions: value > 0 ? 1 : 0, checkin: value > 0 ? "done" : null });
   }
   const max = Math.max(0, ...Object.values(active));
-  return { year, timezone: "Europe/Berlin", max_value: max, days };
+  return {
+    year: Number(to.slice(0, 4)),
+    rolling,
+    window: { from, to, days: days.length },
+    timezone: "Europe/Berlin",
+    max_value: max,
+    days,
+  };
 }
 
 export function record(overrides: Partial<PersonalRecord> = {}): PersonalRecord {

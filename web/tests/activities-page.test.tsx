@@ -11,6 +11,7 @@ import { violations } from "./support/axe";
 import { stubServerEnv } from "./support/env";
 import { activity, page, syncStatus } from "./support/fixtures";
 import { renderWithIntl } from "./support/intl";
+import { me } from "./support/settings-fixtures";
 
 const locale = vi.hoisted(() => ({ current: "en" as "en" | "tr" }));
 vi.mock("next-intl/server", async () => {
@@ -79,6 +80,7 @@ describe("/activities for every kind of user", () => {
 describe("/sync for a user without Strava", () => {
   it("makes Connect Strava the primary action and explains the empty runs", async () => {
     vi.spyOn(api, "syncStatus").mockResolvedValue(syncStatus({ athletes: [], rate_limit: null, last_synced_at: null }));
+    vi.spyOn(api, "me").mockResolvedValue(me({ role: "user" }));
     renderWithIntl(await SyncPage({ searchParams: Promise.resolve({}) }));
     expect(screen.getByText("No Strava account connected")).toBeInTheDocument();
     expect(screen.getByText("Not synced yet")).toBeInTheDocument();

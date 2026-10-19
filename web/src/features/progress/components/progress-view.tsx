@@ -37,48 +37,52 @@ export function ProgressView({ data }: { data: ProgressData }) {
       {isFresh(data) ? (
         <FreshEmpty />
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Block id="volume" title={t("volume.title")} period={period} className="lg:col-span-2">
+        <>
+          <Block id="volume" title={t("volume.title")} period={period}>
             {!data.distance.ok && !data.tonnage.ok ? (
               <BlockFailure error={data.distance.error} />
             ) : (
               <VolumeChart distance={ok(data.distance)} tonnage={ok(data.tonnage)} />
             )}
           </Block>
-          <SummaryBlock summary={summary} id="endurance" title={t("endurance.title")} period={period}>
-            {(s) => <EnduranceBlock endurance={s.endurance} period={period} />}
-          </SummaryBlock>
-          <SummaryBlock summary={summary} id="strength" title={t("strength.title")} period={period}>
-            {(s) => <StrengthBlock strength={s.strength} period={period} />}
-          </SummaryBlock>
-          <LiftsBlock
-            allRecords={data.allPrs}
-            periodRecords={data.prs}
-            exercises={summary.ok ? summary.data.strength.by_exercise : []}
-            query={query}
-          />
-          <SummaryBlock summary={summary} id="consistency" title={t("consistency.title")} period={period}>
-            {(s) => (
-              <ConsistencyBlock consistency={s.consistency} period={period}>
-                <HeatmapPart data={data} />
-              </ConsistencyBlock>
-            )}
-          </SummaryBlock>
-          <SummaryBlock summary={summary} id="nutrition" title={t("nutrition.title")} period={period}>
-            {(s) => (
-              <NutritionBlock nutrition={s.nutrition} period={period}>
-                {data.kcal.ok ? <KcalChart series={data.kcal.data} /> : <BlockFailure error={data.kcal.error} />}
-              </NutritionBlock>
-            )}
-          </SummaryBlock>
-          <SummaryBlock summary={summary} id="body" title={t("body.title")} period={period}>
-            {(s) => (
-              <BodyBlock body={s.body} period={period}>
-                {data.weight.ok ? <WeightChart series={data.weight.data} /> : <BlockFailure error={data.weight.error} />}
-              </BodyBlock>
-            )}
-          </SummaryBlock>
-        </div>
+          {/* Two balanced columns on desktop, each card at its own height (no card stretched to
+              its neighbour's); one column, in this order, on phones. */}
+          <div data-testid="progress-blocks" className="flex flex-col gap-4 lg:block lg:columns-2 lg:gap-4 lg:[&>*]:mb-4 lg:[&>*]:break-inside-avoid">
+            <SummaryBlock summary={summary} id="endurance" title={t("endurance.title")} period={period}>
+              {(s) => <EnduranceBlock endurance={s.endurance} period={period} />}
+            </SummaryBlock>
+            <SummaryBlock summary={summary} id="strength" title={t("strength.title")} period={period}>
+              {(s) => <StrengthBlock strength={s.strength} period={period} />}
+            </SummaryBlock>
+            <LiftsBlock
+              allRecords={data.allPrs}
+              periodRecords={data.prs}
+              exercises={summary.ok ? summary.data.strength.by_exercise : []}
+              query={query}
+            />
+            <SummaryBlock summary={summary} id="consistency" title={t("consistency.title")} period={period}>
+              {(s) => (
+                <ConsistencyBlock consistency={s.consistency} period={period}>
+                  <HeatmapPart data={data} />
+                </ConsistencyBlock>
+              )}
+            </SummaryBlock>
+            <SummaryBlock summary={summary} id="nutrition" title={t("nutrition.title")} period={period}>
+              {(s) => (
+                <NutritionBlock nutrition={s.nutrition} period={period}>
+                  {data.kcal.ok ? <KcalChart series={data.kcal.data} /> : <BlockFailure error={data.kcal.error} />}
+                </NutritionBlock>
+              )}
+            </SummaryBlock>
+            <SummaryBlock summary={summary} id="body" title={t("body.title")} period={period}>
+              {(s) => (
+                <BodyBlock body={s.body} period={period}>
+                  {data.weight.ok ? <WeightChart series={data.weight.data} /> : <BlockFailure error={data.weight.error} />}
+                </BodyBlock>
+              )}
+            </SummaryBlock>
+          </div>
+        </>
       )}
     </div>
   );
@@ -118,7 +122,7 @@ function HeatmapPart({ data }: { data: ProgressData }) {
   const firstYear = data.allPrs.ok ? Math.min(thisYear, Number(data.allPrs.data.window.from.slice(0, 4))) : thisYear;
   return (
     <section aria-label={t("title")} className="border-t border-border pt-4">
-      <YearHeatmap key={data.heatmap.data.year} heatmap={data.heatmap.data} today={data.today} firstYear={firstYear} query={data.query} />
+      <YearHeatmap key={data.heatmap.data.rolling ? "rolling" : data.heatmap.data.year} heatmap={data.heatmap.data} today={data.today} firstYear={firstYear} query={data.query} />
     </section>
   );
 }

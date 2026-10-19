@@ -224,12 +224,39 @@ async def test_series_and_heatmap(app: FastAPI, people: People) -> None:
     assert kcal["bucket"] == "month"
     assert kcal["target"] == 2500.0
     assert kcal["points"][-1]["value"] == pytest.approx(5600.0)
-    assert len(heatmap["days"]) == 365
+    # This year up to today (Berlin, Wed 28 Oct): never a future day.
+    assert (heatmap["year"], heatmap["rolling"]) == (2026, False)
+    assert heatmap["window"] == {"from": "2026-01-01", "to": "2026-10-28", "days": 301}
+    assert len(heatmap["days"]) == 301
+    assert heatmap["days"][-1]["day"] == "2026-10-28"
     days = {d["day"]: d for d in heatmap["days"]}
     assert (days["2026-10-20"]["sessions"], days["2026-10-20"]["value"]) == (1, 60.0)
     assert days["2026-10-19"]["value"] == 25.0  # one 1500 s run
     assert days["2026-10-19"]["checkin"] == "done"
     assert heatmap["max_value"] == 60.0
+
+
+async def test_heatmap_is_the_last_12_months_or_a_whole_past_year(
+    app: FastAPI, people: People
+) -> None:
+    async with signed_in(app, people.berlin) as api:
+        rolling = await _get(api, "/v1/stats/heatmap")
+        past = await _get(api, "/v1/stats/heatmap", year=2025)
+        future = await api.get("/v1/stats/heatmap", params={"year": 2027})
+    assert (rolling["year"], rolling["rolling"]) == (2026, True)
+    assert rolling["window"] == {"from": "2025-10-29", "to": "2026-10-28", "days": 365}
+    assert [d["day"] for d in (rolling["days"][0], rolling["days"][-1])] == [
+        "2025-10-29",
+        "2026-10-28",
+    ]
+    assert {d["day"]: d["value"] for d in rolling["days"]}["2026-10-19"] == 25.0
+    assert (past["rolling"], past["window"]["from"], past["window"]["to"]) == (
+        False,
+        "2025-01-01",
+        "2025-12-31",
+    )
+    assert len(past["days"]) == 365
+    assert future.status_code == 400
 
 
 async def test_an_empty_period_is_zeros_and_null_changes(

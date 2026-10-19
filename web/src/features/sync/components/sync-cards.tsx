@@ -1,11 +1,20 @@
+import { Link2 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId, type ReactNode } from "react";
 
 import { Badge, type Tone } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import type { BreakerState, SyncRun, SyncStatus } from "@/lib/types";
+
+/** The BFF asks the API for the authorize URL as this user; the API sends the browser back to /sync. */
+export const STRAVA_CONNECT_URL = "/api/strava/connect";
+
+type SyncErrorCode = NonNullable<SyncRun["error_code"]>;
+/** Errors the person can fix themselves: Strava wants a fresh authorization. */
+const RECONNECT: ReadonlySet<SyncErrorCode> = new Set(["strava_auth", "deauthorized"]);
 
 const RUN_TONES: Record<string, Tone> = { succeeded: "ok", running: "accent", paused: "warn", failed: "bad" };
 const BREAKER_TONES: Record<BreakerState, Tone> = { closed: "ok", half_open: "warn", open: "bad" };
@@ -33,7 +42,7 @@ function Block({ id, title, action, children }: { id: string; title: string; act
   );
 }
 
-export function SyncRuns({ status }: { status: SyncStatus }) {
+export function SyncRuns({ status, isOwner = false }: { status: SyncStatus; isOwner?: boolean }) {
   const t = useTranslations("sync");
   if (status.athletes.length === 0) {
     return (
@@ -49,8 +58,8 @@ export function SyncRuns({ status }: { status: SyncStatus }) {
           <div key={athlete.athlete_id}>
             <p className="mb-2 text-xs font-medium text-muted">{t("runs.athlete", { id: athlete.strava_athlete_id })}</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <RunCard kind="backfill" run={athlete.backfill} />
-              <RunCard kind="incremental" run={athlete.incremental} />
+              <RunCard kind="backfill" run={athlete.backfill} isOwner={isOwner} />
+              <RunCard kind="incremental" run={athlete.incremental} isOwner={isOwner} />
             </div>
           </div>
         ))}
@@ -59,7 +68,7 @@ export function SyncRuns({ status }: { status: SyncStatus }) {
   );
 }
 
-function RunCard({ kind, run }: { kind: "backfill" | "incremental"; run: SyncRun | null }) {
+function RunCard({ kind, run, isOwner }: { kind: "backfill" | "incremental"; run: SyncRun | null; isOwner: boolean }) {
   const t = useTranslations("sync.runs");
   const fmt = useSyncFormat();
   const status = run ? (t.has(`status.${run.status}`) ? t(`status.${run.status}`) : run.status) : null;
@@ -81,7 +90,36 @@ function RunCard({ kind, run }: { kind: "backfill" | "incremental"; run: SyncRun
           <dd className="text-right tabular">{fmt.dateTime(run.finished_at ?? run.updated_at)}</dd>
         </dl>
       ) : null}
-      {run?.error ? <p className="mt-3 break-words font-mono text-xs text-bad">{run.error}</p> : null}
+      {run?.error_code ? <RunError code={run.error_code} detail={isOwner ? run.error : null} /> : null}
+    </div>
+  );
+}
+
+/**
+ * Why a run failed, in words, with what to do about it. Never the raw exception: that is technical
+ * detail, folded away and only for the owner.
+ */
+function RunError({ code, detail }: { code: SyncErrorCode; detail: string | null }) {
+  const t = useTranslations("sync.errors");
+  const known = t.has(`${code}.title`) ? code : "internal";
+  return (
+    <div className="mt-3 flex flex-col gap-2 rounded-control border border-bad/30 bg-bad-soft p-3 text-sm" data-testid="run-error" data-code={code}>
+      <p className="font-semibold text-bad">{t(`${known}.title`)}</p>
+      <p className="text-text">{t(`${known}.body`)}</p>
+      {RECONNECT.has(code) ? (
+        <Button asChild size="sm" className="self-start">
+          <a href={STRAVA_CONNECT_URL}>
+            <Link2 aria-hidden />
+            {t("reconnect")}
+          </a>
+        </Button>
+      ) : null}
+      {detail ? (
+        <details className="text-xs text-muted" data-testid="run-error-detail">
+          <summary className="cursor-pointer select-none font-medium">{t("details")}</summary>
+          <p className="mt-1 break-words font-mono">{detail}</p>
+        </details>
+      ) : null}
     </div>
   );
 }

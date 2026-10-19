@@ -6,6 +6,7 @@ import { ApiError, api } from "@/lib/api";
 import { stubServerEnv } from "./support/env";
 import { renderWithIntl } from "./support/intl";
 import { syncStatus } from "./support/fixtures";
+import { me } from "./support/settings-fixtures";
 
 vi.mock("next-intl/server", async () => {
   const { translatorFor } = await import("./support/intl");
@@ -20,6 +21,7 @@ describe("/sync page", () => {
   beforeEach(() => {
     stubServerEnv({ WEB_PUBLIC_URL: "https://dash.example" });
     vi.spyOn(api, "syncStatus").mockResolvedValue(syncStatus());
+    vi.spyOn(api, "me").mockResolvedValue(me({ role: "user" }));
   });
 
   it("links Connect Strava to the BFF, which asks the API as the signed-in user", async () => {

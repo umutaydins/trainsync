@@ -63,7 +63,7 @@ export function WorkoutFinished({ workout }: { workout: WorkoutDetail }) {
   const t = useTranslations("workout.summary");
   return (
     <div className="flex flex-col gap-4">
-      <p role="status" className="text-3xl font-black tracking-tight text-accent-ink">
+      <p role="status" data-testid="workout-done" className="text-3xl font-black tracking-tight text-accent-ink">
         {t("done")}
       </p>
       <WorkoutSummaryCard workout={workout} />

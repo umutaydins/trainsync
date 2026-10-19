@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { Field } from "@/components/ui/field";
+import { BlockEmpty } from "@/features/progress/components/block";
 import { Select } from "@/components/ui/input";
 import {
   CHART_ANIMATION_MS,
@@ -86,6 +87,9 @@ export function E1rmChart({
       ) : null}
       {points.length === 0 || !best ? (
         <ChartEmpty>{t("empty", { lift: lift.name })}</ChartEmpty>
+      ) : points.length < 2 ? (
+        // One dot is no trend: say what it is in a line instead of drawing a near-empty chart.
+        <BlockEmpty testId="e1rm-single">{t("single", { lift: lift.name, value: kg(best.e1rm), date: date(best.time) })}</BlockEmpty>
       ) : (
         <ChartFrame
           testId="e1rm-chart"

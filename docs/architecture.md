@@ -396,6 +396,9 @@ The remote call happens outside any DB session, so a slow lookup never holds a c
 - `GET /v1/stats/series`, `/heatmap`, `/prs`: flow 7e.
 - `GET /v1/sync/status`: last sync runs, last webhook, webhook retry and dead-letter counts, current
   rate-limit usage, circuit state of every process (each publishes its breaker transitions to Redis).
+  A failed run carries an `error_code` the web app turns into a translated message with an action
+  (Reconnect for `strava_auth` / `deauthorized`); the raw `error` text is for the owner only
+  (ADR 0040).
 - Responses include `last_synced_at`, so the client knows how fresh the data is when Strava is degraded.
 - `GET/PATCH /v1/me/settings`: the user's settings (`user_settings`, null = the environment
   default), written by the dashboard and the bot's `/lang` and `/swear`, read by the bot (cached
@@ -509,7 +512,8 @@ The bot stays an API client (read and write, its service key acting as the linke
   gives one zero-filled point per bucket (weight: the mean, null without entries; kcal with the
   target); the default bucket is day up to 31 days, week up to 183, month beyond.
   `GET /v1/stats/heatmap?year=` is one entry per local day (training minutes, sessions, check-in
-  status). `GET /v1/stats/prs?period=&exercise_id=` lists e1RM records (strictly above every
+  status): without `year` the last 12 months up to today, with it that calendar year cut at
+  today; never a future day (ADR 0040). `GET /v1/stats/prs?period=&exercise_id=` lists e1RM records (strictly above every
   earlier set of the lift, window function over the whole history) with the value they beat.
 - **Cache** (`stats/cache.py`): windows of `STATS_CACHE_MIN_DAYS` (180) or more are stored in
   Redis under `stats:<user>:<data version>:<view>:<hash of the parameters>` for

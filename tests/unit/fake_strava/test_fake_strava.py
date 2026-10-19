@@ -281,6 +281,26 @@ async def test_seed_covers_the_year_before_the_clock(count: int) -> None:
     assert [a.id for a in activities] == sorted(a.id for a in activities)
 
 
+# Plausible average speeds in m/s per sport: a seeded pace in the wrong unit (s/100 m read as
+# s/km) shows up as a 0:15 /100 m swim.
+PLAUSIBLE_SPEED_MPS = {
+    "Run": (2.4, 3.8),
+    "TrailRun": (2.0, 3.1),
+    "Walk": (1.3, 1.9),
+    "Hike": (1.1, 1.7),
+    "Ride": (6.0, 10.5),
+    "Swim": (0.6, 0.95),
+}
+
+
+async def test_seeded_speeds_are_plausible_per_sport() -> None:
+    activities = seed_activities(DEFAULT_ATHLETE_ID, 2000, 7, SEED_NOW)
+    assert {a.sport_type for a in activities} == set(PLAUSIBLE_SPEED_MPS)
+    for activity in activities:
+        low, high = PLAUSIBLE_SPEED_MPS[activity.sport_type]
+        assert low <= activity.distance / activity.moving_time <= high, activity
+
+
 async def test_seed_moves_with_the_clock() -> None:
     today = seed_activities(DEFAULT_ATHLETE_ID, 300, 7, SEED_NOW)
     tomorrow = seed_activities(DEFAULT_ATHLETE_ID, 300, 7, SEED_NOW + timedelta(days=1))

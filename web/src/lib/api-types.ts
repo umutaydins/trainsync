@@ -762,8 +762,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Training calendar of a year
-         * @description One entry per local day of `year` (default: this year): training minutes (activities' moving time plus workout durations), sessions and the check-in status.
+         * Training calendar
+         * @description One entry per local day: of `year` (1 January to 31 December, cut at today), or without `year` of the last 12 months up to today. Training minutes (activities' moving time plus workout durations), sessions and the check-in status; never a future day.
          */
         get: operations["heatmap_v1_stats_heatmap_get"];
         put?: never;
@@ -2772,7 +2772,13 @@ export interface components {
          *         }
          *       ],
          *       "max_value": 182,
+         *       "rolling": false,
          *       "timezone": "Europe/Berlin",
+         *       "window": {
+         *         "days": 292,
+         *         "from": "2026-01-01",
+         *         "to": "2026-10-19"
+         *       },
          *       "year": 2026
          *     }
          */
@@ -2781,9 +2787,19 @@ export interface components {
             days: components["schemas"]["HeatmapDayOut"][];
             /** Max Value */
             max_value: number;
+            /**
+             * Rolling
+             * @description true: the last 12 months up to today (no `year` given)
+             */
+            rolling: boolean;
             /** Timezone */
             timezone: string;
-            /** Year */
+            /** @description The days in `days`; never past today */
+            window: components["schemas"]["WindowOut"];
+            /**
+             * Year
+             * @description The chosen year; for the last 12 months, the year of today
+             */
             year: number;
         };
         /**
@@ -4258,8 +4274,13 @@ export interface components {
         Role: "compound" | "accessory";
         /** RunOut */
         RunOut: {
-            /** Error */
+            /**
+             * Error
+             * @description The technical error text; only the owner sees it
+             */
             error: string | null;
+            /** @description Why the run failed, for a translated message; null without an error */
+            error_code: components["schemas"]["SyncErrorCode"] | null;
             /** Finished At */
             finished_at: string | null;
             /** Id */
@@ -5055,6 +5076,11 @@ export interface components {
             /** Weight Kg */
             weight_kg: number | null;
         };
+        /**
+         * SyncErrorCode
+         * @enum {string}
+         */
+        SyncErrorCode: "strava_auth" | "deauthorized" | "strava_unavailable" | "strava_rejected" | "internal";
         /**
          * SyncStatusOut
          * @example {
