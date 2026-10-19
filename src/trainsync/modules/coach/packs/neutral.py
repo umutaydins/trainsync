@@ -36,6 +36,9 @@ class NeutralKey(StrEnum):
     KCAL_INTAKE_TARGET = "kcal.intake_target"
     KCAL_MACROS = "kcal.macros"
     KCAL_MACROS_INCOMPLETE = "kcal.macros_incomplete"
+    # The food line of a progress summary (P8.11): a period's daily average.
+    KCAL_AVERAGE = "kcal.average"
+    KCAL_AVERAGE_TARGET = "kcal.average_target"
 
     SCALE_USAGE = "scale.usage"
     SCALE_SAVED = "scale.saved"
@@ -94,6 +97,8 @@ NEUTRAL_FIELDS: Mapping[NeutralKey, frozenset[str]] = {
     NeutralKey.KCAL_INTAKE_TARGET: _fields("intake", "target", "remaining", "entries"),
     NeutralKey.KCAL_MACROS: _fields("protein", "carbs", "fat_g"),
     NeutralKey.KCAL_MACROS_INCOMPLETE: _fields(),
+    NeutralKey.KCAL_AVERAGE: _fields("kcal"),
+    NeutralKey.KCAL_AVERAGE_TARGET: _fields("kcal", "target"),
     NeutralKey.SCALE_USAGE: _fields("command"),
     NeutralKey.SCALE_SAVED: _fields("day", "value"),
     NeutralKey.CHECKIN_ASK_SCALE: _fields(),
@@ -145,6 +150,8 @@ _EN: Mapping[NeutralKey, str] = {
     NeutralKey.KCAL_INTAKE_TARGET: "{intake} of {target} · {remaining} left · {entries} entries",
     NeutralKey.KCAL_MACROS: "Protein {protein} · carbs {carbs} · F {fat_g}",
     NeutralKey.KCAL_MACROS_INCOMPLETE: "Some foods have unknown macros; they are left out.",
+    NeutralKey.KCAL_AVERAGE: "🍽️ {kcal} kcal a day",
+    NeutralKey.KCAL_AVERAGE_TARGET: "🍽️ {kcal} kcal a day (target {target})",
     NeutralKey.SCALE_USAGE: "Usage: {command} 78.4",
     NeutralKey.SCALE_SAVED: "Saved for {day}: {value}.",
     NeutralKey.CHECKIN_ASK_SCALE: "Scale reading today? Reply like 78.4, or tap Skip.",
@@ -222,6 +229,8 @@ _TR: Mapping[NeutralKey, str] = {
     NeutralKey.KCAL_INTAKE_TARGET: "{intake} / {target} · {remaining} kaldı · {entries} kayıt",
     NeutralKey.KCAL_MACROS: "Protein {protein} · karbonhidrat {carbs} · yağ {fat_g}",
     NeutralKey.KCAL_MACROS_INCOMPLETE: "Bazı yiyeceklerin makroları bilinmiyor; toplama girmedi.",
+    NeutralKey.KCAL_AVERAGE: "🍽️ günde {kcal} kcal",
+    NeutralKey.KCAL_AVERAGE_TARGET: "🍽️ günde {kcal} kcal (hedef {target})",
     NeutralKey.SCALE_USAGE: "Kullanım: {command} 78.4",
     NeutralKey.SCALE_SAVED: "{day} için kaydedildi: {value}.",
     NeutralKey.CHECKIN_ASK_SCALE: "Bugünkü tartı? 78.4 gibi yaz ya da Geç'e dokun.",

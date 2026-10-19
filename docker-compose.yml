@@ -126,6 +126,9 @@ services:
       CHECKIN_TIME: ${CHECKIN_TIME:-21:00}
       CHECKIN_TZ: ${CHECKIN_TZ:-Europe/Istanbul}
       CHECKIN_REMINDER_MINUTES: ${CHECKIN_REMINDER_MINUTES:-90}
+      # Weekly / monthly progress digests (P8.11); empty = on with a bot token.
+      STATS_DIGEST_ENABLED: ${STATS_DIGEST_ENABLED:-}
+      STATS_DIGEST_TIME: ${STATS_DIGEST_TIME:-09:00}
     ports: ["9100:9100"]  # worker /metrics (WORKER_METRICS_PORT)
     volumes: ["./config:/app/config:ro"]  # own coach lines (optional, P6.11)
     depends_on:

@@ -41,6 +41,8 @@ class UserSettings(Base):
     profanity: Mapped[str | None] = mapped_column(String(8))
     lang: Mapped[str | None] = mapped_column(String(2))
     checkin_enabled: Mapped[bool | None] = mapped_column(Boolean)
+    # Weekly and monthly progress digests (P8.11).
+    stats_digest_enabled: Mapped[bool | None] = mapped_column(Boolean)
     checkin_time: Mapped[time | None] = mapped_column(Time)
     checkin_reminder_minutes: Mapped[int | None] = mapped_column(Integer)
     quiet_hours: Mapped[str | None] = mapped_column(String(11))

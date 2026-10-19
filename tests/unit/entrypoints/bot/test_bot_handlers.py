@@ -41,6 +41,8 @@ from trainsync.integrations.telegram.client import TelegramApi, Update
 from trainsync.modules.chat.assistant import Asker
 from trainsync.modules.chat.read_api import ReadApi
 from trainsync.modules.coach.packs import Key, NeutralKey
+from trainsync.modules.stats.examples import PROGRESS_EXAMPLE
+from trainsync.modules.stats.totals import SUMMARY_EXAMPLE
 
 FIXTURE: dict[str, Any] = json.loads(
     (Path(__file__).parents[3] / "fixtures" / "bot_api_responses.json").read_text(encoding="utf-8")
@@ -54,6 +56,9 @@ DASHBOARD = "https://dash.example"
 def metric(command: str, outcome: str) -> float:
     labels = {"command": command, "outcome": outcome}
     return REGISTRY.get_sample_value("bot_updates_total", labels) or 0.0
+
+
+STATS_EXAMPLE = {**SUMMARY_EXAMPLE, **PROGRESS_EXAMPLE}
 
 
 @pytest.fixture
@@ -92,6 +97,9 @@ def fake_api() -> respx.MockRouter:
         }
 
         def summary(request: httpx.Request) -> httpx.Response:
+            if "period" in request.url.params:  # /stats week|month|... (P8.11)
+                progress = {**STATS_EXAMPLE, "period": request.url.params["period"]}
+                return httpx.Response(200, json=progress)
             return httpx.Response(200, json=summaries[request.url.params["from"]])
 
         router.get(f"{API}/v1/stats/summary", name="summary").mock(side_effect=summary)
@@ -424,3 +432,15 @@ async def test_the_dashboard_deep_link_links_the_chat(
         MSG.neutral(NeutralKey.LINK_DONE, name="Ayşe"),
     ]
     assert links.chats == {STRANGER: 5}
+
+
+@pytest.mark.parametrize(("args", "title"), [("", "This week"), (" month", "This month")])
+async def test_stats_with_a_period_sends_the_progress_summary(
+    dispatcher: Dispatcher, fake_api: respx.MockRouter, send: respx.Route, args: str, title: str
+) -> None:
+    """P8.11: `/stats [week|month|3m|6m|year|all]`; the older `/stats 12w run` still works."""
+    await dispatcher.handle(update(ALLOWED, f"/stats{args}"))
+    text = sent_messages(send)[-1]["text"]
+    assert text.startswith(title)
+    assert "km" in text
+    assert fake_api["summary"].calls.last.request.url.params["period"] == title.split()[-1].lower()

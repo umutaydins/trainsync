@@ -78,13 +78,13 @@ class EnduranceOut(BaseModel):
     )
 
 
-class MuscleOut(BaseModel):
+class MuscleProgressOut(BaseModel):
     muscle: str
     sets: int
     tonnage_kg: float
 
 
-class ExerciseOut(BaseModel):
+class ExerciseProgressOut(BaseModel):
     exercise_id: int
     name: str
     muscle: str
@@ -111,8 +111,8 @@ class StrengthOut(BaseModel):
     reps: Change
     tonnage_kg: Change = Field(description="Sum of weight x reps of the working sets")
     pr_count: Change = Field(description="Workouts that set a new e1RM record for a lift")
-    by_muscle: list[MuscleOut]
-    by_exercise: list[ExerciseOut]
+    by_muscle: list[MuscleProgressOut]
+    by_exercise: list[ExerciseProgressOut]
     adherence: AdherenceOut | None = Field(description="Active program; null without one")
 
 
@@ -123,6 +123,7 @@ class ConsistencyOut(BaseModel):
     checkin_streak_days: int
     longest_checkin_streak_days: int
     checkin_rate: Change = Field(description="Days with a check-in / days of the period")
+    sick_days: int = Field(description="Check-ins `sick_or_injured` in the period")
 
 
 class NutritionOut(BaseModel):

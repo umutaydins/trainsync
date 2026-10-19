@@ -6,7 +6,8 @@ Keep a complete, always-fresh copy of my Strava activities in my own PostgreSQL 
 and expose it through my own API (filters, weekly stats), without depending on Strava
 being up or my rate-limit budget being available at read time. Since Phase 8 the same
 deployment serves several invite-only accounts, each with its own data, Strava athlete,
-Telegram chat and settings (ADR 0034–0037).
+Telegram chat and settings (ADR 0034–0037), and progress statistics compare each user's
+periods with the ones before, in their own time zone (ADR 0038).
 
 ## Components
 
@@ -24,7 +25,8 @@ Telegram chat and settings (ADR 0034–0037).
 - **API process**: accounts and sessions (`/v1/auth`, `/v1/me`, owner-only `/v1/admin`), OAuth
   endpoints, webhook endpoints, read API, health, metrics.
 - **Worker process**: backfill, incremental sync, webhook event processing, scheduled jobs
-  (including the evening check-in prompt, per user in each user's time zone), account purge.
+  (including the evening check-in prompt and the Monday / 1st-of-month progress digests, per user
+  in each user's time zone), account purge.
 - **Strava client**: the only place that talks to Strava. Owns auth headers, token refresh,
   retries, rate-limit accounting and the circuit breaker.
 - **Bot process** (`python -m trainsync.entrypoints.bot`, Phase 5): Telegram long polling, deterministic
@@ -68,10 +70,11 @@ flowchart TB
   end
   subgraph modules["modules/ — one package per domain"]
     notifications --> chat
-    chat --> users & admin
-    users & admin --> coach & checkin & nutrition & stats & sync
+    chat --> stats
+    stats --> users & admin
+    users & admin --> coach & checkin & nutrition & sync
     coach & checkin & nutrition --> training
-    training & stats & sync & nutrition --> activities
+    training & sync & nutrition --> activities
     sync --> strava
     activities -.tables.-> strava
     strava --> auth
@@ -98,15 +101,15 @@ flowchart TB
 | `modules/strava/` | OAuth routes bound to the signed-in user, athletes, encrypted tokens, `TokenManager`, `/v1/me/strava` | `auth`, `core`, `integrations` |
 | `modules/activities/` | activity upserts, reads, `/v1/activities` | `strava` tables |
 | `modules/sync/` | backfill, incremental, webhook intake/processing/retry, deauthorization, `/v1/sync/status` | `activities`, `strava` |
-| `modules/stats/` | `/v1/stats` | `activities` |
 | `modules/training/` | exercises, programs, workouts, sets, generator, progression, plates, `/v1/training` | `activities` |
 | `modules/checkin/` | daily check-ins, streaks, `/v1/checkins` | `training` |
 | `modules/nutrition/` | foods, logs, energy balance, free sugar, `/v1/nutrition` | `training`, `activities` |
 | `modules/coach/` | voice, intensity, guardrails, savage lines, schedule, message packs (`packs/`) | `training` |
 | `modules/users/` | `/v1/me`: profile, password, sessions, per-user settings (`user_settings`), export, deletion and the `purge_user` job | every module below it |
 | `modules/admin/` | owner-only `/v1/admin`: invites, account list, reset links | every module below it |
+| `modules/stats/` | `/v1/stats`: weekly totals and progress statistics (periods, endurance, strength, adherence, consistency, food, body, series, heatmap, PRs), the versioned cache and `user_data_versions` (ADR 0038) | every module below it (reads check-ins, nutrition rules, user settings) |
 | `modules/chat/` | the Telegram conversation over the read API: command features, parsing, formatting, assistant loop (daily limit per user), chat links (`telegram_chats`), `/v1/me/telegram` and the service-key-only `/v1/telegram/chats` | every module below it |
-| `modules/notifications/` | worker senders: new activity, check-in, coach, stack alerts | everything below it |
+| `modules/notifications/` | worker senders: new activity, check-in, coach, progress digests, stack alerts | everything below it |
 | `entrypoints/` | `api/app.py`, `worker/settings.py`, `bot/main.py`, `demo/`, `cli/` (owner tools: `invite`, `owner`) | everything |
 | `ops/` | backup CLI, retention, alert delivery | standard library only |
 
@@ -135,7 +138,8 @@ Accounts (Phase 8, ADR 0034, ADR 0036):
 | `sessions` | `id`, `user_id`, `token_hash` (SHA-256, unique), `user_agent`, `created_at`, `last_seen_at`, `expires_at`, `revoked_at` | expiry slides by `SESSION_TTL_DAYS` on use, capped at `SESSION_MAX_AGE_DAYS` from `created_at` |
 | `invites` | `id`, `code_hash` (unique), `note`, `created_by`, `created_at`, `expires_at`, `used_at`, `used_by`, `revoked_at` | single use, `INVITE_TTL_DAYS` |
 | `password_resets` | `id`, `user_id`, `token_hash` (unique), `created_at`, `expires_at`, `used_at` | owner-generated links, `RESET_TTL_MINUTES` |
-| `user_settings` | `user_id` (PK), `tone`, `intensity`, `profanity`, `lang`, `checkin_enabled`, `checkin_time`, `checkin_reminder_minutes`, `quiet_hours`, `workout_reminder_time`, `sugar_limit_g`, `country`, `updated_at` | NULL = the environment default (`BOT_TONE`, `CHECKIN_TIME`, …); `country` picks the emergency number; replaces `chat_settings` |
+| `user_settings` | `user_id` (PK), `tone`, `intensity`, `profanity`, `lang`, `checkin_enabled`, `checkin_time`, `checkin_reminder_minutes`, `quiet_hours`, `workout_reminder_time`, `sugar_limit_g`, `country`, `stats_digest_enabled`, `updated_at` | NULL = the environment default (`BOT_TONE`, `CHECKIN_TIME`, `STATS_DIGEST_ENABLED`, …); `country` picks the emergency number; replaces `chat_settings` |
+| `user_data_versions` | `user_id` (PK, FK cascade), `version` (bigint) | one row per user, created by a trigger on `users`; bumped by the `bump_user_data_version` row trigger on every table in `stats/models.py` `VERSIONED_TABLES` (activities, training, food, body, check-ins; migration 0018); the statistics cache key (ADR 0038) |
 | `telegram_chats` | `chat_id` (PK), `user_id` (unique), `linked_at` | one chat per user; `/link CODE` writes it, the code itself lives in Redis |
 
 Strava and sync:
@@ -147,7 +151,7 @@ Strava and sync:
 | `activities` | `id`, `user_id`, `strava_activity_id` (unique), `athlete_id`, `name`, `sport_type`, `start_date` (timestamptz), `distance_m`, `moving_time_s`, `elapsed_time_s`, `elevation_gain_m`, `average_heartrate` (nullable), `raw` (jsonb), `deleted_at` (nullable), `synced_at` | upsert on `strava_activity_id`; soft delete |
 | `sync_runs` | `id`, `user_id`, `athlete_id`, `kind` (backfill / incremental), `status`, `cursor` (jsonb), `pages`, `upserted`, `error`, `started_at`, `updated_at`, `finished_at` | `cursor` makes backfill resumable; `updated_at` is a per-page heartbeat |
 | `webhook_events` | `id`, `dedup_key` (unique), `payload` (jsonb), `status`, `attempts`, `received_at`, `last_attempt_at`, `processed_at` | dedup on (subscription_id, object_type, object_id, aspect_type, event_time) |
-| `notifications` | `id`, `user_id`, `kind` (`new_activity`, `checkin_prompt`, `checkin_reminder`, `coach_*`), `object_id`, `sent_at`; unique (`user_id`, `kind`, `object_id`) | claimed before sending, released on a failed send (ADR 0012); check-in kinds use the local date `yyyymmdd` as `object_id` (ADR 0020) |
+| `notifications` | `id`, `user_id`, `kind` (`new_activity`, `checkin_prompt`, `checkin_reminder`, `coach_*`, `stats_digest_week`, `stats_digest_month`), `object_id`, `sent_at`; unique (`user_id`, `kind`, `object_id`) | claimed before sending, released on a failed send (ADR 0012); check-in kinds use the local date `yyyymmdd` as `object_id` (ADR 0020), digests the first day of the period |
 
 Indexes: `activities (athlete_id, start_date desc)`, `activities (athlete_id, sport_type, start_date)`,
 `activities (user_id, start_date desc)`, `webhook_events (status, received_at)`.
@@ -165,8 +169,12 @@ Training (Phase 6, per user since Phase 8, no `athlete_id`; every table below ha
 | `body_metrics` | (`user_id`, `date`) PK, `weight_kg` | only what the user enters |
 | `daily_checkins` | `id`, `date` (unique per user, local day), `status` (done / partial / skipped / rest / sick_or_injured), `workout_id` (nullable, set null), `reason_note`, `sleep_hours`, `energy_1_5`, `body_weight_kg`, `created_at`, `updated_at` | upsert on (`user_id`, `date`); a body weight is also written to `body_metrics` (P6.9, ADR 0020) |
 
+Index `workout_sets (user_id, completed_at)` (migration 0018) serves the statistics' set ranges.
+
 Training math (`training/math.py`): volume = reps × weight without warm-ups; Epley e1RM for 1–12
-reps (none above); records per exercise for weight at a rep count, e1RM and session volume.
+reps (none above); records per exercise for weight at a rep count, e1RM and session volume. The
+progress statistics use sets of at most `STATS_E1RM_MAX_REPS` (10) for their e1RM trend and PRs
+(ADR 0038).
 
 Nutrition (Phase 6, P6.4, per user since Phase 8, no `athlete_id`; ADR 0019):
 
@@ -317,10 +325,12 @@ The remote call happens outside any DB session, so a slow lookup never holds a c
 ### 7. Read API (any of the three auth modes in flow 0; every read is scoped to the caller's user)
 - `GET /v1/activities?from=&to=&sport_type=&limit=&cursor=`: keyset pagination on `(start_date, id)`.
 - `GET /v1/activities/{strava_activity_id}`: one activity; 404 if unknown or soft-deleted.
-- `GET /v1/stats/weekly?from=&to=&sport_type=`: per ISO week distance, moving time, elevation, count
-  (SQL aggregation).
-- `GET /v1/stats/summary?from=&to=&sport_type=`: totals for the range, the same totals per
-  `sport_type`, and the longest activity (greatest distance). One SQL query per block.
+- `GET /v1/stats/weekly?from=&to=&sport_type=`: per ISO week (Monday start, the user's time zone)
+  distance, moving time, elevation, count (SQL aggregation).
+- `GET /v1/stats/summary?period=&from=&to=&sport_type=`: totals for the range, the same totals per
+  `sport_type`, and the longest activity (greatest distance), plus the progress blocks of flow 7e.
+  One SQL query per block.
+- `GET /v1/stats/series`, `/heatmap`, `/prs`: flow 7e.
 - `GET /v1/sync/status`: last sync runs, last webhook, webhook retry and dead-letter counts, current
   rate-limit usage, circuit state of every process (each publishes its breaker transitions to Redis).
 - Responses include `last_synced_at`, so the client knows how fresh the data is when Strava is degraded.
@@ -412,6 +422,50 @@ The bot stays an API client (read and write, its service key acting as the linke
   and change nothing); a redelivered text answer is recognised by its `update_id`.
 - **Web**: `/training/checkins` calendar heatmap and day editor; streak and adherence tiles on
   the dashboard (writes through the BFF's CSRF-checked `PUT`).
+
+### 7e. Progress statistics (Phase 8, P8.10, P8.11, ADR 0038)
+- **Periods** (`stats/periods.py`): `week`, `month`, `year` are calendar units to date, compared
+  with the same number of days at the start of the unit before (a short month clamps);
+  `last_week`, `last_month` are whole units compared with the unit before; `3m`, `6m`, `12m` end
+  today, `custom` is `from`..`to`, both compared with the same number of days right before; `all`
+  starts at the user's first data and has no previous period. Every number carries `change`
+  (value − previous) and `change_pct` (null when the previous value is 0 or missing).
+- **Local days in SQL**: a period is inclusive local dates in the user's zone; the bounds are the
+  UTC instants of the local midnights (`zoneinfo`, DST-safe), so the `(user_id, …)` indexes serve
+  the range, and rows are grouped by `date(timezone(:tz, start_date))`. Date columns (food logs,
+  body metrics, check-ins) are already local. Sums, counts and e1RM maxima are computed in
+  Postgres, one query per block; Python only shapes the result.
+- **Blocks** of `GET /v1/stats/summary`: endurance per sport group (run, ride, walk, swim, other;
+  time-weighted average heart rate, longest and fastest); strength (sessions, working sets, reps,
+  tonnage, volume per muscle and exercise, best e1RM per lift, PR count, adherence to the active
+  program); consistency (active days, training streak in ISO weeks, check-in streak in days,
+  check-in rate); nutrition (average kcal vs target, macros, days over the sugar limit, logged
+  days); body (weight first / last / change, 7-day moving average, rate per week;
+  `body_fat_pct` null until Phase 9).
+- **Series, heatmap, PRs**: `GET /v1/stats/series?metric=&period=&bucket=day|week|month&sport=`
+  gives one zero-filled point per bucket (weight: the mean, null without entries; kcal with the
+  target); the default bucket is day up to 31 days, week up to 183, month beyond.
+  `GET /v1/stats/heatmap?year=` is one entry per local day (training minutes, sessions, check-in
+  status). `GET /v1/stats/prs?period=&exercise_id=` lists e1RM records (strictly above every
+  earlier set of the lift, window function over the whole history) with the value they beat.
+- **Cache** (`stats/cache.py`): windows of `STATS_CACHE_MIN_DAYS` (180) or more are stored in
+  Redis under `stats:<user>:<data version>:<view>:<hash of the parameters>` for
+  `STATS_CACHE_TTL_S`. The data version is the user's row in `user_data_versions`, bumped by a
+  row trigger on every table the statistics read, so any writer (API, bot, sync, demo seed,
+  `psql`) invalidates it; a stale entry is never read again and expires on its TTL. Redis down →
+  computed instead. `stats_cache_total{outcome=hit|miss|error}`.
+- **Bot** (`modules/chat/progress.py`): `/stats [week|month|3m|6m|year|all]` (default `week`) reads
+  `/v1/stats/summary` as the linked user and answers with the main numbers and their changes, then
+  a verdict from the mean change of moving time, tonnage and active days: praise or a roast
+  (savage categories `progress_up` / `progress_down`, `coach/savage_progress.py`), a calm recovery
+  line when the period had sick / injured check-ins. Body weight is never in it. The older
+  `/stats [4w|12w|52w] [sport]` keeps its totals and best week.
+- **Digests** (`modules/notifications/digest.py`): worker cron every 5 minutes; on Monday from
+  `STATS_DIGEST_TIME` in the user's zone it owes last week's summary, on the 1st last month's.
+  Quiet hours hold it until they end (same local day); each digest is claimed once in
+  `notifications` (`stats_digest_week` / `stats_digest_month`, object id = first day of the
+  period) before it is built; an empty period is claimed and not sent. Off without a bot token,
+  with `STATS_DIGEST_ENABLED=false`, or with the user's `stats_digest_enabled=false`.
 
 ### 8. Operations
 - `GET /health/live` (process up), `GET /health/ready` (DB + Redis reachable).

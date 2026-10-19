@@ -33,6 +33,7 @@ FIELDS = (
     "profanity",
     "lang",
     "checkin_enabled",
+    "stats_digest_enabled",
     "checkin_time",
     "checkin_reminder_minutes",
     "quiet_hours",
@@ -53,6 +54,7 @@ class Effective:
     profanity: BotProfanity
     lang: BotLang
     checkin_enabled: bool
+    stats_digest_enabled: bool
     checkin_time: time
     checkin_reminder_minutes: int
     quiet_hours: str
@@ -95,6 +97,9 @@ def effective(
         profanity=cast(BotProfanity, pick("profanity", settings.bot_profanity)),
         lang=cast(BotLang, pick("lang", settings.bot_lang)),
         checkin_enabled=bool(pick("checkin_enabled", settings.checkin_enabled is not False)),
+        stats_digest_enabled=bool(
+            pick("stats_digest_enabled", settings.stats_digest_enabled is not False)
+        ),
         checkin_time=cast(time, pick("checkin_time", settings.checkin_time)),
         checkin_reminder_minutes=cast(
             int, pick("checkin_reminder_minutes", settings.checkin_reminder_minutes)

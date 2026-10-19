@@ -41,13 +41,15 @@ src/trainsync/
     activities/    #   activity upserts and reads (/v1/activities)
     sync/          #   backfill, incremental, webhooks, deauthorize/disconnect (/v1/sync,
                    #   /webhooks/strava)
-    stats/         #   weekly and summary stats (/v1/stats)
     training/      #   exercises, programs, workouts, sets, progression, plates (/v1/training)
     checkin/       #   daily check-ins, streaks (/v1/checkins)
     nutrition/     #   foods, favourites, logs, energy balance (/v1/nutrition)
     coach/         #   voice, guardrails, savage lines; packs/ = message packs (tr/en, tones)
     users/         #   /v1/me: profile, password, sessions, per-user settings, export, deletion
     admin/         #   owner-only /v1/admin: invites, accounts, reset links
+    stats/         #   weekly totals and progress statistics (/v1/stats), SQL per local day,
+                   #   Redis cache keyed by the trigger-bumped user_data_versions (ADR 0038);
+                   #   own layer between chat and admin|users
     chat/          #   Telegram conversation over the read API (bot features, read-API client),
                    #   chat links (/v1/me/telegram, /v1/telegram/chats)
     notifications/ #   worker senders per user: new activity, check-in, coach, stack alerts

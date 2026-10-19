@@ -836,6 +836,7 @@
               "lang": "en",
               "profanity": "roast",
               "quiet_hours": "23:00-07:00",
+              "stats_digest_enabled": true,
               "sugar_limit_g": 50.0,
               "timezone": "Europe/Berlin",
               "tone": "hardcore",
@@ -1326,6 +1327,11 @@
             "title": "Longest Training Streak Weeks",
             "type": "integer"
           },
+          "sick_days": {
+            "description": "Check-ins `sick_or_injured` in the period",
+            "title": "Sick Days",
+            "type": "integer"
+          },
           "training_streak_weeks": {
             "description": "ISO weeks in a row with training, to today",
             "title": "Training Streak Weeks",
@@ -1338,7 +1344,8 @@
           "longest_training_streak_weeks",
           "checkin_streak_days",
           "longest_checkin_streak_days",
-          "checkin_rate"
+          "checkin_rate",
+          "sick_days"
         ],
         "title": "ConsistencyOut",
         "type": "object"
@@ -1970,7 +1977,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/trainsync__modules__training__schemas__ExerciseOut"
+              "$ref": "#/components/schemas/ExerciseOut"
             },
             "title": "Items",
             "type": "array"
@@ -1980,6 +1987,76 @@
           "items"
         ],
         "title": "ExerciseList",
+        "type": "object"
+      },
+      "ExerciseOut": {
+        "examples": [
+          {
+            "equipment": "barbell",
+            "id": 20,
+            "is_custom": false,
+            "movement_pattern": "horizontal_push",
+            "name": "Bench Press",
+            "primary_muscle": "chest",
+            "secondary_muscles": [
+              "triceps",
+              "shoulders"
+            ],
+            "slug": "bench-press"
+          }
+        ],
+        "properties": {
+          "equipment": {
+            "$ref": "#/components/schemas/Equipment"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_custom": {
+            "title": "Is Custom",
+            "type": "boolean"
+          },
+          "movement_pattern": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MovementPattern"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "primary_muscle": {
+            "$ref": "#/components/schemas/Muscle"
+          },
+          "secondary_muscles": {
+            "items": {
+              "$ref": "#/components/schemas/Muscle"
+            },
+            "title": "Secondary Muscles",
+            "type": "array"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "primary_muscle",
+          "secondary_muscles",
+          "equipment",
+          "movement_pattern",
+          "is_custom"
+        ],
+        "title": "ExerciseOut",
         "type": "object"
       },
       "ExerciseProgress": {
@@ -2016,7 +2093,7 @@
         ],
         "properties": {
           "exercise": {
-            "$ref": "#/components/schemas/trainsync__modules__training__schemas__ExerciseOut"
+            "$ref": "#/components/schemas/ExerciseOut"
           },
           "sessions": {
             "description": "Oldest first",
@@ -2032,6 +2109,49 @@
           "sessions"
         ],
         "title": "ExerciseProgress",
+        "type": "object"
+      },
+      "ExerciseProgressOut": {
+        "properties": {
+          "best_e1rm_kg": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Epley, working sets of at most 10 reps"
+          },
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "muscle": {
+            "title": "Muscle",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reps": {
+            "title": "Reps",
+            "type": "integer"
+          },
+          "sets": {
+            "title": "Sets",
+            "type": "integer"
+          },
+          "tonnage_kg": {
+            "title": "Tonnage Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "name",
+          "muscle",
+          "sets",
+          "reps",
+          "tonnage_kg",
+          "best_e1rm_kg"
+        ],
+        "title": "ExerciseProgressOut",
         "type": "object"
       },
       "ExerciseUpdate": {
@@ -3570,7 +3690,7 @@
         "title": "Muscle",
         "type": "string"
       },
-      "MuscleOut": {
+      "MuscleProgressOut": {
         "properties": {
           "muscle": {
             "title": "Muscle",
@@ -3590,7 +3710,7 @@
           "sets",
           "tonnage_kg"
         ],
-        "title": "MuscleOut",
+        "title": "MuscleProgressOut",
         "type": "object"
       },
       "MuscleWeek": {
@@ -3933,7 +4053,7 @@
         ],
         "properties": {
           "exercise": {
-            "$ref": "#/components/schemas/trainsync__modules__training__schemas__ExerciseOut"
+            "$ref": "#/components/schemas/ExerciseOut"
           },
           "last_performance": {
             "anyOf": [
@@ -4167,7 +4287,7 @@
         ],
         "properties": {
           "exercise": {
-            "$ref": "#/components/schemas/trainsync__modules__training__schemas__ExerciseOut"
+            "$ref": "#/components/schemas/ExerciseOut"
           },
           "id": {
             "title": "Id",
@@ -6227,6 +6347,7 @@
             "lang": "en",
             "profanity": "roast",
             "quiet_hours": "23:00-07:00",
+            "stats_digest_enabled": true,
             "sugar_limit_g": 50.0,
             "timezone": "Europe/Berlin",
             "tone": "hardcore",
@@ -6298,6 +6419,11 @@
             "title": "Quiet Hours",
             "type": "string"
           },
+          "stats_digest_enabled": {
+            "description": "Weekly (Monday) and monthly (1st) digests",
+            "title": "Stats Digest Enabled",
+            "type": "boolean"
+          },
           "sugar_limit_g": {
             "title": "Sugar Limit G",
             "type": "number"
@@ -6327,6 +6453,7 @@
           "profanity",
           "lang",
           "checkin_enabled",
+          "stats_digest_enabled",
           "checkin_time",
           "checkin_reminder_minutes",
           "quiet_hours",
@@ -6459,6 +6586,17 @@
               "22:30-06:30"
             ],
             "title": "Quiet Hours"
+          },
+          "stats_digest_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stats Digest Enabled"
           },
           "sugar_limit_g": {
             "anyOf": [
@@ -6654,6 +6792,7 @@
               "checkin_streak_days": 6,
               "longest_checkin_streak_days": 41,
               "longest_training_streak_weeks": 15,
+              "sick_days": 0,
               "training_streak_weeks": 9
             },
             "endurance": {
@@ -7089,14 +7228,14 @@
           },
           "by_exercise": {
             "items": {
-              "$ref": "#/components/schemas/trainsync__modules__stats__schemas__ExerciseOut"
+              "$ref": "#/components/schemas/ExerciseProgressOut"
             },
             "title": "By Exercise",
             "type": "array"
           },
           "by_muscle": {
             "items": {
-              "$ref": "#/components/schemas/MuscleOut"
+              "$ref": "#/components/schemas/MuscleProgressOut"
             },
             "title": "By Muscle",
             "type": "array"
@@ -8026,119 +8165,6 @@
           "volume_kg"
         ],
         "title": "WorkoutSummary",
-        "type": "object"
-      },
-      "trainsync__modules__stats__schemas__ExerciseOut": {
-        "properties": {
-          "best_e1rm_kg": {
-            "$ref": "#/components/schemas/Change",
-            "description": "Epley, working sets of at most 10 reps"
-          },
-          "exercise_id": {
-            "title": "Exercise Id",
-            "type": "integer"
-          },
-          "muscle": {
-            "title": "Muscle",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "reps": {
-            "title": "Reps",
-            "type": "integer"
-          },
-          "sets": {
-            "title": "Sets",
-            "type": "integer"
-          },
-          "tonnage_kg": {
-            "title": "Tonnage Kg",
-            "type": "number"
-          }
-        },
-        "required": [
-          "exercise_id",
-          "name",
-          "muscle",
-          "sets",
-          "reps",
-          "tonnage_kg",
-          "best_e1rm_kg"
-        ],
-        "title": "ExerciseOut",
-        "type": "object"
-      },
-      "trainsync__modules__training__schemas__ExerciseOut": {
-        "examples": [
-          {
-            "equipment": "barbell",
-            "id": 20,
-            "is_custom": false,
-            "movement_pattern": "horizontal_push",
-            "name": "Bench Press",
-            "primary_muscle": "chest",
-            "secondary_muscles": [
-              "triceps",
-              "shoulders"
-            ],
-            "slug": "bench-press"
-          }
-        ],
-        "properties": {
-          "equipment": {
-            "$ref": "#/components/schemas/Equipment"
-          },
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "is_custom": {
-            "title": "Is Custom",
-            "type": "boolean"
-          },
-          "movement_pattern": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MovementPattern"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "primary_muscle": {
-            "$ref": "#/components/schemas/Muscle"
-          },
-          "secondary_muscles": {
-            "items": {
-              "$ref": "#/components/schemas/Muscle"
-            },
-            "title": "Secondary Muscles",
-            "type": "array"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "slug",
-          "name",
-          "primary_muscle",
-          "secondary_muscles",
-          "equipment",
-          "movement_pattern",
-          "is_custom"
-        ],
-        "title": "ExerciseOut",
         "type": "object"
       }
     },
@@ -12829,7 +12855,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/trainsync__modules__training__schemas__ExerciseOut"
+                  "$ref": "#/components/schemas/ExerciseOut"
                 }
               }
             },
@@ -12913,7 +12939,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/trainsync__modules__training__schemas__ExerciseOut"
+                  "$ref": "#/components/schemas/ExerciseOut"
                 }
               }
             },

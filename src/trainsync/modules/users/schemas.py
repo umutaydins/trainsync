@@ -20,6 +20,7 @@ SETTINGS_EXAMPLE: dict[str, Any] = {
     "profanity": "roast",
     "lang": "en",
     "checkin_enabled": True,
+    "stats_digest_enabled": True,
     "checkin_time": "21:00:00",
     "checkin_reminder_minutes": 90,
     "quiet_hours": "23:00-07:00",
@@ -44,6 +45,7 @@ class SettingsOut(BaseModel):
     profanity: BotProfanity
     lang: BotLang
     checkin_enabled: bool
+    stats_digest_enabled: bool = Field(description="Weekly (Monday) and monthly (1st) digests")
     checkin_time: time
     checkin_reminder_minutes: int
     quiet_hours: str
@@ -62,6 +64,7 @@ class SettingsOut(BaseModel):
             profanity=values.profanity,
             lang=values.lang,
             checkin_enabled=values.checkin_enabled,
+            stats_digest_enabled=values.stats_digest_enabled,
             checkin_time=values.checkin_time,
             checkin_reminder_minutes=values.checkin_reminder_minutes,
             quiet_hours=values.quiet_hours,
@@ -86,6 +89,7 @@ class SettingsPatch(BaseModel):
     profanity: BotProfanity | None = None
     lang: BotLang | None = None
     checkin_enabled: bool | None = None
+    stats_digest_enabled: bool | None = None
     checkin_time: time | None = None
     checkin_reminder_minutes: Annotated[int, Field(ge=0, le=720)] | None = None
     quiet_hours: str | None = Field(default=None, examples=["22:30-06:30"])

@@ -29,6 +29,13 @@ The owner authorised this phase on 2026-10-19 while Phase 7 still has pending ow
 8. Gateway and operations: Caddy allowlist and public-check, env examples, operations.md
    (invite, reset, delete), demo user, backup counts (P8.8).
 9. Phase gate (P8.9).
+10. Progress statistics API: periods in the user's time zone with the previous period's change,
+    endurance per sport group, strength (tonnage, e1RM, PRs, adherence), consistency, nutrition,
+    body trend; `/v1/stats/summary`, `/series`, `/heatmap`, `/prs`; trigger-versioned Redis cache
+    (P8.10, ADR 0038).
+11. Stats in the bot and digests: `/stats [week|month|3m|6m|year|all]` with praise / roast, the
+    Monday and 1st-of-month digests, `STATS_DIGEST_ENABLED` and a per-user switch (P8.11,
+    ADR 0038).
 
 ## Acceptance criteria
 - With `REGISTRATION_MODE=invite` an account needs an unused, unexpired invite; `open` needs none;
@@ -51,6 +58,16 @@ The owner authorised this phase on 2026-10-19 while Phase 7 still has pending ow
   the owner is exempt (test).
 - Export returns every row the user owns; deletion revokes sessions at once and the purge job
   removes all of the user's rows and deauthorizes Strava (tests).
+- Stats period boundaries are local midnights, also across a DST change (two zones); the
+  previous period has the same length (a calendar unit: the unit before); an empty period gives
+  zeros and null changes (tests).
+- e1RM ignores sets above 10 reps and warm-ups; a PR is a strictly higher e1RM than every earlier
+  set of the lift; streaks and the heatmap match hand-computed fixtures (tests).
+- A write to any of the user's tables changes the stats cache key; another user's write does not;
+  with three years of seeded data the summary answers in under 300 ms locally (tests).
+- `/stats month` answers with the month's numbers and changes in tr and en, in each tone (test).
+- Monday 09:00 local sends last week's digest once per user, in two time zones; quiet hours hold
+  it; the 1st sends the monthly one (tests with a fake clock).
 - `make verify`, `make web-verify`, `make prod-check`, `make demo-check`, `make compose-smoke`,
   `make restore-check-ci` and the fault suite are green; coverage does not drop.
 

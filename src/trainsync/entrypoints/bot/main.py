@@ -75,7 +75,7 @@ async def run(
         links = ChatLinks(read_api, clock, settings.bot_chat_cache_s)
         dispatcher = Dispatcher(
             telegram,
-            Commands(read_api, clock, msg),
+            Commands(read_api, clock, msg, voice),
             links,
             msg,
             await text_handler(settings, read_api, redis, stack, msg, clock=clock, mode=voice.mode),

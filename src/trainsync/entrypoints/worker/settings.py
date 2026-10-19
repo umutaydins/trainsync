@@ -34,6 +34,11 @@ from trainsync.modules.notifications.coach import (
     build_coach_deps,
     coach_cron,
 )
+from trainsync.modules.notifications.digest import (
+    DIGEST_CTX_KEY,
+    build_digest_deps,
+    digest_cron,
+)
 from trainsync.modules.notifications.tasks import (
     NOTIFY_CTX_KEY,
     NotifyDeps,
@@ -112,6 +117,9 @@ async def startup(ctx: dict[str, Any]) -> None:
     ctx[CHECKIN_CTX_KEY] = build_checkin_deps(
         settings, sessionmaker, http, clock, sleep, msg, voice
     )
+    ctx[DIGEST_CTX_KEY] = build_digest_deps(
+        settings, sessionmaker, http, redis, clock, sleep, msg, voice
+    )
     ctx[COACH_CTX_KEY] = build_coach_deps(
         settings, sessionmaker, http, redis, clock, sleep, messages_for(settings)
     )
@@ -121,6 +129,7 @@ async def startup(ctx: dict[str, Any]) -> None:
         notifier=notifier.channel,
         checkin=settings.bot_enabled and settings.checkin_enabled is not False,
         coach=settings.bot_enabled and settings.coach_messages_enabled is not False,
+        digests=settings.bot_enabled and settings.stats_digest_enabled is not False,
         intensity=settings.bot_intensity,
         profanity=settings.bot_profanity,
         alerts=chat_ref is not None,
@@ -157,6 +166,7 @@ class WorkerSettings:
         checkin_cron,
         alerts_cron,
         coach_cron,
+        digest_cron,
     ]
     on_startup = startup
     on_shutdown = shutdown

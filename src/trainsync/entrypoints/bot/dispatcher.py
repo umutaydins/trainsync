@@ -24,7 +24,7 @@ from trainsync.integrations.telegram.client import (
 )
 from trainsync.modules.activities.reads import week_start
 from trainsync.modules.auth.models import UserRole
-from trainsync.modules.chat import formatting
+from trainsync.modules.chat import formatting, progress
 from trainsync.modules.chat.assistant import Asker
 from trainsync.modules.chat.common import Feature, Incoming, Press, PressResult, Reply
 from trainsync.modules.chat.links import ChatLinks, user_context
@@ -98,10 +98,13 @@ def period_range(today: date, weeks: int) -> tuple[date, date]:
 
 
 class Commands:
-    def __init__(self, api: ReadApi, clock: Clock, msg: Messages) -> None:
+    def __init__(
+        self, api: ReadApi, clock: Clock, msg: Messages, voice: CoachVoice | None = None
+    ) -> None:
         self._api = api
         self._clock = clock
         self._msg = msg
+        self._voice = voice  # the progress verdict in savage (P8.11)
 
     async def run(self, command: str, args: list[str]) -> str:
         if command == "week":
@@ -127,12 +130,20 @@ class Commands:
         return formatting.format_last(latest, page.last_synced_at, self._clock(), self._msg)
 
     async def stats(self, args: list[str]) -> str:
+        """`/stats [week|month|3m|6m|year|all]`: progress (P8.11); `/stats 12w run`: totals."""
+        if not args or (len(args) == 1 and args[0].lower() in progress.BOT_PERIODS):
+            return await self.progress(args[0].lower() if args else progress.DEFAULT_BOT_PERIOD)
         period, sport = parse_stats_args(args)
         now = self._clock()
         start, end = period_range(now.date(), PERIODS[period])
         summary = await self._api.summary(start, end, sport)
         weekly = await self._api.weekly(start, end, sport)
         return formatting.format_stats(summary, weekly.weeks, period, now, self._msg)
+
+    async def progress(self, choice: str) -> str:
+        period, title = progress.BOT_PERIODS[choice]
+        summary = await self._api.progress(period)
+        return await progress.progress_message(summary, title, self._msg, self._voice)
 
     async def status(self) -> str:
         return formatting.format_status(await self._api.sync_status(), self._clock(), self._msg)

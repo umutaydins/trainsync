@@ -86,6 +86,7 @@ PROGRESS_EXAMPLE: dict[str, Any] = {
         "checkin_streak_days": 6,
         "longest_checkin_streak_days": 41,
         "checkin_rate": _change(0.89, 0.79),
+        "sick_days": 0,
     },
     "nutrition": {
         "logged_days": _change(17, 15),

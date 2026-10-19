@@ -13,7 +13,8 @@ PACK = MessagePack(
             "trainsync bot\n"
             "/week: this week vs last week\n"
             "/last: latest activity\n"
-            "/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run\n"
+            "/stats [week|month|3m|6m|year|all]: progress vs the period before\n"
+            "/stats 12w run: totals and best week (4w|12w|52w, any sport)\n"
             "/status: sync health\n"
             "/today: today's planned workout\n"
             "/log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)\n"
@@ -26,7 +27,10 @@ PACK = MessagePack(
         ),
         Key.NO_ASSISTANT: ("I only understand commands for now.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("Unknown command /{command}. Everything I can do: /help",),
-        Key.USAGE_STATS: ("Usage: /stats [4w|12w|52w] [sport], e.g. /stats 12w run",),
+        Key.USAGE_STATS: (
+            "Usage: /stats [week|month|3m|6m|year|all] or /stats [4w|12w|52w] [sport], "
+            "e.g. /stats month",
+        ),
         Key.API_DOWN: ("Sorry, I can't reach the trainsync API right now. Try again in a minute.",),
         Key.WEEK_THIS: ("This week ({range})",),
         Key.WEEK_LAST: ("Last week ({range})",),
@@ -45,6 +49,27 @@ PACK = MessagePack(
         Key.STATS_NONE: ("No activities.",),
         Key.STATS_BEST_WEEK: ("Best week: {day} · {distance} · {time}",),
         Key.STATS_LONGEST: ("Longest: {name} · {distance} ({day})",),
+        Key.PROGRESS_TITLE: ("{label} ({range})",),
+        Key.PERIOD_WEEK: ("This week",),
+        Key.PERIOD_MONTH: ("This month",),
+        Key.PERIOD_3M: ("Last 3 months",),
+        Key.PERIOD_6M: ("Last 6 months",),
+        Key.PERIOD_YEAR: ("This year",),
+        Key.PERIOD_ALL: ("All time",),
+        Key.DIGEST_WEEK: ("Your week ({range})",),
+        Key.DIGEST_MONTH: ("Your month ({range})",),
+        Key.PROGRESS_ENDURANCE: ("🏃 {count} {noun} · {distance} · {time} {change}",),
+        Key.PROGRESS_STRENGTH: ("🏋️ Workouts {sessions} · sets {sets} · {tonnage} {change}",),
+        Key.PROGRESS_PRS: ("🏆 New records: {count}",),
+        Key.PROGRESS_CONSISTENCY: ("📅 Active days {days} · streak {weeks} wk",),
+        Key.PROGRESS_NONE: ("Nothing logged in this period.",),
+        Key.PROGRESS_RECOVERY: (
+            "You were sick or injured in this period. Recover first; the numbers can wait.",
+        ),
+        # Neutral reports numbers only: no verdict line.
+        Key.PROGRESS_UP: ("",),
+        Key.PROGRESS_DOWN: ("",),
+        Key.PROGRESS_FLAT: ("",),
         Key.TOTALS: ("{count} {noun} · {distance} · {time} · {elevation}",),
         Key.ACTIVITY_ONE: ("activity",),
         Key.ACTIVITY_MANY: ("activities",),

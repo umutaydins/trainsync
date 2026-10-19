@@ -34,6 +34,8 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [29. Layers — code layout and allowed imports](#29-layers--code-layout-and-allowed-imports-adr-0033)
 - [30. Sequence — sign-up with an invite, then login through the BFF](#30-sequence--sign-up-with-an-invite-then-login-through-the-bff-p81-p87-adr-0034)
 - [31. Sequence — linking a Telegram chat with /link](#31-sequence--linking-a-telegram-chat-with-link-p84-adr-0036)
+- [32. Sequence — progress summary with the versioned cache](#32-sequence--progress-summary-with-the-versioned-cache-p810-adr-0038)
+- [33. Sequence — Monday progress digest](#33-sequence--monday-progress-digest-p811-adr-0038)
 
 ---
 
@@ -72,7 +74,7 @@ flowchart LR
             accounts["accounts<br/>/v1/auth/* · /v1/me · /v1/admin/*<br/>/v1/me/telegram · /v1/telegram/chats"]
             principal["CurrentUser<br/>Bearer · API key · service key + X-Acting-User"]
             hooks["webhooks router<br/>/webhooks/strava"]
-            read["read API<br/>/v1/*"]
+            read["read API<br/>/v1/* · /v1/stats progress (ADR 0038)"]
             ops["health + /metrics"]
         end
 
@@ -84,6 +86,7 @@ flowchart LR
             retry["retry_webhooks<br/>(cron 5 min)"]
             notify["notify_new_activity"]
             purge["purge_user"]
+            digest["digest_tick<br/>(cron 5 min)"]
             notifier["Notifier<br/>TelegramNotifier · NullNotifier"]
         end
 
@@ -95,7 +98,7 @@ flowchart LR
         end
 
         pg[("PostgreSQL")]
-        redis[("Redis<br/>queue · locks · budget · breaker state")]
+        redis[("Redis<br/>queue · locks · budget · breaker state · stats cache")]
     end
 
     strava -- "webhook POST" --> hooks
@@ -119,6 +122,7 @@ flowchart LR
     sclient -- "HTTPS (httpx)" --> strava
     worker -- "upsert" --> pg
     read -- "SELECT" --> pg
+    read -- "stats cache (data version key)" --> redis
 
     browser -- "session cookie" --> gate
     gate --> pages
@@ -148,6 +152,8 @@ flowchart LR
     purge -- "delete the user's rows" --> pg
     notify --> notifier
     notifier -- "sendMessage" --> telegram
+    digest -- "claim, summary SQL" --> pg
+    digest -- "sendMessage" --> telegram
 ```
 
 The web app and the bot are clients of the read API: neither touches PostgreSQL (ADRs 0011, 0012).
@@ -219,6 +225,7 @@ erDiagram
     users ||--o| user_settings : "has"
     users ||--o| telegram_chats : "links"
     users ||--o| athletes : "connects"
+    users ||--|| user_data_versions : "versions (trigger)"
 
     users {
         bigint id PK
@@ -272,7 +279,12 @@ erDiagram
         time workout_reminder_time "nullable"
         numeric sugar_limit_g "nullable"
         varchar country "ISO 3166, emergency number"
+        boolean stats_digest_enabled "nullable, null = STATS_DIGEST_ENABLED"
         timestamptz updated_at
+    }
+    user_data_versions {
+        bigint user_id PK, FK
+        bigint version "bumped by row triggers"
     }
     telegram_chats {
         bigint chat_id PK "Telegram chat"
@@ -286,7 +298,11 @@ erDiagram
 ```
 
 `user_settings` replaced `chat_settings` (migration 0017); a NULL column means the environment
-default. The `/link` code lives in Redis, not in a table.
+default. The `/link` code lives in Redis, not in a table. `user_data_versions` (migration 0018,
+ADR 0038) gets its row from a trigger on `users`; `bump_user_data_version` increments it on every
+insert, update and delete in the tables of `stats/models.py` `VERSIONED_TABLES` (activities,
+workouts, sets, exercises, programs and their days and exercises, food logs, nutrition profile,
+body metrics, check-ins). The statistics cache key carries it.
 
 ### Strava, sync and nutrition
 
@@ -365,7 +381,7 @@ erDiagram
     notifications {
         bigint id PK
         bigint user_id FK
-        text kind "new_activity | checkin_* | coach_*"
+        text kind "new_activity | checkin_* | coach_* | stats_digest_*"
         bigint object_id "UK with user_id, kind"
         timestamptz sent_at
     }
@@ -1633,7 +1649,8 @@ flowchart TD
 
 Imports only point down. import-linter checks the layer order, the independence of the
 entrypoints, the module order and that `ops` stays standard-library only (`make lint`). Every
-module may import any module's `models.py`.
+module may import any module's `models.py`. `stats` has its own layer between `chat` and
+`admin | users` because it reads check-ins, nutrition rules and user settings (ADR 0038).
 
 ```mermaid
 flowchart TB
@@ -1643,10 +1660,11 @@ flowchart TB
   end
   subgraph M["modules"]
     notifications --> chat
-    chat --> users & admin
-    users & admin --> coach & checkin & nutrition & stats & sync
+    chat --> stats
+    stats --> users & admin
+    users & admin --> coach & checkin & nutrition & sync
     coach & checkin & nutrition --> training
-    training & nutrition & stats & sync --> activities
+    training & nutrition & sync --> activities
     activities --> strava
     sync --> strava
     strava --> auth
@@ -1758,4 +1776,82 @@ sequenceDiagram
 
     Note over B,TG: Any other chat that is not linked
     B-->>TG: one hint: link your account at DASHBOARD_PUBLIC_URL (nothing else runs)
+```
+
+## 32. Sequence — progress summary with the versioned cache (P8.10, ADR 0038)
+
+Short windows are computed every time; windows of `STATS_CACHE_MIN_DAYS` or more go through
+Redis. Any write to a table the statistics read bumps the version, so the next request builds a
+new key; the old entry is never read again and expires after `STATS_CACHE_TTL_S`.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client (BFF, bot, curl)
+    participant API as trainsync API
+    participant DB as PostgreSQL
+    participant R as Redis
+
+    C->>API: GET /v1/stats/summary?period=12m
+    API->>API: resolve period → local days in the user's zone, previous period
+    alt window < STATS_CACHE_MIN_DAYS
+        API->>DB: one aggregate query per block (bounds = UTC instants of local midnights)
+        DB-->>API: sums, counts, e1RM maxima grouped by local day
+    else long window
+        API->>DB: SELECT version FROM user_data_versions WHERE user_id = :me
+        DB-->>API: version
+        API->>R: GET stats:{user}:{version}:summary:{hash of params}
+        alt hit
+            R-->>API: cached JSON
+        else miss (or Redis down: computed, not stored)
+            API->>DB: one aggregate query per block, current and previous period
+            DB-->>API: rows
+            API->>API: shape blocks, change and change_pct
+            API->>R: SET key JSON EX STATS_CACHE_TTL_S
+        end
+    end
+    API-->>C: 200 totals + endurance, strength, consistency, nutrition, body
+
+    Note over DB: later: any INSERT / UPDATE / DELETE on a versioned table<br/>(API, bot, sync worker, demo seed, psql)
+    DB->>DB: trigger bump_user_data_version → version + 1
+```
+
+## 33. Sequence — Monday progress digest (P8.11, ADR 0038)
+
+The 1st of the month works the same way with `stats_digest_month` and last month.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Cron as worker cron digest_tick (every 5 min)
+    participant DB as PostgreSQL
+    participant S as stats service
+    participant TG as Telegram
+
+    Cron->>DB: recipients: users with a linked chat and their settings
+    loop each recipient, in the user's time zone
+        alt digests off (no bot token, STATS_DIGEST_ENABLED=false, stats_digest_enabled=false)
+            Cron-->>Cron: skip
+        else not Monday, or before STATS_DIGEST_TIME local
+            Cron-->>Cron: nothing due
+        else quiet hours
+            Cron-->>Cron: hold until they end (same local day)
+        else due
+            Cron->>DB: claim (user_id, stats_digest_week, first day of last week) — ON CONFLICT DO NOTHING
+            alt already claimed
+                Cron-->>Cron: sent before, nothing
+            else claimed
+                Cron->>S: summary of last_week as the user
+                S->>DB: aggregate queries (local days)
+                S-->>Cron: StatsSummary
+                alt nothing trained, logged or checked in
+                    Cron-->>Cron: keep the claim, send nothing
+                else
+                    Cron->>Cron: progress message (user's language, tone, verdict line)
+                    Cron->>TG: sendMessage to the linked chat
+                    Note over Cron,DB: definite failure → release the claim, next tick retries,<br/>unknown outcome → keep it
+                end
+            end
+        end
+    end
 ```

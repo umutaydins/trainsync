@@ -605,6 +605,36 @@ Design: [ADR 0032](decisions/0032-food-roast-profanity-level-and-distress.md), t
   `update user_settings set profanity = null` returns everyone to `BOT_PROFANITY` (then
   `scripts/mac-prod.sh restart bot` to drop the bot's cache).
 
+## Progress digests
+
+Design: [ADR 0038](decisions/0038-progress-stats-aggregation.md), task
+[P8.11](tasks/P8.11-stats-bot-and-digests.md); sequence in
+[diagrams §33](diagrams.md#33-sequence--monday-progress-digest-p811-adr-0038).
+
+- **When**: worker cron `digest_tick` every 5 minutes. Every Monday from `STATS_DIGEST_TIME`
+  (09:00) in each user's time zone, last week's progress summary goes to the user's linked chat;
+  on the 1st, last month's. Same text as `/stats`, in the user's language and tone.
+- **Once**: each digest is a `notifications` row (`stats_digest_week` / `stats_digest_month`,
+  object id = first day of the period, `yyyymmdd`) claimed before sending, so restarts and
+  overlapping ticks never send it twice. A period with nothing trained, logged or checked in is
+  claimed and not sent. A definite send failure releases the claim (the next tick retries); a
+  timeout after sending keeps it.
+- **Quiet hours**: a digest that falls in the user's quiet hours waits until they end (same local
+  day), unlike the coach's timed messages, which are dropped.
+- **One user off**: `stats_digest_enabled: false` in `PATCH /v1/me/settings` (null = the
+  environment default). Everyone off: `STATS_DIGEST_ENABLED=false` in `.env.prod`, then
+  `scripts/mac-prod.sh up` (recreates the worker; startup logs `digests=false`). Without
+  `TELEGRAM_BOT_TOKEN` they are off anyway.
+- **Look**: `scripts/mac-prod.sh logs worker | grep digest_` (`digest_sent`,
+  `digest_send_failed`, `digest_delivery_unknown`);
+  `scripts/mac-prod.sh compose exec postgres psql -U trainsync -c "select user_id, kind, object_id, sent_at from notifications where kind like 'stats_digest_%' order by sent_at desc limit 20"`.
+- **Metrics**: `notifications_total{channel="telegram", outcome="digest_<outcome>"}` (sent,
+  empty, quiet, duplicate, failed, unknown) on the worker; `stats_cache_total{outcome}` (`hit`,
+  `miss`, `error` = Redis unavailable, computed instead) on the API and the worker for the
+  statistics cache of windows of `STATS_CACHE_MIN_DAYS` (180) or more. A stale cache entry needs
+  no action: any write bumps the user's data version and the old key expires after
+  `STATS_CACHE_TTL_S`.
+
 ## Owner checks
 
 Manual checks only the owner can perform. Each one stays PENDING until the owner runs the

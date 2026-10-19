@@ -34,6 +34,25 @@ class Key(StrEnum):
     STATS_NONE = "stats.none"
     STATS_BEST_WEEK = "stats.best_week"
     STATS_LONGEST = "stats.longest"
+    # Progress (P8.11, ADR 0038): /stats week|month|... and the weekly / monthly digests.
+    PROGRESS_TITLE = "progress.title"
+    PERIOD_WEEK = "period.week"
+    PERIOD_MONTH = "period.month"
+    PERIOD_3M = "period.3m"
+    PERIOD_6M = "period.6m"
+    PERIOD_YEAR = "period.year"
+    PERIOD_ALL = "period.all"
+    DIGEST_WEEK = "digest.week"
+    DIGEST_MONTH = "digest.month"
+    PROGRESS_ENDURANCE = "progress.endurance"
+    PROGRESS_STRENGTH = "progress.strength"
+    PROGRESS_PRS = "progress.prs"
+    PROGRESS_CONSISTENCY = "progress.consistency"
+    PROGRESS_NONE = "progress.none"
+    PROGRESS_UP = "progress.up"
+    PROGRESS_DOWN = "progress.down"
+    PROGRESS_FLAT = "progress.flat"
+    PROGRESS_RECOVERY = "progress.recovery"
 
     TOTALS = "totals"
     ACTIVITY_ONE = "unit.activity_one"
@@ -166,6 +185,23 @@ FIELDS: Mapping[Key, frozenset[str]] = {
     Key.STATS_NONE: _fields(),
     Key.STATS_BEST_WEEK: _fields("day", "distance", "time"),
     Key.STATS_LONGEST: _fields("name", "distance", "day"),
+    Key.PROGRESS_TITLE: _fields("label", "range"),
+    **dict.fromkeys(
+        (Key.PERIOD_WEEK, Key.PERIOD_MONTH, Key.PERIOD_3M, Key.PERIOD_6M, Key.PERIOD_YEAR),
+        _fields(),
+    ),
+    Key.PERIOD_ALL: _fields(),
+    Key.DIGEST_WEEK: _fields("range"),
+    Key.DIGEST_MONTH: _fields("range"),
+    Key.PROGRESS_ENDURANCE: _fields("count", "noun", "distance", "time", "change"),
+    Key.PROGRESS_STRENGTH: _fields("sessions", "sets", "tonnage", "change"),
+    Key.PROGRESS_PRS: _fields("count"),
+    Key.PROGRESS_CONSISTENCY: _fields("days", "weeks"),
+    Key.PROGRESS_NONE: _fields(),
+    Key.PROGRESS_UP: _fields("percent"),
+    Key.PROGRESS_DOWN: _fields("percent"),
+    Key.PROGRESS_FLAT: _fields(),
+    Key.PROGRESS_RECOVERY: _fields(),
     Key.TOTALS: _fields("count", "noun", "distance", "time", "elevation"),
     Key.ACTIVITY_ONE: _fields(),
     Key.ACTIVITY_MANY: _fields(),
@@ -262,5 +298,11 @@ FIELDS: Mapping[Key, frozenset[str]] = {
 # Answers that stay calm in every tone: no pushing on rest or on being sick or injured
 # (tests/unit/modules/coach/packs/test_bot_messages.py checks the hardcore wording of these, too).
 RESPECTFUL: frozenset[Key] = frozenset(
-    {Key.CHECKIN_REST_SAVED, Key.CHECKIN_SICK_SAVED, Key.CHECKIN_BTN_REST, Key.CHECKIN_BTN_SICK}
+    {
+        Key.CHECKIN_REST_SAVED,
+        Key.CHECKIN_SICK_SAVED,
+        Key.CHECKIN_BTN_REST,
+        Key.CHECKIN_BTN_SICK,
+        Key.PROGRESS_RECOVERY,
+    }
 )

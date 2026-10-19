@@ -38,6 +38,7 @@ class Consistency:
     checkin_streak_days: int
     longest_checkin_streak_days: int
     checkin_days: int
+    sick_days: int
     window_days: int
 
     @property
@@ -114,6 +115,9 @@ async def consistency(
         checkin_streak_days=streaks.current_streak(statuses, today),
         longest_checkin_streak_days=streaks.longest_streak(statuses, today),
         checkin_days=sum(1 for d in statuses if d in window),
+        sick_days=sum(
+            1 for d, s in statuses.items() if d in window and s is CheckinStatus.SICK_OR_INJURED
+        ),
         window_days=window.days,
     )
 

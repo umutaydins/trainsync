@@ -21,6 +21,9 @@ class Category(StrEnum):
     FOOD_ROAST = "food_roast"
     PROFANITY_SET = "profanity_set"
     UNKNOWN_COMMAND = "unknown_command"
+    # Progress summaries and digests (P8.11): more work than the previous period, or less.
+    PROGRESS_UP = "progress_up"
+    PROGRESS_DOWN = "progress_down"
     # Short English lines appended to about 1 in 4 savage messages; never sent alone.
     PUNCHLINE_EN = "punchline_en"
     # Max profanity only (ADR 0032): a line put in front of every other savage message.

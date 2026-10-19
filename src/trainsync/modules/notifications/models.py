@@ -26,6 +26,9 @@ class NotificationKind(StrEnum):
     COACH_REST_OVER = "coach_rest_over"
     COACH_UNDER_TARGET = "coach_under_target"
     COACH_WORKOUT_DONE = "coach_workout_done"
+    # Progress digests (P8.11); object_id = the first day of the period (yyyymmdd).
+    STATS_DIGEST_WEEK = "stats_digest_week"
+    STATS_DIGEST_MONTH = "stats_digest_month"
 
 
 class Notification(Base):

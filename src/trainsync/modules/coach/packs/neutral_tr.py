@@ -16,7 +16,8 @@ PACK = MessagePack(
             "trainsync botu\n"
             "/week: bu hafta ve geçen hafta\n"
             "/last: son aktivite\n"
-            "/stats [4w|12w|52w] [spor]: toplamlar ve en iyi hafta, ör. /stats 12w run\n"
+            "/stats [week|month|3m|6m|year|all]: önceki döneme göre ilerleme\n"
+            "/stats 12w run: toplamlar ve en iyi hafta (4w|12w|52w, her spor)\n"
             "/status: senkron durumu\n"
             "/today: bugünkü planlı antrenman\n"
             "/log bench 80x5x3: set kaydet (80x5,5,4 ya da bw x12x3 de olur)\n"
@@ -29,7 +30,10 @@ PACK = MessagePack(
         ),
         Key.NO_ASSISTANT: ("Şimdilik yalnızca komutları anlıyorum.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("Bilinmeyen komut: /{command}. Neler yapabildiğim: /help",),
-        Key.USAGE_STATS: ("Kullanım: /stats [4w|12w|52w] [spor], ör. /stats 12w run",),
+        Key.USAGE_STATS: (
+            "Kullanım: /stats [week|month|3m|6m|year|all] ya da /stats [4w|12w|52w] [spor], "
+            "ör. /stats month",
+        ),
         Key.API_DOWN: ("Üzgünüm, şu an trainsync API'ye ulaşamıyorum. Bir dakika sonra dene.",),
         Key.WEEK_THIS: ("Bu hafta ({range})",),
         Key.WEEK_LAST: ("Geçen hafta ({range})",),
@@ -47,6 +51,27 @@ PACK = MessagePack(
         Key.STATS_NONE: ("Aktivite yok.",),
         Key.STATS_BEST_WEEK: ("En iyi hafta: {day} · {distance} · {time}",),
         Key.STATS_LONGEST: ("En uzun: {name} · {distance} ({day})",),
+        Key.PROGRESS_TITLE: ("{label} ({range})",),
+        Key.PERIOD_WEEK: ("Bu hafta",),
+        Key.PERIOD_MONTH: ("Bu ay",),
+        Key.PERIOD_3M: ("Son 3 ay",),
+        Key.PERIOD_6M: ("Son 6 ay",),
+        Key.PERIOD_YEAR: ("Bu yıl",),
+        Key.PERIOD_ALL: ("Tüm zamanlar",),
+        Key.DIGEST_WEEK: ("Haftan ({range})",),
+        Key.DIGEST_MONTH: ("Ayın ({range})",),
+        Key.PROGRESS_ENDURANCE: ("🏃 {count} {noun} · {distance} · {time} {change}",),
+        Key.PROGRESS_STRENGTH: ("🏋️ {sessions} antrenman · {sets} set · {tonnage} {change}",),
+        Key.PROGRESS_PRS: ("🏆 Yeni rekor: {count}",),
+        Key.PROGRESS_CONSISTENCY: ("📅 {days} aktif gün · seri {weeks} hafta",),
+        Key.PROGRESS_NONE: ("Bu dönemde kayıt yok.",),
+        Key.PROGRESS_RECOVERY: (
+            "Bu dönemde hasta ya da sakattın. Önce iyileş; rakamlar bekleyebilir.",
+        ),
+        # Neutral reports numbers only: no verdict line.
+        Key.PROGRESS_UP: ("",),
+        Key.PROGRESS_DOWN: ("",),
+        Key.PROGRESS_FLAT: ("",),
         Key.TOTALS: ("{count} {noun} · {distance} · {time} · {elevation}",),
         Key.ACTIVITY_ONE: ("aktivite",),
         Key.ACTIVITY_MANY: ("aktivite",),

@@ -18,8 +18,8 @@ from trainsync.modules.stats.schemas import (
     EffortOut,
     EnduranceOut,
     EnduranceTotalsOut,
-    ExerciseOut,
-    MuscleOut,
+    ExerciseProgressOut,
+    MuscleProgressOut,
     NutritionOut,
     ProgressOut,
     SportGroupOut,
@@ -137,11 +137,11 @@ async def _strength(ctx: StatsContext, resolved: Resolved) -> StrengthOut:
         tonnage_kg=change(*pair("tonnage_kg"), compared),
         pr_count=change(len(records), before_records, compared),
         by_muscle=[
-            MuscleOut(muscle=m.muscle, sets=m.sets, tonnage_kg=float(m.tonnage_kg))
+            MuscleProgressOut(muscle=m.muscle, sets=m.sets, tonnage_kg=float(m.tonnage_kg))
             for m in await strength.per_muscle(session, scope, window)
         ],
         by_exercise=[
-            ExerciseOut(
+            ExerciseProgressOut(
                 exercise_id=e.exercise_id,
                 name=e.name,
                 muscle=e.muscle,
@@ -188,6 +188,7 @@ async def _consistency(ctx: StatsContext, resolved: Resolved, first: date) -> Co
         checkin_streak_days=now.checkin_streak_days,
         longest_checkin_streak_days=now.longest_checkin_streak_days,
         checkin_rate=change(now.checkin_rate, before.checkin_rate if before else None, compared),
+        sick_days=now.sick_days,
     )
 
 

@@ -12,7 +12,8 @@ depending on Strava's UI, its availability, or its rate limits every time I quer
 - Connects a Strava account via OAuth and backfills the full activity history
 - Receives Strava webhooks and applies changes asynchronously (create / update / delete / deauthorize)
 - Runs incremental syncs as a safety net for missed webhooks
-- Serves activities and weekly stats through a typed HTTP API
+- Serves activities, weekly stats and progress statistics (periods in your time zone compared with
+  the period before) through a typed HTTP API
 - A small private web dashboard (Next.js): weekly volume, totals by sport, activity list and
   detail, sync status and a "Connect Strava" button
 - A Telegram bot that answers `/week`, `/last`, `/stats`, `/status` (and, optionally, plain
@@ -221,7 +222,8 @@ settings ([ADR 0036](docs/decisions/0036-telegram-per-user-and-acting-as.md)).
 | `/link CODE`, `/unlink` | link this chat to your account with the dashboard's code, or unlink it |
 | `/week` | this ISO week so far (totals and by sport) vs the whole previous week, with the distance difference |
 | `/last` | the latest activity: distance, time, pace or speed, elevation, average heart rate |
-| `/stats [4w\|12w\|52w] [sport]` | totals and best week for the period (default `4w`), e.g. `/stats 12w run` |
+| `/stats [week\|month\|3m\|6m\|year\|all]` | progress summary (default `week`): endurance, strength, consistency and food, each with the change against the previous period, and a verdict line (praise or roast in savage; calm when the period had sick or injured check-ins; never body weight) |
+| `/stats [4w\|12w\|52w] [sport]` | totals and best week for the period, e.g. `/stats 12w run` |
 | `/status` | sync health in one line: last sync, webhooks pending / failed / dead, Strava circuit state, rate-limit usage |
 | `/today` | today's planned program day with suggested weights (or what is logged so far) |
 | `/plates 102.5` | plates per side for a target weight |
@@ -255,6 +257,11 @@ never body, weight or appearance, no slurs, no push through pain or illness, nev
 or eating below the target, and distress (guilt, purging, not eating, self-hate, bingeing) gets a
 calm reply without swearing ([ADR 0030](docs/decisions/0030-coach-intensity-and-guardrails.md),
 [ADR 0032](docs/decisions/0032-food-roast-profanity-level-and-distress.md)).
+
+**Progress digests**: every Monday (last week) and on the 1st (last month) at `STATS_DIGEST_TIME`
+in your time zone the worker sends the same progress summary as `/stats`, once per period; quiet
+hours hold it, an empty period is not sent, and `stats_digest_enabled` in your settings switches
+it off ([ADR 0038](docs/decisions/0038-progress-stats-aggregation.md)).
 
 **Natural-language questions** (optional): with `ANTHROPIC_API_KEY` set, any plain text such as
 "how far did I run in September?" goes to Claude with four tools that map 1:1 to read endpoints
@@ -364,6 +371,18 @@ The `BOT_*`, `CHECKIN_*`, `QUIET_HOURS`, `WORKOUT_REMINDER_TIME`, `SUGAR_LIMIT_G
 `EMERGENCY_NUMBER` values above are now the defaults of a new user's settings; each user's
 `PATCH /v1/me/settings` overrides them, and crons run in each user's time zone.
 
+## Configuration added for progress statistics
+P8.10, P8.11 ([ADR 0038](docs/decisions/0038-progress-stats-aggregation.md)). Defaults in
+[.env.example](.env.example); compose passes the digest variables to the worker, add the others to a service's `environment`.
+
+| Variable | Used by | Default | Purpose |
+|---|---|---|---|
+| `STATS_CACHE_MIN_DAYS` | API, worker | `180` | Windows of at least this many days are cached in Redis, keyed by the user's data version |
+| `STATS_CACHE_TTL_S` | API, worker | `86400` | Lifetime of a cached statistics result |
+| `STATS_E1RM_MAX_REPS` | API, worker | `10` | e1RM trend and PRs use working sets of at most this many reps (Epley) |
+| `STATS_DIGEST_ENABLED` | worker | on with a bot token | Monday and 1st-of-month progress digests; `false` = off for everyone; otherwise each user's `stats_digest_enabled` setting (null = on) decides |
+| `STATS_DIGEST_TIME` | worker | `09:00` | Local time of the digests |
+
 ## API
 Interactive docs at http://localhost:8000/docs; the OpenAPI document is committed as
 [docs/openapi.json](docs/openapi.json). `/v1` needs one of:
@@ -387,8 +406,18 @@ curl -s -H 'Authorization: Bearer <token>' http://localhost:8000/v1/me
 curl -s -H 'X-API-Key: dev-key-1' 'http://localhost:8000/v1/activities?limit=50&sport_type=Run'
 curl -s -H 'X-API-Key: dev-key-1' 'http://localhost:8000/v1/activities?limit=50&cursor=<next_cursor>'
 
-# Weekly totals (ISO weeks, Monday start, UTC), empty weeks zero-filled
+# Weekly totals (ISO weeks, Monday start, in the user's time zone), empty weeks zero-filled
 curl -s -H 'X-API-Key: dev-key-1' 'http://localhost:8000/v1/stats/weekly?from=2026-09-01&to=2026-10-18'
+
+# Progress (ADR 0038): period = week|last_week|month|last_month|3m|6m|year|12m|all|custom (&from&to);
+# the old totals plus endurance, strength, consistency, nutrition and body, each with the change
+curl -s -H 'X-API-Key: dev-key-1' 'http://localhost:8000/v1/stats/summary?period=month'
+# One zero-filled point per bucket (day|week|month; default by length), optional sport group
+curl -s -H 'X-API-Key: dev-key-1' 'http://localhost:8000/v1/stats/series?metric=distance_m&period=3m&bucket=week&sport=run'
+# One value per local day of the year: training minutes, sessions, check-in status
+curl -s -H 'X-API-Key: dev-key-1' 'http://localhost:8000/v1/stats/heatmap?year=2026'
+# e1RM records with the value they beat, newest first (default period all)
+curl -s -H 'X-API-Key: dev-key-1' 'http://localhost:8000/v1/stats/prs?period=year&exercise_id=1'
 
 # Sync health: runs per athlete, webhook backlog and dead letters, rate-limit usage, circuit state
 curl -s -H 'X-API-Key: dev-key-1' http://localhost:8000/v1/sync/status
@@ -497,6 +526,7 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 | [0035](docs/decisions/0035-tenant-isolation-by-user-id.md) | Tenant isolation by `user_id`, and the single-user migration |
 | [0036](docs/decisions/0036-telegram-per-user-and-acting-as.md) | One bot for everyone: chat linking, acting as a user, per-user settings and schedules |
 | [0037](docs/decisions/0037-strava-per-user-fair-sync-deletion-export.md) | Strava per user, fair sync, account deletion and data export |
+| [0038](docs/decisions/0038-progress-stats-aggregation.md) | Progress statistics: local-day SQL aggregation, period rules, trigger-versioned cache |
 
 ## Status
 - [x] Phase 1 — Foundation, OAuth, Strava client
@@ -506,5 +536,5 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 - [x] Phase 5 — Web dashboard and Telegram bot
 - [x] Phase 6 — Strength training, programs and nutrition
 - [ ] Phase 7 — Deploy (Mac backend + Vercel web) — built and tested; waiting for the owner checks in [docs/operations.md](docs/operations.md#owner-checks) ([evidence](docs/phases/phase-7-deploy.md#evidence))
-- [x] Phase 8 — Multi-user (invite-only accounts, per-user data, Strava and Telegram) — deployed together with Phase 7 once its owner checks pass; dashboard pages for sign-up, reset and settings follow in the web UI tasks
+- [x] Phase 8 — Multi-user (invite-only accounts, per-user data, Strava and Telegram) and progress statistics (P8.10 API, P8.11 bot `/stats` and weekly / monthly digests) — deployed together with Phase 7 once its owner checks pass; dashboard pages for sign-up, reset and settings follow in the web UI tasks
 - [ ] Phase 9 — Body composition, Apple Health and adaptive programs

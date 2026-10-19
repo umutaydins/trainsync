@@ -57,6 +57,19 @@ class Choice:
     end: date | None = None
 
 
+async def summary_of(
+    session: AsyncSession,
+    principal: Principal,
+    now: datetime,
+    settings: Settings,
+    redis: Redis,
+    period: Period,
+) -> StatsSummary:
+    """The summary as the API would answer it, for the worker's digests (P8.11)."""
+    request = Request(principal, now, settings, redis)
+    return await summary(session, request, Choice(period), None, None)
+
+
 def zone_of(principal: Principal) -> ZoneInfo:
     return ZoneInfo(principal.timezone)
 

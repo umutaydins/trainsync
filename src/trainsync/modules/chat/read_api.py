@@ -20,7 +20,8 @@ from trainsync.modules.chat.router import ChatOwner, LinkIn
 from trainsync.modules.checkin.router import CheckinIn, CheckinOut, CheckinSummary
 from trainsync.modules.coach.mode import CURRENT_USER
 from trainsync.modules.nutrition.router import DaySummary, FoodList, FoodLookup, LogIn, LogOut
-from trainsync.modules.stats.totals import ActivitySummary, WeeklyStats
+from trainsync.modules.stats.periods import Period
+from trainsync.modules.stats.totals import ActivitySummary, StatsSummary, WeeklyStats
 from trainsync.modules.sync.router import SyncStatusOut
 from trainsync.modules.training.routes.exercises import ExerciseList
 from trainsync.modules.training.routes.next_day import NextDay
@@ -58,6 +59,10 @@ class ReadApi:
     ) -> ActivitySummary:
         params = _params(start=start, end=end, sport_type=sport_type)
         return await self._get("/v1/stats/summary", params, ActivitySummary)
+
+    async def progress(self, period: Period) -> StatsSummary:
+        """The progress summary of the acting user (P8.11)."""
+        return await self._get("/v1/stats/summary", {"period": period.value}, StatsSummary)
 
     async def weekly(self, start: date, end: date, sport_type: str | None = None) -> WeeklyStats:
         params = _params(start=start, end=end, sport_type=sport_type)

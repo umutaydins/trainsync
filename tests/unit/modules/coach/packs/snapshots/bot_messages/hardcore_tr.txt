@@ -2,7 +2,8 @@
 Koç burada. Komutlar var, bahane yok.
 /week: bu hafta ve geçen hafta
 /last: son aktivite
-/stats [4w|12w|52w] [spor]: toplamlar ve en iyi hafta, ör. /stats 12w run
+/stats [week|month|3m|6m|year|all]: önceki döneme göre ilerleme
+/stats 12w run: toplamlar ve en iyi hafta (4w|12w|52w, her spor)
 /status: senkron durumu
 /today: bugünkü planlı antrenman
 /log bench 80x5x3: set kaydet (80x5,5,4 ya da bw x12x3 de olur)
@@ -22,7 +23,8 @@ Sohbet yok, sadece komut.
 Koç burada. Komutlar var, bahane yok.
 /week: bu hafta ve geçen hafta
 /last: son aktivite
-/stats [4w|12w|52w] [spor]: toplamlar ve en iyi hafta, ör. /stats 12w run
+/stats [week|month|3m|6m|year|all]: önceki döneme göre ilerleme
+/stats 12w run: toplamlar ve en iyi hafta (4w|12w|52w, her spor)
 /status: senkron durumu
 /today: bugünkü planlı antrenman
 /log bench 80x5x3: set kaydet (80x5,5,4 ya da bw x12x3 de olur)
@@ -40,7 +42,7 @@ Koç burada. Komutlar var, bahane yok.
 /foo diye bir şey yok lan. Gerçek komutlar: /help
 
 ## usage
-Yanlış. Kullanım: /stats [4w|12w|52w] [spor], ör. /stats 12w run
+Yanlış. Kullanım: /stats [week|month|3m|6m|year|all] ya da /stats [4w|12w|52w] [spor], ör. /stats month
 
 ## api down
 API çöktü ulan. Sen o arada koş. Bir dakika sonra dene.
