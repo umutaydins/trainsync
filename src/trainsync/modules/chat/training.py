@@ -31,7 +31,6 @@ from trainsync.modules.chat.common import (
     thousands,
 )
 from trainsync.modules.chat.exercises import resolve_exercise
-from trainsync.modules.chat.formatting import duration
 from trainsync.modules.chat.parsing import (
     ParsedSet,
     ParseError,
@@ -40,6 +39,7 @@ from trainsync.modules.chat.parsing import (
     parse_number,
 )
 from trainsync.modules.chat.read_api import ReadApi
+from trainsync.modules.chat.units import duration
 from trainsync.modules.coach.context import current_zone
 from trainsync.modules.coach.packs import Key, Messages, NeutralKey
 from trainsync.modules.training.models import Equipment

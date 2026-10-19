@@ -8,15 +8,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from trainsync.core.clock import Clock
 from trainsync.core.security import (
-    UNUSABLE_HASH,
     hash_password,
     new_token,
     normal_email,
-    password_problem,
     token_hash,
     verify_password,
 )
@@ -28,20 +26,50 @@ from trainsync.modules.auth.errors import (
     InvalidTokenError,
     RateLimitedError,
     RegistrationClosedError,
-    WeakPasswordError,
 )
 from trainsync.modules.auth.limits import AuthLimiter
 from trainsync.modules.auth.models import AuthSession, Invite, User, UserRole
+from trainsync.modules.auth.recovery import (
+    DISPLAY_NAME_MAX,
+    Sessionmaker,
+    create_invite,
+    create_reset,
+    ensure_owner,
+    reset_password,
+    set_password,
+)
+from trainsync.modules.auth.recovery import check_password as _check_password
+from trainsync.modules.auth.recovery import default_display_name as _display_name
 from trainsync.modules.auth.repository import (
     InviteRepository,
-    ResetRepository,
     SessionRepository,
     UserRepository,
 )
 
-Sessionmaker = async_sessionmaker[AsyncSession]
+__all__ = [
+    "DISPLAY_NAME_MAX",
+    "INVALID_LOGIN",
+    "USER_AGENT_MAX",
+    "IssuedSession",
+    "Principal",
+    "Sessionmaker",
+    "authenticate",
+    "change_password",
+    "create_invite",
+    "create_reset",
+    "ensure_owner",
+    "issue_session",
+    "login",
+    "logout",
+    "register",
+    "reset_password",
+    "revoke_session",
+    "sessions_of",
+    "set_password",
+    "valid_timezone",
+]
+
 USER_AGENT_MAX = 200
-DISPLAY_NAME_MAX = 100
 INVALID_LOGIN = "invalid email or password"
 
 
@@ -72,17 +100,6 @@ def valid_timezone(name: str) -> str:
     except (ZoneInfoNotFoundError, ValueError) as exc:
         raise AuthError(f"unknown time zone {name!r}") from exc
     return name
-
-
-def _check_password(password: str) -> None:
-    problem = password_problem(password)
-    if problem:
-        raise WeakPasswordError(problem)
-
-
-def _display_name(name: str | None, email: str) -> str:
-    chosen = (name or "").strip() or email.split("@", 1)[0]
-    return chosen[:DISPLAY_NAME_MAX]
 
 
 # ---------------------------------------------------------------- registration
@@ -238,75 +255,3 @@ async def change_password(
     async with db.begin() as session:
         await UserRepository(session).set_password(user.id, new_hash)
         await SessionRepository(session).revoke_all(user.id, clock(), keep=principal.session_id)
-
-
-# ---------------------------------------------------------------- invites and resets
-
-
-async def create_invite(
-    db: Sessionmaker, settings: Settings, clock: Clock, *, created_by: int | None, note: str | None
-) -> tuple[Invite, str]:
-    code = new_token()
-    expires_at = clock() + timedelta(days=settings.invite_ttl_days)
-    async with db.begin() as session:
-        invite = await InviteRepository(session).add(
-            code_hash=token_hash(code), created_by=created_by, note=note, expires_at=expires_at
-        )
-    return invite, code
-
-
-async def create_reset(
-    db: Sessionmaker, settings: Settings, clock: Clock, user_id: int
-) -> tuple[str, datetime]:
-    """A one-time reset token for the user (the owner hands out the link)."""
-    token = new_token()
-    expires_at = clock() + timedelta(minutes=settings.reset_ttl_minutes)
-    async with db.begin() as session:
-        if await UserRepository(session).by_id(user_id) is None:
-            raise InvalidTokenError("no such user")
-        await ResetRepository(session).add(
-            user_id=user_id, token_hash=token_hash(token), expires_at=expires_at
-        )
-    return token, expires_at
-
-
-async def reset_password(db: Sessionmaker, clock: Clock, *, token: str, new: str) -> None:
-    _check_password(new)
-    new_hash = await hash_password(new)
-    now = clock()
-    async with db.begin() as session:
-        resets = ResetRepository(session)
-        reset = await resets.usable_for_update(token_hash(token), now)
-        if reset is None:
-            raise InvalidTokenError("the reset link is invalid, used or expired")
-        await UserRepository(session).set_password(reset.user_id, new_hash)
-        await resets.mark_used(reset.id, now)
-        await SessionRepository(session).revoke_all(reset.user_id, now)
-
-
-async def set_password(db: Sessionmaker, clock: Clock, user_id: int, new: str) -> None:
-    """Owner tooling (`scripts/owner.py set-password`): no current password; all sessions end."""
-    _check_password(new)
-    new_hash = await hash_password(new)
-    async with db.begin() as session:
-        await UserRepository(session).set_password(user_id, new_hash)
-        await SessionRepository(session).revoke_all(user_id, clock())
-
-
-async def ensure_owner(
-    db: Sessionmaker, settings: Settings, *, email: str, display_name: str | None = None
-) -> User:
-    """The owner account, created with an unusable password if missing (owner CLI, tests)."""
-    email = normal_email(email)
-    async with db.begin() as session:
-        users = UserRepository(session)
-        owner = await users.owner()
-        if owner is not None:
-            return owner
-        return await users.add(
-            email=email,
-            password_hash=UNUSABLE_HASH,
-            display_name=_display_name(display_name, email),
-            timezone=settings.checkin_tz,
-            role=UserRole.OWNER,
-        )

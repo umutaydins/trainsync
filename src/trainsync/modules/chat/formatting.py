@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from enum import StrEnum
 
 from trainsync.modules.activities.router import ActivityOut
+from trainsync.modules.chat.units import duration, elevation, km, pace_or_speed, sport_emoji
 from trainsync.modules.coach.packs import Key, Messages
 from trainsync.modules.stats.totals import ActivitySummary, TotalsOut, Week
 from trainsync.modules.sync.router import SyncStatusOut
@@ -16,67 +17,9 @@ from trainsync.modules.sync.router import SyncStatusOut
 # Data older than this gets an explicit "as of" warning.
 STALE_AFTER = timedelta(hours=24)
 
-_EMOJI = {
-    "Run": "🏃",
-    "TrailRun": "🏃",
-    "VirtualRun": "🏃",
-    "Walk": "🚶",
-    "Hike": "🥾",
-    "Ride": "🚴",
-    "GravelRide": "🚴",
-    "MountainBikeRide": "🚵",
-    "VirtualRide": "🚴",
-    "EBikeRide": "🚴",
-    "Swim": "🏊",
-    "Rowing": "🚣",
-    "WeightTraining": "🏋️",
-    "Workout": "💪",
-    "Yoga": "🧘",
-    "AlpineSki": "⛷️",
-    "NordicSki": "⛷️",
-}
-_PACE_SPORTS = {"Run", "TrailRun", "VirtualRun", "Walk", "Hike"}
-_SWIM_SPORTS = {"Swim"}
 # The coach's week verdict compares moving time, so mixed sports count fairly (ADR 0016).
 PUSH_BELOW = 0.5
 UP_FROM = 1.0
-
-
-def sport_emoji(sport_type: str) -> str:
-    return _EMOJI.get(sport_type, "🏅")
-
-
-def km(distance_m: float) -> str:
-    return f"{distance_m / 1000:.1f} km"
-
-
-def duration(seconds: int) -> str:
-    """`1h 05m` from one hour on, else `42m 10s`."""
-    hours, rest = divmod(max(seconds, 0), 3600)
-    minutes, secs = divmod(rest, 60)
-    if hours:
-        return f"{hours}h {minutes:02d}m"
-    return f"{minutes}m {secs:02d}s"
-
-
-def elevation(meters: float) -> str:
-    return f"↑ {meters:.0f} m"
-
-
-def pace_or_speed(sport_type: str, distance_m: float, moving_time_s: int) -> str | None:
-    """min/km for foot sports, min/100 m for swims, km/h otherwise; None without distance."""
-    if distance_m <= 0 or moving_time_s <= 0:
-        return None
-    if sport_type in _PACE_SPORTS:
-        return f"{_min_sec(moving_time_s / (distance_m / 1000))} /km"
-    if sport_type in _SWIM_SPORTS:
-        return f"{_min_sec(moving_time_s / (distance_m / 100))} /100 m"
-    return f"{distance_m / 1000 / (moving_time_s / 3600):.1f} km/h"
-
-
-def _min_sec(seconds: float) -> str:
-    total = round(seconds)
-    return f"{total // 60}:{total % 60:02d}"
 
 
 def totals_line(totals: TotalsOut, msg: Messages) -> str:

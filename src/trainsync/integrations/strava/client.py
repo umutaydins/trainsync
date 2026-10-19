@@ -10,26 +10,25 @@ import random
 import time
 from collections.abc import Mapping
 from datetime import datetime, timedelta
-from typing import Protocol
+from http import HTTPStatus
 
 import httpx
 from pydantic import TypeAdapter
 
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
-from trainsync.core.logging import get_logger
-from trainsync.core.metrics import STRAVA_REQUEST_DURATION, STRAVA_REQUESTS, STRAVA_RETRIES
+from trainsync.core.metrics import STRAVA_RETRIES
 from trainsync.core.settings import Settings
 from trainsync.integrations.strava.breaker import BreakerListener, BreakerState, CircuitBreaker
-from trainsync.integrations.strava.budget import Allowance, Priority
+from trainsync.integrations.strava.budget import Priority
 from trainsync.integrations.strava.errors import (
     RateLimited,
     StravaAuthError,
-    StravaFieldError,
     StravaNotFound,
     StravaRequestError,
     StravaUnauthorized,
     StravaUnavailable,
 )
+from trainsync.integrations.strava.hooks import RateLimitHook, TokenProvider
 from trainsync.integrations.strava.models import (
     PushSubscription,
     StravaActivity,
@@ -42,30 +41,18 @@ from trainsync.integrations.strava.ratelimit import (
     next_window_reset,
     parse_rate_limit,
 )
+from trainsync.integrations.strava.responses import client_error
 from trainsync.integrations.strava.retry import RetryPolicy, is_retryable
+from trainsync.integrations.strava.telemetry import log_call
 
-log = get_logger(__name__)
+__all__ = ["QueryParams", "RateLimitHook", "StravaClient", "TokenProvider"]
+
 
 QueryParams = Mapping[str, str | int]
+DEFAULT_PAGE_SIZE = 200  # Strava's maximum per_page
 
 _activities = TypeAdapter(list[StravaActivity])
 _subscriptions = TypeAdapter(list[PushSubscription])
-
-
-class TokenProvider(Protocol):
-    async def access_token(self, athlete_id: int) -> str: ...
-
-    async def force_refresh(self, athlete_id: int) -> str: ...
-
-
-class RateLimitHook(Protocol):
-    """What the client needs from the rate budget (implemented by `RateBudget`)."""
-
-    async def allow(self, priority: Priority) -> Allowance: ...
-
-    async def record(self, snapshot: RateLimitSnapshot) -> None: ...
-
-    async def block_until(self, reset_at: datetime) -> None: ...
 
 
 class StravaClient:
@@ -119,7 +106,7 @@ class StravaClient:
         before: int | None = None,
         after: int | None = None,
         page: int = 1,
-        per_page: int = 200,
+        per_page: int = DEFAULT_PAGE_SIZE,
         priority: Priority = "low",
     ) -> list[StravaActivity]:
         params: dict[str, str | int] = {"page": page, "per_page": per_page}
@@ -262,18 +249,18 @@ class StravaClient:
                     method, url, params=params, data=data, headers=headers
                 )
             except httpx.TransportError as exc:
-                self._log_call(template, None, started, attempt, error=type(exc).__name__)
+                log_call(template, None, started, attempt, error=type(exc).__name__)
                 if attempt == last_attempt:
                     raise StravaUnavailable(f"{template}: {type(exc).__name__}") from exc
                 STRAVA_RETRIES.inc()
                 await self._sleep(self._policy.backoff(attempt, self._rng))
                 continue
 
-            self._log_call(template, response.status_code, started, attempt)
+            log_call(template, response.status_code, started, attempt)
             snapshot = await self._record_rate_limit(response)
             if response.is_success:
                 return response
-            if response.status_code == 429:
+            if response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
                 reset_at = self._reset_after_429(snapshot)
                 if self._budget is not None:
                     await self._budget.block_until(reset_at)
@@ -284,7 +271,7 @@ class StravaClient:
                 STRAVA_RETRIES.inc()
                 await self._sleep(self._policy.backoff(attempt, self._rng))
                 continue
-            raise _client_error(response)
+            raise client_error(response)
         raise AssertionError("unreachable")  # pragma: no cover
 
     async def _record_rate_limit(self, response: httpx.Response) -> RateLimitSnapshot | None:
@@ -299,56 +286,3 @@ class StravaClient:
         if snapshot is not None and snapshot.daily_ratio >= 1.0:
             return next_daily_reset(now)
         return next_window_reset(now)
-
-    def _log_call(
-        self,
-        template: str,
-        status: int | None,
-        started: float,
-        attempt: int,
-        *,
-        error: str | None = None,
-    ) -> None:
-        duration = time.perf_counter() - started
-        STRAVA_REQUESTS.labels(template, "error" if status is None else str(status)).inc()
-        STRAVA_REQUEST_DURATION.labels(template).observe(duration)
-        log.info(
-            "strava_call",
-            endpoint=template,
-            status=status,
-            duration_ms=round(duration * 1000, 1),
-            attempt=attempt + 1,
-            error=error,
-        )
-
-
-def _client_error(response: httpx.Response) -> Exception:
-    if response.status_code == 401:
-        return StravaUnauthorized("strava rejected the access token")
-    if response.status_code == 404:
-        return StravaNotFound("strava object not found")
-    message, errors = _error_body(response)
-    return StravaRequestError(response.status_code, message, errors)
-
-
-def _error_body(response: httpx.Response) -> tuple[str, tuple[StravaFieldError, ...]]:
-    """Strava's `{"message": ..., "errors": [{"resource", "field", "code"}]}`, if that is what
-    came back; anything else gives nothing."""
-    try:
-        body = response.json()
-    except ValueError:
-        return "", ()
-    if not isinstance(body, dict):
-        return "", ()
-    raw = body.get("errors")
-    items = raw if isinstance(raw, list) else []
-    errors = tuple(
-        StravaFieldError(
-            resource=str(item.get("resource", "")),
-            field=str(item.get("field", "")),
-            code=str(item.get("code", "")),
-        )
-        for item in items
-        if isinstance(item, dict)
-    )
-    return str(body.get("message", "")), errors

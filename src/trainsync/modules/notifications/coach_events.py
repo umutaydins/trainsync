@@ -7,8 +7,8 @@ from arq.connections import ArqRedis
 from sqlalchemy import select
 
 from trainsync.modules.chat.common import client_id, kg, thousands
-from trainsync.modules.chat.formatting import duration
 from trainsync.modules.chat.training import record_lines
+from trainsync.modules.chat.units import duration
 from trainsync.modules.coach.categories import Category
 from trainsync.modules.coach.context import using_context
 from trainsync.modules.coach.packs import Key
