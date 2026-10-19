@@ -260,6 +260,9 @@ async def test_password_change_keeps_this_session_and_ends_the_others(
             "/v1/me", json={"display_name": "Alice", "timezone": "Asia/Tokyo"}
         )
         assert renamed.json()["display_name"] == "Alice"
+        blank = await api.patch("/v1/me", json={"display_name": "   "})
+        assert blank.status_code == 422
+        assert (await api.get("/v1/me")).json()["display_name"] == "Alice"
     async with client(app, Authorization=f"Bearer {other}") as api:
         assert (await api.get("/v1/me")).status_code == 401
     await login(app, Account(account.id, account.email, "a new long password"))

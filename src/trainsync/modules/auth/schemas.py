@@ -3,13 +3,16 @@
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
 
 from trainsync.core.security import PASSWORD_MAX_LENGTH
 from trainsync.modules.auth.models import User, UserRole
 
 Password = Annotated[str, Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)]
-DisplayName = Annotated[str, Field(min_length=1, max_length=100)]
+# Stripped first: a name of only spaces is no name (the app would show an empty sidebar).
+DisplayName = Annotated[
+    str, StringConstraints(strip_whitespace=True), Field(min_length=1, max_length=100)
+]
 TimeZone = Annotated[str, Field(min_length=1, max_length=64, examples=["Europe/Berlin"])]
 
 ME_EXAMPLE: dict[str, Any] = {

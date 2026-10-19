@@ -22,6 +22,8 @@ from trainsync.modules.training.models import Workout
 
 SECONDS_PER_MINUTE = 60
 WEEK = timedelta(7)
+# The default heatmap: the last 12 months, ending today.
+ROLLING_DAYS = 365
 
 
 @dataclass(slots=True)
@@ -130,9 +132,15 @@ class HeatmapDay:
     checkin: CheckinStatus | None
 
 
-async def heatmap(session: AsyncSession, scope: Scope, year: int) -> list[HeatmapDay]:
-    """One entry per local day of `year`, zero-filled."""
-    window = Window(date(year, 1, 1), date(year, 12, 31))
+def heatmap_window(year: int | None, today: date) -> Window:
+    """A calendar year cut at today (never a future day); no year: the 365 days up to today."""
+    if year is None:
+        return Window(today - timedelta(ROLLING_DAYS - 1), today)
+    return Window(date(year, 1, 1), min(date(year, 12, 31), today))
+
+
+async def heatmap(session: AsyncSession, scope: Scope, window: Window) -> list[HeatmapDay]:
+    """One entry per local day of `window`, zero-filled."""
     days = await training_days(session, scope, window.start, window.end)
     checkins = {
         c.date: CheckinStatus(c.status)

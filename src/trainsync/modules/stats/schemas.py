@@ -194,7 +194,9 @@ class HeatmapDayOut(BaseModel):
 class HeatmapOut(BaseModel):
     model_config = ConfigDict(json_schema_extra={"examples": [HEATMAP_EXAMPLE]})
 
-    year: int
+    year: int = Field(description="The chosen year; for the last 12 months, the year of today")
+    rolling: bool = Field(description="true: the last 12 months up to today (no `year` given)")
+    window: WindowOut = Field(description="The days in `days`; never past today")
     timezone: str
     max_value: float
     days: list[HeatmapDayOut]

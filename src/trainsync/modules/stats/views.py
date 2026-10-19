@@ -213,13 +213,16 @@ async def series(
     return await _cached(ctx, request, "series", params, SeriesOut, build, window.days)
 
 
-async def heatmap(session: AsyncSession, request: Request, year: int) -> HeatmapOut:
+async def heatmap(session: AsyncSession, request: Request, year: int | None) -> HeatmapOut:
     ctx = await _context(session, request)
+    window = consistency.heatmap_window(year, ctx.today)
 
     async def build() -> HeatmapOut:
-        days = await consistency.heatmap(session, ctx.scope, year)
+        days = await consistency.heatmap(session, ctx.scope, window)
         return HeatmapOut(
-            year=year,
+            year=window.end.year,
+            rolling=year is None,
+            window=WindowOut.of(window),
             timezone=ctx.scope.zone.key,
             max_value=max((d.minutes for d in days), default=0.0),
             days=[
@@ -228,8 +231,7 @@ async def heatmap(session: AsyncSession, request: Request, year: int) -> Heatmap
             ],
         )
 
-    days_in_year = (date(year + 1, 1, 1) - date(year, 1, 1)).days
-    return await _cached(ctx, request, "heatmap", {"year": year}, HeatmapOut, build, days_in_year)
+    return await _cached(ctx, request, "heatmap", {"year": year}, HeatmapOut, build, window.days)
 
 
 async def prs(

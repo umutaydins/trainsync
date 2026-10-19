@@ -13,6 +13,7 @@ from trainsync.integrations.strava.breaker_status import overall_state, read_bre
 from trainsync.integrations.strava.budget import RateBudget
 from trainsync.modules.activities.reads import ReadRepository
 from trainsync.modules.auth.dependencies import CurrentUser
+from trainsync.modules.sync.errors import SyncErrorCode, error_code
 from trainsync.modules.sync.models import SyncKind, SyncRun
 from trainsync.modules.sync.status_repository import SyncStatusRepository
 
@@ -23,6 +24,7 @@ RUN_EXAMPLE: dict[str, Any] = {
     "status": "paused",
     "pages": 3,
     "upserted": 597,
+    "error_code": None,
     "error": None,
     "started_at": "2026-10-18T09:00:00Z",
     "updated_at": "2026-10-18T09:02:10Z",
@@ -35,13 +37,16 @@ class RunOut(BaseModel):
     status: str
     pages: int
     upserted: int
-    error: str | None
+    error_code: SyncErrorCode | None = Field(
+        description="Why the run failed, for a translated message; null without an error"
+    )
+    error: str | None = Field(description="The technical error text; only the owner sees it")
     started_at: datetime
     updated_at: datetime
     finished_at: datetime | None
 
     @classmethod
-    def from_row(cls, run: SyncRun | None) -> "RunOut | None":
+    def from_row(cls, run: SyncRun | None, *, detail: bool) -> "RunOut | None":
         if run is None:
             return None
         return cls(
@@ -49,7 +54,8 @@ class RunOut(BaseModel):
             status=run.status,
             pages=run.pages,
             upserted=run.upserted,
-            error=run.error,
+            error_code=error_code(run.error),
+            error=run.error if detail else None,
             started_at=run.started_at,
             updated_at=run.updated_at,
             finished_at=run.finished_at,
@@ -177,8 +183,12 @@ async def sync_status(
             AthleteSync(
                 athlete_id=aid,
                 strava_athlete_id=athletes[aid].strava_athlete_id,
-                backfill=RunOut.from_row(runs.get((aid, SyncKind.BACKFILL))),
-                incremental=RunOut.from_row(runs.get((aid, SyncKind.INCREMENTAL))),
+                backfill=RunOut.from_row(
+                    runs.get((aid, SyncKind.BACKFILL)), detail=principal.is_owner
+                ),
+                incremental=RunOut.from_row(
+                    runs.get((aid, SyncKind.INCREMENTAL)), detail=principal.is_owner
+                ),
             )
             for aid in athlete_ids
         ],
