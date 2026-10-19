@@ -36,7 +36,6 @@ must be installable and pass accessibility checks.
   offline page; API responses are never cached (personal data).
 - **Boundaries.** ESLint rules extend ADR 0033: `app/` routes are thin; `features/<domain>/`
   hold components, hooks and server actions; `i18n/` and `styles/` are leaves.
-
 - **Loading states.** The tab roots (Today, Workout, Food, Progress, Me) have no route-level
   `loading.tsx`: its Suspense boundary held the server-rendered content back until a reveal script
   ran, which pushed the largest paint to ~4 s on a throttled phone (Lighthouse mobile 77–88).
