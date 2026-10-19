@@ -19,10 +19,10 @@ from trainsync.integrations.strava.budget import Allowance, Priority, UnlimitedB
 from trainsync.integrations.strava.errors import RateLimited, StravaAuthError, StravaUnavailable
 from trainsync.integrations.strava.models import StravaActivity
 from trainsync.modules.activities.models import Activity
-from trainsync.modules.strava.repository import AthleteRepository
 from trainsync.modules.sync.backfill import STALE_AFTER, backfill, run_backfill
 from trainsync.modules.sync.common import UNAVAILABLE_DEFER
 from trainsync.modules.sync.context import CTX_KEY, ActivitySource, SyncDeps
+from trainsync.modules.sync.deauthorization import deauthorize
 from trainsync.modules.sync.models import SyncRun
 
 NOW = datetime(2026, 10, 17, 12, 7, tzinfo=UTC)
@@ -289,7 +289,7 @@ class DeauthorizeDuringFetch:
     async def list_activities(self, athlete_id: int, **kwargs: Any) -> list[StravaActivity]:
         page = await self.inner.list_activities(athlete_id, **kwargs)
         async with self.sessionmaker.begin() as session:
-            await AthleteRepository(session).deauthorize(athlete_id)
+            await deauthorize(session, athlete_id)
         return page
 
 

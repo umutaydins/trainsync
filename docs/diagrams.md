@@ -30,6 +30,8 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [25. Deployment — public read-only demo](#25-deployment--public-read-only-demo-p79-adr-0028)
 - [26. Sequence — the coach during a workout](#26-sequence--the-coach-during-a-workout-p611-adr-0030)
 - [27. Sequence — /lang and the chat's language](#27-sequence--lang-and-the-chats-language-p612-adr-0031)
+- [28. Activity — a chat message in savage mode](#28-activity--a-chat-message-in-savage-mode-profanity-and-the-guardrails-p613-adr-0032)
+- [29. Layers — code layout and allowed imports](#29-layers--code-layout-and-allowed-imports-adr-0033)
 
 ---
 
@@ -1482,4 +1484,32 @@ flowchart TD
     L -- max --> O[lines from the max pools;<br/>max_opener in front of a message<br/>with no savage line]
     O --> OUT
     C1 & C2 --> OUT
+```
+
+## 29. Layers — code layout and allowed imports (ADR 0033)
+
+Imports only point down. import-linter checks the layer order, the independence of the
+entrypoints, the module order and that `ops` stays standard-library only (`make lint`). Every
+module may import any module's `models.py`.
+
+```mermaid
+flowchart TB
+  subgraph E["entrypoints"]
+    direction LR
+    eapi["api"] ~~~ eworker["worker"] ~~~ ebot["bot"] ~~~ edemo["demo"]
+  end
+  subgraph M["modules"]
+    notifications --> chat
+    chat --> coach & checkin & nutrition & stats & sync
+    coach & checkin & nutrition --> training
+    training & nutrition & stats & sync --> activities
+    sync --> strava
+  end
+  subgraph I["integrations"]
+    direction LR
+    istrava["strava"] ~~~ itelegram["telegram"] ~~~ ianthropic["anthropic"] ~~~ ioff["openfoodfacts"]
+  end
+  C["core"]
+  E --> M --> I --> C
+  O["ops (stdlib only)"]
 ```

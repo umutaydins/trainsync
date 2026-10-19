@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { ErrorState, secondaryButtonClass } from "@/components/ui";
-import { BACKEND_UNREACHABLE_TITLE, BACKEND_UNREACHABLE_TEXT } from "@/features/shell/backend-copy";
+import { BACKEND_UNREACHABLE_TITLE, BACKEND_UNREACHABLE_TEXT } from "@/lib/backend-copy";
 
 type Reachability = "checking" | "reachable" | "unreachable";
 

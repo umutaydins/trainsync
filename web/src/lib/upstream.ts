@@ -1,6 +1,6 @@
 import "server-only";
 
-import { BACKEND_UNREACHABLE_TEXT } from "@/features/shell/backend-copy";
+import { BACKEND_UNREACHABLE_TEXT } from "@/lib/backend-copy";
 import { serverEnv } from "@/lib/env";
 
 export type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";

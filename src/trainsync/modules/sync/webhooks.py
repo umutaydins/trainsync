@@ -26,6 +26,7 @@ from trainsync.modules.activities.repository import ActivityRepository
 from trainsync.modules.strava.repository import AthleteRepository
 from trainsync.modules.sync.common import SYNC_MAX_TRIES, retry_after, short_error
 from trainsync.modules.sync.context import job_log_context, worker_context
+from trainsync.modules.sync.deauthorization import deauthorize
 from trainsync.modules.sync.models import WebhookStatus
 from trainsync.modules.sync.webhook_repository import WebhookEventRepository
 
@@ -130,7 +131,7 @@ async def _soft_delete(deps: WebhookDeps, activity_id: int) -> str:
 
 async def _deauthorize(deps: WebhookDeps, athlete_id: int) -> str:
     async with deps.sessionmaker.begin() as session:
-        removed = await AthleteRepository(session).deauthorize(athlete_id)
+        removed = await deauthorize(session, athlete_id)
     log.info("athlete_deauthorized", athlete_id=athlete_id, activities_removed=removed)
     return "deauthorized"
 

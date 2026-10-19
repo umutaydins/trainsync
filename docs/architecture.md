@@ -44,6 +44,64 @@ being up or my rate-limit budget being available at read time.
 - **fake_strava**: a small FastAPI app that mimics the endpoints we use, with configurable
   latency, error rate and rate-limit headers. Used for local dev, integration tests and load tests.
 
+## Code layout
+
+A modular monolith in four layers (ADR 0033). Imports only point down; import-linter checks it
+in `make lint`, so CI fails on a wrong-way import.
+
+```mermaid
+flowchart TB
+  subgraph entrypoints["entrypoints/ — composition roots, independent of each other"]
+    api["api: app factory, middleware, health, routers"]
+    worker["worker: arq settings, crons"]
+    bot["bot: polling, dispatcher"]
+    demo["demo: seed, reset"]
+  end
+  subgraph modules["modules/ — one package per domain"]
+    notifications --> chat
+    chat --> coach & checkin & nutrition & stats & sync
+    coach & checkin & nutrition --> training
+    training & stats & sync & nutrition --> activities
+    sync --> strava
+    activities -.tables.-> strava
+  end
+  subgraph integrations["integrations/ — outbound clients only"]
+    stravaClient["strava"]
+    telegram
+    anthropic
+    off["openfoodfacts"]
+  end
+  core["core/ — settings, db, ORM base, logging, metrics, crypto, clock, errors, deps, jobs"]
+  entrypoints --> modules --> integrations --> core
+  ops["ops/ — backups, retention, alerts (standard library only)"]
+```
+
+| Folder | Holds | May import |
+|---|---|---|
+| `core/` | settings, DB engine/session (`db.py`), ORM base (`orm.py`), logging, metrics, crypto, signed state, clock, OpenAPI error docs, FastAPI deps, job queue, shared httpx client | nothing above it |
+| `integrations/strava/` | HTTP client, rate limiter, retries, circuit breaker, rate budget | `core` |
+| `integrations/telegram/` | Bot API client, Telegram notifier | `core`, `integrations` |
+| `integrations/anthropic/` | the Messages API call, the assistant's tool definitions | — |
+| `integrations/openfoodfacts/` | product lookup | `core` |
+| `modules/strava/` | OAuth routes, athletes, encrypted tokens, `TokenManager` | `core`, `integrations` |
+| `modules/activities/` | activity upserts, reads, `/v1/activities` | `strava` tables |
+| `modules/sync/` | backfill, incremental, webhook intake/processing/retry, deauthorization, `/v1/sync/status` | `activities`, `strava` |
+| `modules/stats/` | `/v1/stats` | `activities` |
+| `modules/training/` | exercises, programs, workouts, sets, generator, progression, plates, `/v1/training` | `activities` |
+| `modules/checkin/` | daily check-ins, streaks, `/v1/checkins` | `training` |
+| `modules/nutrition/` | foods, logs, energy balance, free sugar, `/v1/nutrition` | `training`, `activities` |
+| `modules/coach/` | voice, intensity, guardrails, savage lines, schedule, message packs (`packs/`) | `training` |
+| `modules/chat/` | the Telegram conversation over the read API: command features, parsing, formatting, assistant loop, `/v1/chats` | every module below it |
+| `modules/notifications/` | worker senders: new activity, check-in, coach, stack alerts | everything below it |
+| `entrypoints/` | `api/app.py`, `worker/settings.py`, `bot/main.py`, `demo/` | everything |
+| `ops/` | backup CLI, retention, alert delivery | standard library only |
+
+Every module may import any module's `models.py` (tables are shared; `modules/models.py`
+imports them all for the metadata). Web (`web/src`): `app/` routes only, `features/<domain>/`
+(components, API calls, types), `lib/` (BFF client, generated API types, session, CSRF,
+config, formatting), `components/ui/`, `styles/`; ESLint keeps `lib/` and `components/ui/` from
+importing features or routes, and features from importing routes.
+
 ## Data model
 
 | Table | Key columns | Notes |
@@ -232,9 +290,9 @@ RPE 1–10 in 0.5 steps) and JSON numbers in responses.
 
 ### 7c. Bot: training and nutrition commands (Phase 6, P6.8)
 The bot stays an API client (read and write, same API key). Commands live in `Feature` groups
-(`bot/training.py`, `bot/nutrition.py`, `bot/checkin.py`) that the dispatcher asks in turn:
+(`modules/chat/training.py`, `modules/chat/nutrition.py`, `modules/chat/checkin.py`) that the dispatcher asks in turn:
 - `/today` (next program day with suggested weights), `/plates 102.5`, `/log bench 80x5x3`
-  (also `80x5,5,4` and `bw x12x3`, one parser in `bot/parsing.py` shared with the check-in),
+  (also `80x5,5,4` and `bw x12x3`, one parser in `modules/chat/parsing.py` shared with the check-in),
   `/done` (finish, summary with volume and records), `/eat <food> <grams>`, `/kcal`, `/weight 78.4`.
 - **Local day**: "today" is the owner's day in `CHECKIN_TZ` (default `Europe/Istanbul`), not UTC:
   `/log` adds to the open workout started on that day (or starts a free one), `/eat`, `/kcal` and
@@ -254,13 +312,13 @@ The bot stays an API client (read and write, same API key). Commands live in `Fe
   `GET /{date}`, `PUT /{date}` (upsert by date: `201` / `200`), `GET /summary?from=&to=` (current
   and longest streak, adherence = planned days done / planned days per ISO week from the active
   program's `days_per_week`, minus sick/injured days; done + partial count as done).
-- **Scheduler**: worker cron every 5 minutes (`notify/checkin.py`). At or after `CHECKIN_TIME`
+- **Scheduler**: worker cron every 5 minutes (`modules/notifications/checkin.py`). At or after `CHECKIN_TIME`
   local (`CHECKIN_TZ`, the wall time of each local date, DST-safe) it sends the prompt once, only
   if that day has no check-in; one reminder `CHECKIN_REMINDER_MINUTES` later, still unanswered.
   "Sent" is a claim in `notifications` (`checkin_prompt` / `checkin_reminder`, object id
   `yyyymmdd`), so restarts and overlapping ticks never send twice. Off without a bot token or a
   chat, or with `CHECKIN_ENABLED=false`.
-- **Conversation** (`bot/checkin.py`, state diagram 17): a state machine in Redis
+- **Conversation** (`modules/chat/checkin.py`, state diagram 17): a state machine in Redis
   (`checkin:{chat}:{yyyymmdd}`, 6 h TTL). Status buttons → planned exercises one by one (As
   planned = planned sets × bottom of the rep range at the suggested weight, ±2.5 kg, Skip, or
   typed sets) or free `/log` lines without a program → reason (skipped) → scale, sleep, energy

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import ErrorPage from "@/app/(app)/error";
 import { backendReachable } from "@/features/shell/backend-status";
-import { BACKEND_UNREACHABLE_TITLE } from "@/features/shell/backend-copy";
+import { BACKEND_UNREACHABLE_TITLE } from "@/lib/backend-copy";
 import { BACKEND_UNREACHABLE, upstreamGet } from "@/lib/upstream";
 import { jsonResponse, stubServerEnv } from "./support/env";
 

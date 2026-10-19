@@ -13,6 +13,7 @@ from trainsync.integrations.strava.breaker_status import overall_state, read_bre
 from trainsync.integrations.strava.budget import RateBudget
 from trainsync.modules.activities.reads import ReadRepository
 from trainsync.modules.sync.models import SyncKind, SyncRun
+from trainsync.modules.sync.status_repository import SyncStatusRepository
 
 router = APIRouter(prefix="/v1/sync", tags=["sync"], dependencies=[Depends(require_api_key)])
 
@@ -161,8 +162,9 @@ async def sync_status(
         reads = ReadRepository(session)
         athlete_ids = await reads.active_athlete_ids(athlete_id)
         athletes = {a.id: a for a in await reads.athletes(athlete_ids)}
-        runs = await reads.latest_runs(athlete_ids)
-        webhooks = await reads.webhook_summary()
+        status = SyncStatusRepository(session)
+        runs = await status.latest_runs(athlete_ids)
+        webhooks = await status.webhook_summary()
         last_synced_at = await reads.last_synced_at(athlete_ids)
 
     now = clock()
