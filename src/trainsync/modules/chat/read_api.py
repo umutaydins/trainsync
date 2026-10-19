@@ -23,10 +23,10 @@ from trainsync.modules.nutrition.schemas import DaySummary, FoodList, FoodLookup
 from trainsync.modules.stats.periods import Period
 from trainsync.modules.stats.totals import ActivitySummary, StatsSummary, WeeklyStats
 from trainsync.modules.sync.router import SyncStatusOut
+from trainsync.modules.training.routes.body_metrics import BodyMetricIn, BodyMetricOut
 from trainsync.modules.training.routes.exercises import ExerciseList
 from trainsync.modules.training.routes.next_day import NextDay
 from trainsync.modules.training.routes.planning import PlatesOut
-from trainsync.modules.training.routes.progress import BodyMetricIn, BodyMetricOut
 from trainsync.modules.training.schemas import SetOut
 from trainsync.modules.training.workout_schemas import SetIn, WorkoutDetail, WorkoutPage
 from trainsync.modules.users.schemas import SettingsOut, SettingsPatch

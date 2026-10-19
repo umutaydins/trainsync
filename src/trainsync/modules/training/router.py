@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from trainsync.modules.training.routes import (
+    body_metrics,
     exercises,
     next_day,
     planning,
@@ -20,4 +21,5 @@ ROUTERS: tuple[APIRouter, ...] = (
     workouts.router,
     sets.router,
     progress.router,
+    body_metrics.router,
 )

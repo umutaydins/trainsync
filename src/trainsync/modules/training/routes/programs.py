@@ -1,202 +1,29 @@
 """`/v1/training/programs`: training programs with their days and planned exercises."""
 
-from datetime import datetime, time
-from typing import Annotated, Any, Self
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Path, Response, status
-from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from trainsync.core.deps import SessionmakerDep
 from trainsync.core.errors import UNAUTHORIZED, error
 from trainsync.modules.auth.dependencies import CurrentUser
-from trainsync.modules.training.models import (
-    Exercise,
-    Program,
-    ProgramDay,
-    ProgramExercise,
-    ProgramGoal,
+from trainsync.modules.training.models import Program, ProgramDay, ProgramExercise
+from trainsync.modules.training.program_schemas import (
+    PlannedExerciseOut,
+    ProgramDayOut,
+    ProgramIn,
+    ProgramList,
+    ProgramOut,
+    ProgramSummary,
 )
-from trainsync.modules.training.models import Progression as ProgressionKind
 from trainsync.modules.training.repository import ExerciseRepository, ProgramRepository, ProgramTree
-from trainsync.modules.training.schemas import EXERCISE_EXAMPLE, ExerciseOut, Kg, WeightIn
 
 router = APIRouter(prefix="/v1/training", tags=["training"])
 
 NOT_FOUND = error("Unknown program", "program not found")
 UNKNOWN_EXERCISE = error("A planned exercise does not exist", "unknown exercise ids: [999]")
-
-PLANNED_IN_EXAMPLE: dict[str, Any] = {
-    "exercise_id": 20,
-    "sets": 3,
-    "rep_min": 8,
-    "rep_max": 12,
-    "rest_seconds": 90,
-    "start_weight_kg": 60.0,
-    "progression": "double",
-}
-PROGRAM_IN_EXAMPLE: dict[str, Any] = {
-    "name": "Upper/Lower",
-    "goal": "hypertrophy",
-    "weeks": 8,
-    "days": [
-        {"name": "Upper A", "exercises": [PLANNED_IN_EXAMPLE]},
-        {"name": "Lower A", "exercises": [{**PLANNED_IN_EXAMPLE, "exercise_id": 1}]},
-    ],
-}
-
-
-class PlannedExerciseIn(BaseModel):
-    model_config = ConfigDict(json_schema_extra={"examples": [PLANNED_IN_EXAMPLE]})
-
-    exercise_id: int
-    sets: int = Field(ge=1, le=10)
-    rep_min: int = Field(ge=1, le=100)
-    rep_max: int = Field(ge=1, le=100)
-    rest_seconds: int = Field(ge=0, le=900)
-    start_weight_kg: WeightIn | None = None
-    progression: ProgressionKind = ProgressionKind.DOUBLE
-
-    @model_validator(mode="after")
-    def _rep_range(self) -> Self:
-        if self.rep_max < self.rep_min:
-            raise ValueError("rep_max must be ≥ rep_min")
-        return self
-
-
-class ProgramDayIn(BaseModel):
-    name: str = Field(min_length=1, max_length=80)
-    exercises: list[PlannedExerciseIn] = Field(max_length=20)
-    weekday: int | None = Field(
-        default=None,
-        ge=0,
-        le=6,
-        description="0 = Monday. Null: the default spread by days per week (ADR 0030)",
-    )
-    start_time: time | None = Field(
-        default=None, description="Local start time (CHECKIN_TZ). Null: WORKOUT_REMINDER_TIME"
-    )
-
-
-class ProgramIn(BaseModel):
-    """`days_per_week` is the number of days."""
-
-    model_config = ConfigDict(json_schema_extra={"examples": [PROGRAM_IN_EXAMPLE]})
-
-    name: str = Field(min_length=1, max_length=80)
-    goal: ProgramGoal
-    weeks: int = Field(default=8, ge=1, le=52)
-    days: list[ProgramDayIn] = Field(min_length=1, max_length=7)
-
-
-PLANNED_EXAMPLE: dict[str, Any] = {
-    "id": 7,
-    "position": 0,
-    "exercise": EXERCISE_EXAMPLE,
-    "sets": 3,
-    "rep_min": 8,
-    "rep_max": 12,
-    "rest_seconds": 90,
-    "start_weight_kg": 60.0,
-    "progression": "double",
-}
-PROGRAM_SUMMARY_EXAMPLE: dict[str, Any] = {
-    "id": 3,
-    "name": "Upper/Lower",
-    "goal": "hypertrophy",
-    "days_per_week": 4,
-    "weeks": 8,
-    "active": True,
-    "created_at": "2026-10-18T10:00:00Z",
-}
-PROGRAM_EXAMPLE: dict[str, Any] = {
-    **PROGRAM_SUMMARY_EXAMPLE,
-    "days": [
-        {
-            "id": 11,
-            "day_index": 0,
-            "name": "Upper A",
-            "weekday": 0,
-            "start_time": "18:00:00",
-            "exercises": [PLANNED_EXAMPLE],
-        }
-    ],
-}
-
-
-class PlannedExerciseOut(BaseModel):
-    model_config = ConfigDict(json_schema_extra={"examples": [PLANNED_EXAMPLE]})
-
-    id: int
-    position: int
-    exercise: ExerciseOut
-    sets: int
-    rep_min: int
-    rep_max: int
-    rest_seconds: int
-    start_weight_kg: Kg | None
-    progression: ProgressionKind
-
-    @classmethod
-    def from_row(cls, row: ProgramExercise, exercise: Exercise) -> "PlannedExerciseOut":
-        return cls(
-            id=row.id,
-            position=row.position,
-            exercise=ExerciseOut.from_row(exercise),
-            sets=row.sets,
-            rep_min=row.rep_min,
-            rep_max=row.rep_max,
-            rest_seconds=row.rest_seconds,
-            start_weight_kg=row.start_weight_kg,
-            progression=ProgressionKind(row.progression),
-        )
-
-
-class ProgramDayOut(BaseModel):
-    id: int
-    day_index: int
-    name: str
-    weekday: int | None = Field(default=None, description="0 = Monday; null = default spread")
-    start_time: time | None = Field(default=None, description="Local start time; null = default")
-    exercises: list[PlannedExerciseOut]
-
-
-class ProgramSummary(BaseModel):
-    model_config = ConfigDict(json_schema_extra={"examples": [PROGRAM_SUMMARY_EXAMPLE]})
-
-    id: int
-    name: str
-    goal: ProgramGoal
-    days_per_week: int
-    weeks: int
-    active: bool
-    created_at: datetime
-
-    @classmethod
-    def from_row(cls, row: Program) -> "ProgramSummary":
-        return cls(
-            id=row.id,
-            name=row.name,
-            goal=ProgramGoal(row.goal),
-            days_per_week=row.days_per_week,
-            weeks=row.weeks,
-            active=row.active,
-            created_at=row.created_at,
-        )
-
-
-class ProgramOut(ProgramSummary):
-    model_config = ConfigDict(json_schema_extra={"examples": [PROGRAM_EXAMPLE]})
-
-    days: list[ProgramDayOut]
-
-
-class ProgramList(BaseModel):
-    model_config = ConfigDict(
-        json_schema_extra={"examples": [{"items": [PROGRAM_SUMMARY_EXAMPLE]}]}
-    )
-
-    items: list[ProgramSummary]
+PROGRAM_ID_EXAMPLE = 3
 
 
 async def load_program(session: AsyncSession, user_id: int, program_id: int) -> ProgramOut:
@@ -322,7 +149,7 @@ async def get_active_program(principal: CurrentUser, sessionmaker: SessionmakerD
 async def get_program(
     principal: CurrentUser,
     sessionmaker: SessionmakerDep,
-    program_id: Annotated[int, Path(examples=[3])],
+    program_id: Annotated[int, Path(examples=[PROGRAM_ID_EXAMPLE])],
 ) -> ProgramOut:
     async with sessionmaker() as session:
         return await load_program(session, principal.user_id, program_id)
@@ -341,7 +168,7 @@ async def get_program(
 async def replace_program(
     principal: CurrentUser,
     sessionmaker: SessionmakerDep,
-    program_id: Annotated[int, Path(examples=[3])],
+    program_id: Annotated[int, Path(examples=[PROGRAM_ID_EXAMPLE])],
     body: ProgramIn,
 ) -> ProgramOut:
     async with sessionmaker.begin() as session:
@@ -367,7 +194,7 @@ async def replace_program(
 async def delete_program(
     principal: CurrentUser,
     sessionmaker: SessionmakerDep,
-    program_id: Annotated[int, Path(examples=[3])],
+    program_id: Annotated[int, Path(examples=[PROGRAM_ID_EXAMPLE])],
 ) -> Response:
     async with sessionmaker.begin() as session:
         if not await ProgramRepository(session, principal.user_id).delete(program_id):
@@ -385,7 +212,7 @@ async def delete_program(
 async def activate_program(
     principal: CurrentUser,
     sessionmaker: SessionmakerDep,
-    program_id: Annotated[int, Path(examples=[3])],
+    program_id: Annotated[int, Path(examples=[PROGRAM_ID_EXAMPLE])],
 ) -> ProgramOut:
     async with sessionmaker.begin() as session:
         repo = ProgramRepository(session, principal.user_id)
