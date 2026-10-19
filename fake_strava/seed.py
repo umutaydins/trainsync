@@ -15,11 +15,12 @@ ACTIVITY_ID_STRIDE = 100_000_000
 _FIRSTNAMES = ["Ada", "Kemal", "Lena", "Mateo", "Noor", "Sven"]
 _LASTNAMES = ["Runner", "Rider", "Swimmer", "Climber"]
 
-# sport_type, (min_km, max_km), (min, max) pace in s/km, elevation gain in m per km
+# sport_type, (min_km, max_km), (min, max) pace in s/km (swims too: 1:50-2:40 /100 m is
+# 1100-1600 s/km), elevation gain in m per km
 _SPORTS: list[tuple[str, tuple[float, float], tuple[int, int], float]] = [
     ("Run", (4.0, 22.0), (270, 390), 8.0),
     ("Ride", (20.0, 110.0), (100, 160), 12.0),
-    ("Swim", (1.0, 4.0), (110, 160), 0.0),
+    ("Swim", (1.0, 4.0), (1100, 1600), 0.0),
     ("Walk", (2.0, 8.0), (540, 720), 5.0),
     ("Hike", (6.0, 20.0), (600, 900), 45.0),
     ("TrailRun", (6.0, 30.0), (330, 480), 35.0),
