@@ -11,7 +11,7 @@ from trainsync.modules.chat.checkin.state import (
     FlowState,
     callback,
 )
-from trainsync.modules.chat.common import Reply, number
+from trainsync.modules.chat.common import Reply, kg
 from trainsync.modules.coach.packs import Key, Messages, NeutralKey
 
 STEP_KG = Decimal("2.5")
@@ -45,8 +45,8 @@ def step_keyboard(msg: Messages, day: date, state: FlowState) -> Keyboard | None
         current = state.planned[state.index]
         rows: list[tuple[Button, ...]] = []
         if current.weight_kg is not None:
-            plus = msg(Key.CHECKIN_BTN_STEP, step=f"+{number(STEP_KG)} kg")
-            minus = msg(Key.CHECKIN_BTN_STEP, step=f"{MINUS}{number(STEP_KG)} kg")
+            plus = msg(Key.CHECKIN_BTN_STEP, step=f"+{kg(STEP_KG)}")
+            minus = msg(Key.CHECKIN_BTN_STEP, step=f"{MINUS}{kg(STEP_KG)}")
             rows.append((button(msg(Key.CHECKIN_BTN_AS_PLANNED), "p"),))
             rows.append((button(plus, "+"), button(minus, "-")))
         rows.append((button(msg(Key.CHECKIN_BTN_SKIP_EXERCISE), "x"),))

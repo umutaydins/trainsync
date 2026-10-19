@@ -22,7 +22,8 @@ from trainsync.modules.chat.parsing import ParseError, parse_sets
 from trainsync.modules.checkin.models import CheckinStatus
 from trainsync.modules.coach.packs import Key
 
-REPORT_WORDS = frozenset({"report", "rapor"})
+# Parsing data, not output: plain-text words (en/tr) that start the check-in like /report.
+REPORT_TRIGGER_WORDS = frozenset({"report", "rapor"})
 MAX_REASON_LENGTH = 500
 EXERCISE_ACTIONS = frozenset({"p", "+", "-", "x"})
 ENERGY_ACTIONS = frozenset(f"e:{n}" for n in ENERGY_LEVELS)
@@ -44,7 +45,7 @@ class CheckinFlow(WorkoutSteps, ClosingSteps):
                 return Reply("")  # a redelivered message: already handled, stay silent
             state.last_update_id = incoming.update_id
             return await self._answer_text(incoming.chat_id, day, state, incoming.text.strip())
-        if incoming.text.strip().lower() in REPORT_WORDS:
+        if incoming.text.strip().lower() in REPORT_TRIGGER_WORDS:
             return await self._start(incoming.chat_id, incoming.update_id)
         return None
 

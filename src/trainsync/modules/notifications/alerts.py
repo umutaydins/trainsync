@@ -16,15 +16,10 @@ tick tries again); an unknown outcome counts as sent (better a missed message th
 Off, without touching the state, while no Telegram target is configured.
 """
 
-# Turkish text: the dotless i (U+0131) is a letter here, not a confusable.
-# ruff: noqa: RUF001
-
 import asyncio
-import json
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from enum import StrEnum
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -37,227 +32,54 @@ from trainsync.core.logging import get_logger
 from trainsync.core.metrics import NOTIFICATIONS
 from trainsync.core.settings import BotLang, Settings
 from trainsync.integrations.notifier import DeliveryUnknownError, Notifier, NotifyFailedError
-from trainsync.integrations.strava.breaker import BreakerState
 from trainsync.integrations.strava.breaker_status import overall_state, read_breakers
+from trainsync.modules.notifications.alert_conditions import (
+    Action,
+    AlertState,
+    Condition,
+    Detail,
+    Facts,
+    Observation,
+    Thresholds,
+    newest_backup,
+    observe,
+    step,
+)
+from trainsync.modules.notifications.alert_texts import AFTER, DETAILS, HEADLINES, message
 from trainsync.modules.notifications.recipients import chat_lang
 from trainsync.modules.sync.status_repository import system_freshness
-from trainsync.modules.sync.webhook_repository import MAX_ATTEMPTS, WebhookEventRepository
-from trainsync.ops.retention import Backup, parse_name
+from trainsync.modules.sync.webhook_repository import WebhookEventRepository
+
+__all__ = [
+    "AFTER",
+    "ALERTS_CTX_KEY",
+    "DETAILS",
+    "HEADLINES",
+    "Action",
+    "AlertDeps",
+    "AlertState",
+    "Condition",
+    "Detail",
+    "Facts",
+    "Observation",
+    "RedisAlertStore",
+    "StackFacts",
+    "Thresholds",
+    "alerts_cron",
+    "alerts_tick",
+    "build_alert_deps",
+    "message",
+    "newest_backup",
+    "observe",
+    "run_alerts",
+    "step",
+]
 
 log = get_logger(__name__)
 
 ALERTS_CTX_KEY = "trainsync_alerts"
 CRON_MINUTES = set(range(0, 60, 5))
 KEY_PREFIX = "alert:"
-
-
-class Condition(StrEnum):
-    CIRCUIT_OPEN = "circuit_open"
-    DEAD_LETTERS = "dead_letters"
-    BACKUP_STALE = "backup_stale"
-    SYNC_STALE = "sync_stale"
-
-
-class Action(StrEnum):
-    NONE = "none"
-    FIRE = "fire"
-    RESOLVE = "resolve"
-
-
-@dataclass(frozen=True, slots=True)
-class AlertState:
-    bad_since: datetime | None = None  # first tick the condition was seen bad
-    alerted: bool = False  # the "started" message went out
-
-    def to_json(self) -> str:
-        since = self.bad_since.isoformat() if self.bad_since else None
-        return json.dumps({"bad_since": since, "alerted": self.alerted})
-
-    @classmethod
-    def from_json(cls, raw: str | bytes | None) -> "AlertState":
-        if raw is None:
-            return cls()
-        try:
-            data = json.loads(raw)
-            since = data.get("bad_since")
-            return cls(datetime.fromisoformat(since) if since else None, bool(data["alerted"]))
-        except (ValueError, TypeError, KeyError, AttributeError):
-            return cls()
-
-
-@dataclass(frozen=True, slots=True)
-class Observation:
-    bad: bool | None  # None: cannot tell this tick, the state stays as it is
-    detail: "Detail"
-    fields: Mapping[str, object] = field(default_factory=dict)
-    grace: timedelta = timedelta(0)  # bad for this long before the alert fires
-
-
-def step(
-    state: AlertState, bad: bool | None, now: datetime, grace: timedelta = timedelta(0)
-) -> tuple[AlertState, Action]:
-    """The next state and what to send for one observation (pure)."""
-    if bad is None:
-        return state, Action.NONE
-    if not bad:
-        return AlertState(), Action.RESOLVE if state.alerted else Action.NONE
-    since = state.bad_since or now
-    if not state.alerted and now - since >= grace:
-        return AlertState(since, alerted=True), Action.FIRE
-    return AlertState(since, state.alerted), Action.NONE
-
-
-@dataclass(frozen=True, slots=True)
-class Thresholds:
-    circuit_open: timedelta = timedelta(minutes=30)
-    backup_max_age: timedelta = timedelta(hours=36)
-    sync_stale: timedelta = timedelta(hours=2)
-
-    @classmethod
-    def from_settings(cls, settings: Settings) -> "Thresholds":
-        return cls(
-            circuit_open=timedelta(minutes=settings.alert_circuit_open_minutes),
-            backup_max_age=timedelta(hours=settings.alert_backup_max_age_hours),
-            sync_stale=timedelta(hours=settings.alert_sync_stale_hours),
-        )
-
-
-@dataclass(frozen=True, slots=True)
-class Facts:
-    circuit: BreakerState | None  # worst state across processes; None = nobody reported
-    dead_letters: int
-    athletes_active: bool
-    last_synced_at: datetime | None
-    backup_dir: str | None = None  # None: backups are not checked
-    newest_backup: Backup | None = None
-
-
-class Detail(StrEnum):
-    CIRCUIT_UNKNOWN = "circuit_unknown"
-    CIRCUIT_CLOSED = "circuit_closed"
-    CIRCUIT_OPEN = "circuit_open"
-    DEAD_LETTERS = "dead_letters"
-    DEAD_LETTERS_NONE = "dead_letters_none"
-    NO_ATHLETE = "no_athlete"
-    NEVER_SYNCED = "never_synced"
-    SYNC_STALE = "sync_stale"
-    SYNC_OK = "sync_ok"
-    NO_BACKUP = "no_backup"
-    BACKUP_STALE = "backup_stale"
-    BACKUP_OK = "backup_ok"
-
-
-# The chat's language (`/lang`, ADR 0031); tone-free, like the neutral layer.
-DETAILS: Mapping[BotLang, Mapping[Detail, str]] = {
-    "en": {
-        Detail.CIRCUIT_UNKNOWN: "no circuit breaker state reported",
-        Detail.CIRCUIT_CLOSED: "Strava circuit breaker is closed again",
-        Detail.CIRCUIT_OPEN: "Strava circuit breaker {state}, not closed for {minutes}+ min",
-        Detail.DEAD_LETTERS: "{count} dead-letter webhook event(s), failed {attempts} times "
-        "and no longer retried (GET /v1/sync/status)",
-        Detail.DEAD_LETTERS_NONE: "no dead-letter webhook events left",
-        Detail.NO_ATHLETE: "no athlete connected",
-        Detail.NEVER_SYNCED: "never synced yet",
-        Detail.SYNC_STALE: "no successful sync for {hours:.1f} h (last {last})",
-        Detail.SYNC_OK: "syncing again (last {last})",
-        Detail.NO_BACKUP: "no backup in {directory}",
-        Detail.BACKUP_STALE: "newest backup is {hours:.1f} h old ({name})",
-        Detail.BACKUP_OK: "a fresh backup exists ({name})",
-    },
-    "tr": {
-        Detail.CIRCUIT_UNKNOWN: "devre kesici durumu bildirilmedi",
-        Detail.CIRCUIT_CLOSED: "Strava devre kesicisi yeniden kapandı",
-        Detail.CIRCUIT_OPEN: "Strava devre kesicisi {state}, {minutes}+ dk kapanmadı",
-        Detail.DEAD_LETTERS: "{count} dead-letter webhook olayı {attempts} kez başarısız oldu "
-        "ve artık denenmiyor (GET /v1/sync/status)",
-        Detail.DEAD_LETTERS_NONE: "dead-letter webhook olayı kalmadı",
-        Detail.NO_ATHLETE: "bağlı sporcu yok",
-        Detail.NEVER_SYNCED: "henüz hiç senkronize edilmedi",
-        Detail.SYNC_STALE: "{hours:.1f} sa boyunca başarılı senkronizasyon yok (son {last})",
-        Detail.SYNC_OK: "senkronizasyon yeniden çalışıyor (son {last})",
-        Detail.NO_BACKUP: "{directory} içinde yedek yok",
-        Detail.BACKUP_STALE: "en yeni yedek {hours:.1f} sa önce alınmış ({name})",
-        Detail.BACKUP_OK: "yeni bir yedek var ({name})",
-    },
-}
-HEADLINES: Mapping[BotLang, Mapping[Action, str]] = {
-    "en": {
-        Action.FIRE: "trainsync alert: {detail}",
-        Action.RESOLVE: "trainsync resolved: {detail}",
-    },
-    "tr": {
-        Action.FIRE: "trainsync uyarısı: {detail}",
-        Action.RESOLVE: "trainsync düzeldi: {detail}",
-    },
-}
-AFTER: Mapping[BotLang, str] = {"en": " (after {minutes} min)", "tr": " ({minutes} dk sonra)"}
-
-
-def _hours(delta: timedelta) -> float:
-    return delta.total_seconds() / 3600
-
-
-def observe(facts: Facts, now: datetime, limits: Thresholds) -> dict[Condition, Observation]:
-    """What each condition looks like now (pure)."""
-    minutes = int(limits.circuit_open.total_seconds() // 60)
-    if facts.circuit is None:
-        circuit = Observation(None, Detail.CIRCUIT_UNKNOWN)
-    elif facts.circuit is BreakerState.CLOSED:
-        circuit = Observation(False, Detail.CIRCUIT_CLOSED)
-    else:
-        circuit = Observation(
-            True,
-            Detail.CIRCUIT_OPEN,
-            {"state": facts.circuit.value, "minutes": minutes},
-            limits.circuit_open,
-        )
-    found = {
-        Condition.CIRCUIT_OPEN: circuit,
-        Condition.DEAD_LETTERS: Observation(
-            facts.dead_letters > 0,
-            Detail.DEAD_LETTERS,
-            {"count": facts.dead_letters, "attempts": MAX_ATTEMPTS},
-        )
-        if facts.dead_letters
-        else Observation(False, Detail.DEAD_LETTERS_NONE),
-    }
-    if not facts.athletes_active:
-        found[Condition.SYNC_STALE] = Observation(False, Detail.NO_ATHLETE)
-    elif facts.last_synced_at is None:
-        found[Condition.SYNC_STALE] = Observation(None, Detail.NEVER_SYNCED)
-    else:
-        age = now - facts.last_synced_at
-        last = facts.last_synced_at.isoformat()
-        found[Condition.SYNC_STALE] = (
-            Observation(True, Detail.SYNC_STALE, {"hours": _hours(age), "last": last})
-            if age > limits.sync_stale
-            else Observation(False, Detail.SYNC_OK, {"last": last})
-        )
-    if facts.backup_dir is not None:
-        backup = facts.newest_backup
-        if backup is None:
-            found[Condition.BACKUP_STALE] = Observation(
-                True, Detail.NO_BACKUP, {"directory": str(facts.backup_dir)}
-            )
-        else:
-            age = now - backup.taken_at
-            found[Condition.BACKUP_STALE] = (
-                Observation(True, Detail.BACKUP_STALE, {"hours": _hours(age), "name": backup.name})
-                if age > limits.backup_max_age
-                else Observation(False, Detail.BACKUP_OK, {"name": backup.name})
-            )
-    return found
-
-
-def newest_backup(directory: Path) -> Backup | None:
-    """The newest complete `trainsync-*.dump.age` (names carry the UTC time; partials start
-    with a dot and do not parse). An unreadable directory counts as no backup."""
-    try:
-        names = [p.name for p in directory.iterdir()]
-    except OSError:
-        return None
-    backups = [b for b in map(parse_name, names) if b is not None]
-    return max(backups, key=lambda b: (b.taken_at, b.name), default=None)
 
 
 class FactSource(Protocol):
@@ -343,17 +165,6 @@ def build_alert_deps(
         thresholds=Thresholds.from_settings(settings),
         language=lambda chat: chat_lang(sessionmaker, settings, chat),
     )
-
-
-def message(
-    action: Action, observation: Observation, old: AlertState, now: datetime, lang: BotLang = "en"
-) -> str:
-    detail = DETAILS[lang][observation.detail].format(**observation.fields)
-    text = HEADLINES[lang][action].format(detail=detail)
-    if action is Action.RESOLVE and old.bad_since is not None:
-        minutes = max(0, int((now - old.bad_since).total_seconds() // 60))
-        text += AFTER[lang].format(minutes=minutes)
-    return text
 
 
 async def run_alerts(deps: AlertDeps) -> dict[Condition, str]:

@@ -19,7 +19,8 @@ from trainsync.modules.chat.training import todays_workout
 from trainsync.modules.coach.packs import Key, NeutralKey
 from trainsync.modules.training.workout_schemas import SetIn
 
-FINISH_WORDS = frozenset({"done", "finish", "bitti", "bitir", "tamam"})
+# Parsing data, not output: words (tr/en) that end the free-form set logging.
+FREEFORM_FINISH_WORDS = frozenset({"done", "finish", "bitti", "bitir", "tamam"})
 
 
 class WorkoutSteps(FlowBase):
@@ -104,7 +105,7 @@ class WorkoutSteps(FlowBase):
 
     async def _freeform(self, chat_id: int, day: date, state: FlowState, text: str) -> Reply:
         msg = self._msg
-        if text.lower() in FINISH_WORDS:
+        if text.lower() in FREEFORM_FINISH_WORDS:
             return await self._after_training(chat_id, day, state, [])
         if state.choices:
             return await self._freeform_choice(chat_id, day, state, text)

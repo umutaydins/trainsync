@@ -20,6 +20,7 @@ from trainsync.modules.coach.packs import Key, NeutralKey
 MAX_SCALE_KG = 500  # exclusive: anything heavier is a typo
 MAX_SLEEP_HOURS = 24
 SLEEP_PRECISION = Decimal("0.1")
+# Numerals only (the same in every language): shown in "reply with a number like …".
 NUMBER_EXAMPLES: dict[Step, str] = {"scale": "78.4", "sleep": "7.5", "energy": "4"}
 FOLLOWING: dict[Step, Step] = {"scale": "sleep", "sleep": "energy"}
 
@@ -84,7 +85,7 @@ class ClosingSteps(FlowBase):
         if state.scale_kg is not None:
             lines.append(neutral(NeutralKey.CHECKIN_SUMMARY_SCALE, value=kg(state.scale_kg)))
         if state.sleep_hours is not None:
-            hours = f"{number(state.sleep_hours, 1)} h"
+            hours = number(state.sleep_hours, 1)
             lines.append(neutral(NeutralKey.CHECKIN_SUMMARY_SLEEP, hours=hours))
         if state.energy is not None:
             lines.append(neutral(NeutralKey.CHECKIN_SUMMARY_ENERGY, energy=state.energy))
