@@ -9,12 +9,12 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import FAKE_STRAVA_BASE_URL
-from trainsync.core import deps
 from trainsync.core.crypto import TokenCipher
 from trainsync.core.jobs import ArqJobQueue
 from trainsync.core.settings import Settings
 from trainsync.entrypoints.api.app import create_app
 from trainsync.integrations.strava.client import StravaClient
+from trainsync.modules.strava import dependencies as strava_deps
 from trainsync.modules.strava.models import Athlete, OAuthToken
 
 PUBLIC_OAUTH = "http://localhost:8001/oauth"
@@ -32,7 +32,7 @@ async def app(
     )
     app = create_app(settings)
     strava = StravaClient(fake_strava_client, settings)
-    app.dependency_overrides[deps.get_strava_client] = lambda: strava
+    app.dependency_overrides[strava_deps.get_strava_client] = lambda: strava
     async with LifespanManager(app):
         yield app
 
@@ -154,7 +154,7 @@ async def test_connect_with_return_to_lands_back_on_the_dashboard(
     )
     app = create_app(settings)
     strava = StravaClient(fake_strava_client, settings)
-    app.dependency_overrides[deps.get_strava_client] = lambda: strava
+    app.dependency_overrides[strava_deps.get_strava_client] = lambda: strava
     async with LifespanManager(app):
         response = await _connect(
             app, fake_strava_client, {"return_to": "http://localhost:3000/sync"}
