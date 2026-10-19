@@ -35,7 +35,8 @@ async def test_http_duration_is_labelled_by_route_template() -> None:
     app = _app()
     before = _http_count("/v1/activities")
     async with _client(app) as client:
-        await client.get("/v1/activities?cursor=abc&limit=3", headers={"X-API-Key": "test-api-key"})
+        # Not signed in: answered before any database work, still labelled by its route.
+        await client.get("/v1/activities?cursor=abc&limit=3")
         await client.get("/v1/activities/../activities")
         await client.get("/no/such/path/123")
         metrics = (await client.get("/metrics")).text

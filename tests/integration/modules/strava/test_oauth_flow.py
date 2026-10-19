@@ -9,6 +9,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import FAKE_STRAVA_BASE_URL
+from tests.support.accounts import API_KEY
 from trainsync.core.crypto import TokenCipher
 from trainsync.core.jobs import ArqJobQueue
 from trainsync.core.settings import Settings
@@ -41,7 +42,9 @@ async def _connect(
     app: FastAPI, fake: httpx.AsyncClient, login_params: dict[str, str] | None = None
 ) -> httpx.Response:
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://api") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://api", headers={"X-API-Key": API_KEY}
+    ) as api:
         login = await api.get("/auth/strava/login", params=login_params)
         authorize_url = urlsplit(login.headers["location"])
         assert f"{authorize_url.scheme}://{authorize_url.netloc}" == "http://localhost:8001"
@@ -127,7 +130,9 @@ async def test_rejected_code_writes_nothing(
     sessionmaker: async_sessionmaker[AsyncSession],
 ) -> None:
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://api") as api:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://api", headers={"X-API-Key": API_KEY}
+    ) as api:
         login = await api.get("/auth/strava/login")
         state = parse_qs(urlsplit(login.headers["location"]).query)["state"][0]
         response = await api.get(

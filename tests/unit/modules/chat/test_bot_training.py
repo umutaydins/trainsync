@@ -13,6 +13,7 @@ import respx
 from pydantic import SecretStr
 
 from tests.support.bot_api import API, FakeApi, install, planned
+from tests.support.chat_links import chat_links
 from tests.support.messages import NEUTRAL_EN as MSG
 from tests.support.state import MemoryStateStore
 from tests.support.telegram import (
@@ -195,7 +196,7 @@ def make_dispatcher(
     return Dispatcher(
         telegram,
         Commands(api, clock, msg),
-        {CHAT},
+        chat_links(http, API, clock),
         msg,
         features=[
             TrainingCommands(api, store, clock, ZONE, msg),
@@ -462,7 +463,11 @@ async def test_local_day_after_midnight(
     nutrition = NutritionCommands(api, store, lambda: late, ZONE, MSG)
     telegram = TelegramApi(http, SecretStr(BOT_TOKEN), base_url=TELEGRAM)
     dispatcher = Dispatcher(
-        telegram, Commands(api, lambda: late, MSG), {CHAT}, MSG, features=[nutrition]
+        telegram,
+        Commands(api, lambda: late, MSG),
+        chat_links(http, API, lambda: late),
+        MSG,
+        features=[nutrition],
     )
     await dispatcher.handle(update("/weight 78", 1))
     await dispatcher.handle(update("/eat oats 50", 2))

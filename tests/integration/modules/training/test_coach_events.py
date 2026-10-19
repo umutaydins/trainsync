@@ -13,6 +13,7 @@ from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from tests.support.accounts import OWNER_ID
 from trainsync.core import deps
 from trainsync.core.settings import Settings
 from trainsync.entrypoints.api.app import create_app
@@ -46,7 +47,7 @@ async def queued(app: FastAPI, job_id: str) -> bool:
 
 async def bench_id(sessionmaker: async_sessionmaker[AsyncSession]) -> int:
     async with sessionmaker() as session:
-        exercise = await ExerciseRepository(session).by_slug("bench-press")
+        exercise = await ExerciseRepository(session, OWNER_ID).by_slug("bench-press")
         assert exercise is not None
         return exercise.id
 

@@ -10,6 +10,7 @@ from sqlalchemy import Connection, inspect, text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from tests.support.accounts import OWNER_EMAIL
 from tests.support.containers import alembic_config
 from trainsync.modules.models import Base
 
@@ -31,7 +32,8 @@ TABLES = {
     "workouts",
     "workout_sets",
     "body_metrics",
-    "chat_settings",
+    "telegram_chats",
+    "food_favorites",
     "foods",
     "food_logs",
     "nutrition_profile",
@@ -113,7 +115,10 @@ async def test_expected_indexes_exist(engine: AsyncEngine) -> None:
     ]
 
 
-def test_0008_backfills_food_log_snapshots_from_the_food(pg_url: str) -> None:
+def test_0008_backfills_food_log_snapshots_from_the_food(
+    pg_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OWNER_EMAIL", OWNER_EMAIL)  # the data goes to the owner on the way up
     config = alembic_config(pg_url)
     command.downgrade(config, "0007")
     try:

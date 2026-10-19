@@ -39,8 +39,8 @@ from trainsync.core.settings import BotLang, Settings
 from trainsync.integrations.notifier import DeliveryUnknownError, Notifier, NotifyFailedError
 from trainsync.integrations.strava.breaker import BreakerState
 from trainsync.integrations.strava.breaker_status import overall_state, read_breakers
-from trainsync.modules.activities.reads import ReadRepository
-from trainsync.modules.notifications.preferences import stored_lang
+from trainsync.modules.notifications.recipients import chat_lang
+from trainsync.modules.sync.status_repository import system_freshness
 from trainsync.modules.sync.webhook_repository import MAX_ATTEMPTS, WebhookEventRepository
 from trainsync.ops.retention import Backup, parse_name
 
@@ -286,9 +286,7 @@ class StackFacts:
     async def collect(self, now: datetime) -> Facts:
         async with self._sessionmaker() as session:
             dead = await WebhookEventRepository(session).count_dead()
-            reads = ReadRepository(session)
-            athletes = await reads.active_athlete_ids()
-            last = await reads.last_synced_at(athletes)
+            athletes_active, last = await system_freshness(session)
         reports = await read_breakers(self._redis)
         backup = None
         if self._backup_dir is not None:
@@ -296,7 +294,7 @@ class StackFacts:
         return Facts(
             circuit=overall_state(reports, now) if reports else None,
             dead_letters=dead,
-            athletes_active=bool(athletes),
+            athletes_active=athletes_active,
             last_synced_at=last,
             backup_dir=str(self._backup_dir) if self._backup_dir is not None else None,
             newest_backup=backup,
@@ -343,7 +341,7 @@ def build_alert_deps(
         chat_ref=chat_ref,
         clock=clock,
         thresholds=Thresholds.from_settings(settings),
-        language=lambda chat: stored_lang(sessionmaker, chat),
+        language=lambda chat: chat_lang(sessionmaker, settings, chat),
     )
 
 

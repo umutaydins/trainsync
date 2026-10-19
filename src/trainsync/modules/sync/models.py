@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from trainsync.core.orm import Base, check_in, utc_timestamp
+from trainsync.core.orm import Base, check_in, owner_id, utc_timestamp
 
 
 class SyncKind(StrEnum):
@@ -34,9 +34,11 @@ class SyncRun(Base):
     __table_args__ = (
         CheckConstraint(check_in("kind", SyncKind), name="kind"),
         CheckConstraint(check_in("status", SyncStatus), name="status"),
+        Index("ix_sync_runs_user_id", "user_id"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = owner_id()
     athlete_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("athletes.id", ondelete="CASCADE")
     )

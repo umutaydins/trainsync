@@ -172,6 +172,18 @@ class Settings(BaseSettings):
     def _normal_owner_email(cls, value: str) -> str:
         return value.strip().lower()
 
+    # ---------------------------------------------------------------- Telegram per user (P8.4)
+    # `/link CODE`: the one-time code from the dashboard lives this long.
+    telegram_link_code_ttl_minutes: int = Field(default=10, ge=1, le=60)
+    # The bot's username (without @) for the dashboard's t.me deep link; empty = no link.
+    telegram_bot_username: str = ""
+    # The bot caches who a chat belongs to (and their settings) for this long.
+    bot_chat_cache_s: int = Field(default=60, ge=0, le=3600)
+    # Assistant questions per user per local day (the owner pays for the key; exempt).
+    assistant_daily_limit: int = Field(default=50, ge=0, le=10000)
+    # Fair sync (ADR 0037): a backfill job stops after this many pages and re-queues itself.
+    backfill_pages_per_job: int = Field(default=10, ge=1, le=1000)
+
     # ---------------------------------------------------------------- bot + notifications (P5.5+)
     # All optional: the API and the worker start without them.
     # Empty token = the bot idles (metrics only) and notifications go nowhere (NullNotifier).

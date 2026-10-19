@@ -1,10 +1,11 @@
 """Effective intensity (ADR 0030): savage only when configured (hardcore and savage, in either
-language since ADR 0031) and not in the owner's 24-hour soft mode (`/yumusak`). Soft mode is a
-Redis key that the bot sets and the worker reads.
+language since ADR 0031) and not in the user's 24-hour soft mode (`/yumusak`). Soft mode is a
+Redis key per user that the bot sets and the worker reads.
 
-The profanity level (ADR 0032) is per chat, like the language: `using_profanity()` sets the
-chat's stored choice for the current task (the bot per update, the worker per send); without
-one, `BOT_PROFANITY` applies.
+Intensity and profanity (ADR 0032) are each user's (ADR 0036): `using_intensity()` and
+`using_profanity()` set them for the current task (the bot per update, the worker per send),
+like the language; without them, `BOT_INTENSITY` / `BOT_PROFANITY` apply. `using_user()` names
+the user whose soft mode counts.
 """
 
 from collections.abc import Iterator
@@ -22,6 +23,9 @@ SOFT_KEY = "coach:soft"
 SOFT_FOR = timedelta(hours=24)
 
 CURRENT_PROFANITY: ContextVar[BotProfanity | None] = ContextVar("trainsync_profanity", default=None)
+# None = the configured default; set from the user's settings for the current task.
+CURRENT_SAVAGE: ContextVar[bool | None] = ContextVar("trainsync_savage", default=None)
+CURRENT_USER: ContextVar[int | None] = ContextVar("trainsync_user", default=None)
 
 
 @contextmanager
@@ -32,6 +36,30 @@ def using_profanity(level: BotProfanity | None) -> Iterator[None]:
         yield
     finally:
         CURRENT_PROFANITY.reset(token)
+
+
+@contextmanager
+def using_intensity(savage: bool | None) -> Iterator[None]:
+    """Whether the user's settings make the coach savage (None: the configured default)."""
+    token = CURRENT_SAVAGE.set(savage)
+    try:
+        yield
+    finally:
+        CURRENT_SAVAGE.reset(token)
+
+
+@contextmanager
+def using_user(user_id: int | None) -> Iterator[None]:
+    token = CURRENT_USER.set(user_id)
+    try:
+        yield
+    finally:
+        CURRENT_USER.reset(token)
+
+
+def soft_key() -> str:
+    user = CURRENT_USER.get()
+    return SOFT_KEY if user is None else f"{SOFT_KEY}:{user}"
 
 
 class SoftModeStore(Protocol):
@@ -47,13 +75,13 @@ class RedisSoftModeStore:
         self._redis = redis
 
     async def is_soft(self) -> bool:
-        return bool(await self._redis.exists(SOFT_KEY))
+        return bool(await self._redis.exists(soft_key()))
 
     async def soften(self) -> None:
-        await self._redis.set(SOFT_KEY, "1", ex=int(SOFT_FOR.total_seconds()))
+        await self._redis.set(soft_key(), "1", ex=int(SOFT_FOR.total_seconds()))
 
     async def harden(self) -> None:
-        await self._redis.delete(SOFT_KEY)
+        await self._redis.delete(soft_key())
 
 
 @dataclass
@@ -84,4 +112,6 @@ class CoachMode:
     soft: SoftModeStore
 
     async def savage(self) -> bool:
-        return self.configured and not await self.soft.is_soft()
+        chosen = CURRENT_SAVAGE.get()
+        configured = self.configured if chosen is None else chosen
+        return configured and not await self.soft.is_soft()

@@ -1,9 +1,10 @@
 """`MessagePack` (the wording of one tone and language) and `Messages` (a pack plus the RNG that
 picks among a key's variants).
 
-The language can change per chat at runtime (`/lang`, ADR 0031): `using_lang()` sets it for the
-current task (the bot per update, the worker per send), and a `Messages` built with `languages`
-renders in that language; without one set, it uses its default pack (`BOT_LANG`).
+The language and the tone are each user's (`/lang`, ADR 0031, 0036): `using_lang()` and
+`using_tone()` set them for the current task (the bot per update, the worker per send), and a
+`Messages` built with `packs` renders in that tone and language; without them set, it uses its
+default pack (`BOT_TONE`, `BOT_LANG`).
 """
 
 import random
@@ -28,6 +29,9 @@ class MessagePack:
 
 
 CURRENT_LANG: ContextVar[BotLang | None] = ContextVar("trainsync_lang", default=None)
+CURRENT_TONE: ContextVar[BotTone | None] = ContextVar("trainsync_tone", default=None)
+# The user's emergency number (from their country, ADR 0036) for the distress reply.
+CURRENT_EMERGENCY: ContextVar[str | None] = ContextVar("trainsync_emergency", default=None)
 
 
 @contextmanager
@@ -40,10 +44,21 @@ def using_lang(lang: BotLang | None) -> Iterator[None]:
         CURRENT_LANG.reset(token)
 
 
+@contextmanager
+def using_tone(tone: BotTone | None) -> Iterator[None]:
+    """Render in `tone` inside this block (None: the default tone)."""
+    token = CURRENT_TONE.set(tone)
+    try:
+        yield
+    finally:
+        CURRENT_TONE.reset(token)
+
+
 class Messages:
     """`msg(Key.X, field=...)` renders one variant of a key. A key with several variants is
     picked with the injected RNG, so a seeded `random.Random` makes replies deterministic.
-    With `languages`, the pack follows the language set by `using_lang()`."""
+    With `languages` (the default tone in each language) or `packs` (every tone and language),
+    the pack follows `using_lang()` and `using_tone()`."""
 
     def __init__(
         self,
@@ -51,20 +66,23 @@ class Messages:
         rng: random.Random | None = None,
         *,
         languages: Mapping[BotLang, MessagePack] | None = None,
+        packs: Mapping[tuple[BotTone, BotLang], MessagePack] | None = None,
         emergency_number: str = DEFAULT_EMERGENCY_NUMBER,
     ) -> None:
         self._default = pack
-        # Filled into every neutral text that asks for it (the distress reply, ADR 0032).
-        self._context: Mapping[str, object] = {"emergency": emergency_number}
-        self._languages: Mapping[BotLang, MessagePack] = languages or {}
+        self._emergency = emergency_number
+        self._packs: dict[tuple[BotTone, BotLang], MessagePack] = dict(packs or {})
+        for lang, by_lang in (languages or {}).items():
+            self._packs.setdefault((pack.tone, lang), by_lang)
         self._rng = rng or random.Random()  # noqa: S311  (wording, not crypto)
 
     @property
     def pack(self) -> MessagePack:
-        lang = CURRENT_LANG.get()
-        if lang is None:
-            return self._default
-        return self._languages.get(lang, self._default)
+        tone = CURRENT_TONE.get() or self._default.tone
+        lang = CURRENT_LANG.get() or self._default.lang
+        return self._packs.get(
+            (tone, lang), self._packs.get((self._default.tone, lang), self._default)
+        )
 
     @property
     def tone(self) -> BotTone:
@@ -81,12 +99,14 @@ class Messages:
 
     def neutral(self, key: NeutralKey, **fields: object) -> str:
         """Tone-free wording (nutrition, scale, sleep, energy): the same in every tone."""
-        return NEUTRAL_TEXTS[self.pack.lang][key].format(**{**self._context, **fields})
+        context = {"emergency": CURRENT_EMERGENCY.get() or self._emergency}
+        return NEUTRAL_TEXTS[self.pack.lang][key].format(**{**context, **fields})
 
     def help(self) -> str:
         """The tone's help plus the tone-free nutrition lines. Command names and their
         descriptions stay English in every chat language (ADR 0031)."""
-        pack = self._languages.get("en", self.pack)
+        tone = CURRENT_TONE.get() or self._default.tone
+        pack = self._packs.get((tone, "en"), self.pack)
         nutrition = NEUTRAL_TEXTS[pack.lang][NeutralKey.HELP_NUTRITION].format(
             scale_command="/weight"
         )

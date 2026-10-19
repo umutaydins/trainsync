@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Response, status
+from fastapi import APIRouter, Body, HTTPException, Path, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,13 +13,13 @@ from trainsync.core.deps import (
     CoachEventsDep,
     SessionmakerDep,
     SettingsDep,
-    require_api_key,
 )
 from trainsync.core.errors import UNAUTHORIZED, error
 from trainsync.core.jobs import CoachEvents
 from trainsync.core.logging import get_logger
 from trainsync.core.settings import Settings
 from trainsync.modules.activities.router import as_utc
+from trainsync.modules.auth.dependencies import CurrentUser
 from trainsync.modules.training.math import detect_prs, volume
 from trainsync.modules.training.models import LOWER_BODY, Workout, WorkoutSet
 from trainsync.modules.training.models import Progression as ProgressionKind
@@ -48,9 +48,7 @@ from trainsync.modules.training.schemas import (
 
 log = get_logger(__name__)
 
-router = APIRouter(
-    prefix="/v1/training", tags=["training"], dependencies=[Depends(require_api_key)]
-)
+router = APIRouter(prefix="/v1/training", tags=["training"])
 
 NOT_FOUND = error("Unknown workout", "workout not found")
 
@@ -223,8 +221,8 @@ class SetIn(BaseModel):
     rest_seconds: int | None = Field(default=None, ge=0, le=86400)
 
 
-async def get_or_404(session: AsyncSession, workout_id: int) -> Workout:
-    workout = await WorkoutRepository(session).get(workout_id)
+async def get_or_404(session: AsyncSession, user_id: int, workout_id: int) -> Workout:
+    workout = await WorkoutRepository(session, user_id).get(workout_id)
     if workout is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "workout not found")
     return workout
@@ -248,20 +246,20 @@ def _summary_fields(
 
 
 async def planned_exercises(
-    session: AsyncSession, workout: Workout, rules: Rules
+    session: AsyncSession, user_id: int, workout: Workout, rules: Rules
 ) -> list[PlannedExercise]:
     if workout.program_day_id is None:
         return []
-    planned = (await ProgramRepository(session).day_exercises([workout.program_day_id])).get(
-        workout.program_day_id, []
-    )
+    planned = (
+        await ProgramRepository(session, user_id).day_exercises([workout.program_day_id])
+    ).get(workout.program_day_id, [])
     ids = [p.exercise_id for p in planned]
-    exercises = await ExerciseRepository(session).by_ids(ids)
-    recent = await WorkoutRepository(session).recent_performances(
+    exercises = await ExerciseRepository(session, user_id).by_ids(ids)
+    recent = await WorkoutRepository(session, user_id).recent_performances(
         ids, 2, exclude_workout_id=workout.id
     )
     last = {exercise_id: sessions[0] for exercise_id, sessions in recent.items()}
-    started = await _started_at(session, {sets[0].workout_id for sets in last.values()})
+    started = await _started_at(session, user_id, {sets[0].workout_id for sets in last.values()})
     return [
         PlannedExercise(
             exercise=ExerciseOut.from_row(exercises[p.exercise_id]),
@@ -289,8 +287,10 @@ async def planned_exercises(
     ]
 
 
-async def _started_at(session: AsyncSession, workout_ids: set[int]) -> dict[int, datetime]:
-    repo = WorkoutRepository(session)
+async def _started_at(
+    session: AsyncSession, user_id: int, workout_ids: set[int]
+) -> dict[int, datetime]:
+    repo = WorkoutRepository(session, user_id)
     found = {i: await repo.get(i) for i in sorted(workout_ids)}
     return {i: w.started_at for i, w in found.items() if w is not None}
 
@@ -320,8 +320,10 @@ async def coach_event(events: CoachEvents, job: str, object_id: int) -> None:
         log.warning("coach_event_not_queued", job=job, object_id=object_id, error=str(exc))
 
 
-async def workout_detail(session: AsyncSession, workout: Workout, rules: Rules) -> WorkoutDetail:
-    repo = WorkoutRepository(session)
+async def workout_detail(
+    session: AsyncSession, user_id: int, workout: Workout, rules: Rules
+) -> WorkoutDetail:
+    repo = WorkoutRepository(session, user_id)
     sets = await repo.sets([workout.id])
     exercise_ids = sorted({s.exercise_id for s in sets})
     history = (
@@ -332,19 +334,22 @@ async def workout_detail(session: AsyncSession, workout: Workout, rules: Rules) 
         else []
     )
     records = detect_prs([entry(s) for _, s in history], [entry(s) for s in sets])
-    names = {i: e.name for i, e in (await ExerciseRepository(session).by_ids(exercise_ids)).items()}
+    names = {
+        i: e.name
+        for i, e in (await ExerciseRepository(session, user_id).by_ids(exercise_ids)).items()
+    }
     return WorkoutDetail(
-        **_summary_fields(workout, await _day_name(session, workout), sets),
-        planned=await planned_exercises(session, workout, rules),
+        **_summary_fields(workout, await _day_name(session, user_id, workout), sets),
+        planned=await planned_exercises(session, user_id, workout, rules),
         sets=[SetOut.from_row(s) for s in sets],
         records=[RecordOut.from_record(r, names) for r in records],
     )
 
 
-async def _day_name(session: AsyncSession, workout: Workout) -> str | None:
+async def _day_name(session: AsyncSession, user_id: int, workout: Workout) -> str | None:
     if workout.program_day_id is None:
         return None
-    day = await ProgramRepository(session).day(workout.program_day_id)
+    day = await ProgramRepository(session, user_id).day(workout.program_day_id)
     return day.name if day else None
 
 
@@ -368,6 +373,7 @@ async def _day_name(session: AsyncSession, workout: Workout) -> str | None:
     },
 )
 async def start_workout(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     settings: SettingsDep,
     clock: ClockDep,
@@ -388,14 +394,16 @@ async def start_workout(
     async with sessionmaker.begin() as session:
         if (
             body.program_day_id is not None
-            and await ProgramRepository(session).day(body.program_day_id) is None
+            and await ProgramRepository(session, principal.user_id).day(body.program_day_id) is None
         ):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "program day not found")
-        workout, created = await WorkoutRepository(session).start(
+        workout, created = await WorkoutRepository(session, principal.user_id).start(
             client_id, as_utc(body.started_at) or clock(), body.program_day_id, body.notes
         )
         response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-        detail = await workout_detail(session, workout, progression_rules(settings))
+        detail = await workout_detail(
+            session, principal.user_id, workout, progression_rules(settings)
+        )
     if created:
         await coach_event(events, "coach_workout_started", detail.id)
     return detail
@@ -409,20 +417,25 @@ async def start_workout(
     responses={**UNAUTHORIZED, 400: error("Invalid cursor", "invalid cursor")},
 )
 async def list_workouts(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     cursor: Annotated[str | None, Query(description="`next_cursor` of the previous page")] = None,
 ) -> WorkoutPage:
     after = decode_cursor(cursor) if cursor else None
     async with sessionmaker() as session:
-        repo = WorkoutRepository(session)
+        repo = WorkoutRepository(session, principal.user_id)
         rows = await repo.page(limit + 1, after)
         page, more = rows[:limit], len(rows) > limit
         sets_by_workout: dict[int, list[WorkoutSet]] = {w.id: [] for w in page}
         for s in await repo.sets(list(sets_by_workout)):
             sets_by_workout[s.workout_id].append(s)
         items = [
-            WorkoutSummary(**_summary_fields(w, await _day_name(session, w), sets_by_workout[w.id]))
+            WorkoutSummary(
+                **_summary_fields(
+                    w, await _day_name(session, principal.user_id, w), sets_by_workout[w.id]
+                )
+            )
             for w in page
         ]
     next_cursor = (
@@ -439,13 +452,16 @@ async def list_workouts(
     responses={**UNAUTHORIZED, 404: NOT_FOUND},
 )
 async def get_workout(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     settings: SettingsDep,
     workout_id: Annotated[int, Path(examples=[42])],
 ) -> WorkoutDetail:
     async with sessionmaker() as session:
-        workout = await get_or_404(session, workout_id)
-        return await workout_detail(session, workout, progression_rules(settings))
+        workout = await get_or_404(session, principal.user_id, workout_id)
+        return await workout_detail(
+            session, principal.user_id, workout, progression_rules(settings)
+        )
 
 
 @router.post(
@@ -463,6 +479,7 @@ async def get_workout(
     },
 )
 async def finish_workout(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     settings: SettingsDep,
     clock: ClockDep,
@@ -476,7 +493,7 @@ async def finish_workout(
     body = body or WorkoutFinish()
     ended_at = as_utc(body.ended_at) or clock()
     async with sessionmaker.begin() as session:
-        workout = await get_or_404(session, workout_id)
+        workout = await get_or_404(session, principal.user_id, workout_id)
         if workout.ended_at is None:
             if ended_at < workout.started_at:
                 raise HTTPException(
@@ -486,7 +503,9 @@ async def finish_workout(
         if body.notes is not None:
             workout.notes = body.notes
         await session.flush()
-        detail = await workout_detail(session, workout, progression_rules(settings))
+        detail = await workout_detail(
+            session, principal.user_id, workout, progression_rules(settings)
+        )
     await coach_event(events, "coach_workout_finished", detail.id)
     return detail
 
@@ -500,10 +519,12 @@ async def finish_workout(
     responses={**UNAUTHORIZED, 404: NOT_FOUND},
 )
 async def delete_workout(
-    sessionmaker: SessionmakerDep, workout_id: Annotated[int, Path(examples=[42])]
+    principal: CurrentUser,
+    sessionmaker: SessionmakerDep,
+    workout_id: Annotated[int, Path(examples=[42])],
 ) -> Response:
     async with sessionmaker.begin() as session:
-        if not await WorkoutRepository(session).delete(workout_id):
+        if not await WorkoutRepository(session, principal.user_id).delete(workout_id):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "workout not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -527,6 +548,7 @@ async def delete_workout(
     },
 )
 async def put_set(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     events: CoachEventsDep,
     response: Response,
@@ -535,8 +557,8 @@ async def put_set(
     body: SetIn,
 ) -> SetOut:
     async with sessionmaker.begin() as session:
-        await get_or_404(session, workout_id)
-        if await ExerciseRepository(session).get(body.exercise_id) is None:
+        await get_or_404(session, principal.user_id, workout_id)
+        if await ExerciseRepository(session, principal.user_id).get(body.exercise_id) is None:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "exercise not found")
         values = SetValues(
             exercise_id=body.exercise_id,
@@ -548,7 +570,9 @@ async def put_set(
             is_warmup=body.is_warmup,
             rest_seconds=body.rest_seconds,
         )
-        result = await WorkoutRepository(session).put_set(workout_id, client_id, values)
+        result = await WorkoutRepository(session, principal.user_id).put_set(
+            workout_id, client_id, values
+        )
         if result is None:
             raise HTTPException(status.HTTP_409_CONFLICT, "client_id belongs to another workout")
         row, created = result
@@ -568,11 +592,12 @@ async def put_set(
     responses={**UNAUTHORIZED, 404: NOT_FOUND},
 )
 async def delete_set(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     workout_id: Annotated[int, Path(examples=[42])],
     client_id: Annotated[uuid.UUID, Path(examples=[SET_EXAMPLE["client_id"]])],
 ) -> Response:
     async with sessionmaker.begin() as session:
-        await get_or_404(session, workout_id)
-        await WorkoutRepository(session).delete_set(workout_id, client_id)
+        await get_or_404(session, principal.user_id, workout_id)
+        await WorkoutRepository(session, principal.user_id).delete_set(workout_id, client_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

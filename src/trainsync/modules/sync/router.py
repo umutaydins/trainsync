@@ -3,19 +3,20 @@
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, ConfigDict, Field
 
-from trainsync.core.deps import ClockDep, RedisDep, SessionmakerDep, require_api_key
+from trainsync.core.deps import ClockDep, RedisDep, SessionmakerDep
 from trainsync.core.errors import UNAUTHORIZED
 from trainsync.integrations.strava.breaker import BreakerState
 from trainsync.integrations.strava.breaker_status import overall_state, read_breakers
 from trainsync.integrations.strava.budget import RateBudget
 from trainsync.modules.activities.reads import ReadRepository
+from trainsync.modules.auth.dependencies import CurrentUser
 from trainsync.modules.sync.models import SyncKind, SyncRun
 from trainsync.modules.sync.status_repository import SyncStatusRepository
 
-router = APIRouter(prefix="/v1/sync", tags=["sync"], dependencies=[Depends(require_api_key)])
+router = APIRouter(prefix="/v1/sync", tags=["sync"])
 
 RUN_EXAMPLE: dict[str, Any] = {
     "id": 7,
@@ -153,16 +154,17 @@ class SyncStatusOut(BaseModel):
     responses=UNAUTHORIZED,
 )
 async def sync_status(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     redis: RedisDep,
     clock: ClockDep,
     athlete_id: Annotated[int | None, Query(description="Our athlete id")] = None,
 ) -> SyncStatusOut:
     async with sessionmaker() as session:
-        reads = ReadRepository(session)
+        reads = ReadRepository(session, principal.user_id)
         athlete_ids = await reads.active_athlete_ids(athlete_id)
         athletes = {a.id: a for a in await reads.athletes(athlete_ids)}
-        status = SyncStatusRepository(session)
+        status = SyncStatusRepository(session, principal.user_id)
         runs = await status.latest_runs(athlete_ids)
         webhooks = await status.webhook_summary()
         last_synced_at = await reads.last_synced_at(athlete_ids)

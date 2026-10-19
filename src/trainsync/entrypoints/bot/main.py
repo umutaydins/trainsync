@@ -24,11 +24,12 @@ from trainsync.entrypoints.bot.dispatcher import Commands, Dispatcher, TextHandl
 from trainsync.entrypoints.bot.polling import Poller
 from trainsync.integrations.anthropic.planner import AnthropicPlanner
 from trainsync.integrations.telegram.client import TelegramApi
-from trainsync.modules.chat.assistant import TIMEOUT_S, Assistant, RedisRateLimiter
+from trainsync.modules.chat.assistant import TIMEOUT_S, Assistant, DailyQuota, RedisRateLimiter
 from trainsync.modules.chat.checkin import CheckinFlow
 from trainsync.modules.chat.coach import CoachFeature
 from trainsync.modules.chat.common import Feature, RedisStateStore, StateStore
-from trainsync.modules.chat.language import ChatSettingsStore, LanguageFeature
+from trainsync.modules.chat.language import LanguageFeature
+from trainsync.modules.chat.links import ChatLinks
 from trainsync.modules.chat.nutrition import NutritionCommands
 from trainsync.modules.chat.profanity import SwearFeature
 from trainsync.modules.chat.read_api import ReadApi
@@ -71,11 +72,11 @@ async def run(
         stack.push_async_callback(redis.aclose)
         voice = build_voice(settings, redis, msg)
         soft = RedisSoftModeStore(redis)
-        chat_settings = ChatSettingsStore(read_api)
+        links = ChatLinks(read_api, clock, settings.bot_chat_cache_s)
         dispatcher = Dispatcher(
             telegram,
             Commands(read_api, clock, msg),
-            set(settings.telegram_allowed_chat_ids),
+            links,
             msg,
             await text_handler(settings, read_api, redis, stack, msg, clock=clock, mode=voice.mode),
             features=features(
@@ -86,14 +87,13 @@ async def run(
                 clock=clock,
                 voice=voice,
                 soft=soft,
-                chat_settings=chat_settings,
+                links=links,
             ),
-            chat_settings=chat_settings,
             voice=voice,
+            dashboard_url=settings.dashboard_public_url,
         )
         log.info(
             "bot_startup",
-            allowed_chats=len(settings.telegram_allowed_chat_ids),
             tone=settings.bot_tone,
             lang=settings.bot_lang,
             intensity=settings.bot_intensity,
@@ -114,19 +114,19 @@ def features(
     clock: Clock,
     voice: CoachVoice | None = None,
     soft: SoftModeStore | None = None,
-    chat_settings: ChatSettingsStore | None = None,
+    links: ChatLinks | None = None,
 ) -> list[Feature]:
     """Check-in (P6.9; first, so a check-in answer is never taken for something else), the
     coach (P6.11, P6.13: distress and pain guards, savage triggers, /yumusak, /sert), /lang
     (P6.12), /swear (P6.13), training and nutrition commands (P6.8). "Today" is the local day in
-    `CHECKIN_TZ`."""
+    the user's time zone (`CHECKIN_TZ` until they choose one)."""
     zone = settings.checkin_zone
     coach: list[Feature] = []
     if voice is not None and soft is not None:
         coach = [CoachFeature(api, voice, soft, clock, zone, msg, settings.workout_reminder_time)]
-    if chat_settings is not None:
-        coach.append(LanguageFeature(chat_settings, msg, voice))
-        coach.append(SwearFeature(chat_settings, msg, voice))
+    if links is not None:
+        coach.append(LanguageFeature(links, msg, voice))
+        coach.append(SwearFeature(links, msg, voice))
     nutrition = NutritionCommands(
         api,
         store,
@@ -171,6 +171,7 @@ async def text_handler(
         msg,
         mode=mode,
         profanity=settings.bot_profanity,
+        daily=DailyQuota(redis, settings.assistant_daily_limit, clock),
     )
     log.info("assistant_enabled", model=settings.assistant_model)
     return assistant.answer

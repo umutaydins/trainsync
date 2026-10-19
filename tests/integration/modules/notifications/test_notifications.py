@@ -27,7 +27,7 @@ from fake_strava.state import FakeStravaState
 from tests.support import fake_webhooks
 from tests.support.factories import create_athlete, strava_activity
 from tests.support.fake_webhooks import activity_event
-from tests.support.messages import NEUTRAL_EN
+from tests.support.linked import link_chat
 from tests.support.notify import (
     CHAT_ID,
     notification_rows,
@@ -45,7 +45,7 @@ from trainsync.integrations.notifier import NullNotifier
 from trainsync.integrations.strava.budget import UnlimitedBudget
 from trainsync.modules.activities.models import Activity
 from trainsync.modules.activities.repository import ActivityRepository
-from trainsync.modules.notifications.tasks import NOTIFY_MAX_TRIES, NotifyDeps, send_new_activity
+from trainsync.modules.notifications.tasks import NOTIFY_MAX_TRIES, send_new_activity
 from trainsync.modules.strava.models import Athlete
 from trainsync.modules.sync.backfill import run_backfill
 from trainsync.modules.sync.context import SyncDeps
@@ -54,6 +54,12 @@ from trainsync.modules.sync.webhooks import WebhookDeps, process_event
 
 TARGET = "http://api/webhooks/strava"
 SUBSCRIPTION = 999
+
+
+@pytest.fixture(autouse=True)
+async def _owner_chat(sessionmaker: async_sessionmaker[AsyncSession]) -> None:
+    """New-activity messages go to the owner's linked chat (ADR 0036)."""
+    await link_chat(sessionmaker, CHAT_ID)
 
 
 @pytest.fixture
@@ -288,7 +294,10 @@ async def test_deleted_activity_and_disabled_notifier_send_nothing(
     deps = telegram_notify_deps(sessionmaker, telegram_http)
     assert await send_new_activity(deps, 8) == "skipped"
     assert await send_new_activity(deps, 999) == "skipped"
-    disabled = NotifyDeps(sessionmaker, NullNotifier(), None, "", utc_now, NEUTRAL_EN)
-    assert await send_new_activity(disabled, 7) == "disabled"
+    # Another user's activity: they linked no chat, so nothing goes anywhere.
+    other = await create_athlete(sessionmaker, 2002)
+    async with sessionmaker.begin() as session:
+        await ActivityRepository(session).upsert_many(other, [strava_activity(9)])
+    assert await send_new_activity(deps, 9) == "disabled"
     assert await send_new_activity(replace(deps, notifier=NullNotifier()), 7) == "sent"
     assert send.call_count == 0

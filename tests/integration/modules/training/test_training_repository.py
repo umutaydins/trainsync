@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from tests.support.accounts import OWNER_ID
 from trainsync.modules.training.models import (
     Exercise,
     Program,
@@ -38,7 +39,7 @@ def seed_count() -> int:
 
 
 async def exercise_id(session: AsyncSession, slug: str) -> int:
-    exercise = await ExerciseRepository(session).by_slug(slug)
+    exercise = await ExerciseRepository(session, OWNER_ID).by_slug(slug)
     assert exercise is not None
     return exercise.id
 
@@ -47,7 +48,7 @@ async def test_seeded_library_loads(sessionmaker: async_sessionmaker[AsyncSessio
     async with sessionmaker() as session:
         count = await session.scalar(select(func.count()).select_from(Exercise))
         assert count == seed_count()
-        repo = ExerciseRepository(session)
+        repo = ExerciseRepository(session, OWNER_ID)
         bench = await repo.by_slug("bench-press")
         assert bench is not None
         assert (bench.primary_muscle, bench.equipment, bench.is_custom) == (
@@ -66,7 +67,7 @@ async def test_custom_exercises_are_cleaned_between_tests_but_the_seed_stays(
     sessionmaker: async_sessionmaker[AsyncSession],
 ) -> None:
     async with sessionmaker.begin() as session:
-        await ExerciseRepository(session).add(
+        await ExerciseRepository(session, OWNER_ID).add(
             Exercise(
                 slug="landmine-press",
                 name="Landmine Press",
@@ -85,14 +86,14 @@ async def test_put_set_is_idempotent_by_client_id(
 ) -> None:
     async with sessionmaker.begin() as session:
         bench = await exercise_id(session, "bench-press")
-        workout, _ = await WorkoutRepository(session).start(uuid.uuid4(), T0)
+        workout, _ = await WorkoutRepository(session, OWNER_ID).start(uuid.uuid4(), T0)
     client_id = uuid.uuid4()
     values = SetValues(bench, 0, 5, Decimal("100"), T0 + timedelta(minutes=5))
 
     async with sessionmaker.begin() as session:
-        first = await WorkoutRepository(session).put_set(workout.id, client_id, values)
+        first = await WorkoutRepository(session, OWNER_ID).put_set(workout.id, client_id, values)
     async with sessionmaker.begin() as session:
-        again = await WorkoutRepository(session).put_set(workout.id, client_id, values)
+        again = await WorkoutRepository(session, OWNER_ID).put_set(workout.id, client_id, values)
     assert first is not None
     assert again is not None
     assert first[1] is True
@@ -102,7 +103,7 @@ async def test_put_set_is_idempotent_by_client_id(
     # A corrected retry updates the same row.
     fixed = SetValues(bench, 0, 6, Decimal("100"), T0 + timedelta(minutes=5))
     async with sessionmaker.begin() as session:
-        updated = await WorkoutRepository(session).put_set(workout.id, client_id, fixed)
+        updated = await WorkoutRepository(session, OWNER_ID).put_set(workout.id, client_id, fixed)
     assert updated is not None
     assert updated[0].reps == 6
     assert updated[1] is False
@@ -117,13 +118,15 @@ async def test_concurrent_puts_store_one_set(
 ) -> None:
     async with sessionmaker.begin() as session:
         bench = await exercise_id(session, "bench-press")
-        workout, _ = await WorkoutRepository(session).start(uuid.uuid4(), T0)
+        workout, _ = await WorkoutRepository(session, OWNER_ID).start(uuid.uuid4(), T0)
     client_id = uuid.uuid4()
     values = SetValues(bench, 0, 5, Decimal("100"), T0)
 
     async def put() -> bool:
         async with sessionmaker.begin() as session:
-            result = await WorkoutRepository(session).put_set(workout.id, client_id, values)
+            result = await WorkoutRepository(session, OWNER_ID).put_set(
+                workout.id, client_id, values
+            )
             assert result is not None
             return result[1]
 
@@ -138,7 +141,7 @@ async def test_a_client_id_cannot_move_to_another_workout(
 ) -> None:
     async with sessionmaker.begin() as session:
         bench = await exercise_id(session, "bench-press")
-        repo = WorkoutRepository(session)
+        repo = WorkoutRepository(session, OWNER_ID)
         (first, _), (second, _) = (
             await repo.start(uuid.uuid4(), T0),
             await repo.start(uuid.uuid4(), T0 + timedelta(days=1)),
@@ -146,9 +149,14 @@ async def test_a_client_id_cannot_move_to_another_workout(
     client_id = uuid.uuid4()
     values = SetValues(bench, 0, 5, Decimal("100"), T0)
     async with sessionmaker.begin() as session:
-        assert await WorkoutRepository(session).put_set(first.id, client_id, values) is not None
+        assert (
+            await WorkoutRepository(session, OWNER_ID).put_set(first.id, client_id, values)
+            is not None
+        )
     async with sessionmaker.begin() as session:
-        assert await WorkoutRepository(session).put_set(second.id, client_id, values) is None
+        assert (
+            await WorkoutRepository(session, OWNER_ID).put_set(second.id, client_id, values) is None
+        )
 
 
 async def test_last_performance_is_the_latest_other_workout_without_warmups(
@@ -157,7 +165,7 @@ async def test_last_performance_is_the_latest_other_workout_without_warmups(
     async with sessionmaker.begin() as session:
         bench = await exercise_id(session, "bench-press")
         squat = await exercise_id(session, "back-squat")
-        repo = WorkoutRepository(session)
+        repo = WorkoutRepository(session, OWNER_ID)
         (older, _), (newer, _), (current, _) = (
             await repo.start(uuid.uuid4(), T0),
             await repo.start(uuid.uuid4(), T0 + timedelta(days=2)),
@@ -174,7 +182,7 @@ async def test_last_performance_is_the_latest_other_workout_without_warmups(
         await repo.put_set(older.id, uuid.uuid4(), SetValues(squat, 0, 5, Decimal(140), T0))
 
     async with sessionmaker() as session:
-        last = await WorkoutRepository(session).last_performance(
+        last = await WorkoutRepository(session, OWNER_ID).last_performance(
             [bench, squat], exclude_workout_id=current.id
         )
     assert [(s.workout_id, s.weight_kg) for s in last[bench]] == [
@@ -190,7 +198,7 @@ async def test_programs_tree_and_a_single_active_program(
     async with sessionmaker.begin() as session:
         bench = await exercise_id(session, "bench-press")
         squat = await exercise_id(session, "back-squat")
-        repo = ProgramRepository(session)
+        repo = ProgramRepository(session, OWNER_ID)
 
         def day(index: int, name: str, exercise: int) -> tuple[ProgramDay, list[ProgramExercise]]:
             planned = ProgramExercise(
@@ -209,7 +217,7 @@ async def test_programs_tree_and_a_single_active_program(
         await repo.activate(second.id)
 
     async with sessionmaker() as session:
-        repo = ProgramRepository(session)
+        repo = ProgramRepository(session, OWNER_ID)
         active = await repo.active()
         assert active is not None
         assert active.id == second.id
@@ -228,13 +236,13 @@ async def test_programs_tree_and_a_single_active_program(
 
 async def test_body_metrics_upsert_by_date(sessionmaker: async_sessionmaker[AsyncSession]) -> None:
     async with sessionmaker.begin() as session:
-        repo = BodyMetricRepository(session)
+        repo = BodyMetricRepository(session, OWNER_ID)
         await repo.put(date(2026, 10, 12), Decimal("78.4"))
         await repo.put(date(2026, 10, 14), Decimal("78.0"))
         stored = await repo.put(date(2026, 10, 12), Decimal("78.2"))
         assert stored.weight_kg == Decimal("78.20")
     async with sessionmaker() as session:
-        repo = BodyMetricRepository(session)
+        repo = BodyMetricRepository(session, OWNER_ID)
         assert [(m.date.day, m.weight_kg) for m in await repo.between()] == [
             (12, Decimal("78.20")),
             (14, Decimal("78.00")),

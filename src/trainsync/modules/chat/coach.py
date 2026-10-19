@@ -25,6 +25,7 @@ from trainsync.core.logging import get_logger
 from trainsync.modules.chat.common import Incoming, Press, PressResult, Reply, number
 from trainsync.modules.chat.read_api import ReadApi, ReadApiError
 from trainsync.modules.coach.categories import Category
+from trainsync.modules.coach.context import current_reminder, current_zone
 from trainsync.modules.coach.guardrails import (
     FoodKind,
     Trigger,
@@ -98,9 +99,14 @@ class CoachFeature:
         self._voice = voice
         self._soft = soft
         self._clock = clock
-        self._zone = zone
+        self._default_zone = zone
         self._msg = msg
         self._default_start = default_start
+
+    @property
+    def _zone(self) -> ZoneInfo:
+        """The user's time zone in this update (ADR 0036), else the configured one."""
+        return current_zone(self._default_zone)
 
     async def command(self, incoming: Incoming, command: str, args: list[str]) -> Reply:
         if command == "yumusak":
@@ -138,7 +144,7 @@ class CoachFeature:
             day = None
         if day is None:
             return self._msg(Key.COACH_ACTION_FALLBACK)
-        start = day.start_time or self._default_start
+        start = day.start_time or current_reminder(self._default_start)
         return self._msg(Key.COACH_ACTION_PLANNED, day=day.day_name, time=f"{start:%H:%M}")
 
     async def _food(self, kind: FoodKind) -> str:

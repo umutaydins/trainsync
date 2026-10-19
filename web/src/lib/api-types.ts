@@ -284,30 +284,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/chats/{chat_id}/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Settings of a chat
-         * @description The language (`/lang`) and profanity level (`/swear`) the chat chose, or null.
-         */
-        get: operations["get_chat_settings_v1_chats__chat_id__settings_get"];
-        /**
-         * Store the settings of a chat
-         * @description Idempotent: the same body twice stores one row. A field left out keeps its stored value; at least one is required.
-         */
-        put: operations["put_chat_settings_v1_chats__chat_id__settings_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/checkins": {
         parameters: {
             query?: never;
@@ -380,11 +356,35 @@ export interface paths {
         get: operations["me_v1_me_get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete my account
+         * @description Needs the password. Signs out everywhere and unlinks Telegram at once; a background job then revokes Strava and deletes every row of the account. The owner account cannot be deleted here.
+         */
+        delete: operations["delete_me_v1_me_delete"];
         options?: never;
         head?: never;
         /** Change the display name or time zone */
         patch: operations["patch_me_v1_me_patch"];
+        trace?: never;
+    };
+    "/v1/me/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export all my data
+         * @description Every row you own as one JSON document (KVKK / GDPR). Secrets are left out.
+         */
+        get: operations["export_v1_me_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/me/password": {
@@ -436,6 +436,106 @@ export interface paths {
         post?: never;
         /** Sign out one session */
         delete: operations["revoke_session_v1_me_sessions__session_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My settings */
+        get: operations["get_settings_v1_me_settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change my settings
+         * @description Only the fields sent change; `null` returns a field to the default.
+         */
+        patch: operations["patch_settings_v1_me_settings_patch"];
+        trace?: never;
+    };
+    "/v1/me/strava": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Strava connection */
+        get: operations["connection_v1_me_strava_get"];
+        put?: never;
+        post?: never;
+        /**
+         * Disconnect Strava
+         * @description Stops syncing at once; the worker then revokes the app at Strava and deletes the athlete's tokens and activities.
+         */
+        delete: operations["disconnect_v1_me_strava_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/strava/authorize-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start connecting Strava
+         * @description The Strava authorize URL with a signed state naming you; the web BFF sends the browser there. `return_to` must match `OAUTH_RETURN_TO_ALLOWLIST` exactly, else it is ignored.
+         */
+        post: operations["create_authorize_url_v1_me_strava_authorize_url_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/telegram": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Telegram link */
+        get: operations["link_status_v1_me_telegram_get"];
+        put?: never;
+        post?: never;
+        /** Unlink my Telegram chat */
+        delete: operations["unlink_me_v1_me_telegram_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/telegram/code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A one-time code for /link
+         * @description Send `/link CODE` to the bot within `TELEGRAM_LINK_CODE_TTL_MINUTES`.
+         */
+        post: operations["link_code_v1_me_telegram_code_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -500,7 +600,7 @@ export interface paths {
         head?: never;
         /**
          * Update a food
-         * @description Changes only the fields sent. Editing a cached Open Food Facts food turns it into a `manual` one, so a later lookup never overwrites the edit. Logged entries use the food's current values.
+         * @description Changes only the fields sent. Your own foods are yours to edit; shared ones (the Open Food Facts cache) only the owner may correct. Editing a cached Open Food Facts food turns it into a `manual` one, so a later lookup never overwrites the edit. Logged entries keep the values they were logged with.
          */
         patch: operations["update_food_v1_nutrition_foods__food_id__patch"];
         trace?: never;
@@ -688,6 +788,44 @@ export interface paths {
         get: operations["sync_status_v1_sync_status_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/telegram/chats/{chat_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who a chat belongs to */
+        get: operations["chat_owner_v1_telegram_chats__chat_id__get"];
+        put?: never;
+        post?: never;
+        /** Unlink a chat (/unlink) */
+        delete: operations["unlink_chat_v1_telegram_chats__chat_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/telegram/chats/{chat_id}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeem a /link code
+         * @description Binds the chat to the code's user; their previous chat is unlinked.
+         */
+        post: operations["link_chat_v1_telegram_chats__chat_id__link_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1348,6 +1486,19 @@ export interface components {
             /** Strava Athlete Id */
             strava_athlete_id: number;
         };
+        /**
+         * AuthorizeUrl
+         * @example {
+         *       "url": "https://www.strava.com/oauth/authorize?client_id=1234&…"
+         *     }
+         */
+        AuthorizeUrl: {
+            /**
+             * Url
+             * @description Send the browser here; valid for a few minutes
+             */
+            url: string;
+        };
         /** BestSet */
         BestSet: {
             /**
@@ -1430,42 +1581,43 @@ export interface components {
             "hub.challenge": string;
         };
         /**
-         * ChatSettingsIn
-         * @description Either field or both; a field left out keeps its stored value.
-         * @example {
-         *       "lang": "en"
-         *     }
-         * @example {
-         *       "profanity": "max"
-         *     }
-         */
-        ChatSettingsIn: {
-            /** Lang */
-            lang?: ("en" | "tr") | null;
-            /** Profanity */
-            profanity?: ("roast" | "max") | null;
-        };
-        /**
-         * ChatSettingsOut
+         * ChatOwner
+         * @description Who a linked chat belongs to and how the bot should speak to them.
          * @example {
          *       "chat_id": 123456789,
-         *       "lang": "tr",
-         *       "profanity": "max"
+         *       "display_name": "Runner",
+         *       "role": "user",
+         *       "settings": {
+         *         "checkin_enabled": true,
+         *         "checkin_reminder_minutes": 90,
+         *         "checkin_time": "21:00:00",
+         *         "country": "DE",
+         *         "custom": [
+         *           "tone",
+         *           "country"
+         *         ],
+         *         "emergency_number": "112",
+         *         "intensity": "normal",
+         *         "lang": "en",
+         *         "profanity": "roast",
+         *         "quiet_hours": "23:00-07:00",
+         *         "sugar_limit_g": 50,
+         *         "timezone": "Europe/Berlin",
+         *         "tone": "hardcore",
+         *         "workout_reminder_time": "18:00:00"
+         *       },
+         *       "user_id": 2
          *     }
          */
-        ChatSettingsOut: {
+        ChatOwner: {
             /** Chat Id */
             chat_id: number;
-            /**
-             * Lang
-             * @description null: never chosen, the bot uses BOT_LANG
-             */
-            lang: ("en" | "tr") | null;
-            /**
-             * Profanity
-             * @description null: never chosen, the bot uses BOT_PROFANITY
-             */
-            profanity?: ("roast" | "max") | null;
+            /** Display Name */
+            display_name: string;
+            role: components["schemas"]["UserRole"];
+            settings: components["schemas"]["SettingsOut"];
+            /** User Id */
+            user_id: number;
         };
         /**
          * CheckinIn
@@ -1896,6 +2048,16 @@ export interface components {
              * @description Latest body weight on or before the day
              */
             weight_kg: number | null;
+        };
+        /**
+         * DeleteAccountIn
+         * @example {
+         *       "password": "correct horse"
+         *     }
+         */
+        DeleteAccountIn: {
+            /** Password */
+            password: string;
         };
         /**
          * Equipment
@@ -2445,6 +2607,60 @@ export interface components {
             started_at: string;
             /** Workout Id */
             workout_id: number;
+        };
+        /**
+         * LinkCode
+         * @example {
+         *       "bot_url": "https://t.me/trainsync_bot?start=K7Q2M9XD",
+         *       "code": "K7Q2M9XD",
+         *       "command": "/link K7Q2M9XD",
+         *       "expires_at": "2026-10-19T08:10:00Z"
+         *     }
+         */
+        LinkCode: {
+            /**
+             * Bot Url
+             * @description Opens the bot with the code; null without a username
+             */
+            bot_url: string | null;
+            /** Code */
+            code: string;
+            /**
+             * Command
+             * @description What to send the bot
+             */
+            command: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
+        /**
+         * LinkIn
+         * @example {
+         *       "code": "K7Q2M9XD"
+         *     }
+         */
+        LinkIn: {
+            /** Code */
+            code: string;
+        };
+        /**
+         * LinkStatus
+         * @example {
+         *       "linked": true,
+         *       "linked_at": "2026-10-19T08:00:00Z"
+         *     }
+         * @example {
+         *       "linked": false
+         *     }
+         */
+        LinkStatus: {
+            /** Linked */
+            linked: boolean;
+            /** Linked At */
+            linked_at?: string | null;
         };
         /**
          * LogIn
@@ -3847,6 +4063,119 @@ export interface components {
             workout_id: number;
         };
         /**
+         * SettingsOut
+         * @description Effective values; `custom` names the ones the user set (the rest follow the defaults).
+         * @example {
+         *       "checkin_enabled": true,
+         *       "checkin_reminder_minutes": 90,
+         *       "checkin_time": "21:00:00",
+         *       "country": "DE",
+         *       "custom": [
+         *         "tone",
+         *         "country"
+         *       ],
+         *       "emergency_number": "112",
+         *       "intensity": "normal",
+         *       "lang": "en",
+         *       "profanity": "roast",
+         *       "quiet_hours": "23:00-07:00",
+         *       "sugar_limit_g": 50,
+         *       "timezone": "Europe/Berlin",
+         *       "tone": "hardcore",
+         *       "workout_reminder_time": "18:00:00"
+         *     }
+         */
+        SettingsOut: {
+            /** Checkin Enabled */
+            checkin_enabled: boolean;
+            /** Checkin Reminder Minutes */
+            checkin_reminder_minutes: number;
+            /**
+             * Checkin Time
+             * Format: time
+             */
+            checkin_time: string;
+            /** Country */
+            country: string | null;
+            /** Custom */
+            custom: string[];
+            /**
+             * Emergency Number
+             * @description From the country; EMERGENCY_NUMBER otherwise
+             */
+            emergency_number: string;
+            /**
+             * Intensity
+             * @enum {string}
+             */
+            intensity: "normal" | "savage";
+            /**
+             * Lang
+             * @enum {string}
+             */
+            lang: "en" | "tr";
+            /**
+             * Profanity
+             * @enum {string}
+             */
+            profanity: "roast" | "max";
+            /** Quiet Hours */
+            quiet_hours: string;
+            /** Sugar Limit G */
+            sugar_limit_g: number;
+            /**
+             * Timezone
+             * @description Change it with PATCH /v1/me
+             */
+            timezone: string;
+            /**
+             * Tone
+             * @enum {string}
+             */
+            tone: "neutral" | "hardcore";
+            /**
+             * Workout Reminder Time
+             * Format: time
+             */
+            workout_reminder_time: string;
+        };
+        /**
+         * SettingsPatch
+         * @description Only the fields sent change; `null` returns a field to the default.
+         * @example {
+         *       "lang": "tr",
+         *       "profanity": "max"
+         *     }
+         * @example {}
+         */
+        SettingsPatch: {
+            /** Checkin Enabled */
+            checkin_enabled?: boolean | null;
+            /** Checkin Reminder Minutes */
+            checkin_reminder_minutes?: number | null;
+            /** Checkin Time */
+            checkin_time?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Intensity */
+            intensity?: ("normal" | "savage") | null;
+            /** Lang */
+            lang?: ("en" | "tr") | null;
+            /** Profanity */
+            profanity?: ("roast" | "max") | null;
+            /**
+             * Quiet Hours
+             * @example 22:30-06:30
+             */
+            quiet_hours?: string | null;
+            /** Sugar Limit G */
+            sugar_limit_g?: number | null;
+            /** Tone */
+            tone?: ("neutral" | "hardcore") | null;
+            /** Workout Reminder Time */
+            workout_reminder_time?: string | null;
+        };
+        /**
          * Sex
          * @description Only what the Mifflin-St Jeor equation distinguishes.
          * @enum {string}
@@ -3938,6 +4267,25 @@ export interface components {
              */
             to: string;
             totals: components["schemas"]["TotalsOut"];
+        };
+        /**
+         * StravaConnection
+         * @example {
+         *       "athlete_id": 1,
+         *       "connected": true,
+         *       "connected_at": "2026-10-19T08:00:00Z",
+         *       "strava_athlete_id": 134815
+         *     }
+         */
+        StravaConnection: {
+            /** Athlete Id */
+            athlete_id?: number | null;
+            /** Connected */
+            connected: boolean;
+            /** Connected At */
+            connected_at?: string | null;
+            /** Strava Athlete Id */
+            strava_athlete_id?: number | null;
         };
         /**
          * SuggestionOut
@@ -4478,6 +4826,20 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description The Strava account belongs to another user, or yours is still connected */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "this Strava account is connected to another user"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4507,6 +4869,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
             };
             /** @description Validation Error */
             422: {
@@ -5299,102 +5675,6 @@ export interface operations {
             };
         };
     };
-    get_chat_settings_v1_chats__chat_id__settings_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Telegram chat id */
-                chat_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ChatSettingsOut"];
-                };
-            };
-            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "detail": "sign in or send a valid API key"
-                     *     }
-                     */
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    put_chat_settings_v1_chats__chat_id__settings_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Telegram chat id */
-                chat_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChatSettingsIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ChatSettingsOut"];
-                };
-            };
-            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "detail": "sign in or send a valid API key"
-                     *     }
-                     */
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_checkins_v1_checkins_get: {
         parameters: {
             query?: {
@@ -5689,6 +5969,65 @@ export interface operations {
             };
         };
     };
+    delete_me_v1_me_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteAccountIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wrong password */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "the password is wrong"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description The owner account */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "the owner account cannot be deleted"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     patch_me_v1_me_patch: {
         parameters: {
             query?: never;
@@ -5720,6 +6059,68 @@ export interface operations {
                     /**
                      * @example {
                      *       "detail": "unknown time zone 'Mars/Base'"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_v1_me_export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "account": {
+                     *         "display_name": "Runner",
+                     *         "email": "runner@example.com",
+                     *         "id": 2
+                     *       },
+                     *       "exported_at": "2026-10-19T08:00:00+00:00",
+                     *       "tables": {
+                     *         "workouts": [
+                     *           {
+                     *             "id": 42,
+                     *             "started_at": "2026-10-18T17:00:00+00:00"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "version": 1
                      *     }
                      */
                     "application/json": unknown;
@@ -5884,6 +6285,380 @@ export interface operations {
                     /**
                      * @example {
                      *       "detail": "session not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_settings_v1_me_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsOut"];
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_settings_v1_me_settings_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsOut"];
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    connection_v1_me_strava_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StravaConnection"];
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disconnect_v1_me_strava_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description No Strava account connected */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "strava is not connected"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_authorize_url_v1_me_strava_authorize_url_post: {
+        parameters: {
+            query?: {
+                return_to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizeUrl"];
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_status_v1_me_telegram_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkStatus"];
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unlink_me_v1_me_telegram_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description No chat linked */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "telegram is not linked"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_code_v1_me_telegram_code_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkCode"];
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6117,6 +6892,20 @@ export interface operations {
                     /**
                      * @example {
                      *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description A shared food, and you are not the owner */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "shared foods are owner-curated"
                      *     }
                      */
                     "application/json": unknown;
@@ -6485,6 +7274,15 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     put_profile_v1_nutrition_profile_put: {
@@ -6795,6 +7593,230 @@ export interface operations {
                     /**
                      * @example {
                      *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    chat_owner_v1_telegram_chats__chat_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Telegram chat id */
+                chat_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatOwner"];
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Not a service key */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "service key required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description The chat is not linked */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "chat not linked"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unlink_chat_v1_telegram_chats__chat_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Telegram chat id */
+                chat_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Not a service key */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "service key required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description The chat is not linked */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "chat not linked"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_chat_v1_telegram_chats__chat_id__link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Telegram chat id */
+                chat_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatOwner"];
+                };
+            };
+            /** @description Unknown, used or expired code */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "invalid or expired code"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Not a service key */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "service key required"
                      *     }
                      */
                     "application/json": unknown;
@@ -7259,6 +8281,15 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     create_program_v1_training_programs_post: {
@@ -7368,6 +8399,15 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     next_day_v1_training_programs_active_next_day_get: {
@@ -7414,6 +8454,15 @@ export interface operations {
                      *     }
                      */
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

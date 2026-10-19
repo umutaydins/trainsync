@@ -17,6 +17,7 @@ import respx
 from pydantic import SecretStr
 
 from tests.support.bot_api import API, FakeApi, install, planned
+from tests.support.chat_links import chat_links
 from tests.support.messages import NEUTRAL_EN as MSG
 from tests.support.state import MemoryStateStore
 from tests.support.swears import swears
@@ -145,7 +146,7 @@ def make_chat(
     dispatcher = Dispatcher(
         telegram,
         Commands(api, clock, msg),
-        {CHAT},
+        chat_links(http, API, clock),
         msg,
         features=[
             CheckinFlow(api, store, clock, ZONE, msg, voice),

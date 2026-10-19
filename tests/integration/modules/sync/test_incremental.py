@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from fake_strava.config import FakeStravaConfig
 from fake_strava.state import FakeStravaState
-from tests.support.factories import create_athlete
+from tests.support.factories import create_athlete, owner_of
 from tests.support.strava import fake_backed_client
 from trainsync.core.jobs import redis_settings
 from trainsync.core.settings import Settings
@@ -83,6 +83,16 @@ async def _incremental_runs(sessionmaker: async_sessionmaker[AsyncSession]) -> l
     async with sessionmaker() as session:
         stmt = select(SyncRun).where(SyncRun.kind == "incremental").order_by(SyncRun.id)
         return list((await session.scalars(stmt)).all())
+
+
+def run(athlete_id: int, status: str) -> SyncRun:
+    return SyncRun(
+        user_id=owner_of(athlete_id),
+        athlete_id=athlete_id,
+        kind="backfill",
+        status=status,
+        cursor={},
+    )
 
 
 async def test_edit_to_activity_from_one_day_ago_is_synced(
@@ -189,7 +199,15 @@ async def test_skipped_while_backfill_open_or_inactive(
     assert (await run_incremental(deps(sessionmaker, strava), inactive)).status == "skipped"
     athlete_id = await create_athlete(sessionmaker)
     async with sessionmaker.begin() as session:
-        session.add(SyncRun(athlete_id=athlete_id, kind="backfill", status="paused", cursor={}))
+        session.add(
+            SyncRun(
+                user_id=owner_of(athlete_id),
+                athlete_id=athlete_id,
+                kind="backfill",
+                status="paused",
+                cursor={},
+            )
+        )
     assert (await run_incremental(deps(sessionmaker, strava), athlete_id)).status == "skipped"
 
 
@@ -204,9 +222,9 @@ async def test_cron_enqueues_one_job_per_active_athlete_per_window(
     async with sessionmaker.begin() as session:
         session.add_all(
             [
-                SyncRun(athlete_id=done, kind="backfill", status="succeeded", cursor={}),
-                SyncRun(athlete_id=mid_backfill, kind="backfill", status="running", cursor={}),
-                SyncRun(athlete_id=paused_backfill, kind="backfill", status="paused", cursor={}),
+                run(done, "succeeded"),
+                run(mid_backfill, "running"),
+                run(paused_backfill, "paused"),
             ]
         )
 

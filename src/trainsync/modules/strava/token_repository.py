@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from trainsync.core.crypto import TokenCipher
 from trainsync.modules.strava.models import OAuthToken
+from trainsync.modules.strava.repository import athlete_user_id
 
 
 @dataclass(frozen=True, slots=True, repr=False)
@@ -49,7 +50,8 @@ class TokenRepository:
             "expires_at": expires_at,
             "scope": scope,
         }
-        stmt = insert(OAuthToken).values(athlete_id=athlete_id, **values)
+        user_id = await athlete_user_id(self._session, athlete_id)
+        stmt = insert(OAuthToken).values(athlete_id=athlete_id, user_id=user_id, **values)
         await self._session.execute(
             stmt.on_conflict_do_update(index_elements=[OAuthToken.athlete_id], set_=values)
         )

@@ -4,10 +4,20 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import BigInteger, CheckConstraint, Date, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    Date,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
-from trainsync.core.orm import Base, check_in, utc_timestamp
+from trainsync.core.orm import Base, check_in, owner_id, utc_timestamp
 
 
 class CheckinStatus(StrEnum):
@@ -31,10 +41,12 @@ class DailyCheckin(Base):
             "body_weight_kg IS NULL OR (body_weight_kg > 0 AND body_weight_kg < 500)",
             name="body_weight_kg",
         ),
+        UniqueConstraint("user_id", "date", name="uq_daily_checkins_user_date"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    date: Mapped[date] = mapped_column(Date, unique=True)
+    user_id: Mapped[int] = owner_id()
+    date: Mapped[date] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(16))
     workout_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("workouts.id", ondelete="SET NULL")

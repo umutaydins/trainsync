@@ -16,6 +16,7 @@ from fastapi import FastAPI
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from tests.support.accounts import OWNER_ID
 from tests.support.factories import create_athlete, strava_activity
 from tests.support.openfoodfacts import (
     SEARCH,
@@ -84,7 +85,7 @@ async def _seed_fixture(
 ) -> None:
     await _ok(await api.put(f"{BASE}/profile", json=FIXTURE["profile"]))
     async with sessionmaker.begin() as session:
-        metrics = BodyMetricRepository(session)
+        metrics = BodyMetricRepository(session, OWNER_ID)
         for m in FIXTURE["body_metrics"]:
             await metrics.put(date.fromisoformat(m["date"]), Decimal(m["weight_kg"]))
     foods = {key: (await _food(api, **food))["id"] for key, food in FIXTURE["foods"].items()}
@@ -166,7 +167,7 @@ async def test_summary_without_profile_or_weight_says_why(
     assert (day["bmr_kcal"], day["expenditure_kcal"], day["weight_kg"]) == (None, None, None)
 
     async with sessionmaker.begin() as session:  # a weight after the day does not count
-        await BodyMetricRepository(session).put(date(2026, 10, 15), Decimal("80"))
+        await BodyMetricRepository(session, OWNER_ID).put(date(2026, 10, 15), Decimal("80"))
     day = await _ok(await api.get(f"{BASE}/summary", params={"date": "2026-10-14"}))
     assert day["estimate_unavailable_reason"] == "no_body_weight"
 
@@ -481,7 +482,7 @@ async def test_profile_round_trip_and_target_below_bmr_warning(
     assert stored["warning"] is None  # no BMR to compare with
 
     async with sessionmaker.begin() as session:
-        await BodyMetricRepository(session).put(date(2026, 10, 10), Decimal("80"))
+        await BodyMetricRepository(session, OWNER_ID).put(date(2026, 10, 10), Decimal("80"))
     profile = await _ok(await api.get(f"{BASE}/profile"))
     assert (profile["bmr_kcal"], profile["weight_kg"], profile["weight_date"]) == (
         1755.0,

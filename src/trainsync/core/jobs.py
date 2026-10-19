@@ -12,6 +12,10 @@ class JobQueue(Protocol):
 
     async def enqueue_webhook_event(self, event_id: int) -> bool: ...
 
+    async def enqueue_strava_disconnect(self, athlete_id: int) -> bool: ...
+
+    async def enqueue_purge_user(self, user_id: int) -> bool: ...
+
 
 class CoachEvents(Protocol):
     """Workout events the worker's coach reacts to (P6.11, ADR 0030)."""
@@ -60,6 +64,18 @@ class ArqJobQueue:
         job = await self.pool.enqueue_job(
             "process_webhook_event", event_id, _job_id=webhook_job_id(event_id)
         )
+        return job is not None
+
+    async def enqueue_strava_disconnect(self, athlete_id: int) -> bool:
+        """Deauthorize at Strava, then drop the athlete's tokens and activities (ADR 0037)."""
+        job = await self.pool.enqueue_job(
+            "strava_disconnect", athlete_id, _job_id=f"strava_disconnect:{athlete_id}"
+        )
+        return job is not None
+
+    async def enqueue_purge_user(self, user_id: int) -> bool:
+        """Delete everything of a soft-deleted account (ADR 0037)."""
+        job = await self.pool.enqueue_job("purge_user", user_id, _job_id=f"purge_user:{user_id}")
         return job is not None
 
     async def coach_event(self, job: str, object_id: int) -> None:

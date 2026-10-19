@@ -89,8 +89,9 @@ async def test_every_write_is_403_in_demo_mode(
     assert response.headers["x-request-id"]
 
     without = await normal.request(method, path, headers=KEY, json={})
-    assert without.status_code != 403
     assert DEMO_HEADER not in without.headers
+    # Some writes are 403 for their own reason (the bot's service routes need a service key).
+    assert without.status_code != 403 or without.json() != {"detail": DEMO_DETAIL}
 
 
 @pytest.mark.parametrize(("method", "path"), READS, ids=[f"{m} {p}" for m, p in READS])

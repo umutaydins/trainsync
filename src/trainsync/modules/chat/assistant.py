@@ -11,8 +11,10 @@ gets at most `max_tool_calls` tool calls and `timeout_s` seconds in total, and e
 import asyncio
 import json
 import re
+from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Annotated, Protocol
+from zoneinfo import ZoneInfo
 
 import anthropic
 from anthropic.types.beta import (
@@ -38,6 +40,9 @@ from trainsync.modules.coach.mode import CURRENT_PROFANITY, CoachMode
 from trainsync.modules.coach.packs import Key, Messages
 
 log = get_logger(__name__)
+
+# A day key outlives its day in every time zone.
+DAILY_KEY_TTL_S = 2 * 24 * 3600
 
 MAX_TOOL_CALLS = 5
 TIMEOUT_S = 20.0
@@ -191,6 +196,34 @@ class RedisRateLimiter:
         return count <= self._limit
 
 
+@dataclass(frozen=True, slots=True)
+class Asker:
+    """Who asks: the daily limit counts per user and local day; the owner is exempt."""
+
+    user_id: int
+    timezone: str
+    unlimited: bool = False
+
+
+class DailyQuota:
+    """`ASSISTANT_DAILY_LIMIT` questions per user per local day (the owner pays for the key)."""
+
+    def __init__(self, redis: Redis, limit: int, clock: Clock) -> None:
+        self._redis = redis
+        self._limit = limit
+        self._clock = clock
+
+    async def allow(self, asker: Asker) -> bool:
+        if asker.unlimited:
+            return True
+        day = self._clock().astimezone(ZoneInfo(asker.timezone)).date()
+        key = f"assistant:daily:{asker.user_id}:{day:%Y%m%d}"
+        count = int(await self._redis.incr(key))
+        if count == 1:
+            await self._redis.expire(key, DAILY_KEY_TTL_S)
+        return count <= self._limit
+
+
 class ToolError(Exception):
     """Reported back to the model as an error tool result."""
 
@@ -208,6 +241,7 @@ class Assistant:
         timeout_s: float = TIMEOUT_S,
         mode: CoachMode | None = None,
         profanity: BotProfanity = "roast",
+        daily: DailyQuota | None = None,
     ) -> None:
         self._planner = planner
         self._api = read_api
@@ -216,14 +250,18 @@ class Assistant:
         self._msg = msg
         # The effective intensity (savage unless soft mode); None = never savage.
         self._mode = mode
+        self._daily = daily
         # BOT_PROFANITY; a chat's /swear choice (`using_profanity`) overrides it.
         self._profanity = profanity
         self._max_tool_calls = max_tool_calls
         self._timeout_s = timeout_s
 
-    async def answer(self, chat_id: int, question: str) -> str:
+    async def answer(self, chat_id: int, question: str, asker: Asker | None = None) -> str:
         if not await self._limiter.allow(chat_id):
             log.info("assistant_rate_limited", chat_id=chat_id)
+            return self._msg(Key.ASSISTANT_RATE_LIMITED)
+        if asker is not None and self._daily is not None and not await self._daily.allow(asker):
+            log.info("assistant_daily_limit", user_id=asker.user_id)
             return self._msg(Key.ASSISTANT_RATE_LIMITED)
         try:
             async with asyncio.timeout(self._timeout_s):

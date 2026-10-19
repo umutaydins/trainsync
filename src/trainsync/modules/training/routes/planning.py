@@ -4,11 +4,12 @@
 from decimal import Decimal
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from trainsync.core.deps import SessionmakerDep, SettingsDep, require_api_key
+from trainsync.core.deps import SessionmakerDep, SettingsDep
 from trainsync.core.errors import UNAUTHORIZED, error
+from trainsync.modules.auth.dependencies import CurrentUser
 from trainsync.modules.training.generator import (
     DEFAULT_WEEKS,
     MIN_SESSION_MINUTES,
@@ -30,9 +31,7 @@ from trainsync.modules.training.routes.programs import (
 )
 from trainsync.modules.training.schemas import Kg
 
-router = APIRouter(
-    prefix="/v1/training", tags=["training"], dependencies=[Depends(require_api_key)]
-)
+router = APIRouter(prefix="/v1/training", tags=["training"])
 
 GENERATE_EXAMPLE: dict[str, Any] = {
     "days_per_week": 4,
@@ -115,9 +114,11 @@ class ProgramPreview(BaseModel):
         400: error("Unsupported days for the template", "upper_lower takes 4 days a week"),
     },
 )
-async def generate_program(sessionmaker: SessionmakerDep, body: GenerateIn) -> ProgramPreview:
+async def generate_program(
+    principal: CurrentUser, sessionmaker: SessionmakerDep, body: GenerateIn
+) -> ProgramPreview:
     async with sessionmaker() as session:
-        rows = await ExerciseRepository(session).with_pattern()
+        rows = await ExerciseRepository(session, principal.user_id).with_pattern()
     library = [
         LibraryExercise(
             r.id, r.slug, r.name, Equipment(r.equipment), MovementPattern(r.movement_pattern)
@@ -211,6 +212,7 @@ class PlatesOut(BaseModel):
     responses={**UNAUTHORIZED},
 )
 async def plates(
+    principal: CurrentUser,
     settings: SettingsDep,
     target: Annotated[Decimal, Query(ge=0, le=1000, description="kg", examples=["102.5"])],
 ) -> PlatesOut:

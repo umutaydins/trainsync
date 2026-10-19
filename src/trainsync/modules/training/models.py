@@ -23,7 +23,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from trainsync.core.orm import Base, check_in, utc_timestamp
+from trainsync.core.orm import Base, check_in, owner_id, utc_timestamp
 
 
 class Equipment(StrEnum):
@@ -94,10 +94,20 @@ class Exercise(Base):
             f"movement_pattern IS NULL OR {check_in('movement_pattern', MovementPattern)}",
             name="movement_pattern",
         ),
+        # Built-in slugs are unique; a custom slug is unique among its owner's exercises.
+        Index(
+            "uq_exercises_shared_slug",
+            "slug",
+            unique=True,
+            postgresql_where=text("user_id IS NULL"),
+        ),
+        UniqueConstraint("user_id", "slug", name="uq_exercises_user_slug"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    slug: Mapped[str] = mapped_column(String(64), unique=True)
+    # Null for the built-in library (shared); a custom exercise belongs to its creator.
+    user_id: Mapped[int | None] = owner_id(nullable=True)
+    slug: Mapped[str] = mapped_column(String(64))
     name: Mapped[str] = mapped_column(Text)
     primary_muscle: Mapped[str] = mapped_column(String(16))
     secondary_muscles: Mapped[list[str]] = mapped_column(
@@ -115,11 +125,13 @@ class Program(Base):
         CheckConstraint(check_in("goal", ProgramGoal), name="goal"),
         CheckConstraint("days_per_week BETWEEN 1 AND 7", name="days_per_week"),
         CheckConstraint("weeks >= 1", name="weeks"),
-        # At most one active program.
-        Index("uq_programs_active", "active", unique=True, postgresql_where=text("active")),
+        # At most one active program per user.
+        Index("uq_programs_active", "user_id", unique=True, postgresql_where=text("active")),
+        Index("ix_programs_user_id", "user_id", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = owner_id()
     name: Mapped[str] = mapped_column(Text)
     goal: Mapped[str] = mapped_column(String(16))
     days_per_week: Mapped[int] = mapped_column(Integer)
@@ -133,9 +145,11 @@ class ProgramDay(Base):
     __table_args__ = (
         UniqueConstraint("program_id", "day_index"),
         CheckConstraint("weekday IS NULL OR weekday BETWEEN 0 AND 6", name="weekday"),
+        Index("ix_program_days_user_id", "user_id"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = owner_id()
     program_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("programs.id", ondelete="CASCADE")
     )
@@ -154,9 +168,11 @@ class ProgramExercise(Base):
         CheckConstraint("sets >= 1 AND rep_min >= 1 AND rep_max >= rep_min", name="sets_reps"),
         CheckConstraint("rest_seconds >= 0", name="rest_seconds"),
         Index("ix_program_exercises_day_position", "program_day_id", "position"),
+        Index("ix_program_exercises_user_id", "user_id"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = owner_id()
     program_day_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("program_days.id", ondelete="CASCADE")
     )
@@ -172,11 +188,15 @@ class ProgramExercise(Base):
 
 class Workout(Base):
     __tablename__ = "workouts"
-    __table_args__ = (Index("ix_workouts_started_at", text("started_at DESC"), "id"),)
+    __table_args__ = (
+        Index("ix_workouts_started_at", "user_id", text("started_at DESC"), "id"),
+        # Client-generated per user: a retried start is one workout (ADR 0017, 0035).
+        UniqueConstraint("user_id", "client_id", name="uq_workouts_user_client_id"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    # Client-generated, so a retried or double-tapped start is one workout (ADR 0017).
-    client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
+    user_id: Mapped[int] = owner_id()
+    client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
     program_day_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("program_days.id", ondelete="SET NULL")
     )
@@ -197,11 +217,13 @@ class WorkoutSet(Base):
         CheckConstraint("rpe IS NULL OR rpe BETWEEN 1 AND 10", name="rpe"),
         CheckConstraint("rest_seconds IS NULL OR rest_seconds >= 0", name="rest_seconds"),
         Index("ix_workout_sets_workout_id", "workout_id", "exercise_id", "set_index"),
-        Index("ix_workout_sets_exercise_completed_at", "exercise_id", "completed_at"),
+        Index("ix_workout_sets_exercise_completed_at", "user_id", "exercise_id", "completed_at"),
+        UniqueConstraint("user_id", "client_id", name="uq_workout_sets_user_client_id"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
+    user_id: Mapped[int] = owner_id()
+    client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
     workout_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("workouts.id", ondelete="CASCADE")
     )
@@ -222,5 +244,8 @@ class BodyMetric(Base):
     __tablename__ = "body_metrics"
     __table_args__ = (CheckConstraint("weight_kg > 0 AND weight_kg < 500", name="weight_kg"),)
 
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
     date: Mapped[date] = mapped_column(Date, primary_key=True)
     weight_kg: Mapped[Decimal] = mapped_column(Numeric(5, 2))

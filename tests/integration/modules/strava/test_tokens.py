@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from fake_strava.clock import FakeClock
 from tests.conftest import FAKE_STRAVA_BASE_URL, fake_strava_login
+from tests.support.accounts import OWNER_ID
 from trainsync.core.crypto import TokenCipher
 from trainsync.core.settings import Settings
 from trainsync.integrations.strava.client import StravaClient
@@ -20,7 +21,7 @@ from trainsync.modules.strava.tokens import RedisRefreshLock, TokenManager
 
 async def _athlete(sessionmaker: async_sessionmaker[AsyncSession], strava_id: int = 1001) -> int:
     async with sessionmaker.begin() as session:
-        athlete = Athlete(strava_athlete_id=strava_id)
+        athlete = Athlete(user_id=OWNER_ID, strava_athlete_id=strava_id)
         session.add(athlete)
         await session.flush()
         return athlete.id

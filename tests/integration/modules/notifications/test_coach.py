@@ -20,12 +20,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import make_settings
+from tests.support.accounts import OWNER_ID
+from tests.support.linked import link_chat, outcome_of
 from tests.support.swears import swears
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, error, ok, sent_messages
 from trainsync.core.settings import BotLang, BotProfanity
 from trainsync.integrations.telegram.client import TelegramApi
 from trainsync.modules.chat.common import client_id
-from trainsync.modules.chat.repository import ChatSettingsRepository
 from trainsync.modules.coach.categories import Category
 from trainsync.modules.coach.lines import MemoryRecentStore, load_pack, load_packs
 from trainsync.modules.coach.mode import CoachMode, MemorySoftModeStore
@@ -94,17 +95,15 @@ async def coach(
     async with httpx.AsyncClient() as http:
         with respx.mock(assert_all_called=False) as mock:
             send = mock.post(f"{BOT_URL}/sendMessage").mock(return_value=ok({}))
+            await link_chat(sessionmaker, CHAT, timezone=ZONE.key)
             deps = CoachDeps(
                 sessionmaker=sessionmaker,
                 telegram=TelegramApi(http, SecretStr(BOT_TOKEN), base_url=TELEGRAM),
-                chat_id=CHAT,
                 clock=clock,
                 voice=voice(savage=False),
                 msg=MSG,
-                zone=ZONE,
-                default_start=time(18, 0),
-                quiet=(time(23, 0), time(7, 0)),
                 rules=Rules(),
+                settings=make_settings(workout_reminder_time="18:00", quiet_hours="23:00-07:00"),
             )
             yield deps, send
 
@@ -119,9 +118,9 @@ async def program(
 ) -> tuple[int, int]:
     """An active 1-day program on `weekday` with bench press; (day id, exercise id)."""
     async with sessionmaker.begin() as session:
-        bench = await ExerciseRepository(session).by_slug("bench-press")
+        bench = await ExerciseRepository(session, OWNER_ID).by_slug("bench-press")
         assert bench is not None
-        repo = ProgramRepository(session)
+        repo = ProgramRepository(session, OWNER_ID)
         saved = await repo.add(
             Program(name="Push", goal="strength", days_per_week=1, weeks=4),
             [
@@ -146,6 +145,10 @@ async def program(
         return tree.days[0][0].id, bench.id
 
 
+async def tick(deps: CoachDeps) -> str:
+    return outcome_of(await run_reminders(deps))
+
+
 def texts(send: respx.Route) -> list[str]:
     return [m["text"] for m in sent_messages(send)]
 
@@ -163,7 +166,7 @@ async def test_every_stage_once_in_order(
     outcomes = []
     for hh, mm in [(17, 15), (17, 30), (17, 31), (18, 0), (18, 5), (18, 30), (19, 30), (21, 0)]:
         clock.local(hh, mm)
-        outcomes.append(await run_reminders(deps))
+        outcomes.append(await tick(deps))
     assert outcomes == [
         "nothing",
         "sent",  # 30 min before
@@ -182,7 +185,7 @@ async def test_every_stage_once_in_order(
         MSG(Key.COACH_MISSED, day="Push A"),
     ]
     clock.local(18, 0, days=1)  # Tuesday: not a training day
-    assert await run_reminders(deps) == "no_plan"
+    assert await tick(deps) == "no_plan"
 
 
 async def test_a_started_workout_stops_the_reminders(
@@ -193,12 +196,14 @@ async def test_a_started_workout_stops_the_reminders(
     deps, send = coach
     await program(sessionmaker)
     clock.local(18, 0)
-    assert await run_reminders(deps) == "sent"
+    assert await tick(deps) == "sent"
     async with sessionmaker.begin() as session:
-        await WorkoutRepository(session).start(uuid.uuid4(), clock.now + timedelta(minutes=5))
+        await WorkoutRepository(session, OWNER_ID).start(
+            uuid.uuid4(), clock.now + timedelta(minutes=5)
+        )
     for hh, mm in [(18, 30), (19, 30), (21, 0)]:
         clock.local(hh, mm)
-        assert await run_reminders(deps) == "started"
+        assert await tick(deps) == "started"
     assert len(texts(send)) == 1
 
 
@@ -210,13 +215,13 @@ async def test_quiet_hours_send_nothing_and_never_late(
     deps, send = coach
     await program(sessionmaker, start=time(23, 15))
     clock.local(22, 45)
-    assert await run_reminders(deps) == "sent"  # before: still outside quiet hours
+    assert await tick(deps) == "sent"  # before: still outside quiet hours
     clock.local(23, 15)
-    assert await run_reminders(deps) == "quiet"
+    assert await tick(deps) == "quiet"
     clock.local(23, 16)
-    assert await run_reminders(deps) == "quiet"
+    assert await tick(deps) == "quiet"
     clock.local(7, 0, days=1)  # quiet hours over: the night's stages are long past
-    assert await run_reminders(deps) == "no_plan"
+    assert await tick(deps) == "no_plan"
     assert len(texts(send)) == 1
     async with sessionmaker() as session:
         claimed = await session.scalar(select(func.count()).select_from(Notification))
@@ -231,7 +236,7 @@ async def test_default_schedule_and_start_time(
     deps, _ = coach
     await program(sessionmaker, weekday=None, start=None)  # 1 day a week → Monday, 18:00
     clock.local(17, 30)
-    assert await run_reminders(deps) == "sent"
+    assert await tick(deps) == "sent"
 
 
 async def test_a_failed_send_is_retried_on_the_next_tick(
@@ -243,9 +248,9 @@ async def test_a_failed_send_is_retried_on_the_next_tick(
     await program(sessionmaker)
     send.side_effect = [error(400, "Bad Request: chat not found"), ok({})]
     clock.local(18, 0)
-    assert await run_reminders(deps) == "failed"
+    assert await tick(deps) == "failed"
     clock.local(18, 1)
-    assert await run_reminders(deps) == "sent"
+    assert await tick(deps) == "sent"
 
 
 async def test_savage_reminders_are_a_fact_line_and_a_savage_line(
@@ -257,7 +262,7 @@ async def test_savage_reminders_are_a_fact_line_and_a_savage_line(
     deps = replace(deps, voice=voice(savage=True))
     await program(sessionmaker)
     clock.local(18, 30)
-    assert await run_reminders(deps) == "sent"
+    assert await tick(deps) == "sent"
     fact, line = texts(send)[0].split("\n", 1)
     assert fact == "Push A · 18:00"
     assert any(line.startswith(roast) for roast in LINES[Category.ESCALATION]), line
@@ -267,7 +272,7 @@ async def test_disabled_without_telegram(
     coach: tuple[CoachDeps, respx.Route], sessionmaker: async_sessionmaker[AsyncSession]
 ) -> None:
     deps, _ = coach
-    assert await run_reminders(replace(deps, telegram=None)) == "disabled"
+    assert await run_reminders(replace(deps, telegram=None)) == {}
 
 
 # ---------------------------------------------------------------- workout events
@@ -277,7 +282,7 @@ async def start(
     sessionmaker: async_sessionmaker[AsyncSession], at: datetime, day_id: int | None, cid: uuid.UUID
 ) -> int:
     async with sessionmaker.begin() as session:
-        workout, _ = await WorkoutRepository(session).start(cid, at, day_id)
+        workout, _ = await WorkoutRepository(session, OWNER_ID).start(cid, at, day_id)
         return workout.id
 
 
@@ -291,7 +296,7 @@ async def log(
     at: datetime,
 ) -> int:
     async with sessionmaker.begin() as session:
-        result = await WorkoutRepository(session).put_set(
+        result = await WorkoutRepository(session, OWNER_ID).put_set(
             workout_id, uuid.uuid4(), SetValues(exercise_id, index, reps, Decimal(weight), at)
         )
         assert result is not None
@@ -322,7 +327,7 @@ async def test_start_under_target_rest_and_a_bad_verdict(
     assert await rest_over(deps, second) == "late"
 
     async with sessionmaker.begin() as session:
-        await WorkoutRepository(session).finish(workout, clock.now)
+        await WorkoutRepository(session, OWNER_ID).finish(workout, clock.now)
     assert await workout_finished(deps, workout) == "sent"
     assert await workout_finished(deps, workout) == "duplicate"
     start_text, under_text, rest_text, done_text = texts(send)
@@ -349,7 +354,7 @@ async def test_a_complete_workout_gets_the_good_verdict_and_no_rest_after_the_la
     clock.now += timedelta(seconds=120)
     assert await rest_over(deps, last) == "all_done"
     async with sessionmaker.begin() as session:
-        await WorkoutRepository(session).finish(workout, clock.now)
+        await WorkoutRepository(session, OWNER_ID).finish(workout, clock.now)
     assert await workout_finished(deps, workout) == "sent"
     assert texts(send)[-1].endswith(MSG(Key.COACH_DONE_GOOD))
 
@@ -367,7 +372,7 @@ async def test_check_in_workouts_get_no_live_messages(
     logged = await log(sessionmaker, workout, bench, 1, 1, "40", clock.now)
     assert await set_logged(deps, logged, None) == "skipped"
     async with sessionmaker.begin() as session:
-        await WorkoutRepository(session).finish(workout, clock.now)
+        await WorkoutRepository(session, OWNER_ID).finish(workout, clock.now)
     assert await workout_finished(deps, workout) == "skipped"
     assert texts(send) == []
 
@@ -376,8 +381,7 @@ async def test_check_in_workouts_get_no_live_messages(
 
 
 async def store_lang(sessionmaker: async_sessionmaker[AsyncSession], lang: BotLang) -> None:
-    async with sessionmaker.begin() as session:
-        await ChatSettingsRepository(session).set_lang(CHAT, lang, MONDAY_18)
+    await link_chat(sessionmaker, CHAT, lang=lang)
 
 
 @pytest.mark.parametrize("savage", [False, True])
@@ -408,7 +412,7 @@ async def test_the_worker_speaks_the_language_stored_for_the_chat(
     await program(sessionmaker)
     clock.local(17, 30)
     await store_lang(sessionmaker, "en")
-    assert await run_reminders(deps) == "sent"
+    assert await tick(deps) == "sent"
     english = texts(send)[-1]
     if savage:
         fact, line = english.split("\n", 1)
@@ -419,7 +423,7 @@ async def test_the_worker_speaks_the_language_stored_for_the_chat(
         assert english == en(Key.COACH_REMINDER_BEFORE, day="Push A", time="18:00")
     await store_lang(sessionmaker, "tr")  # switched back: the next stage is Turkish again
     clock.local(18, 0)
-    assert await run_reminders(deps) == "sent"
+    assert await tick(deps) == "sent"
     if not savage:
         assert texts(send)[-1] == MSG(Key.COACH_REMINDER_NOW, day="Push A", time="18:00")
 
@@ -427,8 +431,7 @@ async def test_the_worker_speaks_the_language_stored_for_the_chat(
 async def store_profanity(
     sessionmaker: async_sessionmaker[AsyncSession], level: BotProfanity
 ) -> None:
-    async with sessionmaker.begin() as session:
-        await ChatSettingsRepository(session).set(CHAT, MONDAY_18, profanity=level)
+    await link_chat(sessionmaker, CHAT, profanity=level)
 
 
 def savage_deps(deps: CoachDeps) -> CoachDeps:
@@ -457,14 +460,14 @@ async def test_max_reaches_the_reminders_read_at_send_time(
     await program(sessionmaker)
     await store_profanity(sessionmaker, "max")
     clock.local(17, 30)
-    assert await run_reminders(deps) == "sent"
+    assert await tick(deps) == "sent"
     fact, line = texts(send)[-1].split("\n", 1)
     assert fact == "Push A · 18:00"
     assert any(line.startswith(x) for x in packs["tr"].max[Category.REMINDER_BEFORE]), line
     assert swears(line)
     await store_profanity(sessionmaker, "roast")
     clock.local(18, 0)
-    assert await run_reminders(deps) == "sent"
+    assert await tick(deps) == "sent"
     line = texts(send)[-1].split("\n", 1)[1]
     assert any(line.startswith(x) for x in packs["tr"].lines[Category.REMINDER_NOW]), line
 
@@ -483,7 +486,7 @@ async def test_max_praise_after_a_complete_workout(
     clock.now += timedelta(seconds=150)
     await log(sessionmaker, workout, bench, 2, 5, "80", clock.now)
     async with sessionmaker.begin() as session:
-        await WorkoutRepository(session).finish(workout, clock.now)
+        await WorkoutRepository(session, OWNER_ID).finish(workout, clock.now)
     assert await workout_finished(deps, workout) == "sent"
     praise = texts(send)[-1].split("\n")[-1]
     good = load_packs(None)["tr"].max[Category.WORKOUT_DONE_GOOD]

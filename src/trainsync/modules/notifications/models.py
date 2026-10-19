@@ -6,7 +6,7 @@ from enum import StrEnum
 from sqlalchemy import BigInteger, CheckConstraint, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from trainsync.core.orm import Base, check_in, utc_timestamp
+from trainsync.core.orm import Base, check_in, owner_id, utc_timestamp
 
 
 class NotificationKind(StrEnum):
@@ -29,16 +29,19 @@ class NotificationKind(StrEnum):
 
 
 class Notification(Base):
-    """One row per notification ever sent: the unique `(kind, object_id)` makes sending
-    idempotent (claimed before sending, released if the send fails; ADR 0012)."""
+    """One row per notification ever sent: the unique `(user_id, kind, object_id)` makes sending
+    idempotent (claimed before sending, released if the send fails; ADR 0012, 0035)."""
 
     __tablename__ = "notifications"
     __table_args__ = (
         CheckConstraint(check_in("kind", NotificationKind), name="kind"),
-        UniqueConstraint("kind", "object_id", name="uq_notifications_kind_object_id"),
+        UniqueConstraint(
+            "user_id", "kind", "object_id", name="uq_notifications_user_kind_object_id"
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = owner_id()
     kind: Mapped[str] = mapped_column(String(32))
     object_id: Mapped[int] = mapped_column(BigInteger)
     sent_at: Mapped[datetime] = utc_timestamp(default_now=True)

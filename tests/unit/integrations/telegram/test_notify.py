@@ -78,9 +78,14 @@ async def test_null_notifier_sends_nothing() -> None:
 
 async def test_build_notifier(http: httpx.AsyncClient) -> None:
     sleep = SleepRecorder()
-    assert build_notifier(make_settings(), http, sleep)[1] is None
-    no_chat = make_settings(telegram_bot_token=BOT_TOKEN)
-    assert isinstance(build_notifier(no_chat, http, sleep)[0], NullNotifier)
+    """A bot token picks Telegram (each user's chat comes per send, ADR 0036); the second value
+    is the owner's operations chat for stack alerts."""
+    off, no_ops_chat = build_notifier(make_settings(), http, sleep)
+    assert isinstance(off, NullNotifier)
+    assert no_ops_chat is None
+    token_only, ops = build_notifier(make_settings(telegram_bot_token=BOT_TOKEN), http, sleep)
+    assert isinstance(token_only, TelegramNotifier)
+    assert ops is None
     configured = make_settings(telegram_bot_token=BOT_TOKEN, telegram_allowed_chat_ids="5,6")
     chosen, chat_ref = build_notifier(configured, http, sleep)
     assert isinstance(chosen, TelegramNotifier)

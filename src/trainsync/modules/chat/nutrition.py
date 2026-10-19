@@ -33,6 +33,7 @@ from trainsync.modules.chat.common import (
 from trainsync.modules.chat.parsing import ParseError, parse_choice, parse_eat, parse_number
 from trainsync.modules.chat.read_api import ReadApi, ReadApiError
 from trainsync.modules.coach.categories import Category
+from trainsync.modules.coach.context import current_sugar_limit, current_zone
 from trainsync.modules.coach.packs import Messages, NeutralKey
 from trainsync.modules.coach.voice import CoachVoice
 from trainsync.modules.nutrition.models import Meal
@@ -90,11 +91,16 @@ class NutritionCommands:
         self._api = api
         self._store = store
         self._clock = clock
-        self._zone = zone
+        self._default_zone = zone
         self._msg = msg
         self._voice = voice
-        self._sugar_limit_g = sugar_limit_g
+        self._default_sugar_limit_g = sugar_limit_g
         self._high_sugar_per_100g = high_sugar_per_100g
+
+    @property
+    def _zone(self) -> ZoneInfo:
+        """The user's time zone in this update (ADR 0036), else the configured one."""
+        return current_zone(self._default_zone)
 
     async def command(self, incoming: Incoming, command: str, args: list[str]) -> Reply:
         if command == "eat":
@@ -181,7 +187,8 @@ class NutritionCommands:
             day = await self._api.nutrition_summary(entry.date)
         except ReadApiError:
             day = None
-        over = day is not None and free and day.free_sugars_g > self._sugar_limit_g
+        limit = current_sugar_limit(self._default_sugar_limit_g)
+        over = day is not None and free and day.free_sugars_g > limit
         if not (high or over):
             return []
         neutral = self._msg.neutral
@@ -191,7 +198,7 @@ class NutritionCommands:
                 neutral(
                     NeutralKey.FOOD_SUGAR_DAY,
                     sugar=f"{number(day.free_sugars_g, 0)} g",
-                    limit=f"{number(self._sugar_limit_g, 0)} g",
+                    limit=f"{number(limit, 0)} g",
                 )
             )
         lines.append(neutral(NeutralKey.FOOD_MOVE_LOGGED))

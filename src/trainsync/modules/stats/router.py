@@ -6,16 +6,17 @@
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from trainsync.core.clock import Clock
-from trainsync.core.deps import ClockDep, SessionmakerDep, require_api_key
+from trainsync.core.deps import ClockDep, SessionmakerDep
 from trainsync.core.errors import UNAUTHORIZED, error
 from trainsync.modules.activities.reads import ActivityFilter, ReadRepository, Totals, week_start
 from trainsync.modules.activities.router import ACTIVITY_EXAMPLE, ActivityOut
+from trainsync.modules.auth.dependencies import CurrentUser
 
-router = APIRouter(prefix="/v1/stats", tags=["stats"], dependencies=[Depends(require_api_key)])
+router = APIRouter(prefix="/v1/stats", tags=["stats"])
 
 DEFAULT_WEEKS = 12
 MAX_WEEKS = 520
@@ -79,6 +80,7 @@ class WeeklyStats(BaseModel):
     },
 )
 async def weekly(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     clock: ClockDep,
     start: Annotated[date | None, Query(alias="from", examples=["2026-09-01"])] = None,
@@ -92,7 +94,7 @@ async def weekly(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"at most {MAX_WEEKS} weeks")
 
     async with sessionmaker() as session:
-        reads = ReadRepository(session)
+        reads = ReadRepository(session, principal.user_id)
         athlete_ids = await reads.active_athlete_ids(athlete_id)
         activity_filter = _range_filter(athlete_ids, start, end, sport_type)
         weeks = await reads.weekly_stats(activity_filter, first_week, last_week)
@@ -215,6 +217,7 @@ class StatsSummary(BaseModel):
     responses={**UNAUTHORIZED, 400: error("`to` before `from`", "`to` is before `from`")},
 )
 async def summary(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     clock: ClockDep,
     start: Annotated[date | None, Query(alias="from", examples=["2026-09-01"])] = None,
@@ -224,7 +227,7 @@ async def summary(
 ) -> StatsSummary:
     start, end = _resolve_range(start, end, clock)
     async with sessionmaker() as session:
-        reads = ReadRepository(session)
+        reads = ReadRepository(session, principal.user_id)
         athlete_ids = await reads.active_athlete_ids(athlete_id)
         result = await reads.summary(_range_filter(athlete_ids, start, end, sport_type))
         last_synced_at = await reads.last_synced_at(athlete_ids)

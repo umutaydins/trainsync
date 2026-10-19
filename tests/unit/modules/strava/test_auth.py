@@ -11,8 +11,13 @@ from trainsync.core import deps
 from trainsync.core.settings import Settings
 from trainsync.core.state import sign_state, verify_state
 from trainsync.entrypoints.api.app import create_app
+from trainsync.modules.auth.dependencies import current_principal
+from trainsync.modules.auth.models import UserRole
+from trainsync.modules.auth.service import Principal
 from trainsync.modules.strava import dependencies as strava_deps
+from trainsync.modules.strava.router import parse_state_data, state_data
 
+USER = Principal(7, UserRole.USER, "UTC")
 NOW = datetime(2026, 10, 17, 12, 0, tzinfo=UTC)
 
 
@@ -29,7 +34,16 @@ def _app(settings: Settings) -> FastAPI:
     app.state.clock = lambda: NOW
     for dep in (deps.get_sessionmaker, strava_deps.get_strava_client, deps.get_job_queue):
         app.dependency_overrides[dep] = MustNotBeUsed
+    app.dependency_overrides[current_principal] = lambda: USER
     return app
+
+
+def _state(at: datetime, settings: Settings, return_to: str = "") -> str:
+    return sign_state(at, settings.state_signing_key, data=state_data(USER.user_id, return_to))
+
+
+def _signed(state: str, settings: Settings) -> tuple[int, str]:
+    return parse_state_data(verify_state(state, NOW, settings.state_signing_key))
 
 
 def _client(app: FastAPI) -> httpx.AsyncClient:
@@ -51,7 +65,7 @@ async def test_login_redirects_with_required_params() -> None:
     assert query["response_type"] == "code"
     assert query["approval_prompt"] == "auto"
     assert query["scope"] == "read,activity:read_all"
-    verify_state(query["state"], NOW, settings.state_signing_key)
+    assert _signed(query["state"], settings) == (USER.user_id, "")  # the state names the user
 
 
 def test_public_oauth_url_defaults_to_internal() -> None:
@@ -74,9 +88,9 @@ async def test_callback_rejections_write_nothing(
     settings: Settings, params: dict[str, str], detail: str
 ) -> None:
     if params["state"] == "VALID":
-        params["state"] = sign_state(NOW - timedelta(minutes=1), settings.state_signing_key)
+        params["state"] = _state(NOW - timedelta(minutes=1), settings)
     elif params["state"] == "EXPIRED":
-        params["state"] = sign_state(NOW - timedelta(minutes=11), settings.state_signing_key)
+        params["state"] = _state(NOW - timedelta(minutes=11), settings)
     async with _client(_app(settings)) as client:
         response = await client.get("/auth/strava/callback", params=params)
     assert response.status_code == 400
@@ -110,7 +124,7 @@ def test_allowlist_is_read_from_a_comma_separated_env_value() -> None:
 async def test_login_signs_an_allowlisted_return_to_into_the_state() -> None:
     settings = _return_to_settings()
     state = await _login_state(settings, RETURN_TO)
-    assert verify_state(state, NOW, settings.state_signing_key) == RETURN_TO
+    assert _signed(state, settings) == (USER.user_id, RETURN_TO)
 
 
 @pytest.mark.parametrize(
@@ -132,18 +146,17 @@ async def test_login_signs_an_allowlisted_return_to_into_the_state() -> None:
 async def test_off_allowlist_return_to_is_ignored(return_to: str) -> None:
     settings = _return_to_settings()
     state = await _login_state(settings, return_to)
-    assert verify_state(state, NOW, settings.state_signing_key) == ""
-    assert len(state.split(".")) == 3
+    assert _signed(state, settings) == (USER.user_id, "")
 
 
 async def test_return_to_is_ignored_without_an_allowlist(settings: Settings) -> None:
     state = await _login_state(settings, RETURN_TO)
-    assert verify_state(state, NOW, settings.state_signing_key) == ""
+    assert _signed(state, settings) == (USER.user_id, "")
 
 
 async def test_callback_redirects_errors_back_to_an_allowlisted_return_to() -> None:
     settings = _return_to_settings()
-    state = sign_state(NOW, settings.state_signing_key, data=RETURN_TO)
+    state = _state(NOW, settings, RETURN_TO)
     async with _client(_app(settings)) as client:
         response = await client.get(
             "/auth/strava/callback", params={"state": state, "error": "access_denied"}
@@ -159,7 +172,7 @@ async def test_callback_redirects_errors_back_to_an_allowlisted_return_to() -> N
 async def test_callback_never_redirects_to_a_url_no_longer_allowlisted() -> None:
     """A state signed while a URL was allowlisted is re-checked against the current list."""
     settings = _return_to_settings()
-    state = sign_state(NOW, settings.state_signing_key, data="https://evil.example/")
+    state = _state(NOW, settings, "https://evil.example/")
     async with _client(_app(settings)) as client:
         response = await client.get(
             "/auth/strava/callback", params={"state": state, "error": "access_denied"}
@@ -170,10 +183,9 @@ async def test_callback_never_redirects_to_a_url_no_longer_allowlisted() -> None
 
 async def test_callback_with_a_tampered_return_to_is_rejected() -> None:
     settings = _return_to_settings()
-    nonce, issued_at, _data, signature = sign_state(
-        NOW, settings.state_signing_key, data=RETURN_TO
-    ).split(".")
-    evil = base64.urlsafe_b64encode(b"https://evil.example/").rstrip(b"=").decode()
+    nonce, issued_at, _data, signature = _state(NOW, settings, RETURN_TO).split(".")
+    evil = base64.urlsafe_b64encode(state_data(1, "https://evil.example/").encode())
+    evil = evil.rstrip(b"=").decode()
     async with _client(_app(settings)) as client:
         response = await client.get(
             "/auth/strava/callback",

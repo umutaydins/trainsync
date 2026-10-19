@@ -1,4 +1,9 @@
-"""Training tables: exercises, programs, workouts, sets and body metrics (Phase 6)."""
+"""Training tables: exercises, programs, workouts, sets and body metrics (Phase 6).
+
+Every repository is bound to one user (ADR 0035): reads only see that user's rows (plus the
+shared built-in exercises), writes stamp the user, and ids of someone else's rows behave as if
+they did not exist.
+"""
 
 import uuid
 from collections.abc import Sequence
@@ -34,17 +39,32 @@ from trainsync.modules.training.models import (
 
 
 class ExerciseRepository:
-    def __init__(self, session: AsyncSession) -> None:
+    """The built-in library (shared) plus the user's own custom exercises."""
+
+    def __init__(self, session: AsyncSession, user_id: int) -> None:
         self._session = session
+        self._user_id = user_id
+
+    def _visible(self) -> ColumnElement[bool]:
+        return or_(Exercise.user_id.is_(None), Exercise.user_id == self._user_id)
 
     async def get(self, exercise_id: int) -> Exercise | None:
-        return await self._session.get(Exercise, exercise_id)
+        return await self._session.scalar(
+            select(Exercise).where(Exercise.id == exercise_id, self._visible())
+        )
 
     async def by_slug(self, slug: str) -> Exercise | None:
-        return await self._session.scalar(select(Exercise).where(Exercise.slug == slug))
+        return await self._session.scalar(
+            select(Exercise)
+            .where(Exercise.slug == slug, self._visible())
+            .order_by(Exercise.user_id.nulls_first())
+            .limit(1)
+        )
 
     async def by_ids(self, ids: Sequence[int]) -> dict[int, Exercise]:
-        rows = await self._session.scalars(select(Exercise).where(Exercise.id.in_(ids)))
+        rows = await self._session.scalars(
+            select(Exercise).where(Exercise.id.in_(ids), self._visible())
+        )
         return {row.id: row for row in rows}
 
     async def search(
@@ -55,7 +75,12 @@ class ExerciseRepository:
         limit: int = 200,
     ) -> list[Exercise]:
         """Name/slug substring (case-insensitive), primary or secondary muscle, equipment."""
-        stmt = select(Exercise).order_by(Exercise.name, Exercise.id).limit(limit)
+        stmt = (
+            select(Exercise)
+            .where(self._visible())
+            .order_by(Exercise.name, Exercise.id)
+            .limit(limit)
+        )
         if q:
             pattern = f"%{q.strip()}%"
             stmt = stmt.where(or_(Exercise.name.ilike(pattern), Exercise.slug.ilike(pattern)))
@@ -71,10 +96,15 @@ class ExerciseRepository:
 
     async def with_pattern(self) -> list[Exercise]:
         """Every exercise with a movement pattern (what the program generator picks from)."""
-        stmt = select(Exercise).where(Exercise.movement_pattern.is_not(None)).order_by(Exercise.id)
+        stmt = (
+            select(Exercise)
+            .where(Exercise.movement_pattern.is_not(None), self._visible())
+            .order_by(Exercise.id)
+        )
         return list(await self._session.scalars(stmt))
 
     async def add(self, exercise: Exercise) -> Exercise:
+        exercise.user_id = self._user_id
         self._session.add(exercise)
         await self._session.flush()
         return exercise
@@ -87,18 +117,27 @@ class ProgramTree:
 
 
 class ProgramRepository:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, user_id: int) -> None:
         self._session = session
+        self._user_id = user_id
 
     async def get(self, program_id: int) -> Program | None:
-        return await self._session.get(Program, program_id)
+        return await self._session.scalar(
+            select(Program).where(Program.id == program_id, Program.user_id == self._user_id)
+        )
 
     async def all(self) -> list[Program]:
-        stmt = select(Program).order_by(Program.created_at.desc(), Program.id.desc())
+        stmt = (
+            select(Program)
+            .where(Program.user_id == self._user_id)
+            .order_by(Program.created_at.desc(), Program.id.desc())
+        )
         return list(await self._session.scalars(stmt))
 
     async def active(self) -> Program | None:
-        return await self._session.scalar(select(Program).where(Program.active))
+        return await self._session.scalar(
+            select(Program).where(Program.active, Program.user_id == self._user_id)
+        )
 
     async def tree(self, program_id: int) -> ProgramTree | None:
         program = await self.get(program_id)
@@ -107,7 +146,7 @@ class ProgramRepository:
         days = list(
             await self._session.scalars(
                 select(ProgramDay)
-                .where(ProgramDay.program_id == program_id)
+                .where(ProgramDay.program_id == program_id, ProgramDay.user_id == self._user_id)
                 .order_by(ProgramDay.day_index)
             )
         )
@@ -115,12 +154,19 @@ class ProgramRepository:
         return ProgramTree(program, [(d, exercises.get(d.id, [])) for d in days])
 
     async def day(self, program_day_id: int) -> ProgramDay | None:
-        return await self._session.get(ProgramDay, program_day_id)
+        return await self._session.scalar(
+            select(ProgramDay).where(
+                ProgramDay.id == program_day_id, ProgramDay.user_id == self._user_id
+            )
+        )
 
     async def day_exercises(self, day_ids: Sequence[int]) -> dict[int, list[ProgramExercise]]:
         rows = await self._session.scalars(
             select(ProgramExercise)
-            .where(ProgramExercise.program_day_id.in_(day_ids))
+            .where(
+                ProgramExercise.program_day_id.in_(day_ids),
+                ProgramExercise.user_id == self._user_id,
+            )
             .order_by(ProgramExercise.program_day_id, ProgramExercise.position)
         )
         grouped: dict[int, list[ProgramExercise]] = {}
@@ -132,6 +178,7 @@ class ProgramRepository:
         self, program: Program, days: Sequence[tuple[ProgramDay, Sequence[ProgramExercise]]]
     ) -> Program:
         """Insert a program with its days and exercises (ids are assigned on flush)."""
+        program.user_id = self._user_id
         self._session.add(program)
         await self._session.flush()
         await self._add_days(program.id, days)
@@ -142,7 +189,11 @@ class ProgramRepository:
     ) -> None:
         """Swap all days and exercises of a program (workouts keep their history; their
         `program_day_id` becomes null)."""
-        await self._session.execute(delete(ProgramDay).where(ProgramDay.program_id == program_id))
+        await self._session.execute(
+            delete(ProgramDay).where(
+                ProgramDay.program_id == program_id, ProgramDay.user_id == self._user_id
+            )
+        )
         await self._add_days(program_id, days)
 
     async def _add_days(
@@ -150,26 +201,33 @@ class ProgramRepository:
     ) -> None:
         for day, exercises in days:
             day.program_id = program_id
+            day.user_id = self._user_id
             self._session.add(day)
             await self._session.flush()
             for position, exercise in enumerate(exercises):
                 exercise.program_day_id = day.id
                 exercise.position = position
+                exercise.user_id = self._user_id
                 self._session.add(exercise)
         await self._session.flush()
 
     async def activate(self, program_id: int) -> None:
-        """Make this the only active program."""
+        """Make this the user's only active program."""
+        mine = Program.user_id == self._user_id
         await self._session.execute(
-            update(Program).where(Program.active, Program.id != program_id).values(active=False)
+            update(Program)
+            .where(mine, Program.active, Program.id != program_id)
+            .values(active=False)
         )
         await self._session.execute(
-            update(Program).where(Program.id == program_id).values(active=True)
+            update(Program).where(mine, Program.id == program_id).values(active=True)
         )
 
     async def delete(self, program_id: int) -> bool:
         result = await self._session.execute(
-            delete(Program).where(Program.id == program_id).returning(Program.id)
+            delete(Program)
+            .where(Program.id == program_id, Program.user_id == self._user_id)
+            .returning(Program.id)
         )
         return result.scalar_one_or_none() is not None
 
@@ -195,11 +253,17 @@ class SetValues:
 
 
 class WorkoutRepository:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, user_id: int) -> None:
         self._session = session
+        self._user_id = user_id
+
+    def _mine(self) -> ColumnElement[bool]:
+        return Workout.user_id == self._user_id
 
     async def get(self, workout_id: int) -> Workout | None:
-        return await self._session.get(Workout, workout_id)
+        return await self._session.scalar(
+            select(Workout).where(Workout.id == workout_id, self._mine())
+        )
 
     async def start(
         self,
@@ -213,18 +277,19 @@ class WorkoutRepository:
         stmt = (
             insert(Workout)
             .values(
+                user_id=self._user_id,
                 client_id=client_id,
                 started_at=started_at,
                 program_day_id=program_day_id,
                 notes=notes,
             )
-            .on_conflict_do_nothing(index_elements=[Workout.client_id])
+            .on_conflict_do_nothing(index_elements=[Workout.user_id, Workout.client_id])
             .returning(Workout.id)
         )
         created = await self._session.scalar(stmt) is not None
         workout = await self._session.scalar(
             select(Workout)
-            .where(Workout.client_id == client_id)
+            .where(Workout.client_id == client_id, self._mine())
             .execution_options(populate_existing=True)
         )
         if workout is None:  # pragma: no cover - inserted or already there
@@ -235,7 +300,7 @@ class WorkoutRepository:
         """The latest unfinished workout, if any."""
         stmt = (
             select(Workout)
-            .where(Workout.ended_at.is_(None))
+            .where(Workout.ended_at.is_(None), self._mine())
             .order_by(Workout.started_at.desc(), Workout.id.desc())
             .limit(1)
         )
@@ -247,7 +312,7 @@ class WorkoutRepository:
             return None
         stmt = (
             select(Workout)
-            .where(Workout.program_day_id.in_(program_day_ids))
+            .where(Workout.program_day_id.in_(program_day_ids), self._mine())
             .order_by(Workout.started_at.desc(), Workout.id.desc())
             .limit(1)
         )
@@ -256,19 +321,21 @@ class WorkoutRepository:
     async def finish(self, workout_id: int, ended_at: datetime) -> None:
         await self._session.execute(
             update(Workout)
-            .where(Workout.id == workout_id, Workout.ended_at.is_(None))
+            .where(Workout.id == workout_id, Workout.ended_at.is_(None), self._mine())
             .values(ended_at=ended_at)
         )
 
     async def delete(self, workout_id: int) -> bool:
         result = await self._session.execute(
-            delete(Workout).where(Workout.id == workout_id).returning(Workout.id)
+            delete(Workout).where(Workout.id == workout_id, self._mine()).returning(Workout.id)
         )
         return result.scalar_one_or_none() is not None
 
     async def page(self, limit: int, after: WorkoutKeyset | None = None) -> list[Workout]:
-        stmt: Select[Workout] = select(Workout).order_by(
-            Workout.started_at.desc(), Workout.id.desc()
+        stmt: Select[Workout] = (
+            select(Workout)
+            .where(self._mine())
+            .order_by(Workout.started_at.desc(), Workout.id.desc())
         )
         if after is not None:
             stmt = stmt.where(
@@ -279,7 +346,7 @@ class WorkoutRepository:
     async def sets(self, workout_ids: Sequence[int]) -> list[WorkoutSet]:
         stmt = (
             select(WorkoutSet)
-            .where(WorkoutSet.workout_id.in_(workout_ids))
+            .where(WorkoutSet.workout_id.in_(workout_ids), WorkoutSet.user_id == self._user_id)
             .order_by(WorkoutSet.workout_id, WorkoutSet.completed_at, WorkoutSet.id)
         )
         return list(await self._session.scalars(stmt))
@@ -300,10 +367,10 @@ class WorkoutRepository:
             "rest_seconds": values.rest_seconds,
         }
         values_stmt = insert(WorkoutSet).values(
-            client_id=client_id, workout_id=workout_id, **fields
+            user_id=self._user_id, client_id=client_id, workout_id=workout_id, **fields
         )
         stmt = values_stmt.on_conflict_do_update(
-            index_elements=[WorkoutSet.client_id],
+            index_elements=[WorkoutSet.user_id, WorkoutSet.client_id],
             set_={name: values_stmt.excluded[name] for name in fields},
             where=WorkoutSet.workout_id == values_stmt.excluded.workout_id,
         ).returning(WorkoutSet.id, literal_column("xmax = 0", Boolean()).label("created"))
@@ -322,7 +389,11 @@ class WorkoutRepository:
     async def delete_set(self, workout_id: int, client_id: uuid.UUID) -> bool:
         result = await self._session.execute(
             delete(WorkoutSet)
-            .where(WorkoutSet.workout_id == workout_id, WorkoutSet.client_id == client_id)
+            .where(
+                WorkoutSet.workout_id == workout_id,
+                WorkoutSet.client_id == client_id,
+                WorkoutSet.user_id == self._user_id,
+            )
             .returning(WorkoutSet.id)
         )
         return result.scalar_one_or_none() is not None
@@ -339,6 +410,7 @@ class WorkoutRepository:
         stmt = (
             select(Workout, WorkoutSet)
             .join(WorkoutSet, WorkoutSet.workout_id == Workout.id)
+            .where(self._mine())
             .order_by(Workout.started_at, Workout.id, WorkoutSet.set_index, WorkoutSet.id)
         )
         if exercise_ids is not None:
@@ -365,6 +437,7 @@ class WorkoutRepository:
         """Per exercise, the working sets of its `sessions` most recent other workouts,
         newest workout first."""
         conditions: list[ColumnElement[bool]] = [
+            WorkoutSet.user_id == self._user_id,
             WorkoutSet.exercise_id.in_(exercise_ids),
             WorkoutSet.is_warmup.is_(False),
         ]
@@ -400,18 +473,22 @@ class WorkoutRepository:
 
 
 class BodyMetricRepository:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, user_id: int) -> None:
         self._session = session
+        self._user_id = user_id
 
     async def put(self, day: date, weight_kg: Decimal) -> BodyMetric:
-        stmt = insert(BodyMetric).values(date=day, weight_kg=weight_kg)
+        stmt = insert(BodyMetric).values(user_id=self._user_id, date=day, weight_kg=weight_kg)
         stmt = stmt.on_conflict_do_update(
-            index_elements=[BodyMetric.date], set_={"weight_kg": stmt.excluded.weight_kg}
+            index_elements=[BodyMetric.user_id, BodyMetric.date],
+            set_={"weight_kg": stmt.excluded.weight_kg},
         )
         return (await self._session.scalars(stmt.returning(BodyMetric))).one()
 
     async def between(self, start: date | None = None, end: date | None = None) -> list[BodyMetric]:
-        stmt = select(BodyMetric).order_by(BodyMetric.date)
+        stmt = (
+            select(BodyMetric).where(BodyMetric.user_id == self._user_id).order_by(BodyMetric.date)
+        )
         if start is not None:
             stmt = stmt.where(BodyMetric.date >= start)
         if end is not None:
@@ -419,7 +496,12 @@ class BodyMetricRepository:
         return list(await self._session.scalars(stmt))
 
     async def latest(self, on_or_before: date | None = None) -> BodyMetric | None:
-        stmt = select(BodyMetric).order_by(BodyMetric.date.desc()).limit(1)
+        stmt = (
+            select(BodyMetric)
+            .where(BodyMetric.user_id == self._user_id)
+            .order_by(BodyMetric.date.desc())
+            .limit(1)
+        )
         if on_or_before is not None:
             stmt = stmt.where(BodyMetric.date <= on_or_before)
         return await self._session.scalar(stmt)

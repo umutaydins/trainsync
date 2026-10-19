@@ -14,12 +14,14 @@ import respx
 from pydantic import SecretStr
 
 from tests.conftest import make_settings
-from tests.support.chat_settings import ChatSettingsApi
+from tests.support.chat_links import ChatLinksApi
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, message_update, ok, sent_messages
+from trainsync.core.clock import utc_now
 from trainsync.core.settings import BotLang
 from trainsync.entrypoints.bot.dispatcher import Commands, Dispatcher
 from trainsync.integrations.telegram.client import TelegramApi, Update
-from trainsync.modules.chat.language import ChatSettingsStore, LanguageFeature
+from trainsync.modules.chat.language import LanguageFeature
+from trainsync.modules.chat.links import ChatLinks
 from trainsync.modules.chat.read_api import ReadApi
 from trainsync.modules.coach.categories import Category
 from trainsync.modules.coach.lines import MemoryRecentStore, load_packs
@@ -32,12 +34,12 @@ CHAT = 42
 
 
 @pytest.fixture
-def db() -> ChatSettingsApi:
-    return ChatSettingsApi()
+def db() -> ChatLinksApi:
+    return ChatLinksApi().link(CHAT)
 
 
 @pytest.fixture
-def router(db: ChatSettingsApi) -> Iterator[respx.MockRouter]:
+def router(db: ChatLinksApi) -> Iterator[respx.MockRouter]:
     with respx.mock(assert_all_called=False) as router:
         db.install(router, API)
         router.post(f"{BOT_URL}/sendMessage", name="send").mock(return_value=ok({}))
@@ -66,15 +68,14 @@ class Bot:
             packs=load_packs(None),
         )
         api = ReadApi(http, API, SecretStr("bot-key"))
-        self.store = ChatSettingsStore(api)
+        self.store = ChatLinks(api, utc_now, ttl_s=60)
         telegram = TelegramApi(http, SecretStr(BOT_TOKEN), base_url=TELEGRAM)
         self.dispatcher = Dispatcher(
             telegram,
             Commands(api, lambda: None, self.msg),  # type: ignore[arg-type, return-value]
-            {CHAT},
+            self.store,
             self.msg,
             features=[LanguageFeature(self.store, self.msg, self.voice)],
-            chat_settings=self.store,
         )
         self._update = 0
 
@@ -120,7 +121,7 @@ async def test_lang_shows_two_buttons(http: httpx.AsyncClient, router: respx.Moc
 
 
 async def test_a_button_switches_and_confirms_in_the_new_language(
-    http: httpx.AsyncClient, router: respx.MockRouter, db: ChatSettingsApi
+    http: httpx.AsyncClient, router: respx.MockRouter, db: ChatLinksApi
 ) -> None:
     bot = Bot(http, router)
     assert (await bot.press("lang:tr"))["text"] == neutral("tr")(Key.LANG_SET)
@@ -131,7 +132,7 @@ async def test_a_button_switches_and_confirms_in_the_new_language(
 
 
 async def test_lang_with_an_argument_and_a_bad_argument(
-    http: httpx.AsyncClient, router: respx.MockRouter, db: ChatSettingsApi
+    http: httpx.AsyncClient, router: respx.MockRouter, db: ChatLinksApi
 ) -> None:
     bot = Bot(http, router, bot_lang="tr")
     assert (await bot.say("/lang en"))["text"] == neutral("en")(Key.LANG_SET)
@@ -150,7 +151,7 @@ async def test_without_a_stored_choice_the_bot_speaks_bot_lang(
 
 
 async def test_the_choice_survives_a_restart(
-    http: httpx.AsyncClient, router: respx.MockRouter, db: ChatSettingsApi
+    http: httpx.AsyncClient, router: respx.MockRouter, db: ChatLinksApi
 ) -> None:
     await Bot(http, router, bot_lang="en").say("/lang tr")
     restarted = Bot(http, router, bot_lang="en")  # a new process: empty cache, same database
@@ -160,13 +161,13 @@ async def test_the_choice_survives_a_restart(
     assert db.reads == reads  # cached after the first read
 
 
-async def test_an_unreachable_api_falls_back_to_bot_lang_and_asks_again(
-    http: httpx.AsyncClient, router: respx.MockRouter, db: ChatSettingsApi
+async def test_an_unreachable_api_says_so_in_bot_lang_and_asks_again(
+    http: httpx.AsyncClient, router: respx.MockRouter, db: ChatLinksApi
 ) -> None:
-    db.rows[CHAT] = {"lang": "tr"}
+    db.users[1] = {"lang": "tr"}
     db.down = True
     bot = Bot(http, router, bot_lang="en")
-    assert (await bot.say("/nope"))["text"].startswith("Unknown command")
+    assert (await bot.say("/nope"))["text"] == neutral("en")(Key.API_DOWN)
     db.down = False
     assert (await bot.say("/nope"))["text"].startswith("Bilinmeyen komut")
 

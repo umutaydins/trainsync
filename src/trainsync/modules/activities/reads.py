@@ -61,27 +61,42 @@ def _athlete_condition(athlete_ids: Sequence[int]) -> ColumnElement[bool]:
 
 
 def activity_page_query(
-    activity_filter: ActivityFilter, after: Keyset | None, limit: int
+    user_id: int, activity_filter: ActivityFilter, after: Keyset | None, limit: int
 ) -> Select[Activity]:
     """`limit + 1` rows, newest first; the extra row tells whether there is a next page."""
-    stmt = select(Activity).where(*activity_filter.conditions())
+    stmt = select(Activity).where(Activity.user_id == user_id, *activity_filter.conditions())
     if after is not None:
         stmt = stmt.where(tuple_(Activity.start_date, Activity.id) < (after.start_date, after.id))
     return stmt.order_by(Activity.start_date.desc(), Activity.id.desc()).limit(limit + 1)
 
 
 class ReadRepository:
-    def __init__(self, session: AsyncSession) -> None:
+    """Reads over one user's athletes and activities (ADR 0035). Every statement carries the
+    user, even where the athlete ids it is given already belong to them."""
+
+    def __init__(self, session: AsyncSession, user_id: int) -> None:
         self._session = session
+        self._user_id = user_id
+
+    def _scoped(self, activity_filter: ActivityFilter) -> list[ColumnElement[bool]]:
+        return [Activity.user_id == self._user_id, *_conditions(activity_filter)]
 
     async def active_athlete_ids(self, athlete_id: int | None = None) -> list[int]:
-        stmt = select(Athlete.id).where(Athlete.active).order_by(Athlete.id)
+        stmt = (
+            select(Athlete.id)
+            .where(Athlete.active, Athlete.user_id == self._user_id)
+            .order_by(Athlete.id)
+        )
         if athlete_id is not None:
             stmt = stmt.where(Athlete.id == athlete_id)
         return list((await self._session.scalars(stmt)).all())
 
     async def athletes(self, athlete_ids: Sequence[int]) -> list[Athlete]:
-        stmt = select(Athlete).where(Athlete.id.in_(athlete_ids)).order_by(Athlete.id)
+        stmt = (
+            select(Athlete)
+            .where(Athlete.id.in_(athlete_ids), Athlete.user_id == self._user_id)
+            .order_by(Athlete.id)
+        )
         return list((await self._session.scalars(stmt)).all())
 
     async def activity_page(
@@ -90,7 +105,11 @@ class ReadRepository:
         if not activity_filter.athlete_ids:
             return [], None
         rows = list(
-            (await self._session.scalars(activity_page_query(activity_filter, after, limit))).all()
+            (
+                await self._session.scalars(
+                    activity_page_query(self._user_id, activity_filter, after, limit)
+                )
+            ).all()
         )
         if len(rows) <= limit:
             return rows, None
@@ -105,7 +124,7 @@ class ReadRepository:
             return None
         stmt = select(Activity).where(
             Activity.strava_activity_id == strava_activity_id,
-            *ActivityFilter(athlete_ids).conditions(),
+            *self._scoped(ActivityFilter(athlete_ids)),
         )
         return (await self._session.scalars(stmt)).one_or_none()
 
@@ -114,9 +133,13 @@ class ReadRepository:
         if not athlete_ids:
             return None
         run_done = select(func.max(SyncRun.finished_at)).where(
-            SyncRun.athlete_id.in_(athlete_ids), SyncRun.status == SyncStatus.SUCCEEDED
+            SyncRun.user_id == self._user_id,
+            SyncRun.athlete_id.in_(athlete_ids),
+            SyncRun.status == SyncStatus.SUCCEEDED,
         )
-        written = select(func.max(Activity.synced_at)).where(Activity.athlete_id.in_(athlete_ids))
+        written = select(func.max(Activity.synced_at)).where(
+            Activity.user_id == self._user_id, Activity.athlete_id.in_(athlete_ids)
+        )
         values = [await self._session.scalar(run_done), await self._session.scalar(written)]
         present = [v for v in values if v is not None]
         return max(present) if present else None
@@ -139,7 +162,7 @@ class ReadRepository:
             .render_derived()
         )
         activity_week = func.date_trunc("week", func.timezone("UTC", Activity.start_date))
-        conditions = _conditions(activity_filter)
+        conditions = self._scoped(activity_filter)
         stmt = (
             select(weeks.c.week_start, *_totals_columns())
             .select_from(weeks)
@@ -157,7 +180,7 @@ class ReadRepository:
 
         Three queries, one per block; all aggregation happens in Postgres.
         """
-        conditions = _conditions(activity_filter)
+        conditions = self._scoped(activity_filter)
         totals = (await self._session.execute(select(*_totals_columns()).where(*conditions))).one()
         by_sport = await self._session.execute(
             select(Activity.sport_type, *_totals_columns())

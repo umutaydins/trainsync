@@ -426,6 +426,25 @@
         "title": "AthleteSync",
         "type": "object"
       },
+      "AuthorizeUrl": {
+        "examples": [
+          {
+            "url": "https://www.strava.com/oauth/authorize?client_id=1234&…"
+          }
+        ],
+        "properties": {
+          "url": {
+            "description": "Send the browser here; valid for a few minutes",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "AuthorizeUrl",
+        "type": "object"
+      },
       "BestSet": {
         "properties": {
           "e1rm_kg": {
@@ -598,57 +617,33 @@
         "title": "ChallengeResponse",
         "type": "object"
       },
-      "ChatSettingsIn": {
-        "description": "Either field or both; a field left out keeps its stored value.",
-        "examples": [
-          {
-            "lang": "en"
-          },
-          {
-            "profanity": "max"
-          }
-        ],
-        "properties": {
-          "lang": {
-            "anyOf": [
-              {
-                "enum": [
-                  "en",
-                  "tr"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lang"
-          },
-          "profanity": {
-            "anyOf": [
-              {
-                "enum": [
-                  "roast",
-                  "max"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Profanity"
-          }
-        },
-        "title": "ChatSettingsIn",
-        "type": "object"
-      },
-      "ChatSettingsOut": {
+      "ChatOwner": {
+        "description": "Who a linked chat belongs to and how the bot should speak to them.",
         "examples": [
           {
             "chat_id": 123456789,
-            "lang": "tr",
-            "profanity": "max"
+            "display_name": "Runner",
+            "role": "user",
+            "settings": {
+              "checkin_enabled": true,
+              "checkin_reminder_minutes": 90,
+              "checkin_time": "21:00:00",
+              "country": "DE",
+              "custom": [
+                "tone",
+                "country"
+              ],
+              "emergency_number": "112",
+              "intensity": "normal",
+              "lang": "en",
+              "profanity": "roast",
+              "quiet_hours": "23:00-07:00",
+              "sugar_limit_g": 50.0,
+              "timezone": "Europe/Berlin",
+              "tone": "hardcore",
+              "workout_reminder_time": "18:00:00"
+            },
+            "user_id": 2
           }
         ],
         "properties": {
@@ -656,44 +651,29 @@
             "title": "Chat Id",
             "type": "integer"
           },
-          "lang": {
-            "anyOf": [
-              {
-                "enum": [
-                  "en",
-                  "tr"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "null: never chosen, the bot uses BOT_LANG",
-            "title": "Lang"
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
           },
-          "profanity": {
-            "anyOf": [
-              {
-                "enum": [
-                  "roast",
-                  "max"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "null: never chosen, the bot uses BOT_PROFANITY",
-            "title": "Profanity"
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/SettingsOut"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
           }
         },
         "required": [
           "chat_id",
-          "lang"
+          "user_id",
+          "display_name",
+          "role",
+          "settings"
         ],
-        "title": "ChatSettingsOut",
+        "title": "ChatOwner",
         "type": "object"
       },
       "CheckinIn": {
@@ -1513,6 +1493,26 @@
           "balance_complete"
         ],
         "title": "DaySummary",
+        "type": "object"
+      },
+      "DeleteAccountIn": {
+        "examples": [
+          {
+            "password": "correct horse"
+          }
+        ],
+        "properties": {
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "DeleteAccountIn",
         "type": "object"
       },
       "Equipment": {
@@ -2698,6 +2698,106 @@
           "sets"
         ],
         "title": "LastPerformance",
+        "type": "object"
+      },
+      "LinkCode": {
+        "examples": [
+          {
+            "bot_url": "https://t.me/trainsync_bot?start=K7Q2M9XD",
+            "code": "K7Q2M9XD",
+            "command": "/link K7Q2M9XD",
+            "expires_at": "2026-10-19T08:10:00Z"
+          }
+        ],
+        "properties": {
+          "bot_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opens the bot with the code; null without a username",
+            "title": "Bot Url"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "command": {
+            "description": "What to send the bot",
+            "title": "Command",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "expires_at",
+          "command",
+          "bot_url"
+        ],
+        "title": "LinkCode",
+        "type": "object"
+      },
+      "LinkIn": {
+        "examples": [
+          {
+            "code": "K7Q2M9XD"
+          }
+        ],
+        "properties": {
+          "code": {
+            "maxLength": 16,
+            "minLength": 4,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "LinkIn",
+        "type": "object"
+      },
+      "LinkStatus": {
+        "examples": [
+          {
+            "linked": true,
+            "linked_at": "2026-10-19T08:00:00Z"
+          },
+          {
+            "linked": false
+          }
+        ],
+        "properties": {
+          "linked": {
+            "title": "Linked",
+            "type": "boolean"
+          },
+          "linked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked At"
+          }
+        },
+        "required": [
+          "linked"
+        ],
+        "title": "LinkStatus",
         "type": "object"
       },
       "LogIn": {
@@ -5403,6 +5503,300 @@
         "title": "SetOut",
         "type": "object"
       },
+      "SettingsOut": {
+        "description": "Effective values; `custom` names the ones the user set (the rest follow the defaults).",
+        "examples": [
+          {
+            "checkin_enabled": true,
+            "checkin_reminder_minutes": 90,
+            "checkin_time": "21:00:00",
+            "country": "DE",
+            "custom": [
+              "tone",
+              "country"
+            ],
+            "emergency_number": "112",
+            "intensity": "normal",
+            "lang": "en",
+            "profanity": "roast",
+            "quiet_hours": "23:00-07:00",
+            "sugar_limit_g": 50.0,
+            "timezone": "Europe/Berlin",
+            "tone": "hardcore",
+            "workout_reminder_time": "18:00:00"
+          }
+        ],
+        "properties": {
+          "checkin_enabled": {
+            "title": "Checkin Enabled",
+            "type": "boolean"
+          },
+          "checkin_reminder_minutes": {
+            "title": "Checkin Reminder Minutes",
+            "type": "integer"
+          },
+          "checkin_time": {
+            "format": "time",
+            "title": "Checkin Time",
+            "type": "string"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "custom": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Custom",
+            "type": "array"
+          },
+          "emergency_number": {
+            "description": "From the country; EMERGENCY_NUMBER otherwise",
+            "title": "Emergency Number",
+            "type": "string"
+          },
+          "intensity": {
+            "enum": [
+              "normal",
+              "savage"
+            ],
+            "title": "Intensity",
+            "type": "string"
+          },
+          "lang": {
+            "enum": [
+              "en",
+              "tr"
+            ],
+            "title": "Lang",
+            "type": "string"
+          },
+          "profanity": {
+            "enum": [
+              "roast",
+              "max"
+            ],
+            "title": "Profanity",
+            "type": "string"
+          },
+          "quiet_hours": {
+            "title": "Quiet Hours",
+            "type": "string"
+          },
+          "sugar_limit_g": {
+            "title": "Sugar Limit G",
+            "type": "number"
+          },
+          "timezone": {
+            "description": "Change it with PATCH /v1/me",
+            "title": "Timezone",
+            "type": "string"
+          },
+          "tone": {
+            "enum": [
+              "neutral",
+              "hardcore"
+            ],
+            "title": "Tone",
+            "type": "string"
+          },
+          "workout_reminder_time": {
+            "format": "time",
+            "title": "Workout Reminder Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tone",
+          "intensity",
+          "profanity",
+          "lang",
+          "checkin_enabled",
+          "checkin_time",
+          "checkin_reminder_minutes",
+          "quiet_hours",
+          "workout_reminder_time",
+          "sugar_limit_g",
+          "country",
+          "emergency_number",
+          "timezone",
+          "custom"
+        ],
+        "title": "SettingsOut",
+        "type": "object"
+      },
+      "SettingsPatch": {
+        "description": "Only the fields sent change; `null` returns a field to the default.",
+        "examples": [
+          {
+            "lang": "tr",
+            "profanity": "max"
+          },
+          {}
+        ],
+        "properties": {
+          "checkin_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkin Enabled"
+          },
+          "checkin_reminder_minutes": {
+            "anyOf": [
+              {
+                "maximum": 720.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkin Reminder Minutes"
+          },
+          "checkin_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkin Time"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "examples": [
+                  "DE"
+                ],
+                "pattern": "^[A-Z]{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "intensity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "normal",
+                  "savage"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intensity"
+          },
+          "lang": {
+            "anyOf": [
+              {
+                "enum": [
+                  "en",
+                  "tr"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lang"
+          },
+          "profanity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "roast",
+                  "max"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profanity"
+          },
+          "quiet_hours": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "22:30-06:30"
+            ],
+            "title": "Quiet Hours"
+          },
+          "sugar_limit_g": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 1000.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sugar Limit G"
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "enum": [
+                  "neutral",
+                  "hardcore"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tone"
+          },
+          "workout_reminder_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workout Reminder Time"
+          }
+        },
+        "title": "SettingsPatch",
+        "type": "object"
+      },
       "Sex": {
         "description": "Only what the Mifflin-St Jeor equation distinguishes.",
         "enum": [
@@ -5562,6 +5956,61 @@
           "last_synced_at"
         ],
         "title": "StatsSummary",
+        "type": "object"
+      },
+      "StravaConnection": {
+        "examples": [
+          {
+            "athlete_id": 1,
+            "connected": true,
+            "connected_at": "2026-10-19T08:00:00Z",
+            "strava_athlete_id": 134815
+          }
+        ],
+        "properties": {
+          "athlete_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Athlete Id"
+          },
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "connected_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connected At"
+          },
+          "strava_athlete_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strava Athlete Id"
+          }
+        },
+        "required": [
+          "connected"
+        ],
+        "title": "StravaConnection",
         "type": "object"
       },
       "SuggestionOut": {
@@ -6537,6 +6986,16 @@
             },
             "description": "Bad state, denied access, missing scope or bad code"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "this Strava account is connected to another user"
+                }
+              }
+            },
+            "description": "The Strava account belongs to another user, or yours is still connected"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -6585,6 +7044,16 @@
           "302": {
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -6596,6 +7065,14 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
         "summary": "Start the Strava OAuth flow",
         "tags": [
           "auth"
@@ -6846,6 +7323,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -6937,6 +7417,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -7556,140 +8039,6 @@
         ]
       }
     },
-    "/v1/chats/{chat_id}/settings": {
-      "get": {
-        "description": "The language (`/lang`) and profanity level (`/swear`) the chat chose, or null.",
-        "operationId": "get_chat_settings_v1_chats__chat_id__settings_get",
-        "parameters": [
-          {
-            "description": "Telegram chat id",
-            "in": "path",
-            "name": "chat_id",
-            "required": true,
-            "schema": {
-              "description": "Telegram chat id",
-              "examples": [
-                123456789
-              ],
-              "title": "Chat Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChatSettingsOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "example": {
-                  "detail": "sign in or send a valid API key"
-                }
-              }
-            },
-            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ],
-        "summary": "Settings of a chat",
-        "tags": [
-          "chats"
-        ]
-      },
-      "put": {
-        "description": "Idempotent: the same body twice stores one row. A field left out keeps its stored value; at least one is required.",
-        "operationId": "put_chat_settings_v1_chats__chat_id__settings_put",
-        "parameters": [
-          {
-            "description": "Telegram chat id",
-            "in": "path",
-            "name": "chat_id",
-            "required": true,
-            "schema": {
-              "description": "Telegram chat id",
-              "examples": [
-                123456789
-              ],
-              "title": "Chat Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChatSettingsIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChatSettingsOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "example": {
-                  "detail": "sign in or send a valid API key"
-                }
-              }
-            },
-            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ],
-        "summary": "Store the settings of a chat",
-        "tags": [
-          "chats"
-        ]
-      }
-    },
     "/v1/checkins": {
       "get": {
         "description": "Check-ins in `from`..`to` (inclusive, local days); default: the last 12 weeks.",
@@ -7779,6 +8128,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -7879,6 +8231,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -7949,6 +8304,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8040,6 +8398,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -8050,6 +8411,67 @@
       }
     },
     "/v1/me": {
+      "delete": {
+        "description": "Needs the password. Signs out everywhere and unlinks Telegram at once; a background job then revokes Strava and deletes every row of the account. The owner account cannot be deleted here.",
+        "operationId": "delete_me_v1_me_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "the password is wrong"
+                }
+              }
+            },
+            "description": "Wrong password"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "the owner account cannot be deleted"
+                }
+              }
+            },
+            "description": "The owner account"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Delete my account",
+        "tags": [
+          "me"
+        ]
+      },
       "get": {
         "operationId": "me_v1_me_get",
         "responses": {
@@ -8160,6 +8582,71 @@
           }
         ],
         "summary": "Change the display name or time zone",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/export": {
+      "get": {
+        "description": "Every row you own as one JSON document (KVKK / GDPR). Secrets are left out.",
+        "operationId": "export_v1_me_export_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account": {
+                    "display_name": "Runner",
+                    "email": "runner@example.com",
+                    "id": 2
+                  },
+                  "exported_at": "2026-10-19T08:00:00+00:00",
+                  "tables": {
+                    "workouts": [
+                      {
+                        "id": 42,
+                        "started_at": "2026-10-18T17:00:00+00:00"
+                      }
+                    ]
+                  },
+                  "version": 1
+                },
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Export all my data",
         "tags": [
           "me"
         ]
@@ -8330,6 +8817,433 @@
         ]
       }
     },
+    "/v1/me/settings": {
+      "get": {
+        "operationId": "get_settings_v1_me_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "My settings",
+        "tags": [
+          "me"
+        ]
+      },
+      "patch": {
+        "description": "Only the fields sent change; `null` returns a field to the default.",
+        "operationId": "patch_settings_v1_me_settings_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Change my settings",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/strava": {
+      "delete": {
+        "description": "Stops syncing at once; the worker then revokes the app at Strava and deletes the athlete's tokens and activities.",
+        "operationId": "disconnect_v1_me_strava_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "strava is not connected"
+                }
+              }
+            },
+            "description": "No Strava account connected"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Disconnect Strava",
+        "tags": [
+          "me"
+        ]
+      },
+      "get": {
+        "operationId": "connection_v1_me_strava_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StravaConnection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "My Strava connection",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/strava/authorize-url": {
+      "post": {
+        "description": "The Strava authorize URL with a signed state naming you; the web BFF sends the browser there. `return_to` must match `OAUTH_RETURN_TO_ALLOWLIST` exactly, else it is ignored.",
+        "operationId": "create_authorize_url_v1_me_strava_authorize_url_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "return_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "http://localhost:3000/sync"
+              ],
+              "title": "Return To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeUrl"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Start connecting Strava",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/telegram": {
+      "delete": {
+        "operationId": "unlink_me_v1_me_telegram_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "telegram is not linked"
+                }
+              }
+            },
+            "description": "No chat linked"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Unlink my Telegram chat",
+        "tags": [
+          "me"
+        ]
+      },
+      "get": {
+        "operationId": "link_status_v1_me_telegram_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "My Telegram link",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/telegram/code": {
+      "post": {
+        "description": "Send `/link CODE` to the bot within `TELEGRAM_LINK_CODE_TTL_MINUTES`.",
+        "operationId": "link_code_v1_me_telegram_code_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkCode"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "A one-time code for /link",
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/v1/nutrition/foods": {
       "get": {
         "description": "Local foods only (manual entries and cached Open Food Facts products): case-insensitive substring of name or brand, or an exact barcode. Favorites first, then by name.",
@@ -8414,6 +9328,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -8478,6 +9395,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8591,6 +9511,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -8602,7 +9525,7 @@
     },
     "/v1/nutrition/foods/{food_id}": {
       "patch": {
-        "description": "Changes only the fields sent. Editing a cached Open Food Facts food turns it into a `manual` one, so a later lookup never overwrites the edit. Logged entries use the food's current values.",
+        "description": "Changes only the fields sent. Your own foods are yours to edit; shared ones (the Open Food Facts cache) only the owner may correct. Editing a cached Open Food Facts food turns it into a `manual` one, so a later lookup never overwrites the edit. Logged entries keep the values they were logged with.",
         "operationId": "update_food_v1_nutrition_foods__food_id__patch",
         "parameters": [
           {
@@ -8659,6 +9582,16 @@
             },
             "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "shared foods are owner-curated"
+                }
+              }
+            },
+            "description": "A shared food, and you are not the owner"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -8681,6 +9614,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8753,6 +9689,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -8821,6 +9760,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8891,6 +9833,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -8954,6 +9899,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9045,6 +9993,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -9088,9 +10039,22 @@
               }
             },
             "description": "No profile yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9146,6 +10110,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9215,6 +10182,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9314,6 +10284,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9451,6 +10424,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -9587,6 +10563,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -9654,12 +10633,263 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
         "summary": "Sync status",
         "tags": [
           "sync"
+        ]
+      }
+    },
+    "/v1/telegram/chats/{chat_id}": {
+      "delete": {
+        "operationId": "unlink_chat_v1_telegram_chats__chat_id__delete",
+        "parameters": [
+          {
+            "description": "Telegram chat id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "description": "Telegram chat id",
+              "examples": [
+                123456789
+              ],
+              "title": "Chat Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "service key required"
+                }
+              }
+            },
+            "description": "Not a service key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "chat not linked"
+                }
+              }
+            },
+            "description": "The chat is not linked"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Unlink a chat (/unlink)",
+        "tags": [
+          "chats"
+        ]
+      },
+      "get": {
+        "operationId": "chat_owner_v1_telegram_chats__chat_id__get",
+        "parameters": [
+          {
+            "description": "Telegram chat id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "description": "Telegram chat id",
+              "examples": [
+                123456789
+              ],
+              "title": "Chat Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatOwner"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "service key required"
+                }
+              }
+            },
+            "description": "Not a service key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "chat not linked"
+                }
+              }
+            },
+            "description": "The chat is not linked"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Who a chat belongs to",
+        "tags": [
+          "chats"
+        ]
+      }
+    },
+    "/v1/telegram/chats/{chat_id}/link": {
+      "post": {
+        "description": "Binds the chat to the code's user; their previous chat is unlinked.",
+        "operationId": "link_chat_v1_telegram_chats__chat_id__link_post",
+        "parameters": [
+          {
+            "description": "Telegram chat id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "description": "Telegram chat id",
+              "examples": [
+                123456789
+              ],
+              "title": "Chat Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatOwner"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "invalid or expired code"
+                }
+              }
+            },
+            "description": "Unknown, used or expired code"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "service key required"
+                }
+              }
+            },
+            "description": "Not a service key"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Redeem a /link code",
+        "tags": [
+          "chats"
         ]
       }
     },
@@ -9753,6 +10983,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -9824,6 +11057,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9929,6 +11165,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -9993,6 +11232,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -10084,6 +11326,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -10206,6 +11451,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -10278,6 +11526,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -10311,9 +11562,22 @@
               }
             },
             "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -10380,6 +11644,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -10423,9 +11690,22 @@
               }
             },
             "description": "No active program"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -10470,9 +11750,22 @@
               }
             },
             "description": "No active program"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -10541,6 +11834,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -10604,6 +11900,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -10673,6 +11972,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -10763,6 +12065,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -10834,6 +12139,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -10900,6 +12208,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -11000,6 +12311,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -11088,6 +12402,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -11200,6 +12517,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -11263,6 +12583,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -11332,6 +12655,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -11441,6 +12767,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -11517,6 +12846,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -11639,6 +12971,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
