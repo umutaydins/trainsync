@@ -72,7 +72,7 @@ describe("workout screen", () => {
   it("a double tap sends one PUT with one client id", async () => {
     let answer: (value: MutationResult<unknown>) => void = () => undefined;
     const { send } = setup({ send: () => new Promise((resolve) => (answer = resolve)) });
-    const button = screen.getByRole("button", { name: "Log Bench Press set 1" });
+    const button = screen.getByRole("button", { name: "Set done, Bench Press set 1" });
     const clientId = rows()[0]!.getAttribute("data-client-id");
 
     fireEvent.click(button);
@@ -99,7 +99,7 @@ describe("workout screen", () => {
 
   it("starts the rest timer after a set and keeps it right when the tab was backgrounded", async () => {
     setup();
-    fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set done, Bench Press set 1" }));
     await flush();
     expect(screen.getByTestId("rest-remaining")).toHaveTextContent("1:30");
 
@@ -156,7 +156,7 @@ describe("workout screen", () => {
     const store = memoryStore();
     const first = setup({ store });
     const ids = rows().map((r) => r.getAttribute("data-client-id"));
-    fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set done, Bench Press set 1" }));
     await flush();
     first.view.unmount();
 
@@ -189,7 +189,7 @@ describe("workout screen", () => {
   it("queues a set that got no answer and sends it again, same id, when back online", async () => {
     const answers: MutationResult<unknown>[] = [{ ok: false, status: 0, error: "network error" }, ok()];
     const { send, store } = setup({ send: () => Promise.resolve(answers.shift() ?? ok()) });
-    fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set done, Bench Press set 1" }));
     await flush();
     expect(rows()[0]).toHaveAttribute("data-status", "queued");
     expect(rows()[0]).toHaveTextContent("Saved on this phone, will retry");
@@ -209,7 +209,7 @@ describe("workout screen", () => {
 
   it("shows a rejected set as an error, not queued", async () => {
     const { store } = setup({ send: () => Promise.resolve({ ok: false, status: 422, error: "invalid set" }) });
-    fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set done, Bench Press set 1" }));
     await flush();
     expect(rows()[0]).toHaveAttribute("data-status", "error");
     expect(rows()[0]).toHaveTextContent("The server did not take this set.");
@@ -220,11 +220,11 @@ describe("workout screen", () => {
   it("checks the numbers before sending", async () => {
     const { send } = setup();
     fireEvent.change(screen.getByLabelText("Weight in kg, Bench Press set 1"), { target: { value: "80.3" } });
-    fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set done, Bench Press set 1" }));
     expect(send).not.toHaveBeenCalled();
     expect(rows()[0]).toHaveTextContent("0.25 kg steps");
     fireEvent.change(screen.getByLabelText("Weight in kg, Bench Press set 1"), { target: { value: "82,5" } });
-    fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set done, Bench Press set 1" }));
     expect(send.mock.calls[0]![1]).toMatchObject({ weight_kg: 82.5 });
   });
 
@@ -234,7 +234,7 @@ describe("workout screen", () => {
     expect(screen.getByLabelText("Weight in kg, Bench Press set 2")).toHaveValue("");
     expect(screen.queryByRole("button", { name: "Plates" })).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Weight in kg, Bench Press set 1"), { target: { value: "50" } });
-    fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set done, Bench Press set 1" }));
     await flush();
     expect(screen.getByLabelText("Weight in kg, Bench Press set 2")).toHaveValue("50");
     expect(screen.getByLabelText("Weight in kg, Bench Press set 3")).toHaveValue("50");
@@ -283,7 +283,7 @@ describe("workout screen", () => {
 
   it("does not finish while sets are still waiting", async () => {
     const { finish } = setup({ send: () => Promise.resolve({ ok: false, status: 0, error: "network error" }) });
-    fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set done, Bench Press set 1" }));
     await flush();
     hideTimer();
     fireEvent.click(screen.getByRole("button", { name: "Finish workout" }));

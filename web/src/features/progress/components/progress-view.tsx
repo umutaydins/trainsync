@@ -37,7 +37,7 @@ export function ProgressView({ data }: { data: ProgressData }) {
       {isFresh(data) ? (
         <FreshEmpty />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Block id="volume" title={t("volume.title")} period={period} className="lg:col-span-2">
             {!data.distance.ok && !data.tonnage.ok ? (
               <BlockFailure error={data.distance.error} />

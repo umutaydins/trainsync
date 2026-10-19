@@ -40,7 +40,7 @@ export function TodayView({ data }: { data: TodayData }) {
       </header>
       <PlannedWorkout program={data.program} workouts={data.workouts} today={data.today} />
       <WeekGlance week={data.week} />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <FoodToday food={data.food} />
         <LatestActivity latest={data.latest} strava={data.strava} />
       </div>

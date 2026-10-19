@@ -70,7 +70,10 @@ describe("steppers", () => {
     expect(screen.getByLabelText("Reps, Bench Press set 1")).toHaveValue("7");
 
     // One tap: "Set done" logs the set with the stepped numbers and the next set becomes the big one.
-    fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
+    // Its spoken name starts with the visible text (label in name, WCAG 2.5.3).
+    const done = screen.getByRole("button", { name: "Set done, Bench Press set 1" });
+    expect(done).toHaveTextContent("Set done");
+    fireEvent.click(done);
     await flush();
     expect(send.mock.calls[0]![1]).toMatchObject({ reps: 7, weight_kg: 82.5 });
     fireEvent.click(screen.getByRole("button", { name: "Hide timer" }));
@@ -83,7 +86,7 @@ describe("steppers", () => {
 describe("rest timer", () => {
   it("is full screen with a ring and big figures, hides to a bar and comes back", async () => {
     setup();
-    fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set done, Bench Press set 1" }));
     await flush();
     const timer = screen.getByRole("dialog", { name: "Rest" });
     expect(timer).toHaveAttribute("data-testid", "rest-timer");
@@ -104,10 +107,10 @@ describe("rest timer", () => {
 
   it("a new set opens a hidden timer full screen again", async () => {
     setup();
-    fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set done, Bench Press set 1" }));
     await flush();
     fireEvent.click(screen.getByRole("button", { name: "Hide timer" }));
-    fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set done, Bench Press set 2" }));
     await flush();
     expect(screen.getByRole("dialog", { name: "Rest" })).toHaveTextContent("After Bench Press · set 2");
   });
@@ -155,7 +158,7 @@ describe("plate sheet", () => {
 describe("workout screen in Turkish", () => {
   it("speaks Turkish and formats numbers the Turkish way", () => {
     setup("tr");
-    expect(screen.getByRole("button", { name: "Bench Press 1. seti kaydet" })).toHaveTextContent("Set tamam");
+    expect(screen.getByRole("button", { name: "Set tamam, Bench Press 1. set" })).toHaveTextContent("Set tamam");
     expect(screen.getAllByTestId("set-row")[0]).toHaveTextContent("Geçen sefer 12 × 77,5 kg");
     expect(screen.getByRole("button", { name: "Antrenmanı bitir" })).toBeInTheDocument();
   });

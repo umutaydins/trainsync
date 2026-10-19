@@ -31,7 +31,7 @@ export default async function AdminPage() {
   return (
     <div className="flex flex-col gap-5">
       <PageTitle title={t("title")} subtitle={t("subtitle")} />
-      <div className="grid items-start gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
         {invites.ok ? (
           <InvitesPanel initial={invites.data.items} />
         ) : (

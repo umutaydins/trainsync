@@ -108,7 +108,7 @@ function CurrentSet({ equipment, row, names, onChange, onLog }: { equipment: str
         decreaseLabel={t("fewerReps", names)}
         increaseLabel={t("moreReps", names)}
       />
-      <Button size="lg" block onClick={onLog} disabled={row.status === "saving"} aria-label={t("log", names)} className="h-16 text-lg">
+      <Button size="lg" block onClick={onLog} disabled={row.status === "saving"} aria-label={t("doneLabel", names)} className="h-16 text-lg">
         <Check aria-hidden strokeWidth={3} />
         {t("done")}
       </Button>

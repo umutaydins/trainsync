@@ -1,60 +1,52 @@
 import { fileURLToPath } from "node:url";
 
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import type { ProgressSummary } from "@/features/progress/types";
 
-const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
-const API_KEY = process.env.E2E_API_KEY ?? "dev-key-1";
-const EMAIL = process.env.E2E_EMAIL ?? "owner@example.com";
-const PASSWORD = process.env.E2E_PASSWORD ?? "dev-e2e-owner-password";
+import { API_KEY, DESKTOP, OWNER, apiGet, arrived, gotoReady, settled } from "./support";
 
 function screenshotPath(name: string): string {
   return fileURLToPath(new URL(`../../docs/img/${name}.png`, import.meta.url));
 }
 
-async function apiGet<T>(request: APIRequestContext, path: string, params: Record<string, string>): Promise<T> {
-  const response = await request.get(`${API_URL}${path}`, { params, headers: { "X-API-Key": API_KEY } });
-  expect(response.ok(), `${path} → ${response.status()}`).toBeTruthy();
-  return (await response.json()) as T;
-}
-
 test("log in, connect Strava, backfill, Today and Progress match the API, activity, sync", async ({ page, request }) => {
   await test.step("Today needs a login", async () => {
-    await page.goto("/");
+    await gotoReady(page, "/");
     await expect(page).toHaveURL(/\/login$/);
-    await page.getByLabel("Email").fill(EMAIL);
+    await page.getByLabel("Email").fill(OWNER.email);
     await page.getByLabel("Password").fill("wrong password");
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.locator("#login-error")).toHaveText("Wrong email or password.");
-    await page.getByLabel("Password").fill(PASSWORD);
+    await page.getByLabel("Password").fill(OWNER.password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await arrived(page, /\/$/);
     await expect(page.getByTestId("today")).toBeVisible();
   });
 
   await test.step("connect Strava through the fake OAuth and land back on /sync", async () => {
-    await page.goto("/sync");
+    await gotoReady(page, "/sync");
     await page.getByRole("link", { name: "Connect Strava" }).click();
-    await expect(page).toHaveURL(/\/sync\?connected=1$/);
+    await arrived(page, /\/sync\?connected=1$/);
     await expect(page.getByText("Strava connected.")).toBeVisible();
   });
 
   await test.step("the backfill succeeds", async () => {
     await expect(async () => {
       await page.reload();
+      await settled(page);
       await expect(page.getByTestId("run-backfill")).toHaveAttribute("data-status", "succeeded", { timeout: 1000 });
     }).toPass({ timeout: 120_000, intervals: [2000] });
     await expect(page.getByTestId("run-backfill").getByText("Succeeded")).toBeVisible();
   });
 
   await test.step("Today greets the user; Progress equals /v1/stats/summary and follows the period", async () => {
-    await page.goto("/");
+    await gotoReady(page, "/");
     await expect(page.getByTestId("today")).toBeVisible();
     await expect(page.getByTestId("today-activity")).toBeVisible();
 
     // fake_strava seeds the year before "now", so all time has data.
-    await page.goto("/progress?period=all");
+    await gotoReady(page, "/progress?period=all");
     const summary = await apiGet<ProgressSummary>(request, "/v1/stats/summary", { period: "all" });
     expect(summary.endurance.totals.count.value).toBeGreaterThan(0);
     await expect(page.getByTestId("stat-activities")).toHaveAttribute("data-value", String(summary.endurance.totals.count.value));
@@ -66,7 +58,7 @@ test("log in, connect Strava, backfill, Today and Progress match the API, activi
     await expect(blocks.first()).toBeVisible();
     for (const block of await blocks.all()) await expect(block).toHaveAttribute("data-period", "week");
 
-    await page.goto("/progress?period=all");
+    await gotoReady(page, "/progress?period=all");
     await page.screenshot({ path: screenshotPath("dashboard"), fullPage: true });
     await page.emulateMedia({ colorScheme: "dark" });
     await page.waitForTimeout(400); // let colour transitions finish
@@ -76,11 +68,11 @@ test("log in, connect Strava, backfill, Today and Progress match the API, activi
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(400);
     await page.screenshot({ path: screenshotPath("dashboard-mobile"), fullPage: true });
-    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.setViewportSize(DESKTOP);
   });
 
   await test.step("activity list pages with Load more, then an activity opens", async () => {
-    await page.goto("/activities");
+    await gotoReady(page, "/activities");
     const rows = page.getByTestId("activity-table").locator("tbody tr");
     await expect(rows).toHaveCount(50);
     await expect(rows.first()).toBeVisible();
@@ -101,7 +93,7 @@ test("log in, connect Strava, backfill, Today and Progress match the API, activi
   });
 
   await test.step("the sync page shows the succeeded backfill", async () => {
-    await page.goto("/sync");
+    await gotoReady(page, "/sync");
     await expect(page.getByTestId("run-backfill")).toHaveAttribute("data-status", "succeeded");
     await expect(page.getByRole("progressbar", { name: "15 minutes" })).toBeVisible();
     await page.screenshot({ path: screenshotPath("sync"), fullPage: true });

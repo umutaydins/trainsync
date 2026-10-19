@@ -44,6 +44,7 @@
     "log": "{name} {index}. seti kaydet",
     "update": "{name} {index}. seti güncelle",
     "done": "Set tamam",
+    "doneLabel": "Set tamam, {name} {index}. set",
     "status": {
       "saving": "Kaydediliyor…",
       "saved": "Kaydedildi",

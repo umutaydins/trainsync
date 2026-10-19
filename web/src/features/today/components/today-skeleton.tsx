@@ -17,7 +17,7 @@ export function TodaySkeleton({ label }: { label: string }) {
           <Skeleton key={i} height={STAT_PX} className="w-full" />
         ))}
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Skeleton height={CARD_PX} className="w-full rounded-card" />
         <Skeleton height={CARD_PX} className="w-full rounded-card" />
       </div>

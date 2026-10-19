@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ChoiceCards } from "@/features/onboarding/components/choice-cards";
 import { OnboardingFlow } from "@/features/onboarding/components/onboarding-flow";
 import { toProfile } from "@/features/nutrition/profile";
 import { STEPS, initialStep, stravaReturnFrom } from "@/features/onboarding/steps";
@@ -220,6 +221,25 @@ describe("onboarding (P8.13)", () => {
     for (let i = 0; i < clicks; i += 1) await skip();
     const result = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
     expect(result.violations.map((v) => v.id)).toEqual([]);
+  });
+});
+
+describe("choice cards", () => {
+  it("the checked card's hint uses the text colour (muted grey is too faint on the accent tint)", () => {
+    renderWithIntl(
+      <ChoiceCards
+        legend="Language"
+        name="lang"
+        value="en"
+        onChange={() => undefined}
+        choices={[
+          { value: "en", label: "English", hint: "Coach and bot in English" },
+          { value: "tr", label: "Türkçe", hint: "Koç ve bot Türkçe" },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Coach and bot in English")).toHaveClass("text-text");
+    expect(screen.getByText("Koç ve bot Türkçe")).toHaveClass("text-muted");
   });
 });
 

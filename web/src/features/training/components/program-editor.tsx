@@ -41,7 +41,7 @@ export function ProgramEditor({
         <CardTitle id="editor-title">{draft.id ? t("editTitle") : t("previewTitle")}</CardTitle>
       </CardHeader>
       <div className="flex flex-col gap-5" data-testid="program-editor">
-        <div className="grid gap-3 sm:grid-cols-[1fr_8rem]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_8rem]">
           <Field label={t("name")}>
             <Input value={draft.name} onChange={(e) => onChange({ ...draft, name: e.target.value })} />
           </Field>

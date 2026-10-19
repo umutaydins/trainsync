@@ -42,7 +42,7 @@ export default async function CheckinsPage({ searchParams }: { searchParams: Pro
       <PageTitle title={t("title")} subtitle={t("subtitle", { range })} />
       <div className="flex flex-col gap-4">
         {summary.ok ? <CheckinTiles summary={summary.data} /> : <LoadFailed title={t("summaryFailed")} status={summary.status} />}
-        <div className="grid gap-4 lg:grid-cols-[auto_1fr]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[auto_1fr]">
           <Card aria-labelledby="calendar-title" className="overflow-x-auto">
             <CardHeader>
               <CardTitle id="calendar-title">{t("calendar")}</CardTitle>

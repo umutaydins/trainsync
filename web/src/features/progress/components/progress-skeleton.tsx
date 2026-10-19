@@ -12,7 +12,7 @@ export function ProgressSkeleton({ label }: { label: string }) {
       <Skeleton className="h-10 w-40" label={label} />
       <Skeleton className="h-4 w-56" />
       <Skeleton className="h-11 w-full rounded-full" />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="flex flex-col gap-4 rounded-card border border-border bg-surface p-4 lg:col-span-2">
           <Skeleton className="h-6 w-32" />
           <Skeleton height={CHART_HEIGHT} className="w-full" />

@@ -12,7 +12,7 @@ export default async function SyncLoading() {
     <div className="flex flex-col gap-4">
       <Skeleton className="h-10 w-32" />
       <Skeleton height={RUNS_PX} className="w-full rounded-card" label={t("loading")} />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {Array.from({ length: CARDS }, (_, i) => (
           <Skeleton key={i} height={CARD_PX} className="w-full rounded-card" />
         ))}

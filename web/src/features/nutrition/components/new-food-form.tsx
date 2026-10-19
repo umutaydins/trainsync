@@ -64,7 +64,7 @@ export function NewFoodForm({ onCreated, onCancel }: { onCreated: (food: Food) =
   return (
     <form onSubmit={(e) => void create(e)} className="flex flex-col gap-3 rounded-card border border-border p-3" aria-label={t("form")}>
       <p className="font-bold">{t("title")}</p>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {field("name")}
         {field("brand")}
       </div>

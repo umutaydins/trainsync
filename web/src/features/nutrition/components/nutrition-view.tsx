@@ -21,7 +21,7 @@ export function NutritionView({ data }: { data: FoodDay }) {
   return (
     <div data-testid="nutrition-day" data-date={date}>
       <PageTitle title={t("title")} subtitle={date === data.today ? t("dayToday", { date: day }) : day} aside={<DayNav date={date} today={data.today} />} />
-      <div className="grid gap-4 lg:grid-cols-[1fr_24rem]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_24rem]">
         <div className="flex min-w-0 flex-col gap-4">
           {summary.ok ? <DailyRings summary={summary.data} /> : <LoadFailed title={t("failed.totals")} status={summary.status} />}
           <AddFood key={date} date={date} favorites={data.favorites} recent={data.recent} defaultMeal={data.defaultMeal} />

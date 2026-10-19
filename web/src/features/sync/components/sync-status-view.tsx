@@ -49,7 +49,7 @@ export function SyncStatusView({ initial, intervalMs = REFRESH_MS }: { initial: 
       </p>
       {failed !== null ? <LoadFailed title={t("refreshFailed")} status={failed} /> : null}
       <SyncRuns status={status} />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Webhooks status={status} />
         <RateLimits status={status} />
         <Circuit status={status} />

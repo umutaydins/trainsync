@@ -44,6 +44,7 @@
     "log": "Log {name} set {index}",
     "update": "Update {name} set {index}",
     "done": "Set done",
+    "doneLabel": "Set done, {name} set {index}",
     "status": {
       "saving": "Saving…",
       "saved": "Logged",

@@ -53,7 +53,7 @@ export function GenerateForm({ onPreview }: { onPreview: (preview: ProgramPrevie
         <CardTitle id="generate-title">{t("title")}</CardTitle>
       </CardHeader>
       <form onSubmit={(e) => void generate(e)} className="flex flex-col gap-4" aria-labelledby="generate-title">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label={t("days")}>
             <Select value={days} onChange={(e) => setDays(Number(e.target.value))}>
               {DAY_OPTIONS.map((d) => (

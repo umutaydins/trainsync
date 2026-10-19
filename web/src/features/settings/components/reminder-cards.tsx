@@ -58,7 +58,7 @@ export function RemindersCard({ settings, save, busy }: CardProps) {
     <SettingsCard id="coach-reminders" title={t("reminders")} body={t("remindersBody")}>
       <SwitchRow label={t("checkinEnabled")} hint={t("checkinEnabledHint")} field="checkin_enabled" {...row} />
       <form className="flex flex-col gap-4" onSubmit={submit} noValidate>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <SettingRow label={t("checkinTime")} field="checkin_time" {...row}>
             <Input type="time" required value={checkinTime} onChange={(event) => setCheckinTime(event.target.value)} />
           </SettingRow>

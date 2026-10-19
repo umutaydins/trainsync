@@ -31,7 +31,7 @@ export function ChoiceCards<T extends string>({
   return (
     <fieldset className="flex flex-col gap-2" aria-describedby={hint ? `${id}-hint` : undefined}>
       <legend className="mb-2 text-label font-semibold uppercase tracking-[0.08em] text-muted">{legend}</legend>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {choices.map((choice) => {
           const checked = choice.value === value;
           return (
@@ -52,7 +52,8 @@ export function ChoiceCards<T extends string>({
               />
               <span className="flex-1">
                 <span className="block font-bold">{choice.label}</span>
-                {choice.hint ? <span className="block text-sm text-muted">{choice.hint}</span> : null}
+                {/* Muted grey is too faint on the accent tint of a checked card (axe colour contrast). */}
+                {choice.hint ? <span className={cn("block text-sm", checked ? "text-text" : "text-muted")}>{choice.hint}</span> : null}
               </span>
               <span
                 aria-hidden

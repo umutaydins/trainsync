@@ -22,7 +22,7 @@ export function SettingsHub({ me }: { me: Me | null }) {
       <PageTitle title={nav("me")} />
       {me ? <AccountHeader me={me} /> : <Failure title={t("loadFailed")} />}
       <nav aria-label={nav("me")}>
-        <ul className="grid gap-2 md:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
           {visibleSections(isOwner).map(({ key, href, icon: Icon }) => (
             <li key={key}>
               <Link

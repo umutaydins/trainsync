@@ -26,7 +26,7 @@ export function ProfileFields({
   const error = (key: ProfileField) => (invalid === key ? t(`errors.${key}`, LIMITS[key]) : undefined);
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Field label={t("sex")}>
           <Select value={values.sex} onChange={set("sex")}>
             <option value="male">{t("male")}</option>
@@ -49,7 +49,7 @@ export function ProfileFields({
           ))}
         </Select>
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label={t("kcalTarget")} error={error("kcalTarget")}>
           <Input inputMode="numeric" value={values.kcalTarget} onChange={set("kcalTarget")} />
         </Field>

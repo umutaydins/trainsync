@@ -48,7 +48,7 @@ export function SyncRuns({ status }: { status: SyncStatus }) {
         {status.athletes.map((athlete) => (
           <div key={athlete.athlete_id}>
             <p className="mb-2 text-xs font-medium text-muted">{t("runs.athlete", { id: athlete.strava_athlete_id })}</p>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <RunCard kind="backfill" run={athlete.backfill} />
               <RunCard kind="incremental" run={athlete.incremental} />
             </div>
