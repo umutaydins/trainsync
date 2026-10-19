@@ -367,6 +367,26 @@ export interface paths {
         patch: operations["patch_me_v1_me_patch"];
         trace?: never;
     };
+    "/v1/me/coach-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How the coach would sound
+         * @description One sample line for the given tone, intensity, profanity and language (each defaults to your current setting): the tone's "workout done" line, or a savage line for `intensity=savage` with `tone=hardcore`. Random each call.
+         */
+        get: operations["coach_preview_v1_me_coach_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/export": {
         parameters: {
             query?: never;
@@ -1951,6 +1971,22 @@ export interface components {
             processes: components["schemas"]["BreakerProcess"][];
             /** @description Worst state across processes */
             state: components["schemas"]["BreakerState"];
+        };
+        /**
+         * CoachPreviewOut
+         * @example {
+         *       "line": "Clean session. Do it again next time.",
+         *       "savage": false
+         *     }
+         */
+        CoachPreviewOut: {
+            /** Line */
+            line: string;
+            /**
+             * Savage
+             * @description A savage line (BOT_INTENSITY=savage with the hardcore tone)
+             */
+            savage: boolean;
         };
         /**
          * ConnectedResponse
@@ -6793,6 +6829,54 @@ export interface operations {
                      *     }
                      */
                     "application/json": unknown;
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    coach_preview_v1_me_coach_preview_get: {
+        parameters: {
+            query?: {
+                tone?: ("neutral" | "hardcore") | null;
+                intensity?: ("normal" | "savage") | null;
+                profanity?: ("roast" | "max") | null;
+                lang?: ("en" | "tr") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachPreviewOut"];
                 };
             };
             /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */

@@ -17,7 +17,12 @@ export interface ServerEnv {
   publicWebUrl: string;
   /** Origins whose mutations the BFF accepts: `publicWebUrl` plus this Vercel deployment's URLs. */
   allowedOrigins: string[];
+  /** Contact address on the privacy and terms pages. */
+  ownerContactEmail: string;
 }
+
+/** Shown on the legal pages until OWNER_CONTACT_EMAIL is set: obviously not a real address. */
+export const OWNER_CONTACT_PLACEHOLDER = "owner@example.com";
 
 export class ConfigError extends Error {}
 
@@ -45,5 +50,11 @@ export function serverEnv(): ServerEnv {
     cookieSecure: cookieSecureFromEnv(),
     publicWebUrl,
     allowedOrigins: allowedOrigins(publicWebUrl, process.env),
+    ownerContactEmail: ownerContactEmail(),
   };
+}
+
+/** OWNER_CONTACT_EMAIL (optional). Read on its own so the public legal pages need no secrets. */
+export function ownerContactEmail(): string {
+  return process.env.OWNER_CONTACT_EMAIL?.trim() || OWNER_CONTACT_PLACEHOLDER;
 }

@@ -42,6 +42,7 @@ export const RULES: readonly { pattern: RegExp; methods: readonly Method[] }[] =
   { pattern: /^\/v1\/me\/(?:telegram|strava)$/, methods: READ_DELETE },
   { pattern: /^\/v1\/me\/telegram\/code$/, methods: POST_ONLY },
   { pattern: /^\/v1\/me\/export$/, methods: READ },
+  { pattern: /^\/v1\/me\/coach-preview$/, methods: READ },
   // Owner only; the API answers 403 to everyone else.
   { pattern: /^\/v1\/admin\/(?:invites|users)$/, methods: ["GET", "POST"] },
   { pattern: /^\/v1\/admin\/invites\/\d{1,20}$/, methods: DELETE_ONLY },

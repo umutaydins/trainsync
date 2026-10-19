@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from trainsync.core.deps import ClockDep, JobQueueDep, SessionmakerDep, SettingsDep
 from trainsync.core.errors import UNAUTHORIZED, error
 from trainsync.core.security import verify_password
-from trainsync.core.settings import Settings
+from trainsync.core.settings import BotIntensity, BotLang, BotProfanity, BotTone, Settings
 from trainsync.modules.auth import service
 from trainsync.modules.auth.dependencies import CurrentUser
 from trainsync.modules.auth.errors import AuthError
@@ -24,8 +24,10 @@ from trainsync.modules.auth.schemas import (
 from trainsync.modules.users.export import export_user
 from trainsync.modules.users.lifecycle import delete_account
 from trainsync.modules.users.models import UserSettings
+from trainsync.modules.users.preview import preview
 from trainsync.modules.users.schemas import (
     EXPORT_EXAMPLE,
+    CoachPreviewOut,
     DeleteAccountIn,
     SettingsOut,
     SettingsPatch,
@@ -129,6 +131,38 @@ async def get_settings(
     async with sessionmaker() as session:
         row = await UserSettingsRepository(session, principal.user_id).get()
     return settings_out(principal.user_id, principal.timezone, row, settings)
+
+
+@router.get(
+    "/coach-preview",
+    summary="How the coach would sound",
+    description=(
+        "One sample line for the given tone, intensity, profanity and language (each defaults "
+        'to your current setting): the tone\'s "workout done" line, or a savage line for '
+        "`intensity=savage` with `tone=hardcore`. Random each call."
+    ),
+    response_model=CoachPreviewOut,
+    responses=UNAUTHORIZED,
+)
+async def coach_preview(
+    principal: CurrentUser,
+    sessionmaker: SessionmakerDep,
+    settings: SettingsDep,
+    tone: BotTone | None = None,
+    intensity: BotIntensity | None = None,
+    profanity: BotProfanity | None = None,
+    lang: BotLang | None = None,
+) -> CoachPreviewOut:
+    async with sessionmaker() as session:
+        row = await UserSettingsRepository(session, principal.user_id).get()
+    current = effective(principal.user_id, principal.timezone, row, settings)
+    sample = preview(
+        tone or current.tone,
+        intensity or current.intensity,
+        profanity or current.profanity,
+        lang or current.lang,
+    )
+    return CoachPreviewOut(line=sample.line, savage=sample.savage)
 
 
 @router.patch(

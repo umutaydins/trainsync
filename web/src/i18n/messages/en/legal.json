@@ -1,0 +1,91 @@
+{
+  "updated": "Last updated {date}",
+  "privacy": {
+    "metaTitle": "Privacy",
+    "title": "Privacy.",
+    "subtitle": "What trainsync stores about you, why, and how to take it back.",
+    "sections": {
+      "who": {
+        "title": "Who runs this",
+        "body": "trainsync is a small personal service run by one person (the owner) for themselves and the people they invite. There is no advertising, no tracking and no analytics."
+      },
+      "stored": {
+        "title": "What is stored",
+        "body": "Only what the app needs to work:",
+        "items": {
+          "account": "Your account: email address, display name, time zone, language, and a hash of your password (never the password itself).",
+          "sessions": "Sign-in sessions: when each started and was last used and which browser it came from, so you can see and end them.",
+          "training": "Training data you enter: workouts, sets, programs, daily check-ins and personal records.",
+          "nutrition": "Food and body data you enter: your food log, nutrition profile (sex, birth year, height, everyday activity, targets) and body weight.",
+          "strava": "If you connect Strava: your Strava activities and athlete id, and the Strava access tokens, which are stored encrypted.",
+          "telegram": "If you link Telegram: the id of your chat with the trainsync bot, so it can message you.",
+          "settings": "Your settings: coach tone, reminders, quiet hours and similar choices."
+        }
+      },
+      "strava": {
+        "title": "Your Strava data",
+        "body": "trainsync reads your Strava activities only to show them to you and to compute your own statistics. They are never sold, never shared with other users or anyone else, and never used for advertising.",
+        "control": "You can disconnect Strava at any time in Me, or revoke trainsync's access in your Strava settings. Disconnecting deletes your Strava tokens and activities from trainsync, and deleting your account deletes them too."
+      },
+      "services": {
+        "title": "Other services",
+        "body": "Food lookups by name or barcode ask Open Food Facts (no personal data is sent). If plain-language questions in the bot are turned on, a question you ask and the training data needed to answer it are sent to Anthropic's Claude API to write the answer."
+      },
+      "export": {
+        "title": "Export and deletion",
+        "body": "You can download all your data at any time in Me → Export. You can delete your account in Me → Delete account: you are signed out everywhere and Telegram is unlinked at once, then a background job revokes Strava and deletes every row of your account."
+      },
+      "retention": {
+        "title": "Backups",
+        "body": "The database is backed up, encrypted, and backups are kept for a limited time and then deleted. Something you delete can live on in a backup until that backup expires; backups are only used to recover from a failure."
+      },
+      "cookies": {
+        "title": "Cookies",
+        "body": "Only the cookies the app needs: your sealed sign-in session, a security token against forged requests, and your language, time zone and theme. No tracking or advertising cookies."
+      },
+      "contact": {
+        "title": "Contact",
+        "body": "Questions, or a request about your data: write to the owner at <link>{email}</link>."
+      }
+    }
+  },
+  "terms": {
+    "metaTitle": "Terms",
+    "title": "Terms.",
+    "subtitle": "The short rules for using trainsync.",
+    "sections": {
+      "service": {
+        "title": "The service",
+        "body": "trainsync is a personal, non-commercial service run by one person (the owner) for themselves and the people they invite. It is provided as it is, without any warranty, and it may change or stop."
+      },
+      "account": {
+        "title": "Your account",
+        "body": "One account per person; keep your password to yourself. Do not try to break or overload the service, or to reach other people's data."
+      },
+      "coach": {
+        "title": "Not medical advice",
+        "body": "The coach, the statistics and the calorie estimates are motivation and arithmetic, not medical, nutrition or training advice. Listen to your body and ask a professional about your health; you train at your own risk."
+      },
+      "strava": {
+        "title": "Strava",
+        "body": "If you connect Strava, Strava's own terms apply too. trainsync is not developed, sponsored or endorsed by Strava."
+      },
+      "availability": {
+        "title": "Availability",
+        "body": "trainsync runs on the owner's own hardware. It can be slow or offline, and a failure can lose recent changes; you can export your data at any time."
+      },
+      "ending": {
+        "title": "Ending",
+        "body": "You can delete your account at any time in Me → Delete account. The owner may suspend or delete an account that misuses the service, and will tell you when possible."
+      },
+      "changes": {
+        "title": "Changes",
+        "body": "These terms and the privacy page may change; the date at the top shows the last change. Using trainsync after a change means you accept the new version."
+      },
+      "contact": {
+        "title": "Contact",
+        "body": "Questions about these terms: write to the owner at <link>{email}</link>."
+      }
+    }
+  }
+}

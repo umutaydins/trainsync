@@ -1275,6 +1275,31 @@
         "title": "CircuitOut",
         "type": "object"
       },
+      "CoachPreviewOut": {
+        "examples": [
+          {
+            "line": "Clean session. Do it again next time.",
+            "savage": false
+          }
+        ],
+        "properties": {
+          "line": {
+            "title": "Line",
+            "type": "string"
+          },
+          "savage": {
+            "description": "A savage line (BOT_INTENSITY=savage with the hardcore tone)",
+            "title": "Savage",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "line",
+          "savage"
+        ],
+        "title": "CoachPreviewOut",
+        "type": "object"
+      },
       "ConnectedResponse": {
         "examples": [
           {
@@ -9866,6 +9891,138 @@
           }
         ],
         "summary": "Change the display name or time zone",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/coach-preview": {
+      "get": {
+        "description": "One sample line for the given tone, intensity, profanity and language (each defaults to your current setting): the tone's \"workout done\" line, or a savage line for `intensity=savage` with `tone=hardcore`. Random each call.",
+        "operationId": "coach_preview_v1_me_coach_preview_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tone",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "neutral",
+                    "hardcore"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tone"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intensity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "normal",
+                    "savage"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intensity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profanity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "roast",
+                    "max"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profanity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "en",
+                    "tr"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lang"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "How the coach would sound",
         "tags": [
           "me"
         ]

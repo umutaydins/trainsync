@@ -1,0 +1,112 @@
+{
+  "metaTitle": "Get set up",
+  "progress": "Step {current} of {total}",
+  "steps": {
+    "timezone": "Time zone",
+    "language": "Language",
+    "coach": "Coach",
+    "strava": "Strava",
+    "telegram": "Telegram",
+    "profile": "Body",
+    "done": "Done"
+  },
+  "saveAndContinue": "Save and continue",
+  "continue": "Continue",
+  "saveFailed": "Could not save. Try again, or skip this step.",
+  "timezone": {
+    "title": "Where do you train?",
+    "body": "Days, streaks, reminders and quiet hours follow your time zone.",
+    "label": "Time zone",
+    "detected": "This device says {zone}.",
+    "useDetected": "Use {zone}"
+  },
+  "language": {
+    "title": "Pick your language.",
+    "body": "The app, the bot and the coach all speak it. You can switch any time in Me.",
+    "label": "Language",
+    "en": "English",
+    "enHint": "Coach and bot in English",
+    "tr": "Türkçe",
+    "trHint": "Koç ve bot Türkçe"
+  },
+  "coach": {
+    "title": "How hard should the coach push?",
+    "body": "The coach comments on your workouts, check-ins and streaks in the bot.",
+    "tone": "Tone",
+    "neutral": "Neutral",
+    "neutralHint": "Calm, factual feedback.",
+    "hardcore": "Hardcore",
+    "hardcoreHint": "Direct. No excuses accepted.",
+    "intensity": "Intensity",
+    "intensityHint": "Intensity only matters with the hardcore tone.",
+    "normal": "Normal",
+    "normalHint": "Tough but fair.",
+    "savage": "Savage",
+    "savageHint": "Roasts you when you slack off.",
+    "profanity": "Language",
+    "profanityHint": "Only with savage: how rough the roast gets.",
+    "roast": "Roast",
+    "roastHint": "Sharp, but no swearing.",
+    "max": "Max",
+    "maxHint": "Swearing allowed. You asked for it.",
+    "locked": "Pick hardcore to unlock intensity, and savage to unlock the roast level.",
+    "preview": "How it sounds",
+    "previewError": "No preview right now. Your choice still saves.",
+    "another": "Another line",
+    "savageBadge": "Savage"
+  },
+  "strava": {
+    "title": "Connect Strava.",
+    "body": "Your runs, rides and other activities sync on their own. trainsync only reads them to show them to you; you can disconnect any time.",
+    "connected": "Strava is connected.",
+    "connectedSince": "Connected on {date}. Your activities are on their way.",
+    "notConnected": "Not connected yet.",
+    "failed": "Strava did not connect: {reason}",
+    "connectLabel": "Connect with Strava",
+    "poweredBy": "Powered by Strava"
+  },
+  "telegram": {
+    "title": "Link Telegram.",
+    "body": "Check-ins, coach messages and quick logging come through the trainsync bot.",
+    "getCode": "Get a link code",
+    "newCode": "New code",
+    "codeLabel": "Your one-time code",
+    "expires": "Valid until {time}.",
+    "openBot": "Open the bot",
+    "sendCommand": "Send the bot this message:",
+    "linked": "Telegram is linked.",
+    "linkedSince": "Linked on {date}.",
+    "notLinked": "Not linked yet.",
+    "check": "I sent it, check again",
+    "codeFailed": "Could not create a code. Try again.",
+    "copyFailed": "Could not copy. Select the code and copy it by hand."
+  },
+  "profile": {
+    "title": "Your numbers.",
+    "body": "Used only to estimate your basal rate (Mifflin–St Jeor) for the food pages. Targets are optional.",
+    "sex": "Sex (for the equation)",
+    "male": "Male",
+    "female": "Female",
+    "birthYear": "Birth year",
+    "height": "Height (cm)",
+    "baseline": "Everyday activity (outside logged exercise)",
+    "baselines": {
+      "sedentary": "Sedentary (mostly sitting)",
+      "light": "Light (on your feet some of the day)",
+      "moderate": "Moderate (on your feet most of the day)"
+    },
+    "kcalTarget": "Daily kcal target (optional)",
+    "proteinTarget": "Protein target in g (optional)",
+    "errors": {
+      "birthYear": "Enter a year from {min} to {max}.",
+      "height": "Enter a height from {min} to {max} cm.",
+      "kcalTarget": "From {min} to {max}, or leave it empty.",
+      "proteinTarget": "From {min} to {max} g, or leave it empty."
+    }
+  },
+  "done": {
+    "title": "You are set.",
+    "body": "Everything you skipped waits for you in Me. Now go train.",
+    "cta": "Go to Today"
+  }
+}

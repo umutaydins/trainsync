@@ -1,0 +1,91 @@
+{
+  "updated": "Son güncelleme: {date}",
+  "privacy": {
+    "metaTitle": "Gizlilik",
+    "title": "Gizlilik.",
+    "subtitle": "trainsync senin hakkında neyi, neden saklıyor ve onu nasıl geri alırsın.",
+    "sections": {
+      "who": {
+        "title": "Bunu kim işletiyor",
+        "body": "trainsync, tek bir kişinin (sahibinin) kendisi ve davet ettiği kişiler için işlettiği küçük, kişisel bir servistir. Reklam, takip ya da analitik yoktur."
+      },
+      "stored": {
+        "title": "Neler saklanıyor",
+        "body": "Yalnızca uygulamanın çalışması için gerekenler:",
+        "items": {
+          "account": "Hesabın: e-posta adresin, görünen adın, saat dilimin, dilin ve şifrenin özeti (hash; şifrenin kendisi asla saklanmaz).",
+          "sessions": "Oturumların: her birinin ne zaman başladığı, en son ne zaman kullanıldığı ve hangi tarayıcıdan açıldığı; böylece onları görüp kapatabilirsin.",
+          "training": "Girdiğin antrenman verileri: antrenmanlar, setler, programlar, günlük check-in'ler ve kişisel rekorlar.",
+          "nutrition": "Girdiğin beslenme ve vücut verileri: yemek günlüğün, beslenme profilin (cinsiyet, doğum yılı, boy, günlük hareket düzeyi, hedefler) ve kilon.",
+          "strava": "Strava'yı bağlarsan: Strava aktivitelerin ve sporcu kimliğin, bir de şifrelenmiş olarak saklanan Strava erişim anahtarları.",
+          "telegram": "Telegram'ı bağlarsan: trainsync botuyla olan sohbetinin kimliği, böylece bot sana yazabilir.",
+          "settings": "Ayarların: koç tonu, hatırlatmalar, sessiz saatler ve benzeri tercihler."
+        }
+      },
+      "strava": {
+        "title": "Strava verilerin",
+        "body": "trainsync, Strava aktivitelerini yalnızca onları sana göstermek ve kendi istatistiklerini hesaplamak için okur. Bu veriler asla satılmaz, başka kullanıcılarla ya da kimseyle paylaşılmaz ve reklam için kullanılmaz.",
+        "control": "Strava bağlantısını istediğin an Ben sayfasından kesebilir ya da trainsync'in erişimini Strava ayarlarından kaldırabilirsin. Bağlantıyı kesmek Strava anahtarlarını ve aktivitelerini trainsync'ten siler; hesabını silmek de onları siler."
+      },
+      "services": {
+        "title": "Diğer servisler",
+        "body": "Ada ya da barkoda göre yemek aramaları Open Food Facts'e sorulur (kişisel veri gönderilmez). Botta serbest metinle soru sorma açıksa, sorduğun soru ve cevap için gereken antrenman verileri, cevabı yazması için Anthropic'in Claude API'sine gönderilir."
+      },
+      "export": {
+        "title": "Dışa aktarma ve silme",
+        "body": "Tüm verilerini istediğin an Ben → Dışa aktar bölümünden indirebilirsin. Hesabını Ben → Hesabı sil bölümünden silebilirsin: her yerde oturumun hemen kapanır ve Telegram bağlantın kaldırılır, ardından arka planda Strava erişimi iptal edilir ve hesabına ait her kayıt silinir."
+      },
+      "retention": {
+        "title": "Yedekler",
+        "body": "Veritabanı şifrelenmiş olarak yedeklenir; yedekler sınırlı bir süre saklanır, sonra silinir. Sildiğin bir şey, ilgili yedeğin süresi dolana kadar o yedekte kalabilir; yedekler yalnızca bir arızadan kurtulmak için kullanılır."
+      },
+      "cookies": {
+        "title": "Çerezler",
+        "body": "Yalnızca uygulamanın ihtiyaç duyduğu çerezler: mühürlü oturum çerezin, sahte isteklere karşı bir güvenlik anahtarı ve dil, saat dilimi ve tema tercihlerin. Takip ya da reklam çerezi yoktur."
+      },
+      "contact": {
+        "title": "İletişim",
+        "body": "Soruların ya da verilerinle ilgili bir isteğin için sahibine yaz: <link>{email}</link>."
+      }
+    }
+  },
+  "terms": {
+    "metaTitle": "Kullanım koşulları",
+    "title": "Koşullar.",
+    "subtitle": "trainsync'i kullanmanın kısa kuralları.",
+    "sections": {
+      "service": {
+        "title": "Servis",
+        "body": "trainsync, tek bir kişinin (sahibinin) kendisi ve davet ettiği kişiler için işlettiği kişisel ve ticari olmayan bir servistir. Olduğu gibi, hiçbir garanti verilmeden sunulur; değişebilir ya da kapanabilir."
+      },
+      "account": {
+        "title": "Hesabın",
+        "body": "Kişi başına bir hesap; şifreni kimseyle paylaşma. Servisi bozmaya, aşırı yüklemeye ya da başkalarının verilerine ulaşmaya çalışma."
+      },
+      "coach": {
+        "title": "Tıbbi tavsiye değildir",
+        "body": "Koç, istatistikler ve kalori tahminleri motivasyon ve hesaptan ibarettir; tıbbi, beslenme ya da antrenman tavsiyesi değildir. Vücudunu dinle, sağlığınla ilgili sorular için bir uzmana danış; antrenman riski sana aittir."
+      },
+      "strava": {
+        "title": "Strava",
+        "body": "Strava'yı bağlarsan Strava'nın kendi koşulları da geçerlidir. trainsync, Strava tarafından geliştirilmemiştir, desteklenmez ve onaylanmamıştır."
+      },
+      "availability": {
+        "title": "Erişilebilirlik",
+        "body": "trainsync sahibinin kendi donanımında çalışır. Yavaş ya da kapalı olabilir ve bir arıza son değişiklikleri kaybettirebilir; verilerini istediğin an dışa aktarabilirsin."
+      },
+      "ending": {
+        "title": "Sonlandırma",
+        "body": "Hesabını istediğin an Ben → Hesabı sil bölümünden silebilirsin. Sahibi, servisi kötüye kullanan bir hesabı askıya alabilir ya da silebilir ve mümkünse sana haber verir."
+      },
+      "changes": {
+        "title": "Değişiklikler",
+        "body": "Bu koşullar ve gizlilik sayfası değişebilir; en üstteki tarih son değişikliği gösterir. Bir değişiklikten sonra trainsync'i kullanmaya devam etmen yeni sürümü kabul ettiğin anlamına gelir."
+      },
+      "contact": {
+        "title": "İletişim",
+        "body": "Bu koşullarla ilgili soruların için sahibine yaz: <link>{email}</link>."
+      }
+    }
+  }
+}

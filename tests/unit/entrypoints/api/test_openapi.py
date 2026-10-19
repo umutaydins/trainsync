@@ -104,6 +104,7 @@ def test_every_endpoint_is_documented(spec: dict[str, Any]) -> None:
         "GET /v1/stats/prs",
         "GET /v1/sync/status",
         "GET /v1/me/settings",
+        "GET /v1/me/coach-preview",
         "PATCH /v1/me/settings",
         "GET /v1/me/export",
         "DELETE /v1/me",

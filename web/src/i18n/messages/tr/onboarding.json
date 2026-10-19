@@ -1,0 +1,112 @@
+{
+  "metaTitle": "Kurulum",
+  "progress": "Adım {current} / {total}",
+  "steps": {
+    "timezone": "Saat dilimi",
+    "language": "Dil",
+    "coach": "Koç",
+    "strava": "Strava",
+    "telegram": "Telegram",
+    "profile": "Vücut",
+    "done": "Bitti"
+  },
+  "saveAndContinue": "Kaydet ve devam et",
+  "continue": "Devam et",
+  "saveFailed": "Kaydedilemedi. Tekrar dene ya da bu adımı atla.",
+  "timezone": {
+    "title": "Nerede antrenman yapıyorsun?",
+    "body": "Günler, seriler, hatırlatmalar ve sessiz saatler senin saat dilimine göre işler.",
+    "label": "Saat dilimi",
+    "detected": "Bu cihaza göre {zone}.",
+    "useDetected": "{zone} kullan"
+  },
+  "language": {
+    "title": "Dilini seç.",
+    "body": "Uygulama, bot ve koç bu dilde konuşur. Ben sayfasından istediğin an değiştirebilirsin.",
+    "label": "Dil",
+    "en": "English",
+    "enHint": "Coach and bot in English",
+    "tr": "Türkçe",
+    "trHint": "Koç ve bot Türkçe"
+  },
+  "coach": {
+    "title": "Koç ne kadar yüklensin?",
+    "body": "Koç, bottaki antrenmanlarına, check-in'lerine ve serilerine yorum yapar.",
+    "tone": "Ton",
+    "neutral": "Sakin",
+    "neutralHint": "Sakin, net geri bildirim.",
+    "hardcore": "Sert",
+    "hardcoreHint": "Dolaysız. Bahane yok.",
+    "intensity": "Yoğunluk",
+    "intensityHint": "Yoğunluk yalnızca sert tonda işe yarar.",
+    "normal": "Normal",
+    "normalHint": "Sert ama adil.",
+    "savage": "Acımasız",
+    "savageHint": "Gevşediğinde seni fena gömer.",
+    "profanity": "Üslup",
+    "profanityHint": "Yalnızca acımasızda: gömmenin dozu.",
+    "roast": "İğneleyici",
+    "roastHint": "Keskin ama küfürsüz.",
+    "max": "Sınırsız",
+    "maxHint": "Küfür serbest. Sen istedin.",
+    "locked": "Yoğunluğu açmak için sert tonu, üslubu açmak için acımasızı seç.",
+    "preview": "Kulağa nasıl geliyor",
+    "previewError": "Şu an örnek yok. Seçimin yine de kaydedilir.",
+    "another": "Başka bir cümle",
+    "savageBadge": "Acımasız"
+  },
+  "strava": {
+    "title": "Strava'yı bağla.",
+    "body": "Koşuların, sürüşlerin ve diğer aktivitelerin kendiliğinden gelir. trainsync onları yalnızca sana göstermek için okur; bağlantıyı istediğin an kesebilirsin.",
+    "connected": "Strava bağlı.",
+    "connectedSince": "{date} tarihinde bağlandı. Aktivitelerin yolda.",
+    "notConnected": "Henüz bağlı değil.",
+    "failed": "Strava bağlanamadı: {reason}",
+    "connectLabel": "Connect with Strava",
+    "poweredBy": "Powered by Strava"
+  },
+  "telegram": {
+    "title": "Telegram'ı bağla.",
+    "body": "Check-in'ler, koç mesajları ve hızlı kayıtlar trainsync botundan gelir.",
+    "getCode": "Bağlantı kodu al",
+    "newCode": "Yeni kod",
+    "codeLabel": "Tek kullanımlık kodun",
+    "expires": "{time} saatine kadar geçerli.",
+    "openBot": "Botu aç",
+    "sendCommand": "Bota şu mesajı gönder:",
+    "linked": "Telegram bağlı.",
+    "linkedSince": "{date} tarihinde bağlandı.",
+    "notLinked": "Henüz bağlı değil.",
+    "check": "Gönderdim, tekrar kontrol et",
+    "codeFailed": "Kod oluşturulamadı. Tekrar dene.",
+    "copyFailed": "Kopyalanamadı. Kodu seçip elle kopyala."
+  },
+  "profile": {
+    "title": "Rakamların.",
+    "body": "Yalnızca beslenme sayfaları için bazal metabolizma tahmininde (Mifflin–St Jeor) kullanılır. Hedefler isteğe bağlı.",
+    "sex": "Cinsiyet (formül için)",
+    "male": "Erkek",
+    "female": "Kadın",
+    "birthYear": "Doğum yılı",
+    "height": "Boy (cm)",
+    "baseline": "Günlük hareket (kayıtlı antrenman dışında)",
+    "baselines": {
+      "sedentary": "Hareketsiz (çoğunlukla oturarak)",
+      "light": "Hafif (günün bir kısmı ayakta)",
+      "moderate": "Orta (günün çoğu ayakta)"
+    },
+    "kcalTarget": "Günlük kcal hedefi (isteğe bağlı)",
+    "proteinTarget": "Protein hedefi, g (isteğe bağlı)",
+    "errors": {
+      "birthYear": "{min} ile {max} arasında bir yıl gir.",
+      "height": "{min} ile {max} cm arasında bir boy gir.",
+      "kcalTarget": "{min} ile {max} arası ya da boş bırak.",
+      "proteinTarget": "{min} ile {max} g arası ya da boş bırak."
+    }
+  },
+  "done": {
+    "title": "Hazırsın.",
+    "body": "Atladığın her şey Ben sayfasında seni bekliyor. Şimdi git, çalış.",
+    "cta": "Bugün'e git"
+  }
+}
