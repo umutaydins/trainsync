@@ -12,7 +12,7 @@ must never turn into insults.
 
 ## Decision
 - `BOT_TONE` (`neutral` default, `hardcore`) and `BOT_LANG` (`en` default, `tr`) pick one of four
-  packs in `src/trainsync/bot/messages/`. A pack maps every `Key` to one or more `str.format`
+  packs in `src/trainsync/modules/coach/packs/`. A pack maps every `Key` to one or more `str.format`
   templates, plus month and weekday short names. `formatting.py` still computes every number
   (km, durations, pace, percentages); packs only own the words around them.
 - `Messages` renders a key; with several variants it picks one with an injected
@@ -31,7 +31,7 @@ must never turn into insults.
   "Reply in English/Turkish" line per language. It lives in `assistant.py`, not in the packs: it
   is an instruction to the model, not text a user reads.
 - CI guards: every pack defines every key and only uses its key's fields; a snapshot per
-  tone × language (`tests/unit/snapshots/bot_messages/`); a blocklist of slurs, insults, stronger
+  tone × language (`tests/unit/modules/coach/packs/snapshots/bot_messages/`); a blocklist of slurs, insults, stronger
   profanity and body/weight words that no pack may contain.
 
 ## Alternatives considered

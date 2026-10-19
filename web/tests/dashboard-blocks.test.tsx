@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { KpiBlock, LongestBlock, SportBlock, WeeklyBlock, WeeklySkeleton } from "@/components/dashboard/blocks";
-import { CHART_HEIGHT, WeeklyChart } from "@/components/dashboard/weekly-chart";
+import { KpiBlock, LongestBlock, SportBlock, WeeklyBlock, WeeklySkeleton } from "@/features/dashboard/components/blocks";
+import { CHART_HEIGHT, WeeklyChart } from "@/features/dashboard/components/weekly-chart";
 import { ApiError, api } from "@/lib/api";
 import type { DashboardRange } from "@/lib/range";
 import { summary, week } from "./support/fixtures";

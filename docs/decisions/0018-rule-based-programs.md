@@ -55,7 +55,7 @@ need the network in the gym.
 
 ## Consequences
 - Every template × goal × equipment × duration combination is checked by a unit test
-  (`tests/unit/test_generator.py`), and the same input always gives the same program.
+  (`tests/unit/modules/training/test_generator.py`), and the same input always gives the same program.
 - Adding an exercise to the library can change which exercise a slot picks. That is fine: saved
   programs keep their exercise ids.
 - The time estimate is rough. It keeps sessions near the target, but it is not a promise.

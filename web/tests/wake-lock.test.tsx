@@ -1,7 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { useWakeLock } from "@/lib/wake-lock";
+import { useWakeLock } from "@/features/training/wake-lock";
 
 function Probe({ active }: { active: boolean }) {
   return <p data-testid="status">{useWakeLock(active)}</p>;

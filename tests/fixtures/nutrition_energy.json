@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Hand-computed energy balance for P6.4 (tests/integration/test_nutrition_api.py).",
+    "Hand-computed energy balance for P6.4 (tests/integration/modules/nutrition/test_nutrition_api.py).",
     "BMR Mifflin-St Jeor male: 10w + 6.25h - 5a + 5; age = 2026 - 1991 = 35; h = 180.",
     "  w = 80.0 (body_metrics 2026-10-10, used on 10-12 and 10-13): 800 + 1125 - 175 + 5 = 1755.0",
     "  w = 79.0 (body_metrics 2026-10-14):                            790 + 1125 - 175 + 5 = 1745.0",
@@ -60,7 +60,7 @@
     "days": [
       {
         "date": "2026-10-12",
-        "intake_kcal": 634.0, "protein_g": 72.4, "carbs_g": 48.0, "fat_g": 12.8,
+        "intake_kcal": 634.0, "protein_g": 72.4, "carbs_g": 48.0, "fat_g": 12.8, "sugars_g": 0.0, "free_sugars_g": 0.0,
         "entry_count": 2, "macros_complete": true,
         "kcal_target": 2600, "protein_target_g": 140, "kcal_remaining": 1966.0,
         "bmr_kcal": 1755.0, "baseline_kcal": 2413.1, "activity_baseline": "light",
@@ -71,7 +71,7 @@
       },
       {
         "date": "2026-10-13",
-        "intake_kcal": 328.6, "protein_g": 6.5, "carbs_g": 65.0, "fat_g": 3.5,
+        "intake_kcal": 328.6, "protein_g": 6.5, "carbs_g": 65.0, "fat_g": 3.5, "sugars_g": 0.0, "free_sugars_g": 0.0,
         "entry_count": 2, "macros_complete": false,
         "kcal_target": 2600, "protein_target_g": 140, "kcal_remaining": 2271.4,
         "bmr_kcal": 1755.0, "baseline_kcal": 2413.1, "activity_baseline": "light",
@@ -82,7 +82,7 @@
       },
       {
         "date": "2026-10-14",
-        "intake_kcal": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0,
+        "intake_kcal": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0, "sugars_g": 0.0, "free_sugars_g": 0.0,
         "entry_count": 0, "macros_complete": true,
         "kcal_target": 2600, "protein_target_g": 140, "kcal_remaining": 2600.0,
         "bmr_kcal": 1745.0, "baseline_kcal": 2399.4, "activity_baseline": "light",

@@ -25,6 +25,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "asgi-lifespan>=2.1.0",
+    "import-linter>=2.1",
     "mypy>=1.11",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
@@ -79,6 +80,54 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
     "integration: needs Docker (testcontainers Postgres/Redis and/or fake_strava)",
     "fault: fault-injection scenarios (429/5xx bursts, timeouts, restarts)",
+]
+
+# ---------------------------------------------------------------- import-linter (ADR 0033)
+[tool.importlinter]
+root_package = "trainsync"
+
+[[tool.importlinter.contracts]]
+name = "Layers: entrypoints -> modules -> integrations -> core"
+type = "layers"
+layers = [
+    "trainsync.entrypoints",
+    "trainsync.modules",
+    "trainsync.integrations",
+    "trainsync.core",
+]
+
+[[tool.importlinter.contracts]]
+name = "Entrypoints are independent composition roots"
+type = "independence"
+modules = [
+    "trainsync.entrypoints.api",
+    "trainsync.entrypoints.bot",
+    "trainsync.entrypoints.worker",
+    "trainsync.entrypoints.demo",
+]
+
+[[tool.importlinter.contracts]]
+name = "Modules depend downward; tables (models.py) are shared"
+type = "layers"
+layers = [
+    "trainsync.modules.notifications",
+    "trainsync.modules.chat",
+    "trainsync.modules.coach | trainsync.modules.checkin | trainsync.modules.nutrition | trainsync.modules.stats | trainsync.modules.sync",
+    "trainsync.modules.training",
+    "trainsync.modules.activities",
+    "trainsync.modules.strava",
+]
+ignore_imports = ["trainsync.modules.** -> trainsync.modules.*.models"]
+
+[[tool.importlinter.contracts]]
+name = "ops is standard library only (it runs in the backup image)"
+type = "forbidden"
+source_modules = ["trainsync.ops"]
+forbidden_modules = [
+    "trainsync.core",
+    "trainsync.integrations",
+    "trainsync.modules",
+    "trainsync.entrypoints",
 ]
 
 # ---------------------------------------------------------------- coverage

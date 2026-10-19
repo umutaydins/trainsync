@@ -3,13 +3,13 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { TrainingTilesSkeleton } from "@/components/dashboard/training-tiles";
-import { AddFood } from "@/components/nutrition/add-food";
-import { MealList } from "@/components/nutrition/meal-list";
-import { ProfileForm } from "@/components/nutrition/profile-form";
-import { DailyRings, EnergyBalanceCard, WeeklyAverages } from "@/components/nutrition/summary-cards";
-import { BodyWeightChart } from "@/components/training/progress-charts";
-import { ESTIMATE_GAP_TEXT } from "@/lib/nutrition-types";
+import { TrainingTilesSkeleton } from "@/features/dashboard/components/training-tiles";
+import { AddFood } from "@/features/nutrition/components/add-food";
+import { MealList } from "@/features/nutrition/components/meal-list";
+import { ProfileForm } from "@/features/nutrition/components/profile-form";
+import { DailyRings, EnergyBalanceCard, WeeklyAverages } from "@/features/nutrition/components/summary-cards";
+import { BodyWeightChart } from "@/features/training/components/progress-charts";
+import { ESTIMATE_GAP_TEXT } from "@/features/nutrition/types";
 import { CHICKEN, NO_PROFILE, OATS, UNKNOWN_EXERCISE, daySummary, entry, profile, weekly } from "./support/nutrition-fixtures";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), usePathname: () => "/nutrition" }));

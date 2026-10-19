@@ -30,6 +30,8 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [25. Deployment — public read-only demo](#25-deployment--public-read-only-demo-p79-adr-0028)
 - [26. Sequence — the coach during a workout](#26-sequence--the-coach-during-a-workout-p611-adr-0030)
 - [27. Sequence — /lang and the chat's language](#27-sequence--lang-and-the-chats-language-p612-adr-0031)
+- [28. Activity — a chat message in savage mode](#28-activity--a-chat-message-in-savage-mode-profanity-and-the-guardrails-p613-adr-0032)
+- [29. Layers — code layout and allowed imports](#29-layers--code-layout-and-allowed-imports-adr-0033)
 
 ---
 
@@ -53,7 +55,7 @@ flowchart LR
             upstream["lib/upstream.ts<br/>adds X-API-Key"]
         end
 
-        subgraph bot["Bot process (python -m trainsync.bot)"]
+        subgraph bot["Bot process (python -m trainsync.entrypoints.bot)"]
             poller["Poller<br/>getUpdates long polling"]
             dispatch["Dispatcher<br/>chat allowlist"]
             cmds["Commands<br/>/week /last /stats /status"]
@@ -149,7 +151,7 @@ flowchart TB
             web["web<br/>Next.js standalone :3000"]
             api["api<br/>uvicorn :8000"]
             worker["worker<br/>arq · metrics :9100"]
-            bot["bot<br/>python -m trainsync.bot<br/>metrics :9101"]
+            bot["bot<br/>python -m trainsync.entrypoints.bot<br/>metrics :9101"]
             migrate["migrate<br/>alembic upgrade head<br/>(one-shot)"]
             fake["fake-strava<br/>uvicorn :8001"]
             pg[("postgres:16<br/>volume pgdata")]
@@ -250,7 +252,8 @@ erDiagram
     }
     chat_settings {
         bigint chat_id PK "Telegram chat"
-        text lang "en | tr (ADR 0031)"
+        text lang "en | tr, nullable (ADR 0031)"
+        text profanity "roast | max, nullable (ADR 0032)"
         timestamptz updated_at
     }
 
@@ -264,6 +267,9 @@ erDiagram
         numeric protein_100g "nullable = unknown"
         numeric carbs_100g "nullable = unknown"
         numeric fat_100g "nullable = unknown"
+        numeric sugars_100g "nullable = unknown (ADR 0032)"
+        smallint nova_group "1-4, nullable"
+        varchar food_group "free-sugar group, nullable (ADR 0032)"
         text source "manual | openfoodfacts"
         boolean favorite
         timestamptz created_at
@@ -279,6 +285,9 @@ erDiagram
         numeric protein_100g "snapshot, nullable"
         numeric carbs_100g "snapshot, nullable"
         numeric fat_100g "snapshot, nullable"
+        numeric sugars_100g "snapshot, nullable"
+        smallint nova_group "snapshot, nullable"
+        varchar food_group "snapshot, nullable"
         timestamptz created_at
     }
     nutrition_profile {
@@ -1338,7 +1347,7 @@ stateDiagram-v2
     end note
 ```
 
-Stack alerts, per condition (`src/trainsync/notify/alerts.py`, worker cron every 5 minutes; state
+Stack alerts, per condition (`src/trainsync/modules/notifications/alerts.py`, worker cron every 5 minutes; state
 in Redis `alert:<condition>`). Grace: 30 min for the circuit breaker, 0 for the others (their
 threshold is in the observation: dead letters > 0, backup > 36 h, sync > 2 h).
 
@@ -1376,7 +1385,7 @@ flowchart TB
             rd[("redis")]
             fs["fake_strava (no real Strava)"]
             worker["demo worker<br/>reset cron 03:00 UTC"]
-            seed["seed (one-shot on up)<br/>python -m trainsync.demo reset"]
+            seed["seed (one-shot on up)<br/>python -m trainsync.entrypoints.demo reset"]
         end
     end
 
@@ -1450,4 +1459,57 @@ sequenceDiagram
     Note over W: a reminder, check-in, notification or alert is due
     W->>DB: SELECT lang for TELEGRAM_NOTIFY_CHAT_ID
     W-->>U: message in English
+```
+
+## 28. Activity — a chat message in savage mode, profanity and the guardrails (P6.13, ADR 0032)
+
+Distress first, then pain, then the triggers. The calm replies never get a max opener; every other
+savage message does in max, unless it already carries a max line.
+
+```mermaid
+flowchart TD
+    M[chat message] --> D{distress?<br/>guilt, threw up, not eating,<br/>self-hate, binge}
+    D -- yes --> C1[calm SAFETY_DISTRESS reply<br/>no swearing, no assistant]
+    D -- no --> P{pain, injury, illness?}
+    P -- yes --> C2[calm SAFETY_PAIN reply<br/>no swearing, no assistant]
+    P -- no --> S{savage in effect?<br/>configured, not /yumusak}
+    S -- no --> N[tone pack / assistant]
+    S -- yes --> F{unhealthy choice?<br/>junk, sugar, alcohol,<br/>cigarettes, up late}
+    F -- yes --> R1[food_roast line + one move<br/>+ day's target unchanged]
+    F -- no --> E{excuse?}
+    E -- yes --> R2[excuse roast + one action today]
+    E -- no --> N
+    R1 & R2 & N --> L{profanity max?<br/>/swear, else BOT_PROFANITY}
+    L -- roast --> OUT[send]
+    L -- max --> O[lines from the max pools;<br/>max_opener in front of a message<br/>with no savage line]
+    O --> OUT
+    C1 & C2 --> OUT
+```
+
+## 29. Layers — code layout and allowed imports (ADR 0033)
+
+Imports only point down. import-linter checks the layer order, the independence of the
+entrypoints, the module order and that `ops` stays standard-library only (`make lint`). Every
+module may import any module's `models.py`.
+
+```mermaid
+flowchart TB
+  subgraph E["entrypoints"]
+    direction LR
+    eapi["api"] ~~~ eworker["worker"] ~~~ ebot["bot"] ~~~ edemo["demo"]
+  end
+  subgraph M["modules"]
+    notifications --> chat
+    chat --> coach & checkin & nutrition & stats & sync
+    coach & checkin & nutrition --> training
+    training & nutrition & stats & sync --> activities
+    sync --> strava
+  end
+  subgraph I["integrations"]
+    direction LR
+    istrava["strava"] ~~~ itelegram["telegram"] ~~~ ianthropic["anthropic"] ~~~ ioff["openfoodfacts"]
+  end
+  C["core"]
+  E --> M --> I --> C
+  O["ops (stdlib only)"]
 ```

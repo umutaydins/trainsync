@@ -11,7 +11,7 @@ from pathlib import Path
 from cryptography.fernet import Fernet
 
 from trainsync.core.settings import Settings
-from trainsync.main import create_app
+from trainsync.entrypoints.api.app import create_app
 
 OUTPUT = Path(__file__).resolve().parents[1] / "docs" / "openapi.json"
 

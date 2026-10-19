@@ -29,5 +29,5 @@ redirect: `.../login?return_to=https://evil.example` would turn our domain into 
 
 ## Consequences
 - Off-allowlist values are silently ignored (logged as `oauth_return_to_ignored`), proven by
-  `tests/unit/test_auth.py`.
+  `tests/unit/modules/strava/test_auth.py`.
 - Adding a dashboard URL means changing `OAUTH_RETURN_TO_ALLOWLIST` on the API.

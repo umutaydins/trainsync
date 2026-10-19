@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ProgramBuilder } from "@/components/training/program-builder";
+import { ProgramBuilder } from "@/features/training/components/program-builder";
 import { CSRF_COOKIE } from "@/lib/csrf-cookie";
-import { fromPreview, move, toProgramIn } from "@/lib/program-draft";
-import type { ProgramSummary } from "@/lib/training-types";
+import { fromPreview, move, toProgramIn } from "@/features/training/program-draft";
+import type { ProgramSummary } from "@/features/training/types";
 import { jsonResponse } from "./support/env";
 import { BENCH, CURL, PREVIEW } from "./support/training-fixtures";
 

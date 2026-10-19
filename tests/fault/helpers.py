@@ -8,8 +8,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from fake_strava.state import FakeStravaState
-from trainsync.db.models import Activity, WebhookEvent
-from trainsync.sync.webhooks import WebhookDeps, process_event
+from trainsync.modules.activities.models import Activity
+from trainsync.modules.sync.models import WebhookEvent
+from trainsync.modules.sync.webhooks import WebhookDeps, process_event
 
 LIST = "GET /api/v3/athlete/activities"
 GET_ACTIVITY = "GET /api/v3/activities/{activity_id}"

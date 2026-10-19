@@ -14,9 +14,10 @@ help: ## Show targets
 install: ## Install all dependencies (locked)
 	$(UV) sync --all-groups --frozen
 
-lint: ## ruff lint + format check
+lint: ## ruff lint + format check + import-layer contracts (import-linter)
 	$(UV) run ruff check .
 	$(UV) run ruff format --check .
+	$(UV) run lint-imports
 
 format: ## Auto-fix lint and format
 	$(UV) run ruff check --fix .

@@ -21,8 +21,8 @@ from tests.support.fake_webhooks import activity_event
 from tests.support.strava import fake_backed_client
 from trainsync.core.clock import utc_now
 from trainsync.core.settings import Settings
-from trainsync.db.models import WebhookEvent
-from trainsync.sync.webhooks import WebhookDeps
+from trainsync.modules.sync.models import WebhookEvent
+from trainsync.modules.sync.webhooks import WebhookDeps
 
 TARGET = f"{API_URL}/webhooks/strava"
 

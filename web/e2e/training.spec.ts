@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
-import type { DayLog, DaySummary } from "../lib/nutrition-types";
-import type { WorkoutDetail, WorkoutPage } from "../lib/training-types";
+import type { DayLog, DaySummary } from "@/features/nutrition/types";
+import type { WorkoutDetail, WorkoutPage } from "@/features/training/types";
 
 const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
 const API_KEY = process.env.E2E_API_KEY ?? "dev-key-1";

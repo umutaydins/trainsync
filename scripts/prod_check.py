@@ -132,7 +132,10 @@ def check_missing_secret() -> None:
     Path(handle.name).unlink()
     if result.returncode == 0 or "set TOKEN_ENCRYPTION_KEY in .env.prod" not in result.stderr:
         fail(f"compose started without TOKEN_ENCRYPTION_KEY: {result.stderr.strip()}")
-    script = "unset TOKEN_ENCRYPTION_KEY; exec uvicorn trainsync.main:create_app --factory"
+    script = (
+        "unset TOKEN_ENCRYPTION_KEY; "
+        "exec uvicorn trainsync.entrypoints.api.app:create_app --factory"
+    )
     result = compose("run", "--rm", "--no-deps", "api", "sh", "-c", script, check=False)
     output = result.stdout + result.stderr
     if result.returncode == 0 or "TOKEN_ENCRYPTION_KEY (missing)" not in output:

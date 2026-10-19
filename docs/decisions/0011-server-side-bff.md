@@ -123,6 +123,6 @@ part needs no BFF change.
 Mutations are accepted from `WEB_PUBLIC_URL` and from the exact hostnames Vercel gives the running
 deployment (`VERCEL_URL`, `VERCEL_BRANCH_URL`, `VERCEL_PROJECT_PRODUCTION_URL`), never from a
 pattern: previews of this project work, other projects and lookalike domains do not
-(`web/lib/origins.ts`, `web/tests/origins.test.ts`). Upstream calls time out after 8 s
+(`web/src/lib/origins.ts`, `web/tests/origins.test.ts`). Upstream calls time out after 8 s
 (`UPSTREAM_TIMEOUT_MS`), below Vercel's function limit, and an unreachable backend is shown as
 "Backend unreachable".

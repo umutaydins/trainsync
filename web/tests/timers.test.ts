@@ -12,7 +12,7 @@ import {
   shouldAlert,
   startRest,
   storageKey,
-} from "@/lib/timers";
+} from "@/features/training/timers";
 import { memoryStore } from "./support/training-fixtures";
 
 const T0 = Date.parse("2026-10-18T17:30:00Z");

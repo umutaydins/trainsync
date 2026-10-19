@@ -20,9 +20,9 @@ from tests.fault.helpers import GET_ACTIVITY, TOKEN, fake_calls
 from tests.support.factories import create_athlete
 from trainsync.core.crypto import TokenCipher
 from trainsync.core.settings import Settings
-from trainsync.db.repositories.tokens import SqlTokenStore, Tokens
-from trainsync.strava.client import StravaClient
-from trainsync.strava.tokens import RedisRefreshLock, TokenManager
+from trainsync.integrations.strava.client import StravaClient
+from trainsync.modules.strava.token_repository import SqlTokenStore, Tokens
+from trainsync.modules.strava.tokens import RedisRefreshLock, TokenManager
 
 CALLERS = 10
 

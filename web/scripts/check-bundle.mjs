@@ -1,5 +1,5 @@
 // Fails if a server secret that was set at build time appears in any browser-served file, or if
-// code that sends the API key (the `X-API-Key` header name, lib/upstream.ts) was bundled for the
+// code that sends the API key (the `X-API-Key` header name, src/lib/upstream.ts) was bundled for the
 // browser: that would mean a client module reaches the upstream call path (ADR 0011).
 // Usage (after `pnpm build` with the same env): node scripts/check-bundle.mjs
 import { readdirSync, readFileSync, statSync } from "node:fs";

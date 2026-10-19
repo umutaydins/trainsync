@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { MutationResult } from "@/lib/mutate";
-import { QUEUE_KEY, enqueue, flushQueue, isRetryable, readQueue } from "@/lib/retry-queue";
+import { QUEUE_KEY, enqueue, flushQueue, isRetryable, readQueue } from "@/features/training/retry-queue";
 import { memoryStore } from "./support/training-fixtures";
 
 const ok: MutationResult<unknown> = { ok: true, status: 200, data: null };

@@ -18,11 +18,11 @@ from tests.support.factories import create_athlete
 from tests.support.fake_server import run_fake_strava
 from tests.support.strava import StubTokens
 from trainsync.core.settings import Settings
-from trainsync.strava.breaker import BreakerState
-from trainsync.strava.budget import UnlimitedBudget
-from trainsync.strava.client import StravaClient
-from trainsync.sync.backfill import run_backfill
-from trainsync.sync.context import SyncDeps
+from trainsync.integrations.strava.breaker import BreakerState
+from trainsync.integrations.strava.budget import UnlimitedBudget
+from trainsync.integrations.strava.client import StravaClient
+from trainsync.modules.sync.backfill import run_backfill
+from trainsync.modules.sync.context import SyncDeps
 
 LATENCY_MS = 600
 READ_TIMEOUT_S = 0.2

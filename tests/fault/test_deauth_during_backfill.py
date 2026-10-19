@@ -24,13 +24,14 @@ from tests.support.strava import fake_backed_client
 from trainsync.core.clock import utc_now
 from trainsync.core.crypto import TokenCipher
 from trainsync.core.settings import Settings
-from trainsync.db.models import Athlete, OAuthToken, SyncRun
-from trainsync.db.repositories.tokens import SqlTokenStore, Tokens
-from trainsync.strava.budget import UnlimitedBudget
-from trainsync.strava.models import StravaActivity
-from trainsync.sync.backfill import run_backfill
-from trainsync.sync.context import ActivitySource, SyncDeps
-from trainsync.sync.webhooks import WebhookDeps
+from trainsync.integrations.strava.budget import UnlimitedBudget
+from trainsync.integrations.strava.models import StravaActivity
+from trainsync.modules.strava.models import Athlete, OAuthToken
+from trainsync.modules.strava.token_repository import SqlTokenStore, Tokens
+from trainsync.modules.sync.backfill import run_backfill
+from trainsync.modules.sync.context import ActivitySource, SyncDeps
+from trainsync.modules.sync.models import SyncRun
+from trainsync.modules.sync.webhooks import WebhookDeps
 
 TARGET = f"{API_URL}/webhooks/strava"
 

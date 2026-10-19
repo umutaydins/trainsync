@@ -34,7 +34,7 @@ have waited too long.
 
 ## Consequences
 - Locally the handler costs one INSERT and one Redis write: p99 ≈ 7 ms over 300 sequential
-  requests (`tests/integration/test_webhook_intake.py`).
+  requests (`tests/integration/modules/sync/test_webhook_intake.py`).
 - `webhook_events` is an inbox and an audit log. Rows are not deleted by the app; pruning old
   `processed` rows is a future operations task.
 - Two distinct events about the same activity are both stored and processed. That is fine,

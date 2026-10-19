@@ -16,10 +16,10 @@ from tests.fault.helpers import LIST, ManualClock, fake_calls, visible_activitie
 from tests.support.factories import create_athlete
 from tests.support.strava import fake_backed_client
 from trainsync.core.settings import Settings
-from trainsync.strava.budget import UnlimitedBudget
-from trainsync.sync.backfill import run_backfill
-from trainsync.sync.context import SyncDeps
-from trainsync.sync.incremental import run_incremental
+from trainsync.integrations.strava.budget import UnlimitedBudget
+from trainsync.modules.sync.backfill import run_backfill
+from trainsync.modules.sync.context import SyncDeps
+from trainsync.modules.sync.incremental import run_incremental
 
 
 async def test_incremental_sync_catches_changes_without_webhooks(

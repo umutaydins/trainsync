@@ -15,7 +15,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from trainsync.core.settings import Settings
-from trainsync.db.models import Base
+from trainsync.modules.models import Base
 
 config = context.config
 

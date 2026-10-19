@@ -21,11 +21,12 @@ from tests.conftest import TEST_ENV, fake_strava_login
 from tests.support.factories import create_athlete
 from tests.support.fake_server import REPO_ROOT, run_fake_strava
 from trainsync.core.crypto import TokenCipher
+from trainsync.core.jobs import backfill_job_id, create_arq_redis
 from trainsync.core.settings import Settings
-from trainsync.db.models import Activity, SyncRun
-from trainsync.db.repositories.tokens import SqlTokenStore, Tokens
-from trainsync.sync.common import STALE_AFTER
-from trainsync.sync.queue import backfill_job_id, create_arq_redis
+from trainsync.modules.activities.models import Activity
+from trainsync.modules.strava.token_repository import SqlTokenStore, Tokens
+from trainsync.modules.sync.common import STALE_AFTER
+from trainsync.modules.sync.models import SyncRun
 
 # Slow pages (~6 of 200) so the kill reliably lands mid-backfill.
 LATENCY_MS = 600
@@ -53,7 +54,13 @@ def _worker(settings: Settings, fake_url: str, *, burst: bool) -> subprocess.Pop
         "STRAVA_OAUTH_BASE_URL": f"{fake_url}/oauth",
     }
     return subprocess.Popen(  # noqa: S603  (fixed args, our own interpreter)
-        [sys.executable, "-m", "arq", "trainsync.worker.WorkerSettings", *(["--burst"] * burst)],
+        [
+            sys.executable,
+            "-m",
+            "arq",
+            "trainsync.entrypoints.worker.settings.WorkerSettings",
+            *(["--burst"] * burst),
+        ],
         cwd=REPO_ROOT,
         env=env,
         stdout=subprocess.PIPE,

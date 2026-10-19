@@ -23,7 +23,7 @@ Two independent mechanisms, both ending in a Telegram message:
    runner's `python3`; Telegram via `trainsync.ops.alert` with the token in the environment.
    **State** is a small JSON file in the Actions cache: restored from the newest entry with the
    prefix `uptime-state-`, saved under a new key (`uptime-state-<run id>-<attempt>`) every run.
-2. **Stack alerts** — an arq cron in the worker every 5 minutes (`src/trainsync/notify/alerts.py`)
+2. **Stack alerts** — an arq cron in the worker every 5 minutes (`src/trainsync/modules/notifications/alerts.py`)
    with four conditions: circuit not closed for 30 min, dead letters > 0, newest backup older
    than 36 h, no successful sync for 2 h while an athlete is connected. Each condition alerts once
    when it starts and once when it clears. **State** is one Redis key per condition,

@@ -4,8 +4,8 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from trainsync.db.models import Athlete
-from trainsync.strava.models import StravaActivity
+from trainsync.integrations.strava.models import StravaActivity
+from trainsync.modules.strava.models import Athlete
 
 BASE_DATE = datetime(2026, 1, 1, 6, 0, tzinfo=UTC)
 

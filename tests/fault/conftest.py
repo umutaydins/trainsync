@@ -13,7 +13,7 @@ from fake_strava.app import create_app as create_fake_strava
 from fake_strava.clock import FakeClock
 from fake_strava.config import FakeStravaConfig
 from trainsync.core.settings import Settings
-from trainsync.main import create_app
+from trainsync.entrypoints.api.app import create_app
 
 _HERE = Path(__file__).resolve().parent
 SUBSCRIPTION = 999  # STRAVA_WEBHOOK_SUBSCRIPTION_ID in the test settings

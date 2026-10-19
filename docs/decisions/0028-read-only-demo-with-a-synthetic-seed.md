@@ -25,7 +25,7 @@ Food Facts, and must not drift from the real code (it is the same image).
 - **The test is generated from `app.openapi()`**: every operation the rule calls a write must be
   the demo 403 in demo mode and not a 403 without it; every other operation must pass the guard.
   A new write route is covered without editing the test.
-- **The seed is code** (`trainsync.demo.seed`): one `random.Random(7)`, constants for foods,
+- **The seed is code** (`trainsync.entrypoints.demo.seed`): one `random.Random(7)`, constants for foods,
   program, notes and reasons, dates relative to an injected clock. Twelve weeks before today:
   ~70 Strava-shaped activities (runs, rides, walks, hikes, and a WeightTraining activity per
   gym session), an active 4-day upper/lower program with ~40 workouts and ~550 sets under double
@@ -35,12 +35,12 @@ Food Facts, and must not drift from the real code (it is the same image).
   environment or `now()` calls, no e-mail/URL/phone-shaped strings, and every text value in
   the built dataset comes from the module's constants.
 - **Reset = wipe + seed in one transaction**, written through the ORM and the activity
-  repository, never over HTTP. `python -m trainsync.demo reset` refuses unless `DEMO_MODE` is
+  repository, never over HTTP. `python -m trainsync.entrypoints.demo reset` refuses unless `DEMO_MODE` is
   on, so it cannot wipe a real database. The stack runs it once on `up` (one-shot `seed`
-  service) and the demo worker (`trainsync.demo.worker.DemoWorkerSettings`, the reset cron only;
+  service) and the demo worker (`trainsync.entrypoints.demo.worker.DemoWorkerSettings`, the reset cron only;
   no sync, webhooks, notifications or check-in prompts) runs it nightly at 03:00 UTC, which also
   slides the twelve weeks forward to the new day.
-- **No stored secrets**: `python -m trainsync.demo exec CMD` starts each process with a fresh
+- **No stored secrets**: `python -m trainsync.entrypoints.demo exec CMD` starts each process with a fresh
   random Fernet key and OAuth-state key (the demo stores no tokens and signs no state); the
   remaining values are labelled `demo-public-…`; only `DEMO_API_KEY` comes from the git-ignored
   `.env.demo`.

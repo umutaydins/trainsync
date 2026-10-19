@@ -21,24 +21,40 @@ the design changes.
 
 ## Layout
 
+Modular monolith, four layers, enforced by import-linter in `make lint` (ADR 0033):
+`entrypoints → modules → integrations → core`.
+
 ```
 src/trainsync/
-  api/            # FastAPI routers, request/response schemas, dependencies
-  strava/         # Strava HTTP client, OAuth, rate limiter, circuit breaker
-  sync/           # backfill, incremental sync, webhook processing (job functions)
-  db/             # SQLAlchemy models, session, repositories
-  core/           # settings, logging, metrics, crypto
-  bot/            # Telegram bot process (long polling, commands, Claude assistant over the read API)
-  notify/         # Notifier interface (Telegram, Null) and the new-activity notification job
-  worker.py       # arq WorkerSettings
-  main.py         # FastAPI app factory
-web/              # Next.js dashboard (App Router) with a server-side BFF; pnpm, Vitest, Playwright e2e
-fake_strava/      # standalone FastAPI app that imitates the Strava API (dev + tests + load tests)
-tests/
-  unit/
-  integration/
-loadtest/         # locust files
-migrations/       # alembic
+  core/            # settings, db engine/session + ORM base, logging, metrics, crypto, clock,
+                   # errors, FastAPI deps, job queue, http client
+  integrations/    # outbound clients only, never import modules
+    strava/        #   Strava HTTP client, rate limiter, retries, circuit breaker, budget
+    telegram/      #   Bot API client, Telegram notifier
+    anthropic/     #   Claude Messages API call, the assistant's tool definitions
+    openfoodfacts/ #   product lookup
+  modules/         # one package per domain: router.py, schemas.py, repository.py, models.py,
+                   # tasks.py (worker jobs) where they apply; models.py = the tables
+    activities/ strava/ sync/ stats/ training/ checkin/ nutrition/
+    coach/         #   voice, guardrails, savage lines; packs/ = message packs (tr/en, tones)
+    chat/          #   Telegram conversation over the read API (bot features, read-API client)
+    notifications/ #   worker senders: new activity, check-in, coach, stack alerts
+    models.py      #   imports every models.py (complete Base.metadata)
+  entrypoints/     # thin composition roots
+    api/           #   app factory, middleware, health, router registry
+    worker/        #   arq WorkerSettings, cron registry
+    bot/           #   long polling, dispatcher, feature wiring
+    demo/          #   read-only demo seed and reset
+  ops/             # backup + retention + alerts, standard library only (backup image)
+web/src/           # Next.js: app/ (routes only), features/<domain>/, lib/ (BFF, generated
+                   # API types, session, config), components/ui/, styles/; ESLint boundaries
+fake_strava/       # standalone FastAPI app that imitates the Strava API (dev + tests + load tests)
+tests/{unit,integration}/<mirror of src/trainsync>/   tests/fault/ (end-to-end scenarios)
+config/            # messages.local.example.yaml (the real file is git-ignored)
+deploy/            # gateway (Caddy), backup image, launchd, compose overlays
+scripts/           # owner CLIs and checks (deploy, strava-subscription, prod/demo/public checks)
+loadtest/          # locust files
+migrations/        # alembic
 ```
 
 ## Commands
@@ -47,8 +63,8 @@ migrations/       # alembic
 uv sync
 docker compose up -d postgres redis fake-strava
 uv run alembic upgrade head
-uv run uvicorn trainsync.main:create_app --factory --reload
-uv run arq trainsync.worker.WorkerSettings
+uv run uvicorn trainsync.entrypoints.api.app:create_app --factory --reload
+uv run arq trainsync.entrypoints.worker.settings.WorkerSettings
 uv run pytest
 uv run ruff check . && uv run ruff format --check . && uv run mypy   # src/ + fake_strava/
 make verify          # lint + mypy + unit + integration — must be green before merge
@@ -58,7 +74,7 @@ docker compose up -d --build   # full local stack (migrations run in the one-sho
 
 ## Rules
 
-- All outbound calls to Strava go through `strava/client.py`. Nothing else imports httpx for Strava.
+- All outbound calls to Strava go through `integrations/strava/client.py`. Nothing else imports httpx for Strava.
 - One shared `httpx.AsyncClient` per process, created in the app/worker lifespan. Explicit timeouts always.
 - Every write that can be repeated (upserts, webhook events, sync checkpoints) must be idempotent.
 - The webhook POST handler only validates, persists and enqueues. No Strava calls inside it.
