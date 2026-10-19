@@ -1,14 +1,17 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AddFood } from "@/features/nutrition/components/add-food";
 import { MealList } from "@/features/nutrition/components/meal-list";
 import { ProfileForm } from "@/features/nutrition/components/profile-form";
-import { DailyRings, EnergyBalanceCard, WeeklyAverages } from "@/features/nutrition/components/summary-cards";
+import { EnergyBalanceCard } from "@/features/nutrition/components/balance-card";
+import { DailyRings } from "@/features/nutrition/components/totals-card";
+import { WeeklyAverages } from "@/features/nutrition/components/week-card";
 import { CSRF_COOKIE } from "@/lib/csrf-cookie";
 import { addDays, scaled, weekStart } from "@/features/nutrition/types";
 import { jsonResponse } from "./support/env";
+import { renderWithIntl as render } from "./support/intl";
 import { CHICKEN, NO_PROFILE, OATS, UNKNOWN_EXERCISE, daySummary, entry, profile, weekly } from "./support/nutrition-fixtures";
 
 const refresh = vi.fn();
@@ -28,6 +31,8 @@ beforeEach(() => {
   fetchMock.mockReset();
   refresh.mockReset();
   vi.stubGlobal("fetch", fetchMock);
+  // Desktop: the add-food sheet is a dialog.
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("min-width"), addEventListener: () => undefined, removeEventListener: () => undefined }));
   document.cookie = `${CSRF_COOKIE}=${"t".repeat(43)}`;
 });
 
@@ -126,12 +131,12 @@ describe("add food", () => {
       .mockResolvedValueOnce(jsonResponse(entry({ food_id: CHICKEN.id, grams: 150 }), 201));
     render(<AddFood date="2026-10-18" favorites={[OATS]} recent={[]} newId={() => "11111111-1111-4111-8111-111111111111"} />);
 
-    // Meal select first: pick lunch with the arrow keys.
-    await user.tab();
-    expect(screen.getByLabelText("Meal")).toHaveFocus();
+    // The sheet opens from the big button; Enter on it works like a tap.
+    screen.getByRole("button", { name: "Add food" }).focus();
+    await user.keyboard("{Enter}");
+    await screen.findByRole("dialog", { name: "Add food" });
     await user.selectOptions(screen.getByLabelText("Meal"), "lunch");
-    await user.tab();
-    expect(screen.getByLabelText("Search foods")).toHaveFocus();
+    screen.getByLabelText("Search foods").focus();
     await user.keyboard("chicken{Enter}");
     expect(calls()[0]).toMatchObject({ url: "/api/ts/v1/nutrition/foods?q=chicken&limit=20", method: "GET" });
 
@@ -162,6 +167,7 @@ describe("add food", () => {
     const created = { ...CHICKEN, id: 99, name: "Lentil soup", kcal_100g: 80 };
     fetchMock.mockResolvedValueOnce(jsonResponse(created, 201)).mockResolvedValueOnce(jsonResponse(entry({ food_id: 99 }), 201));
     render(<AddFood date="2026-10-18" favorites={[]} recent={[]} newId={() => "22222222-2222-4222-8222-222222222222"} />);
+    await user.click(screen.getByRole("button", { name: "Add food" }));
     await user.click(screen.getByRole("button", { name: "Create a food" }));
     const form = screen.getByRole("form", { name: "New food" });
     await user.type(within(form).getByLabelText("Name"), "Lentil soup");
@@ -181,6 +187,7 @@ describe("add food", () => {
     const user = userEvent.setup();
     fetchMock.mockResolvedValueOnce(jsonResponse({ items: [], remote: "disabled" }));
     render(<AddFood date="2026-10-18" favorites={[]} recent={[]} />);
+    await user.click(screen.getByRole("button", { name: "Add food" }));
     await user.type(screen.getByLabelText("Search foods"), "oats");
     await user.click(screen.getByRole("button", { name: "Search Open Food Facts too" }));
     expect(await screen.findByText("Open Food Facts lookups are switched off; showing saved foods only.")).toBeInTheDocument();
@@ -194,11 +201,13 @@ describe("profile form", () => {
     const note = "kcal_target (1500 kcal) is below the estimated basal metabolic rate (1755.5 kcal). It was saved as entered; the BMR is an estimate.";
     fetchMock.mockResolvedValueOnce(jsonResponse(profile({ kcal_target: 1500, warning: note })));
     render(<ProfileForm profile={profile()} date="2026-10-18" />);
-    const target = screen.getByLabelText("kcal target (optional)");
+    const target = screen.getByLabelText("Daily kcal target (optional)");
     await user.clear(target);
     await user.type(target, "1500");
     await user.click(screen.getByRole("button", { name: "Save profile" }));
-    expect(await screen.findByTestId("profile-note")).toHaveTextContent(note);
+    // The API's note is English data; the page says the same in the user's language.
+    expect(await screen.findByTestId("profile-note")).toHaveTextContent("Your kcal target is below the estimated basal rate (1,756 kcal).");
+    expect(screen.getByTestId("profile-note")).not.toHaveTextContent("kcal_target");
     expect(screen.getByRole("note")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Profile saved.");
@@ -209,7 +218,7 @@ describe("profile form", () => {
     const user = userEvent.setup();
     fetchMock.mockResolvedValueOnce(jsonResponse({ date: "2026-10-18", weight_kg: 78.2 }));
     render(<ProfileForm profile={null} date="2026-10-18" />);
-    await user.type(screen.getByLabelText("Body weight on 2026-10-18 (kg)"), "78,2");
+    await user.type(screen.getByLabelText("Body weight on Sun, Oct 18 (kg)"), "78,2");
     await user.click(screen.getByRole("button", { name: "Save weight" }));
     expect(calls()[0]).toEqual({ url: "/api/ts/v1/training/body-metrics/2026-10-18", method: "PUT", body: { weight_kg: 78.2 } });
   });

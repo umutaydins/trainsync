@@ -83,26 +83,7 @@
   },
   "profile": {
     "title": "Rakamların.",
-    "body": "Yalnızca beslenme sayfaları için bazal metabolizma tahmininde (Mifflin–St Jeor) kullanılır. Hedefler isteğe bağlı.",
-    "sex": "Cinsiyet (formül için)",
-    "male": "Erkek",
-    "female": "Kadın",
-    "birthYear": "Doğum yılı",
-    "height": "Boy (cm)",
-    "baseline": "Günlük hareket (kayıtlı antrenman dışında)",
-    "baselines": {
-      "sedentary": "Hareketsiz (çoğunlukla oturarak)",
-      "light": "Hafif (günün bir kısmı ayakta)",
-      "moderate": "Orta (günün çoğu ayakta)"
-    },
-    "kcalTarget": "Günlük kcal hedefi (isteğe bağlı)",
-    "proteinTarget": "Protein hedefi, g (isteğe bağlı)",
-    "errors": {
-      "birthYear": "{min} ile {max} arasında bir yıl gir.",
-      "height": "{min} ile {max} cm arasında bir boy gir.",
-      "kcalTarget": "{min} ile {max} arası ya da boş bırak.",
-      "proteinTarget": "{min} ile {max} g arası ya da boş bırak."
-    }
+    "body": "Yalnızca beslenme sayfaları için bazal metabolizma tahmininde (Mifflin–St Jeor) kullanılır. Hedefler isteğe bağlı."
   },
   "done": {
     "title": "Hazırsın.",

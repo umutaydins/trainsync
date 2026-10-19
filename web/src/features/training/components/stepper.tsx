@@ -1,7 +1,7 @@
 "use client";
 
 import { Minus, Plus } from "lucide-react";
-import { useId } from "react";
+import { type Ref, useId } from "react";
 
 import { Button } from "@/components/ui/button";
 import { stepped } from "@/features/training/steps";
@@ -23,6 +23,7 @@ export function Stepper({
   decreaseLabel,
   increaseLabel,
   disabled = false,
+  inputRef,
 }: {
   label: string;
   value: string;
@@ -38,6 +39,7 @@ export function Stepper({
   decreaseLabel: string;
   increaseLabel: string;
   disabled?: boolean;
+  inputRef?: Ref<HTMLInputElement>;
 }) {
   const id = useId();
   return (
@@ -57,6 +59,7 @@ export function Stepper({
           <Minus aria-hidden />
         </Button>
         <input
+          ref={inputRef}
           inputMode={inputMode}
           value={value}
           aria-label={inputLabel}

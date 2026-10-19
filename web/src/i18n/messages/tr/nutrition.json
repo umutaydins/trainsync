@@ -1,0 +1,183 @@
+{
+  "title": "Beslenme",
+  "loading": "Beslenme yükleniyor",
+  "nav": {
+    "label": "Gün",
+    "previous": "Önceki gün",
+    "next": "Sonraki gün",
+    "today": "Bugün"
+  },
+  "dayToday": "Bugün · {date}",
+  "failed": {
+    "totals": "Günün toplamları yüklenemedi",
+    "log": "Yemek kaydı yüklenemedi",
+    "week": "Hafta yüklenemedi"
+  },
+  "meals": {
+    "breakfast": "Kahvaltı",
+    "lunch": "Öğle",
+    "dinner": "Akşam",
+    "snack": "Ara öğün"
+  },
+  "mealIn": {
+    "breakfast": "kahvaltı",
+    "lunch": "öğle yemeği",
+    "dinner": "akşam yemeği",
+    "snack": "ara öğün"
+  },
+  "totals": {
+    "title": "Toplamlar",
+    "ringLabel": "Hedefe göre enerji",
+    "energy": "Enerji",
+    "protein": "Protein",
+    "carbs": "Karbonhidrat",
+    "fat": "Yağ",
+    "of": "hedef {target}",
+    "noTarget": "hedef yok",
+    "intake": "{count} kayıttan {kcal}",
+    "toTarget": "hedefe {kcal}",
+    "aboveTarget": "hedefin {kcal} üstünde",
+    "macrosIncomplete": "Bazı yiyeceklerin makro bilgisi yok; makro toplamları onları içermiyor."
+  },
+  "balance": {
+    "title": "Enerji dengesi (tahmin)",
+    "intake": "Alınan",
+    "intakeNote": "kaydedilen yiyecekler",
+    "bmr": "Bazal metabolizma",
+    "bmrNote": "tahmin, Mifflin–St Jeor",
+    "baseline": "Günlük hareket",
+    "baselineNote": "tahmin, antrenman hariç",
+    "baselineNoteWith": "tahmin, {level}, antrenman hariç",
+    "exercise": "Antrenman",
+    "exerciseUnknown": "{count} aktivitenin enerji bilgisi yok",
+    "exerciseNone": "senkronlanan aktivite yok",
+    "exerciseFrom": "Strava'dan {count} aktivite",
+    "expenditure": "Harcanan",
+    "estimate": "tahmin",
+    "balance": "Denge",
+    "balanceNote": "tahmin, alınan eksi harcanan",
+    "unknown": "bilinmiyor",
+    "plusUnknown": "{kcal} + bilinmeyen",
+    "gaps": {
+      "no_profile": "Bazal metabolizmayı tahmin etmek için aşağıya bir profil ekle.",
+      "no_body_weight": "Bazal metabolizmayı tahmin etmek için aşağıya vücut ağırlığı ekle."
+    },
+    "stravaGap": "Strava'da bazı aktivitelerin enerji bilgisi yok; bu yüzden harcanan ve denge tahmin edilmek yerine bilinmiyor olarak gösteriliyor.",
+    "levels": {
+      "sedentary": "hareketsiz",
+      "light": "hafif",
+      "moderate": "orta"
+    }
+  },
+  "week": {
+    "title": "Bu hafta",
+    "avgIntake": "Ortalama alınan",
+    "avgProtein": "Ortalama protein",
+    "daysLogged": "Kayıtlı gün",
+    "daysOf": "{total} günden {logged}",
+    "balance": "Denge (tahmin)",
+    "caption": "Bu haftanın günlük alımı",
+    "day": "Gün",
+    "intake": "Alınan",
+    "protein": "Protein",
+    "exercise": "Antrenman"
+  },
+  "log": {
+    "title": "Öğünler",
+    "empty": "Bu gün için kayıt yok",
+    "emptyHint": "Yukarıdaki düğmeyle bir yiyecek ekle.",
+    "removeLabel": "{food} kaydını {meal} öğününden kaldır",
+    "removeFailed": "Kayıt kaldırılamadı",
+    "macros": "P {protein} · K {carbs} · Y {fat}"
+  },
+  "add": {
+    "open": "Yiyecek ekle",
+    "title": "Yiyecek ekle",
+    "description": "Ara, barkod gir ya da bir favori seç.",
+    "meal": "Öğün",
+    "search": "Yiyecek ara",
+    "searchLabel": "Yiyecek arama",
+    "placeholder": "ör. yulaf",
+    "searchButton": "Ara",
+    "remote": "Open Food Facts'te de ara",
+    "barcode": "Barkod",
+    "barcodePlaceholder": "8–14 rakam",
+    "lookup": "Bul",
+    "barcodeError": "Barkod: 8 ile 14 rakam",
+    "favourites": "Favoriler",
+    "recent": "Son eklenenler",
+    "localTitle": "Kayıtlı yiyecekler: “{query}”",
+    "remoteTitle": "Open Food Facts: “{query}”",
+    "barcodeTitle": "Barkod {code}",
+    "clear": "Aramayı temizle",
+    "noFoods": "Henüz yiyecek yok.",
+    "per100": "{kcal} / 100 g",
+    "remoteNotes": {
+      "not_found": "Open Food Facts bu ürünü tanımıyor.",
+      "unavailable": "Open Food Facts zamanında yanıt vermedi; yalnızca kayıtlı yiyecekler gösteriliyor.",
+      "disabled": "Open Food Facts araması kapalı; yalnızca kayıtlı yiyecekler gösteriliyor."
+    },
+    "amount": "Miktar (g)",
+    "grams": "Gram",
+    "moreGrams": "Gramı artır",
+    "fewerGrams": "Gramı azalt",
+    "gramsError": "Gram: 0'dan büyük, en fazla 5000",
+    "previewEmpty": "Değerleri görmek için gram gir.",
+    "preview": "{kcal} · protein {protein} · karbonhidrat {carbs} · yağ {fat}",
+    "unknown": "bilinmiyor",
+    "addTo": "{meal} öğününe ekle",
+    "added": "{food} ({grams}) {meal} öğününe eklendi.",
+    "failed": "Olmadı",
+    "refused": "Sunucu bunu kabul etmedi. Değerleri kontrol edip tekrar dene.",
+    "create": "Yiyecek oluştur",
+    "newFood": {
+      "title": "Yeni yiyecek (100 g için değerler)",
+      "form": "Yeni yiyecek",
+      "name": "Ad",
+      "brand": "Marka (isteğe bağlı)",
+      "kcal": "kcal",
+      "protein": "Protein g",
+      "carbs": "Karbonhidrat g",
+      "fat": "Yağ g",
+      "favourite": "Favorilere ekle",
+      "save": "Yiyeceği kaydet",
+      "failed": "Yiyecek kaydedilemedi",
+      "nameError": "Ad boş",
+      "kcalError": "100 g için kcal: 0 ile 1000 arası",
+      "macroError": "100 g için makrolar: 0 ile 100 arası ya da bilinmiyorsa boş"
+    }
+  },
+  "profile": {
+    "title": "Profil ve hedefler",
+    "body": "Yalnızca bazal metabolizma tahmini için (Mifflin–St Jeor). Hedefler isteğe bağlı.",
+    "save": "Profili kaydet",
+    "saved": "Profil kaydedildi.",
+    "savedWithBmr": "Profil kaydedildi. Bugünkü tahmini bazal metabolizma: {bmr}.",
+    "belowBmr": "kcal hedefin tahmini bazal metabolizmanın ({bmr}) altında. Girdiğin gibi kaydedildi; bazal metabolizma bir tahmin.",
+    "note": "Not",
+    "notSaved": "Kaydedilmedi",
+    "weight": "{date} vücut ağırlığı (kg)",
+    "saveWeight": "Ağırlığı kaydet",
+    "weightSaved": "{date} vücut ağırlığı kaydedildi.",
+    "weightError": "Vücut ağırlığı: 0'dan büyük, 500 kg'dan küçük.",
+    "sex": "Cinsiyet (formül için)",
+    "male": "Erkek",
+    "female": "Kadın",
+    "birthYear": "Doğum yılı",
+    "height": "Boy (cm)",
+    "baseline": "Günlük hareket (kayıtlı antrenman dışında)",
+    "baselines": {
+      "sedentary": "Hareketsiz (çoğunlukla oturarak)",
+      "light": "Hafif (günün bir kısmı ayakta)",
+      "moderate": "Orta (günün çoğu ayakta)"
+    },
+    "kcalTarget": "Günlük kcal hedefi (isteğe bağlı)",
+    "proteinTarget": "Protein hedefi, g (isteğe bağlı)",
+    "errors": {
+      "birthYear": "{min} ile {max} arasında bir yıl gir.",
+      "height": "{min} ile {max} cm arasında bir boy gir.",
+      "kcalTarget": "{min} ile {max} arası ya da boş bırak.",
+      "proteinTarget": "{min} ile {max} g arası ya da boş bırak."
+    }
+  }
+}

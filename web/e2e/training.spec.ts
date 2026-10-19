@@ -140,6 +140,8 @@ test("training and nutrition: program → workout with rest timer → history; t
 
   await test.step("create two foods, log both; today's kcal is their sum", async () => {
     await page.goto("/nutrition");
+    // Add food is a bottom sheet on the phone; it stays open while a meal is logged.
+    await page.getByRole("button", { name: "Add food" }).click();
     const add = page.getByTestId("add-food");
     const foods = [
       { name: "E2E oats", kcal100: 380, protein: 13, grams: 50, meal: "breakfast" },
@@ -157,6 +159,10 @@ test("training and nutrition: program → workout with rest timer → history; t
       await add.getByRole("button", { name: `Add to ${food.meal}` }).click();
       await expect(add.getByRole("status")).toHaveText(`Added ${food.grams} g ${food.name} to ${food.meal}.`);
     }
+    await noHorizontalScroll(page);
+    await expectNoAxeViolations(page, "/nutrition (add-food sheet)");
+    await page.keyboard.press("Escape");
+    await expect(add).toBeHidden();
     const expected = foods.reduce((sum, f) => sum + (f.kcal100 * f.grams) / 100, 0);
     await expect(page.getByTestId("log-entry")).toHaveCount(2);
 

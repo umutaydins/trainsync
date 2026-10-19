@@ -1,0 +1,183 @@
+{
+  "title": "Food",
+  "loading": "Loading food",
+  "nav": {
+    "label": "Day",
+    "previous": "Previous day",
+    "next": "Next day",
+    "today": "Today"
+  },
+  "dayToday": "Today · {date}",
+  "failed": {
+    "totals": "Could not load the day’s totals",
+    "log": "Could not load the food log",
+    "week": "Could not load the week"
+  },
+  "meals": {
+    "breakfast": "Breakfast",
+    "lunch": "Lunch",
+    "dinner": "Dinner",
+    "snack": "Snack"
+  },
+  "mealIn": {
+    "breakfast": "breakfast",
+    "lunch": "lunch",
+    "dinner": "dinner",
+    "snack": "snack"
+  },
+  "totals": {
+    "title": "Totals",
+    "ringLabel": "Energy against the target",
+    "energy": "Energy",
+    "protein": "Protein",
+    "carbs": "Carbs",
+    "fat": "Fat",
+    "of": "of {target}",
+    "noTarget": "no target set",
+    "intake": "{kcal} from {count, plural, one {# entry} other {# entries}}",
+    "toTarget": "{kcal} to the target",
+    "aboveTarget": "{kcal} above the target",
+    "macrosIncomplete": "Some foods have no macro data; the macro totals leave them out."
+  },
+  "balance": {
+    "title": "Energy balance (estimate)",
+    "intake": "Intake",
+    "intakeNote": "logged food",
+    "bmr": "Basal rate",
+    "bmrNote": "estimate, Mifflin–St Jeor",
+    "baseline": "Everyday activity",
+    "baselineNote": "estimate, exercise not included",
+    "baselineNoteWith": "estimate, {level}, exercise not included",
+    "exercise": "Exercise",
+    "exerciseUnknown": "{count, plural, one {# activity has} other {# activities have}} no energy data",
+    "exerciseNone": "no synced activities",
+    "exerciseFrom": "{count, plural, one {# activity} other {# activities}} from Strava",
+    "expenditure": "Expenditure",
+    "estimate": "estimate",
+    "balance": "Balance",
+    "balanceNote": "estimate, intake minus expenditure",
+    "unknown": "unknown",
+    "plusUnknown": "{kcal} + unknown",
+    "gaps": {
+      "no_profile": "Add a profile (below) to estimate the basal rate.",
+      "no_body_weight": "Add a body weight (below) to estimate the basal rate."
+    },
+    "stravaGap": "Strava has no energy figure for some activities, so expenditure and balance are shown as unknown rather than guessed.",
+    "levels": {
+      "sedentary": "sedentary",
+      "light": "light",
+      "moderate": "moderate"
+    }
+  },
+  "week": {
+    "title": "This week",
+    "avgIntake": "Average intake",
+    "avgProtein": "Average protein",
+    "daysLogged": "Days logged",
+    "daysOf": "{logged} of {total}",
+    "balance": "Balance (estimate)",
+    "caption": "Daily intake this week",
+    "day": "Day",
+    "intake": "Intake",
+    "protein": "Protein",
+    "exercise": "Exercise"
+  },
+  "log": {
+    "title": "Meals",
+    "empty": "Nothing logged for this day",
+    "emptyHint": "Add a food with the button above.",
+    "removeLabel": "Remove {food} from {meal}",
+    "removeFailed": "Could not remove the entry",
+    "macros": "P {protein} · C {carbs} · F {fat}"
+  },
+  "add": {
+    "open": "Add food",
+    "title": "Add food",
+    "description": "Search, look up a barcode or pick a favourite.",
+    "meal": "Meal",
+    "search": "Search foods",
+    "searchLabel": "Food search",
+    "placeholder": "e.g. oats",
+    "searchButton": "Search",
+    "remote": "Search Open Food Facts too",
+    "barcode": "Barcode",
+    "barcodePlaceholder": "8 to 14 digits",
+    "lookup": "Look up",
+    "barcodeError": "Barcode: 8 to 14 digits",
+    "favourites": "Favourites",
+    "recent": "Recent",
+    "localTitle": "Saved foods: “{query}”",
+    "remoteTitle": "Open Food Facts: “{query}”",
+    "barcodeTitle": "Barcode {code}",
+    "clear": "Clear search",
+    "noFoods": "No foods here yet.",
+    "per100": "{kcal} / 100 g",
+    "remoteNotes": {
+      "not_found": "Open Food Facts does not know this product.",
+      "unavailable": "Open Food Facts did not answer in time; showing saved foods only.",
+      "disabled": "Open Food Facts lookups are switched off; showing saved foods only."
+    },
+    "amount": "Amount (g)",
+    "grams": "Grams",
+    "moreGrams": "More grams",
+    "fewerGrams": "Fewer grams",
+    "gramsError": "Grams: more than 0, up to 5000",
+    "previewEmpty": "Enter grams to see the values.",
+    "preview": "{kcal} · protein {protein} · carbs {carbs} · fat {fat}",
+    "unknown": "unknown",
+    "addTo": "Add to {meal}",
+    "added": "Added {grams} {food} to {meal}.",
+    "failed": "That did not work",
+    "refused": "The server did not take this. Check the values and try again.",
+    "create": "Create a food",
+    "newFood": {
+      "title": "New food (values per 100 g)",
+      "form": "New food",
+      "name": "Name",
+      "brand": "Brand (optional)",
+      "kcal": "kcal",
+      "protein": "Protein g",
+      "carbs": "Carbs g",
+      "fat": "Fat g",
+      "favourite": "Add to favourites",
+      "save": "Save food",
+      "failed": "Could not save the food",
+      "nameError": "Name is empty",
+      "kcalError": "kcal per 100 g: 0 to 1000",
+      "macroError": "Macros per 100 g: 0 to 100, or empty if unknown"
+    }
+  },
+  "profile": {
+    "title": "Profile and targets",
+    "body": "Used only for the basal-rate estimate (Mifflin–St Jeor). Targets are optional.",
+    "save": "Save profile",
+    "saved": "Profile saved.",
+    "savedWithBmr": "Profile saved. Estimated basal rate today: {bmr}.",
+    "belowBmr": "Your kcal target is below the estimated basal rate ({bmr}). It was saved as entered; the basal rate is an estimate.",
+    "note": "Note",
+    "notSaved": "Not saved",
+    "weight": "Body weight on {date} (kg)",
+    "saveWeight": "Save weight",
+    "weightSaved": "Body weight for {date} saved.",
+    "weightError": "Body weight: more than 0, below 500 kg.",
+    "sex": "Sex (for the equation)",
+    "male": "Male",
+    "female": "Female",
+    "birthYear": "Birth year",
+    "height": "Height (cm)",
+    "baseline": "Everyday activity (outside logged exercise)",
+    "baselines": {
+      "sedentary": "Sedentary (mostly sitting)",
+      "light": "Light (on your feet some of the day)",
+      "moderate": "Moderate (on your feet most of the day)"
+    },
+    "kcalTarget": "Daily kcal target (optional)",
+    "proteinTarget": "Protein target in g (optional)",
+    "errors": {
+      "birthYear": "Enter a year from {min} to {max}.",
+      "height": "Enter a height from {min} to {max} cm.",
+      "kcalTarget": "From {min} to {max}, or leave it empty.",
+      "proteinTarget": "From {min} to {max} g, or leave it empty."
+    }
+  }
+}

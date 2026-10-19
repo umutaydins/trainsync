@@ -1,72 +1,81 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Card, EmptyState, ErrorState } from "@/components/ui";
-import { del } from "@/lib/mutate";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, Failure } from "@/components/ui/states";
+import { isBackendDown } from "@/features/shell/components/load-failed";
 import type { LogEntry } from "@/features/nutrition/types";
-import { MEALS, grams, kcal } from "@/features/nutrition/types";
-import { label } from "@/features/training/types";
+import { MEALS } from "@/features/nutrition/types";
+import { useNutritionFormat } from "@/features/nutrition/use-nutrition-format";
+import { del } from "@/lib/mutate";
 
-function macros(e: LogEntry): string {
-  const part = (name: string, v: number | null) => `${name} ${v === null ? "?" : grams(v)}`;
-  return [part("P", e.protein_g), part("C", e.carbs_g), part("F", e.fat_g)].join(" · ");
-}
+const UNKNOWN = "?";
 
-/** The day's entries by meal, each removable. */
+/** The day's entries grouped by meal, each removable. */
 export function MealList({ entries }: { entries: LogEntry[] }) {
+  const t = useTranslations("nutrition");
+  const states = useTranslations("common.states");
+  const fmt = useNutritionFormat();
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState<number | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const macro = (v: number | null) => (v === null ? UNKNOWN : fmt.grams(v));
 
   async function remove(entry: LogEntry) {
     setBusy(entry.client_id);
-    setError(null);
+    setFailed(null);
     const result = await del(`/v1/nutrition/log/${entry.client_id}`);
     setBusy(null);
-    if (!result.ok) return setError(result.error);
+    if (!result.ok) return setFailed(result.status);
     router.refresh();
   }
 
   return (
-    <Card title="Meals" labelledBy="meals-title">
-      {error ? <ErrorState title="Could not remove the entry" message={error} /> : null}
+    <Card aria-labelledby="meals-title">
+      <CardHeader>
+        <CardTitle id="meals-title">{t("log.title")}</CardTitle>
+      </CardHeader>
+      {failed !== null ? <Failure title={t("log.removeFailed")} message={isBackendDown(failed) ? states("backendDown") : undefined} /> : null}
       {entries.length === 0 ? (
-        <EmptyState title="Nothing logged for this day">Add a food below.</EmptyState>
+        <Empty title={t("log.empty")}>{t("log.emptyHint")}</Empty>
       ) : (
-        <div className="space-y-4" data-testid="meal-list">
+        <div className="flex flex-col gap-5" data-testid="meal-list">
           {MEALS.map((meal) => {
             const items = entries.filter((e) => e.meal === meal);
             if (items.length === 0) return null;
             const total = items.reduce((sum, e) => sum + e.kcal, 0);
             return (
-              <section key={meal} aria-label={label(meal)}>
-                <h3 className="flex justify-between text-xs font-semibold uppercase tracking-wide text-muted">
-                  <span>{label(meal)}</span>
-                  <span className="tabular-nums">{kcal(total)}</span>
+              <section key={meal} aria-label={t(`meals.${meal}`)}>
+                <h3 className="flex justify-between text-lg font-bold">
+                  <span>{t(`meals.${meal}`)}</span>
+                  <span className="tabular text-muted">{fmt.kcal(total)}</span>
                 </h3>
                 <ul className="mt-1 divide-y divide-border">
                   {items.map((e) => (
                     <li key={e.client_id} className="flex items-center justify-between gap-3 py-2" data-testid="log-entry" data-kcal={e.kcal}>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">
+                        <p className="truncate font-medium">
                           {e.food_name}
                           {e.brand ? <span className="font-normal text-muted"> · {e.brand}</span> : null}
                         </p>
-                        <p className="text-xs text-muted tabular-nums">
-                          {grams(e.grams)} · {kcal(e.kcal)} · {macros(e)}
+                        <p className="text-xs text-muted tabular">
+                          {fmt.grams(e.grams)} · {fmt.kcal(e.kcal)} · {t("log.macros", { protein: macro(e.protein_g), carbs: macro(e.carbs_g), fat: macro(e.fat_g) })}
                         </p>
                       </div>
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => void remove(e)}
                         disabled={busy === e.client_id}
-                        aria-label={`Remove ${e.food_name} from ${meal}`}
-                        className="min-h-11 shrink-0 rounded-lg px-3 text-sm text-muted hover:bg-surface-2 hover:text-text"
+                        aria-label={t("log.removeLabel", { food: e.food_name, meal: t(`mealIn.${meal}`) })}
                       >
-                        Remove
-                      </button>
+                        <Trash2 aria-hidden />
+                      </Button>
                     </li>
                   ))}
                 </ul>

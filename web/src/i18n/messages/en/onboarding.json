@@ -83,26 +83,7 @@
   },
   "profile": {
     "title": "Your numbers.",
-    "body": "Used only to estimate your basal rate (Mifflin–St Jeor) for the food pages. Targets are optional.",
-    "sex": "Sex (for the equation)",
-    "male": "Male",
-    "female": "Female",
-    "birthYear": "Birth year",
-    "height": "Height (cm)",
-    "baseline": "Everyday activity (outside logged exercise)",
-    "baselines": {
-      "sedentary": "Sedentary (mostly sitting)",
-      "light": "Light (on your feet some of the day)",
-      "moderate": "Moderate (on your feet most of the day)"
-    },
-    "kcalTarget": "Daily kcal target (optional)",
-    "proteinTarget": "Protein target in g (optional)",
-    "errors": {
-      "birthYear": "Enter a year from {min} to {max}.",
-      "height": "Enter a height from {min} to {max} cm.",
-      "kcalTarget": "From {min} to {max}, or leave it empty.",
-      "proteinTarget": "From {min} to {max} g, or leave it empty."
-    }
+    "body": "Used only to estimate your basal rate (Mifflin–St Jeor) for the food pages. Targets are optional."
   },
   "done": {
     "title": "You are set.",

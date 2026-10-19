@@ -4,7 +4,7 @@ import axe from "axe-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OnboardingFlow } from "@/features/onboarding/components/onboarding-flow";
-import { toProfile } from "@/features/onboarding/components/profile-step";
+import { toProfile } from "@/features/nutrition/profile";
 import { STEPS, initialStep, stravaReturnFrom } from "@/features/onboarding/steps";
 import type { OnboardingData } from "@/features/onboarding/types";
 import { renderWithIntl } from "./support/intl";

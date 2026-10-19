@@ -1,20 +1,21 @@
-import { render, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AddFood } from "@/features/nutrition/components/add-food";
 import { MealList } from "@/features/nutrition/components/meal-list";
 import { ProfileForm } from "@/features/nutrition/components/profile-form";
-import { DailyRings, EnergyBalanceCard, WeeklyAverages } from "@/features/nutrition/components/summary-cards";
+import { EnergyBalanceCard } from "@/features/nutrition/components/balance-card";
+import { DailyRings } from "@/features/nutrition/components/totals-card";
+import { WeeklyAverages } from "@/features/nutrition/components/week-card";
 import { BodyWeightChart } from "@/features/training/components/progress-charts";
 import { BodyBlock, NutritionBlock } from "@/features/progress/components/habit-blocks";
 import { KcalChart } from "@/features/progress/components/kcal-chart";
 import { WeightChart } from "@/features/progress/components/weight-chart";
 import { FoodToday } from "@/features/today/components/today-blocks";
-import { renderWithIntl } from "./support/intl";
+import { MESSAGES, renderWithIntl } from "./support/intl";
 import { progressSummary, series, weightSeries } from "./support/progress-fixtures";
-import { ESTIMATE_GAP_TEXT } from "@/features/nutrition/types";
 import { CHICKEN, NO_PROFILE, OATS, UNKNOWN_EXERCISE, daySummary, entry, profile, weekly } from "./support/nutrition-fixtures";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), usePathname: () => "/nutrition" }));
@@ -58,6 +59,10 @@ function judgementWords(ui: ReactElement): string[] {
   return found;
 }
 
+beforeEach(() => {
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("min-width"), addEventListener: () => undefined, removeEventListener: () => undefined }));
+});
+
 const TARGET_NOTE =
   "kcal_target (1500 kcal) is below the estimated basal metabolic rate (1755.5 kcal). It was saved as entered; the BMR is an estimate.";
 
@@ -91,17 +96,18 @@ describe("neutral nutrition copy", () => {
 
   it("the add-food flow's later states too (selected food, new-food form)", async () => {
     const user = userEvent.setup();
-    const { container } = render(<AddFood date="2026-10-18" favorites={[OATS]} recent={[]} />);
-    await user.click(within(container).getByRole("button", { name: /Rolled oats/ }));
-    await user.click(within(container).getByRole("button", { name: "Create a food" }));
-    expect(within(container).getByRole("form", { name: "New food" })).toBeInTheDocument();
-    expect(within(container).getByLabelText("Grams")).toBeInTheDocument();
-    const words = visibleStrings(container).flatMap((s) => s.match(new RegExp(PATTERN, "gi")) ?? []);
+    renderWithIntl(<AddFood date="2026-10-18" favorites={[OATS]} recent={[]} />);
+    await user.click(screen.getByRole("button", { name: "Add food" }));
+    await user.click(screen.getByRole("button", { name: /Rolled oats/ }));
+    await user.click(screen.getByRole("button", { name: "Create a food" }));
+    expect(screen.getByRole("form", { name: "New food" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Grams")).toBeInTheDocument();
+    const words = visibleStrings(document.body).flatMap((s) => s.match(new RegExp(PATTERN, "gi")) ?? []);
     expect(words).toEqual([]);
   });
 
   it("every estimate-gap text is neutral", () => {
-    for (const text of Object.values(ESTIMATE_GAP_TEXT)) expect(text).not.toMatch(PATTERN);
+    for (const text of Object.values(MESSAGES.en.nutrition.balance.gaps)) expect(text).not.toMatch(PATTERN);
   });
 });
 
