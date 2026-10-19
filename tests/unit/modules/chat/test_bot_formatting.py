@@ -10,7 +10,7 @@ import pytest
 from tests.support.messages import NEUTRAL_EN as MSG
 from trainsync.modules.activities.router import ActivityOut
 from trainsync.modules.chat import formatting
-from trainsync.modules.stats.router import StatsSummary, WeeklyStats
+from trainsync.modules.stats.totals import ActivitySummary, WeeklyStats
 from trainsync.modules.sync.router import SyncStatusOut
 
 FIXTURE: dict[str, Any] = json.loads(
@@ -19,8 +19,8 @@ FIXTURE: dict[str, Any] = json.loads(
 NOW = datetime.fromisoformat(FIXTURE["now"])
 
 
-def summary(name: str) -> StatsSummary:
-    return StatsSummary.model_validate(FIXTURE[name])
+def summary(name: str) -> ActivitySummary:
+    return ActivitySummary.model_validate(FIXTURE[name])
 
 
 def activity(name: str, **overrides: object) -> ActivityOut:

@@ -43,6 +43,7 @@ TABLES = {
     "sessions",
     "invites",
     "password_resets",
+    "user_data_versions",
 }
 
 

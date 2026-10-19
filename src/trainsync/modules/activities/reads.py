@@ -145,9 +145,10 @@ class ReadRepository:
         return max(present) if present else None
 
     async def weekly_stats(
-        self, activity_filter: ActivityFilter, first_week: date, last_week: date
+        self, activity_filter: ActivityFilter, first_week: date, last_week: date, zone: str = "UTC"
     ) -> list["WeekStats"]:
-        """One row per ISO week (Monday, UTC) from `first_week` to `last_week`, zero-filled.
+        """One row per ISO week (Monday, local in `zone`) from `first_week` to `last_week`,
+        zero-filled.
 
         The filter's `start_from`/`start_to` still apply to the activities, so partial weeks
         at the edges only count activities inside the range.
@@ -161,7 +162,7 @@ class ReadRepository:
             .table_valued("week_start")
             .render_derived()
         )
-        activity_week = func.date_trunc("week", func.timezone("UTC", Activity.start_date))
+        activity_week = func.date_trunc("week", func.timezone(zone, Activity.start_date))
         conditions = self._scoped(activity_filter)
         stmt = (
             select(weeks.c.week_start, *_totals_columns())
@@ -259,4 +260,4 @@ def week_start(day: date) -> date:
 
 
 def _midnight(day: date) -> datetime:
-    return datetime(day.year, day.month, day.day)  # naive on purpose: compared in UTC
+    return datetime(day.year, day.month, day.day)  # naive on purpose: a local wall-clock time

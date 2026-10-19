@@ -323,6 +323,68 @@
         "title": "ActivityPage",
         "type": "object"
       },
+      "AdherenceOut": {
+        "properties": {
+          "done_sessions": {
+            "title": "Done Sessions",
+            "type": "integer"
+          },
+          "done_sets": {
+            "title": "Done Sets",
+            "type": "integer"
+          },
+          "planned_sessions": {
+            "title": "Planned Sessions",
+            "type": "integer"
+          },
+          "planned_sets": {
+            "title": "Planned Sets",
+            "type": "integer"
+          },
+          "program_id": {
+            "title": "Program Id",
+            "type": "integer"
+          },
+          "program_name": {
+            "title": "Program Name",
+            "type": "string"
+          },
+          "session_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Ratio"
+          },
+          "set_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Set Ratio"
+          }
+        },
+        "required": [
+          "program_id",
+          "program_name",
+          "planned_sessions",
+          "done_sessions",
+          "planned_sets",
+          "done_sets",
+          "session_ratio",
+          "set_ratio"
+        ],
+        "title": "AdherenceOut",
+        "type": "object"
+      },
       "AdminUserList": {
         "examples": [
           {
@@ -554,6 +616,73 @@
         "title": "BodyMetricOut",
         "type": "object"
       },
+      "BodyOut": {
+        "properties": {
+          "body_fat_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Phase 9; always null for now",
+            "title": "Body Fat Pct"
+          },
+          "change_kg": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "first_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Kg"
+          },
+          "last_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Kg"
+          },
+          "moving_average_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "7-day moving average on the last day",
+            "title": "Moving Average Kg"
+          },
+          "rate_kg_per_week": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Least-squares slope of the period's weights"
+          }
+        },
+        "required": [
+          "first_kg",
+          "last_kg",
+          "change_kg",
+          "moving_average_kg",
+          "rate_kg_per_week",
+          "body_fat_pct"
+        ],
+        "title": "BodyOut",
+        "type": "object"
+      },
       "BreakerProcess": {
         "properties": {
           "changed_at": {
@@ -599,6 +728,15 @@
         "title": "BreakerState",
         "type": "string"
       },
+      "Bucket": {
+        "enum": [
+          "day",
+          "week",
+          "month"
+        ],
+        "title": "Bucket",
+        "type": "string"
+      },
       "ChallengeResponse": {
         "examples": [
           {
@@ -615,6 +753,66 @@
           "hub.challenge"
         ],
         "title": "ChallengeResponse",
+        "type": "object"
+      },
+      "Change": {
+        "description": "A number of the period, the same number of the previous period and the difference.",
+        "properties": {
+          "change": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "value - previous",
+            "title": "Change"
+          },
+          "change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "change / previous x 100; null if previous is 0",
+            "title": "Change Pct"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null for `all` (no previous period)",
+            "title": "Previous"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value",
+          "previous",
+          "change",
+          "change_pct"
+        ],
+        "title": "Change",
         "type": "object"
       },
       "ChatOwner": {
@@ -1106,6 +1304,45 @@
         "title": "ConnectedResponse",
         "type": "object"
       },
+      "ConsistencyOut": {
+        "properties": {
+          "active_days": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Local days with an activity or a workout"
+          },
+          "checkin_rate": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Days with a check-in / days of the period"
+          },
+          "checkin_streak_days": {
+            "title": "Checkin Streak Days",
+            "type": "integer"
+          },
+          "longest_checkin_streak_days": {
+            "title": "Longest Checkin Streak Days",
+            "type": "integer"
+          },
+          "longest_training_streak_weeks": {
+            "title": "Longest Training Streak Weeks",
+            "type": "integer"
+          },
+          "training_streak_weeks": {
+            "description": "ISO weeks in a row with training, to today",
+            "title": "Training Streak Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "active_days",
+          "training_streak_weeks",
+          "longest_training_streak_weeks",
+          "checkin_streak_days",
+          "longest_checkin_streak_days",
+          "checkin_rate"
+        ],
+        "title": "ConsistencyOut",
+        "type": "object"
+      },
       "CurrentRecord": {
         "description": "The standing record; `previous` is the one it beat.",
         "examples": [
@@ -1515,6 +1752,127 @@
         "title": "DeleteAccountIn",
         "type": "object"
       },
+      "EffortOut": {
+        "properties": {
+          "activity_id": {
+            "title": "Activity Id",
+            "type": "integer"
+          },
+          "average_speed_mps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Speed Mps"
+          },
+          "distance_m": {
+            "title": "Distance M",
+            "type": "number"
+          },
+          "group": {
+            "$ref": "#/components/schemas/SportGroup"
+          },
+          "moving_time_s": {
+            "title": "Moving Time S",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "start_date": {
+            "format": "date-time",
+            "title": "Start Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group",
+          "activity_id",
+          "name",
+          "start_date",
+          "distance_m",
+          "moving_time_s",
+          "average_speed_mps"
+        ],
+        "title": "EffortOut",
+        "type": "object"
+      },
+      "EnduranceOut": {
+        "properties": {
+          "by_group": {
+            "items": {
+              "$ref": "#/components/schemas/SportGroupOut"
+            },
+            "title": "By Group",
+            "type": "array"
+          },
+          "fastest": {
+            "description": "Highest average speed per sport group (run/walk ≥ 1 km, ride ≥ 5 km, swim ≥ 100 m)",
+            "items": {
+              "$ref": "#/components/schemas/EffortOut"
+            },
+            "title": "Fastest",
+            "type": "array"
+          },
+          "longest": {
+            "description": "Greatest distance per sport group",
+            "items": {
+              "$ref": "#/components/schemas/EffortOut"
+            },
+            "title": "Longest",
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/EnduranceTotalsOut"
+          }
+        },
+        "required": [
+          "totals",
+          "by_group",
+          "longest",
+          "fastest"
+        ],
+        "title": "EnduranceOut",
+        "type": "object"
+      },
+      "EnduranceTotalsOut": {
+        "properties": {
+          "average_heartrate": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Weighted by moving time; activities with HR"
+          },
+          "average_speed_mps": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "distance_m": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "elevation_gain_m": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "moving_time_s": {
+            "$ref": "#/components/schemas/Change"
+          }
+        },
+        "required": [
+          "count",
+          "distance_m",
+          "moving_time_s",
+          "elevation_gain_m",
+          "average_speed_mps",
+          "average_heartrate"
+        ],
+        "title": "EnduranceTotalsOut",
+        "type": "object"
+      },
       "Equipment": {
         "enum": [
           "barbell",
@@ -1612,7 +1970,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/ExerciseOut"
+              "$ref": "#/components/schemas/trainsync__modules__training__schemas__ExerciseOut"
             },
             "title": "Items",
             "type": "array"
@@ -1622,76 +1980,6 @@
           "items"
         ],
         "title": "ExerciseList",
-        "type": "object"
-      },
-      "ExerciseOut": {
-        "examples": [
-          {
-            "equipment": "barbell",
-            "id": 20,
-            "is_custom": false,
-            "movement_pattern": "horizontal_push",
-            "name": "Bench Press",
-            "primary_muscle": "chest",
-            "secondary_muscles": [
-              "triceps",
-              "shoulders"
-            ],
-            "slug": "bench-press"
-          }
-        ],
-        "properties": {
-          "equipment": {
-            "$ref": "#/components/schemas/Equipment"
-          },
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "is_custom": {
-            "title": "Is Custom",
-            "type": "boolean"
-          },
-          "movement_pattern": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MovementPattern"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "primary_muscle": {
-            "$ref": "#/components/schemas/Muscle"
-          },
-          "secondary_muscles": {
-            "items": {
-              "$ref": "#/components/schemas/Muscle"
-            },
-            "title": "Secondary Muscles",
-            "type": "array"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "slug",
-          "name",
-          "primary_muscle",
-          "secondary_muscles",
-          "equipment",
-          "movement_pattern",
-          "is_custom"
-        ],
-        "title": "ExerciseOut",
         "type": "object"
       },
       "ExerciseProgress": {
@@ -1728,7 +2016,7 @@
         ],
         "properties": {
           "exercise": {
-            "$ref": "#/components/schemas/ExerciseOut"
+            "$ref": "#/components/schemas/trainsync__modules__training__schemas__ExerciseOut"
           },
           "sessions": {
             "description": "Oldest first",
@@ -2442,6 +2730,93 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HeatmapDayOut": {
+        "properties": {
+          "checkin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckinStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          },
+          "value": {
+            "description": "Training minutes (activities' moving time + workouts)",
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "day",
+          "value",
+          "sessions",
+          "checkin"
+        ],
+        "title": "HeatmapDayOut",
+        "type": "object"
+      },
+      "HeatmapOut": {
+        "examples": [
+          {
+            "days": [
+              {
+                "day": "2026-01-01",
+                "sessions": 0,
+                "value": 0.0
+              },
+              {
+                "checkin": "done",
+                "day": "2026-01-02",
+                "sessions": 1,
+                "value": 64.5
+              }
+            ],
+            "max_value": 182.0,
+            "timezone": "Europe/Berlin",
+            "year": 2026
+          }
+        ],
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/HeatmapDayOut"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "max_value": {
+            "title": "Max Value",
+            "type": "number"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "timezone",
+          "max_value",
+          "days"
+        ],
+        "title": "HeatmapOut",
+        "type": "object"
+      },
       "InviteCreated": {
         "examples": [
           {
@@ -3135,6 +3510,26 @@
         "title": "Meal",
         "type": "string"
       },
+      "Metric": {
+        "enum": [
+          "distance_m",
+          "moving_time_s",
+          "elevation_gain_m",
+          "activities",
+          "sessions",
+          "sets",
+          "reps",
+          "tonnage_kg",
+          "kcal",
+          "protein_g",
+          "carbs_g",
+          "fat_g",
+          "weight_kg",
+          "active_minutes"
+        ],
+        "title": "Metric",
+        "type": "string"
+      },
       "MovementPattern": {
         "description": "What the program generator (P6.3) picks exercises by; null for custom exercises.",
         "enum": [
@@ -3174,6 +3569,29 @@
         ],
         "title": "Muscle",
         "type": "string"
+      },
+      "MuscleOut": {
+        "properties": {
+          "muscle": {
+            "title": "Muscle",
+            "type": "string"
+          },
+          "sets": {
+            "title": "Sets",
+            "type": "integer"
+          },
+          "tonnage_kg": {
+            "title": "Tonnage Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "muscle",
+          "sets",
+          "tonnage_kg"
+        ],
+        "title": "MuscleOut",
+        "type": "object"
       },
       "MuscleWeek": {
         "properties": {
@@ -3340,6 +3758,61 @@
         "title": "NextDay",
         "type": "object"
       },
+      "NutritionOut": {
+        "properties": {
+          "avg_carbs_g": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "avg_fat_g": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "avg_kcal": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Mean over the logged days"
+          },
+          "avg_protein_g": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "days_over_sugar_limit": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "kcal_target": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kcal Target"
+          },
+          "logged_days": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "logging_rate": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Days with a food log / days of the period"
+          },
+          "sugar_limit_g": {
+            "title": "Sugar Limit G",
+            "type": "number"
+          }
+        },
+        "required": [
+          "logged_days",
+          "logging_rate",
+          "avg_kcal",
+          "kcal_target",
+          "avg_protein_g",
+          "avg_carbs_g",
+          "avg_fat_g",
+          "days_over_sugar_limit",
+          "sugar_limit_g"
+        ],
+        "title": "NutritionOut",
+        "type": "object"
+      },
       "PasswordChangeIn": {
         "examples": [
           {
@@ -3397,6 +3870,22 @@
         "title": "PerformedSet",
         "type": "object"
       },
+      "Period": {
+        "enum": [
+          "week",
+          "last_week",
+          "month",
+          "last_month",
+          "3m",
+          "6m",
+          "year",
+          "12m",
+          "all",
+          "custom"
+        ],
+        "title": "Period",
+        "type": "string"
+      },
       "PlannedExercise": {
         "description": "A program-day exercise with what was lifted last time.",
         "examples": [
@@ -3444,7 +3933,7 @@
         ],
         "properties": {
           "exercise": {
-            "$ref": "#/components/schemas/ExerciseOut"
+            "$ref": "#/components/schemas/trainsync__modules__training__schemas__ExerciseOut"
           },
           "last_performance": {
             "anyOf": [
@@ -3678,7 +4167,7 @@
         ],
         "properties": {
           "exercise": {
-            "$ref": "#/components/schemas/ExerciseOut"
+            "$ref": "#/components/schemas/trainsync__modules__training__schemas__ExerciseOut"
           },
           "id": {
             "title": "Id",
@@ -3790,6 +4279,45 @@
         "title": "PlatesOut",
         "type": "object"
       },
+      "PointOut": {
+        "properties": {
+          "moving_average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "weight_kg, bucket=day: the 7-day moving average",
+            "title": "Moving Average"
+          },
+          "start": {
+            "description": "First day of the bucket (may be before the window)",
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "start",
+          "value"
+        ],
+        "title": "PointOut",
+        "type": "object"
+      },
       "PrKind": {
         "enum": [
           "weight_for_reps",
@@ -3798,6 +4326,53 @@
         ],
         "title": "PrKind",
         "type": "string"
+      },
+      "PrOut": {
+        "properties": {
+          "achieved_at": {
+            "format": "date-time",
+            "title": "Achieved At",
+            "type": "string"
+          },
+          "e1rm_kg": {
+            "title": "E1Rm Kg",
+            "type": "number"
+          },
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "previous_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The record it beat; null for the first",
+            "title": "Previous Kg"
+          },
+          "workout_id": {
+            "title": "Workout Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "name",
+          "workout_id",
+          "achieved_at",
+          "e1rm_kg",
+          "previous_kg"
+        ],
+        "title": "PrOut",
+        "type": "object"
       },
       "PreviewDay": {
         "properties": {
@@ -4638,6 +5213,57 @@
         "title": "Progression",
         "type": "string"
       },
+      "PrsOut": {
+        "examples": [
+          {
+            "count": 1,
+            "period": "all",
+            "records": [
+              {
+                "achieved_at": "2026-10-16T17:40:02Z",
+                "e1rm_kg": 101.67,
+                "exercise_id": 1,
+                "name": "Bench Press",
+                "previous_kg": 100.0,
+                "workout_id": 418
+              }
+            ],
+            "window": {
+              "days": 962,
+              "from": "2024-03-02",
+              "to": "2026-10-19"
+            }
+          }
+        ],
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "period": {
+            "$ref": "#/components/schemas/Period"
+          },
+          "records": {
+            "description": "Newest first",
+            "items": {
+              "$ref": "#/components/schemas/PrOut"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "window": {
+            "$ref": "#/components/schemas/WindowOut"
+          }
+        },
+        "required": [
+          "period",
+          "window",
+          "count",
+          "records"
+        ],
+        "title": "PrsOut",
+        "type": "object"
+      },
       "RangeSummary": {
         "examples": [
           {
@@ -5139,6 +5765,87 @@
           "finished_at"
         ],
         "title": "RunOut",
+        "type": "object"
+      },
+      "SeriesOut": {
+        "examples": [
+          {
+            "bucket": "day",
+            "metric": "kcal",
+            "period": "week",
+            "points": [
+              {
+                "start": "2026-10-19",
+                "value": 2310.5
+              }
+            ],
+            "target": 2500.0,
+            "timezone": "Europe/Berlin",
+            "window": {
+              "days": 1,
+              "from": "2026-10-19",
+              "to": "2026-10-19"
+            }
+          }
+        ],
+        "properties": {
+          "bucket": {
+            "$ref": "#/components/schemas/Bucket"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "period": {
+            "$ref": "#/components/schemas/Period"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/PointOut"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "sport": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SportGroup"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "kcal: the daily target; null for other metrics",
+            "title": "Target"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "window": {
+            "$ref": "#/components/schemas/WindowOut"
+          }
+        },
+        "required": [
+          "metric",
+          "period",
+          "bucket",
+          "timezone",
+          "window",
+          "sport",
+          "target",
+          "points"
+        ],
+        "title": "SeriesOut",
         "type": "object"
       },
       "SessionList": {
@@ -5806,6 +6513,54 @@
         "title": "Sex",
         "type": "string"
       },
+      "SportGroup": {
+        "enum": [
+          "run",
+          "ride",
+          "walk",
+          "swim",
+          "other"
+        ],
+        "title": "SportGroup",
+        "type": "string"
+      },
+      "SportGroupOut": {
+        "properties": {
+          "average_heartrate": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Weighted by moving time; activities with HR"
+          },
+          "average_speed_mps": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "distance_m": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "elevation_gain_m": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "group": {
+            "$ref": "#/components/schemas/SportGroup"
+          },
+          "moving_time_s": {
+            "$ref": "#/components/schemas/Change"
+          }
+        },
+        "required": [
+          "count",
+          "distance_m",
+          "moving_time_s",
+          "elevation_gain_m",
+          "average_speed_mps",
+          "average_heartrate",
+          "group"
+        ],
+        "title": "SportGroupOut",
+        "type": "object"
+      },
       "SportTotalsOut": {
         "properties": {
           "count": {
@@ -5840,8 +6595,26 @@
         "type": "object"
       },
       "StatsSummary": {
+        "description": "`/v1/stats/summary`: the activity fields and the progress blocks (ADR 0038).",
         "examples": [
           {
+            "body": {
+              "change_kg": {
+                "change": -0.5,
+                "change_pct": 166.7,
+                "previous": -0.3,
+                "value": -0.8
+              },
+              "first_kg": 81.4,
+              "last_kg": 80.6,
+              "moving_average_kg": 80.8,
+              "rate_kg_per_week": {
+                "change": -0.19,
+                "change_pct": 158.3,
+                "previous": -0.12,
+                "value": -0.31
+              }
+            },
             "by_sport": [
               {
                 "count": 4,
@@ -5865,6 +6638,127 @@
                 "sport_type": "Swim"
               }
             ],
+            "consistency": {
+              "active_days": {
+                "change": 2,
+                "change_pct": 16.7,
+                "previous": 12,
+                "value": 14
+              },
+              "checkin_rate": {
+                "change": 0.1,
+                "change_pct": 12.7,
+                "previous": 0.79,
+                "value": 0.89
+              },
+              "checkin_streak_days": 6,
+              "longest_checkin_streak_days": 41,
+              "longest_training_streak_weeks": 15,
+              "training_streak_weeks": 9
+            },
+            "endurance": {
+              "by_group": [
+                {
+                  "average_heartrate": {
+                    "change": -2.8,
+                    "change_pct": -1.9,
+                    "previous": 151.0,
+                    "value": 148.2
+                  },
+                  "average_speed_mps": {
+                    "change": 0.18,
+                    "change_pct": 6.1,
+                    "previous": 2.95,
+                    "value": 3.13
+                  },
+                  "count": {
+                    "change": 2,
+                    "change_pct": 28.6,
+                    "previous": 7,
+                    "value": 9
+                  },
+                  "distance_m": {
+                    "change": 12960.0,
+                    "change_pct": 17.6,
+                    "previous": 73440,
+                    "value": 86400.0
+                  },
+                  "elevation_gain_m": {
+                    "change": -112.0,
+                    "change_pct": -16.7,
+                    "previous": 672,
+                    "value": 560.0
+                  },
+                  "group": "run",
+                  "moving_time_s": {
+                    "change": 2760,
+                    "change_pct": 11.1,
+                    "previous": 24840,
+                    "value": 27600
+                  }
+                }
+              ],
+              "fastest": [
+                {
+                  "activity_id": 805,
+                  "average_speed_mps": 3.11,
+                  "distance_m": 5020.0,
+                  "group": "run",
+                  "moving_time_s": 6840,
+                  "name": "Tempo 5k",
+                  "start_date": "2026-10-12T07:02:11Z"
+                }
+              ],
+              "longest": [
+                {
+                  "activity_id": 812,
+                  "average_speed_mps": 3.11,
+                  "distance_m": 21300.0,
+                  "group": "run",
+                  "moving_time_s": 6840,
+                  "name": "Long run",
+                  "start_date": "2026-10-12T07:02:11Z"
+                }
+              ],
+              "totals": {
+                "average_heartrate": {
+                  "change": -2.8,
+                  "change_pct": -1.9,
+                  "previous": 151.0,
+                  "value": 148.2
+                },
+                "average_speed_mps": {
+                  "change": 0.2,
+                  "change_pct": 6.8,
+                  "previous": 2.95,
+                  "value": 3.15
+                },
+                "count": {
+                  "change": 2,
+                  "change_pct": 22.2,
+                  "previous": 9,
+                  "value": 11
+                },
+                "distance_m": {
+                  "change": 14760.0,
+                  "change_pct": 17.6,
+                  "previous": 83640,
+                  "value": 98400.0
+                },
+                "elevation_gain_m": {
+                  "change": -128.0,
+                  "change_pct": -16.7,
+                  "previous": 768,
+                  "value": 640.0
+                },
+                "moving_time_s": {
+                  "change": 3120,
+                  "change_pct": 11.1,
+                  "previous": 28080,
+                  "value": 31200
+                }
+              }
+            },
             "from": "2026-09-07",
             "last_synced_at": "2026-10-18T09:30:02Z",
             "longest": {
@@ -5880,16 +6774,142 @@
               "start_date": "2026-10-01T06:30:00Z",
               "synced_at": "2026-10-01T07:02:11Z"
             },
+            "nutrition": {
+              "avg_carbs_g": {
+                "change": -31.0,
+                "change_pct": -10.3,
+                "previous": 301.0,
+                "value": 270.0
+              },
+              "avg_fat_g": {
+                "change": -5.0,
+                "change_pct": -5.8,
+                "previous": 86.0,
+                "value": 81.0
+              },
+              "avg_kcal": {
+                "change": -130.0,
+                "change_pct": -5.0,
+                "previous": 2610.0,
+                "value": 2480.0
+              },
+              "avg_protein_g": {
+                "change": 13.0,
+                "change_pct": 9.4,
+                "previous": 139.0,
+                "value": 152.0
+              },
+              "days_over_sugar_limit": {
+                "change": -3,
+                "change_pct": -60.0,
+                "previous": 5,
+                "value": 2
+              },
+              "kcal_target": 2500,
+              "logged_days": {
+                "change": 2,
+                "change_pct": 13.3,
+                "previous": 15,
+                "value": 17
+              },
+              "logging_rate": {
+                "change": 0.1,
+                "change_pct": 12.7,
+                "previous": 0.79,
+                "value": 0.89
+              },
+              "sugar_limit_g": 50.0
+            },
+            "period": "month",
+            "previous": {
+              "days": 19,
+              "from": "2026-09-01",
+              "to": "2026-09-19"
+            },
+            "strength": {
+              "adherence": {
+                "done_sessions": 6,
+                "done_sets": 102,
+                "planned_sessions": 8,
+                "planned_sets": 136,
+                "program_id": 3,
+                "program_name": "Upper/Lower 4-day",
+                "session_ratio": 0.75,
+                "set_ratio": 0.75
+              },
+              "by_exercise": [
+                {
+                  "best_e1rm_kg": {
+                    "change": 3.67,
+                    "change_pct": 3.7,
+                    "previous": 98.0,
+                    "value": 101.67
+                  },
+                  "exercise_id": 1,
+                  "muscle": "chest",
+                  "name": "Bench Press",
+                  "reps": 90,
+                  "sets": 15,
+                  "tonnage_kg": 7650.0
+                }
+              ],
+              "by_muscle": [
+                {
+                  "muscle": "chest",
+                  "sets": 24,
+                  "tonnage_kg": 11400.0
+                }
+              ],
+              "pr_count": {
+                "change": 2,
+                "change_pct": 200.0,
+                "previous": 1,
+                "value": 3
+              },
+              "reps": {
+                "change": 54,
+                "change_pct": 7.8,
+                "previous": 690,
+                "value": 744
+              },
+              "sessions": {
+                "change": 1,
+                "change_pct": 20.0,
+                "previous": 5,
+                "value": 6
+              },
+              "sets": {
+                "change": 14,
+                "change_pct": 15.9,
+                "previous": 88,
+                "value": 102
+              },
+              "tonnage_kg": {
+                "change": 3450.0,
+                "change_pct": 9.1,
+                "previous": 37800.0,
+                "value": 41250.0
+              }
+            },
+            "timezone": "Europe/Berlin",
             "to": "2026-10-04",
             "totals": {
               "count": 18,
               "distance_m": 352295.0,
               "elevation_gain_m": 2493.0,
               "moving_time_s": 74600
+            },
+            "window": {
+              "days": 19,
+              "from": "2026-10-01",
+              "to": "2026-10-19"
             }
           }
         ],
         "properties": {
+          "body": {
+            "$ref": "#/components/schemas/BodyOut"
+          },
           "by_sport": {
             "description": "The same totals per sport type, A to Z",
             "items": {
@@ -5897,6 +6917,12 @@
             },
             "title": "By Sport",
             "type": "array"
+          },
+          "consistency": {
+            "$ref": "#/components/schemas/ConsistencyOut"
+          },
+          "endurance": {
+            "$ref": "#/components/schemas/EnduranceOut"
           },
           "from": {
             "format": "date",
@@ -5926,6 +6952,22 @@
             ],
             "description": "Greatest distance in the range (newest wins a tie); null if none"
           },
+          "nutrition": {
+            "$ref": "#/components/schemas/NutritionOut"
+          },
+          "period": {
+            "$ref": "#/components/schemas/Period"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WindowOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "sport_type": {
             "anyOf": [
               {
@@ -5937,6 +6979,13 @@
             ],
             "title": "Sport Type"
           },
+          "strength": {
+            "$ref": "#/components/schemas/StrengthOut"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
           "to": {
             "format": "date",
             "title": "To",
@@ -5944,9 +6993,21 @@
           },
           "totals": {
             "$ref": "#/components/schemas/TotalsOut"
+          },
+          "window": {
+            "$ref": "#/components/schemas/WindowOut"
           }
         },
         "required": [
+          "period",
+          "timezone",
+          "window",
+          "previous",
+          "endurance",
+          "strength",
+          "consistency",
+          "nutrition",
+          "body",
           "from",
           "to",
           "sport_type",
@@ -6011,6 +7072,65 @@
           "connected"
         ],
         "title": "StravaConnection",
+        "type": "object"
+      },
+      "StrengthOut": {
+        "properties": {
+          "adherence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdherenceOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Active program; null without one"
+          },
+          "by_exercise": {
+            "items": {
+              "$ref": "#/components/schemas/trainsync__modules__stats__schemas__ExerciseOut"
+            },
+            "title": "By Exercise",
+            "type": "array"
+          },
+          "by_muscle": {
+            "items": {
+              "$ref": "#/components/schemas/MuscleOut"
+            },
+            "title": "By Muscle",
+            "type": "array"
+          },
+          "pr_count": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Workouts that set a new e1RM record for a lift"
+          },
+          "reps": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "sessions": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "sets": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Working sets (warm-ups excluded)"
+          },
+          "tonnage_kg": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Sum of weight x reps of the working sets"
+          }
+        },
+        "required": [
+          "sessions",
+          "sets",
+          "reps",
+          "tonnage_kg",
+          "pr_count",
+          "by_muscle",
+          "by_exercise",
+          "adherence"
+        ],
+        "title": "StrengthOut",
         "type": "object"
       },
       "SuggestionOut": {
@@ -6460,6 +7580,31 @@
         "title": "WeeklyVolume",
         "type": "object"
       },
+      "WindowOut": {
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "from": {
+            "format": "date",
+            "title": "From",
+            "type": "string"
+          },
+          "to": {
+            "format": "date",
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "days"
+        ],
+        "title": "WindowOut",
+        "type": "object"
+      },
       "WorkoutDetail": {
         "examples": [
           {
@@ -6881,6 +8026,119 @@
           "volume_kg"
         ],
         "title": "WorkoutSummary",
+        "type": "object"
+      },
+      "trainsync__modules__stats__schemas__ExerciseOut": {
+        "properties": {
+          "best_e1rm_kg": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Epley, working sets of at most 10 reps"
+          },
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "muscle": {
+            "title": "Muscle",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reps": {
+            "title": "Reps",
+            "type": "integer"
+          },
+          "sets": {
+            "title": "Sets",
+            "type": "integer"
+          },
+          "tonnage_kg": {
+            "title": "Tonnage Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "name",
+          "muscle",
+          "sets",
+          "reps",
+          "tonnage_kg",
+          "best_e1rm_kg"
+        ],
+        "title": "ExerciseOut",
+        "type": "object"
+      },
+      "trainsync__modules__training__schemas__ExerciseOut": {
+        "examples": [
+          {
+            "equipment": "barbell",
+            "id": 20,
+            "is_custom": false,
+            "movement_pattern": "horizontal_push",
+            "name": "Bench Press",
+            "primary_muscle": "chest",
+            "secondary_muscles": [
+              "triceps",
+              "shoulders"
+            ],
+            "slug": "bench-press"
+          }
+        ],
+        "properties": {
+          "equipment": {
+            "$ref": "#/components/schemas/Equipment"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_custom": {
+            "title": "Is Custom",
+            "type": "boolean"
+          },
+          "movement_pattern": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MovementPattern"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "primary_muscle": {
+            "$ref": "#/components/schemas/Muscle"
+          },
+          "secondary_muscles": {
+            "items": {
+              "$ref": "#/components/schemas/Muscle"
+            },
+            "title": "Secondary Muscles",
+            "type": "array"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "primary_muscle",
+          "secondary_muscles",
+          "equipment",
+          "movement_pattern",
+          "is_custom"
+        ],
+        "title": "ExerciseOut",
         "type": "object"
       }
     },
@@ -10297,11 +11555,388 @@
         ]
       }
     },
+    "/v1/stats/heatmap": {
+      "get": {
+        "description": "One entry per local day of `year` (default: this year): training minutes (activities' moving time plus workout durations), sessions and the check-in status.",
+        "operationId": "heatmap_v1_stats_heatmap_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                2026
+              ],
+              "title": "Year"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeatmapOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "year out of range"
+                }
+              }
+            },
+            "description": "Year out of range"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Training calendar of a year",
+        "tags": [
+          "stats"
+        ]
+      }
+    },
+    "/v1/stats/prs": {
+      "get": {
+        "description": "Workouts that set a new e1RM record for a lift (Epley over working sets of at most `STATS_E1RM_MAX_REPS` reps, strictly above every earlier workout), newest first. Default period: `all`.",
+        "operationId": "prs_v1_stats_prs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Period",
+              "default": "all"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-01"
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-30"
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exercise_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exercise Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "`to` is before `from`"
+                }
+              }
+            },
+            "description": "`to` before `from`, or `custom` without both"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Personal records",
+        "tags": [
+          "stats"
+        ]
+      }
+    },
+    "/v1/stats/series": {
+      "get": {
+        "description": "One point per bucket of the period: the sum of the bucket (zero-filled), or for `weight_kg` the mean (null without a weigh-in; with `bucket=day` also the 7-day moving average). `kcal` comes with the daily target. Default bucket: day up to 31 days, week up to 183 days, month beyond. `sport` limits the endurance metrics to a sport group.",
+        "operationId": "series_v1_stats_series_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "metric",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Metric"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Period",
+              "default": "month"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-01"
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-30"
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bucket",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Bucket"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bucket"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sport",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SportGroup"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sport"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "`to` is before `from`"
+                }
+              }
+            },
+            "description": "`to` before `from`, or `custom` without both"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "One metric over time",
+        "tags": [
+          "stats"
+        ]
+      }
+    },
     "/v1/stats/summary": {
       "get": {
-        "description": "Count, distance, moving time and elevation for activities whose start date falls in `from`..`to` (both inclusive, UTC days), the same totals per sport type (sorted by sport type), and the longest activity: the one with the greatest distance, the newest on a tie. An empty range gives zeros, an empty `by_sport` and a null `longest`. Defaults to the last 12 weeks. Soft-deleted activities are excluded.",
+        "description": "Totals, totals per sport type and the longest activity (the fields this endpoint always had), and the progress blocks: endurance per sport group, strength, consistency, nutrition and body, each number with its change against the previous period of the same length (none for `all`). Periods are local days in your time zone (ADR 0038). An empty period gives zeros and null averages. Soft-deleted activities are excluded.",
         "operationId": "summary_v1_stats_summary_get",
         "parameters": [
+          {
+            "description": "Omitted: `custom` when `from`/`to` are given, else the last 12 weeks",
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Period"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Omitted: `custom` when `from`/`to` are given, else the last 12 weeks",
+              "title": "Period"
+            }
+          },
           {
             "in": "query",
             "name": "from",
@@ -10399,7 +12034,7 @@
                 }
               }
             },
-            "description": "`to` before `from`"
+            "description": "`to` before `from`, or `custom` without both"
           },
           "401": {
             "content": {
@@ -10430,7 +12065,7 @@
             "APIKeyHeader": []
           }
         ],
-        "summary": "Totals for a date range",
+        "summary": "Progress for a period",
         "tags": [
           "stats"
         ]
@@ -10438,7 +12073,7 @@
     },
     "/v1/stats/weekly": {
       "get": {
-        "description": "Count, distance, moving time and elevation per ISO week (Monday start, UTC) for activities whose start date falls in `from`..`to` (both inclusive). Weeks without activities are returned with zeros. Defaults to the last 12 weeks. Soft-deleted activities are excluded.",
+        "description": "Count, distance, moving time and elevation per ISO week (Monday start, in your time zone) for activities whose start falls in `from`..`to` (local days, both inclusive). Weeks without activities are returned with zeros. Defaults to the last 12 weeks. Soft-deleted activities are excluded.",
         "operationId": "weekly_v1_stats_weekly_get",
         "parameters": [
           {
@@ -11194,7 +12829,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ExerciseOut"
+                  "$ref": "#/components/schemas/trainsync__modules__training__schemas__ExerciseOut"
                 }
               }
             },
@@ -11278,7 +12913,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ExerciseOut"
+                  "$ref": "#/components/schemas/trainsync__modules__training__schemas__ExerciseOut"
                 }
               }
             },

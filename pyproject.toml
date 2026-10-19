@@ -116,8 +116,10 @@ type = "layers"
 layers = [
     "trainsync.modules.notifications",
     "trainsync.modules.chat",
+    # Statistics read check-ins, nutrition rules and each user's settings (ADR 0038).
+    "trainsync.modules.stats",
     "trainsync.modules.admin | trainsync.modules.users",
-    "trainsync.modules.coach | trainsync.modules.checkin | trainsync.modules.nutrition | trainsync.modules.stats | trainsync.modules.sync",
+    "trainsync.modules.coach | trainsync.modules.checkin | trainsync.modules.nutrition | trainsync.modules.sync",
     "trainsync.modules.training",
     "trainsync.modules.activities",
     "trainsync.modules.strava",

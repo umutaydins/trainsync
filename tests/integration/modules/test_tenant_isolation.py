@@ -278,6 +278,28 @@ async def test_lists_never_show_another_user_s_rows(
             await as_bob.get("/v1/stats/summary", params={"from": "2026-01-01", "to": DAY})
         )
         assert stats["totals"]["count"] == 0
+        await _nothing_of_alice_in_the_stats(as_bob)
+
+
+async def _nothing_of_alice_in_the_stats(as_bob: httpx.AsyncClient) -> None:
+    """P8.10: every /v1/stats view of B is empty, whatever period or filter B asks for."""
+    summary = await _ok(await as_bob.get("/v1/stats/summary", params={"period": "all"}))
+    assert summary["endurance"]["totals"]["count"]["value"] == 0
+    assert summary["strength"]["sessions"]["value"] == 0
+    assert summary["strength"]["by_exercise"] == []
+    assert summary["strength"]["adherence"] is None
+    assert summary["nutrition"]["logged_days"]["value"] == 0
+    assert summary["body"]["first_kg"] is None
+    assert summary["consistency"]["active_days"]["value"] == 0
+    for metric in ("sessions", "tonnage_kg", "distance_m", "kcal", "weight_kg"):
+        series = await _ok(
+            await as_bob.get("/v1/stats/series", params={"metric": metric, "period": "year"})
+        )
+        assert {p["value"] for p in series["points"]} <= {0, None}, metric
+    heatmap = await _ok(await as_bob.get("/v1/stats/heatmap", params={"year": 2026}))
+    assert {(d["sessions"], d["checkin"]) for d in heatmap["days"]} == {(0, None)}
+    prs = await _ok(await as_bob.get("/v1/stats/prs"))
+    assert prs["records"] == []
 
 
 async def test_the_same_client_ids_and_days_are_independent_per_user(

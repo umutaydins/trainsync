@@ -36,7 +36,7 @@ from trainsync.modules.coach.packs import (
     NeutralKey,
     messages_for,
 )
-from trainsync.modules.stats.router import StatsSummary, TotalsOut, WeeklyStats
+from trainsync.modules.stats.totals import ActivitySummary, TotalsOut, WeeklyStats
 from trainsync.modules.sync.router import SyncStatusOut
 
 FIXTURE: dict[str, Any] = json.loads(
@@ -70,8 +70,8 @@ BLOCKLIST_TR = re.compile(
 )
 
 
-def summary(name: str, **totals: int) -> StatsSummary:
-    base = StatsSummary.model_validate(FIXTURE[name])
+def summary(name: str, **totals: int) -> ActivitySummary:
+    base = ActivitySummary.model_validate(FIXTURE[name])
     if not totals:
         return base
     return base.model_copy(update={"totals": base.totals.model_copy(update=totals)})

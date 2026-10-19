@@ -10,6 +10,7 @@ from trainsync.modules.chat import models as chat
 from trainsync.modules.checkin import models as checkin
 from trainsync.modules.notifications import models as notifications
 from trainsync.modules.nutrition import models as nutrition
+from trainsync.modules.stats import models as stats
 from trainsync.modules.strava import models as strava
 from trainsync.modules.sync import models as sync
 from trainsync.modules.training import models as training
@@ -22,6 +23,7 @@ MODEL_MODULES = (
     checkin,
     notifications,
     nutrition,
+    stats,
     strava,
     sync,
     training,

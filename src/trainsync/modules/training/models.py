@@ -218,6 +218,7 @@ class WorkoutSet(Base):
         CheckConstraint("rest_seconds IS NULL OR rest_seconds >= 0", name="rest_seconds"),
         Index("ix_workout_sets_workout_id", "workout_id", "exercise_id", "set_index"),
         Index("ix_workout_sets_exercise_completed_at", "user_id", "exercise_id", "completed_at"),
+        Index("ix_workout_sets_user_completed_at", "user_id", "completed_at"),
         UniqueConstraint("user_id", "client_id", name="uq_workout_sets_user_client_id"),
     )
 

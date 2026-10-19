@@ -20,7 +20,7 @@ from trainsync.modules.chat.router import ChatOwner, LinkIn
 from trainsync.modules.checkin.router import CheckinIn, CheckinOut, CheckinSummary
 from trainsync.modules.coach.mode import CURRENT_USER
 from trainsync.modules.nutrition.router import DaySummary, FoodList, FoodLookup, LogIn, LogOut
-from trainsync.modules.stats.router import StatsSummary, WeeklyStats
+from trainsync.modules.stats.totals import ActivitySummary, WeeklyStats
 from trainsync.modules.sync.router import SyncStatusOut
 from trainsync.modules.training.routes.exercises import ExerciseList
 from trainsync.modules.training.routes.next_day import NextDay
@@ -53,9 +53,11 @@ class ReadApi:
 
     # ---------------------------------------------------------------- activities and stats
 
-    async def summary(self, start: date, end: date, sport_type: str | None = None) -> StatsSummary:
+    async def summary(
+        self, start: date, end: date, sport_type: str | None = None
+    ) -> ActivitySummary:
         params = _params(start=start, end=end, sport_type=sport_type)
-        return await self._get("/v1/stats/summary", params, StatsSummary)
+        return await self._get("/v1/stats/summary", params, ActivitySummary)
 
     async def weekly(self, start: date, end: date, sport_type: str | None = None) -> WeeklyStats:
         params = _params(start=start, end=end, sport_type=sport_type)

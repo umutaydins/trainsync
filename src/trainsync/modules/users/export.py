@@ -2,7 +2,7 @@
 
 Driven by the metadata, so a new user-owned table is exported without touching this file:
 every table with a `user_id` column, minus secrets (token and password hashes, encrypted
-tokens) and the tables that only hold them.
+tokens), the tables that only hold them and internal bookkeeping (the statistics cache version).
 """
 
 import uuid
@@ -19,6 +19,7 @@ SECRET_COLUMNS = frozenset(
     {"password_hash", "token_hash", "code_hash", "access_token_enc", "refresh_token_enc"}
 )
 SECRET_TABLES = frozenset({"oauth_tokens", "password_resets"})
+INTERNAL_TABLES = frozenset({"user_data_versions"})
 EXPORT_VERSION = 1
 
 
@@ -36,7 +37,7 @@ def owned_tables() -> list[Table]:
     return [
         table
         for table in Base.metadata.sorted_tables
-        if "user_id" in table.c and table.name not in SECRET_TABLES
+        if "user_id" in table.c and table.name not in SECRET_TABLES | INTERNAL_TABLES
     ]
 
 

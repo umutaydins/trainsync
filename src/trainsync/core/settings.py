@@ -335,7 +335,18 @@ class Settings(BaseSettings):
     # Named in the calm reply to distress talk (ADR 0032): digits, optionally a leading +.
     emergency_number: str = Field(default=DEFAULT_EMERGENCY_NUMBER, pattern=r"^\+?[0-9]{2,15}$")
 
-    @field_validator("coach_messages_enabled", mode="before")
+    # ---- Progress statistics (P8.10, P8.11, ADR 0038)
+    # Windows at least this long are cached in Redis, keyed by the user's data version.
+    stats_cache_min_days: int = Field(default=180, ge=1, le=100000)
+    stats_cache_ttl_s: int = Field(default=86400, ge=60, le=30 * 86400)
+    # e1RM trend and PRs use sets of at most this many reps (Epley drifts above ~10).
+    stats_e1rm_max_reps: int = Field(default=10, ge=1, le=30)
+    # Weekly (Monday) and monthly (1st) digests; empty = on when TELEGRAM_BOT_TOKEN is set.
+    stats_digest_enabled: bool | None = None
+    # Local time of the digests (each user's zone; quiet hours postpone them).
+    stats_digest_time: time = time(9, 0)
+
+    @field_validator("coach_messages_enabled", "stats_digest_enabled", mode="before")
     @classmethod
     def _empty_coach_bool_as_none(cls, value: object) -> object:
         return None if value == "" else value
