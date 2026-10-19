@@ -36,6 +36,21 @@ The owner authorised this phase on 2026-10-19 while Phase 7 still has pending ow
 11. Stats in the bot and digests: `/stats [week|month|3m|6m|year|all]` with praise / roast, the
     Monday and 1st-of-month digests, `STATS_DIGEST_ENABLED` and a per-user switch (P8.11,
     ADR 0038).
+12. Web UI foundation: design tokens in `styles/tokens.css` (dark-first + light, theme cookie),
+    Geist, shadcn-style primitives on Radix / vaul, next-intl with `messages/{en,tr}/<namespace>`,
+    bottom tab bar and sidebar, a service worker for the shell and an offline page, ESLint
+    boundaries for `i18n/` and `styles/` (P8.12, ADR 0039).
+13. Web sign-in, registration (invite / open / closed, `/invite/<code>`), forgot password and reset
+    links, skippable onboarding (zone, language, coach with a preview line, Connect with Strava,
+    Telegram code, nutrition profile), `/privacy` and `/terms` (P8.13, ADR 0039).
+14. Web settings ("Me": profile, password, sessions, coach, digests, Telegram, Strava, export,
+    deletion) and the owner's Admin (invites, users, reset links; not-found for others) (P8.14,
+    ADR 0039).
+15. Web Progress (period switcher, stat cards with changes, charts, year heatmap, PRs) and Today
+    (week, planned workout, food, latest activity, empty states) (P8.15, ADR 0038, ADR 0039).
+16. Web workout (big steppers, one-tap set done, full-screen rest timer, plate sheet), food,
+    activities and sync on the new design, multi-user empty states (P8.16, ADR 0039).
+17. Web UI gate: Playwright e2e, axe on every page, Lighthouse, screenshots (P8.17, ADR 0039).
 
 ## Acceptance criteria
 - With `REGISTRATION_MODE=invite` an account needs an unused, unexpired invite; `open` needs none;
@@ -68,11 +83,24 @@ The owner authorised this phase on 2026-10-19 while Phase 7 still has pending ow
 - `/stats month` answers with the month's numbers and changes in tr and en, in each tone (test).
 - Monday 09:00 local sends last week's digest once per user, in two time zones; quiet hours hold
   it; the 1st sends the monthly one (tests with a fake clock).
-- `make verify`, `make web-verify`, `make prod-check`, `make demo-check`, `make compose-smoke`,
+- Web UI (P8.12–P8.17): every primitive has a unit test (role, keyboard, axe-clean render); no raw
+  colour value outside `tokens.css`; `en` and `tr` messages have the same keys; at 360–430 px no
+  page scrolls sideways and touch targets are at least 44 px (tests).
+- invite → register → onboarding → Today → a workout → sign out → sign in works end to end; the
+  Strava button and attribution use Strava's own assets (e2e).
+- Changing the language switches the UI language on the next render; a user never sees Admin and
+  gets the not-found page on `/admin`; another user's ids give the not-found page (e2e).
+- Switching the Progress period updates every block and the URL; every block has empty, loading
+  and error states (e2e, tests).
+- A workout is logged end to end on a phone viewport; the existing training and nutrition tests
+  stay green (e2e).
+- axe finds nothing on any page in dark and light; Lighthouse (mobile) performance and
+  accessibility are at least 90 on Today, Workout, Food and Progress (measured 91–98 and 100);
+  `SCREENSHOTS_DIR` captures every page at 375 and 1280 px in both themes (`make web-e2e`).
+- `make verify`, `make web-verify`, `make web-e2e`, `make prod-check`, `make demo-check`, `make compose-smoke`,
   `make restore-check-ci` and the fault suite are green; coverage does not drop.
 
 ## Out of scope
 - Email delivery (verification, reset by email): resets are owner-generated links for now.
 - OAuth / social login, 2FA, organisations or shared data between users.
-- New dashboard pages (Phase 8 web UI, P8.12+): this phase keeps the existing pages compiling and
-  adds the BFF and API they need.
+- A full offline mode with cached API data (ADR 0039: the service worker caches the shell only).

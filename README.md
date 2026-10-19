@@ -2,11 +2,16 @@
 
 [![ci](https://github.com/umutaydins/trainsync/actions/workflows/ci.yml/badge.svg)](https://github.com/umutaydins/trainsync/actions/workflows/ci.yml)
 
-A self-hosted backend that keeps a complete, always-fresh copy of my Strava training data in
-PostgreSQL and serves it through my own API.
+A self-hosted training app built around my Strava data. A backend keeps a complete,
+always-fresh copy of every account's Strava activities in PostgreSQL and serves it through a typed
+API; on top of it sit gym training (programs, a phone-first workout screen), food logging and
+progress statistics, a mobile-first web app in Turkish and English, and a Telegram coach.
+It is multi-user and invite-only: every account has its own data, Strava connection, Telegram
+chat and coach settings.
 
 I wanted to run my own analyses on my training history (weekly volume, trends by sport) without
-depending on Strava's UI, its availability, or its rate limits every time I query my data.
+depending on Strava's UI, its availability, or its rate limits every time I query my data, and to
+log the gym and the food next to it in one place.
 
 ## What it does
 - Connects a Strava account via OAuth and backfills the full activity history
@@ -14,8 +19,9 @@ depending on Strava's UI, its availability, or its rate limits every time I quer
 - Runs incremental syncs as a safety net for missed webhooks
 - Serves activities, weekly stats and progress statistics (periods in your time zone compared with
   the period before) through a typed HTTP API
-- A small private web dashboard (Next.js): weekly volume, totals by sport, activity list and
-  detail, sync status and a "Connect Strava" button
+- A mobile-first web app (Next.js 16, installable PWA, Turkish and English, dark and light):
+  Today, Workout, Food, Progress and Me tabs, activities, sync status, onboarding and the owner's
+  admin ([Web app](#web-app))
 - A Telegram bot that answers `/week`, `/last`, `/stats`, `/status` (and, optionally, plain
   questions through Claude), and announces each new activity exactly once
 - Strength training next to the runs: an exercise library, rule-based program generator,
@@ -27,6 +33,23 @@ depending on Strava's UI, its availability, or its rate limits every time I quer
   streaks and adherence on the web
 - Invite-only accounts (Phase 8): email + password, per-user data, Strava connection, Telegram
   chat and coach settings; nobody can read another user's rows
+
+## Screenshots
+From the Playwright run (`make web-e2e`) against the compose stack with fake Strava data.
+
+![Progress, all time: period switcher, volume chart, endurance per sport, consistency heatmap](docs/img/dashboard.png)
+
+| Progress on a phone | Progress, dark theme |
+|---|---|
+| ![Progress at 390 px with the bottom tab bar](docs/img/dashboard-mobile.png) | ![Progress in the dark theme](docs/img/dashboard-dark.png) |
+
+| Workout (plate sheet) | Food | Lifts | Programs |
+|---|---|---|---|
+| ![Workout screen with the plate calculator over the rest timer](docs/img/workout.png) | ![Food day: kcal and macros](docs/img/nutrition.png) | ![Lifts: e1RM per exercise, weekly volume per muscle, records](docs/img/progress.png) | ![Program builder preview](docs/img/programs.png) |
+
+| Activities | Activity detail | Sync |
+|---|---|---|
+| ![Activity list with filters and Load more](docs/img/activities.png) | ![Activity detail](docs/img/activity.png) | ![Sync status: backfill run and the Strava rate budget](docs/img/sync.png) |
 
 ## Live demo
 `https://<project>-git-…vercel.app` (placeholder until the owner fills in the Vercel preview
@@ -60,7 +83,7 @@ flowchart LR
     browser(["Browser"])
     tg[("Telegram")]
     subgraph web["Web process (Next.js)"]
-        pages["dashboard · activities · sync<br/>email login · BFF /api/ts/v1/*"]
+        pages["Today · Workout · Food · Progress · Me<br/>email login · BFF /api/ts/v1/*"]
     end
     subgraph bot["Bot process"]
         cmds["long polling · /link chats to accounts<br/>/week /last /stats /status · questions"]
@@ -104,7 +127,9 @@ cookie. The bot acts as the user a chat is linked to (ADR 0034, ADR 0036).
 Python 3.12 · FastAPI · httpx · PostgreSQL · SQLAlchemy 2 · Alembic · Redis · arq · Prometheus ·
 pytest · testcontainers · Docker Compose · GitHub Actions
 
-Web: Next.js (App Router) · React · TypeScript · Tailwind · Recharts · Vitest · Playwright.
+Web: Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 (design tokens) ·
+Radix primitives (shadcn-style) · vaul · motion · Recharts · next-intl (tr/en) · PWA · Vitest ·
+Playwright + axe.
 Bot: Telegram Bot API over plain httpx · Anthropic SDK (optional questions).
 
 ## Run locally
@@ -154,31 +179,82 @@ read-only demo; it moves to a VPS / Oracle Always Free without code changes
 Runbook: [docs/operations.md](docs/operations.md), including the owner checks that still have to
 be done on the Mac.
 
-## Web dashboard
-A private dashboard in `web/`. Every page and every BFF call needs a session cookie: the user
-signs in with email + password (`/api/auth/login` → `POST /v1/auth/login`), and the API session
-token is sealed in the httpOnly cookie with AES-256-GCM (`DASHBOARD_SESSION_SECRET`). Pages are
-server components that read the API with that token as `Authorization: Bearer`; the few
-client-side calls ("Load more", the sync page refresh) go to the BFF route `/api/ts/v1/*`, which
-forwards only allowlisted method + path pairs (reads, the account under `/v1/me`, owner-only
-`/v1/admin`, plus CSRF-checked JSON writes for training, nutrition and check-ins)
+## Web app
+A mobile-first app in `web/` (P8.12–P8.17,
+[ADR 0039](docs/decisions/0039-web-ui-stack.md)), built for one-handed use in the gym and a
+sidebar layout on the desktop.
+
+- **Screens**: Today (this week, today's workout, the food ring, the latest activity), Workout
+  (program builder, a gym screen with 64 px steppers, one-tap "set done", a full-screen rest
+  timer with a ring and a plate sheet, history, lifts, check-ins), Food (local day, kcal ring and
+  macros, add-food sheet), Progress (period switcher in the URL, stat cards with ▲▼ changes,
+  volume / weight / kcal / sport / muscle / e1RM charts with accessible data tables, a keyboard
+  year heatmap, PRs), Me (profile, security and sessions, coach and reminders, Strava and Telegram
+  connections, export and account deletion), Activities and Sync, plus the owner-only Admin
+  (invites, accounts, reset links), which is not-found for everyone else.
+- **Getting in**: sign-in, registration for the API's mode (invite / open / closed; `/invite/<code>`
+  and `/register?invite=` prefill the code), owner reset links, a "forgot password" page that
+  explains them, and a skippable onboarding (time zone, language, coach voice with a live
+  preview line, the official "Connect with Strava" button, a Telegram code, the nutrition
+  profile). `/privacy` and `/terms` are public.
+- **Design system**: Tailwind CSS v4 with every colour, radius, spacing, type size, shadow and
+  motion duration as a token in `web/src/styles/tokens.css` (dark-first with a full light theme,
+  one volt accent); shadcn-style primitives on Radix and vaul in `web/src/components/ui/`;
+  `motion` for transitions and count-ups (all respect `prefers-reduced-motion`); Recharts themed
+  through the tokens; Geist Sans / Mono self-hosted; `lucide-react` icons.
+- **Language and time zone**: next-intl without locale routes. The user's `lang` setting and time
+  zone are cached by the BFF in `lang` / `tz` cookies, so every page renders and formats dates and
+  numbers in the user's language and zone (else the browser's `Accept-Language`, else English and
+  UTC). Messages live in `web/src/i18n/messages/{en,tr}/<namespace>.json`, one file per feature; a
+  test keeps the two languages' keys equal. The theme (`system` / `dark` / `light`) is a `theme`
+  cookie, so the server renders it without a flash.
+- **PWA**: manifest and icons, plus a service worker that caches only the app shell and an offline
+  page (versioned per build); API responses and pages with data are never cached.
+
+**Access and the BFF.** Every page and every BFF call needs a session cookie: the user signs in
+with email + password (`/api/auth/login` → `POST /v1/auth/login`), and the API session token is
+sealed in the httpOnly cookie with AES-256-GCM (`DASHBOARD_SESSION_SECRET`). Pages are server
+components that read the API with that token as `Authorization: Bearer`; client-side calls go to
+the BFF route `/api/ts/v1/*`, which forwards only allowlisted method + path pairs (reads, the
+account under `/v1/me`, owner-only `/v1/admin`, plus CSRF-checked JSON writes for training,
+nutrition, check-ins and the account)
 ([ADR 0011](docs/decisions/0011-server-side-bff.md), [ADR 0034](docs/decisions/0034-accounts-and-opaque-sessions.md)).
-Own route handlers: `/api/auth/{login,logout,register,registration,reset}`, `/api/strava/connect`
-and `/api/account` (delete). A 401 from the API clears the cookie and sends the browser to
-`/login`. `make web-verify` builds with canary
-secrets and fails if any of them shows up in a browser-served file.
+Own route handlers: `/api/auth/{login,logout,register,registration,reset}`, `/api/strava/connect`,
+`/api/account` (delete) and `/api/account/export`. A 401 from the API clears the cookie and sends
+the browser to `/login`.
 
-The screenshots below come from the Playwright run (`make web-e2e`) against the compose stack
-with fake Strava data.
+**Environment** (server-side only, nothing is exposed to the browser; `web/src/lib/env.ts`):
 
-![Dashboard: KPI tiles, weekly volume chart, totals by sport](docs/img/dashboard.png)
-
-| Activities | Activity detail | Sync |
+| Variable | Default | Purpose |
 |---|---|---|
-| ![Activity list with filters and Load more](docs/img/activities.png) | ![Activity detail](docs/img/activity.png) | ![Sync status and Connect Strava](docs/img/sync.png) |
+| `TRAINSYNC_API_URL` | `http://localhost:8000` | Where the web server reaches the API (in compose: `http://api:8000`) |
+| `WEB_PUBLIC_URL` | `http://localhost:3000` | Browser-facing URL of the app: the base of the OAuth `return_to` (`/sync`, `/onboarding`, `/me/connections`) and the only Origin the BFF accepts for writes (plus the deployment's own Vercel URLs) |
+| `DASHBOARD_SESSION_SECRET` | required | Encrypts the session cookie that carries the API session token (AES-256-GCM); at least 32 characters |
+| `DASHBOARD_COOKIE_SECURE` | `true` in production | Cookie `Secure` flag; set `false` only for plain-HTTP setups other than localhost |
+| `OWNER_CONTACT_EMAIL` | `owner@example.com` (a placeholder) | Contact address on `/privacy` and `/terms` |
+| `UPSTREAM_TIMEOUT_MS` | `8000` | Timeout of the server-side calls to the API (`web/src/lib/upstream.ts`) |
 
-Dark mode and phone width: [dashboard-dark.png](docs/img/dashboard-dark.png),
-[dashboard-mobile.png](docs/img/dashboard-mobile.png).
+On the API side, `OAUTH_RETURN_TO_ALLOWLIST` must list `<WEB_PUBLIC_URL>/sync`,
+`<WEB_PUBLIC_URL>/onboarding` and `<WEB_PUBLIC_URL>/me/connections`, else "Connect with Strava"
+ends on the API's JSON answer instead of the app.
+
+**Run and test it**:
+```
+docker compose up -d --build --wait            # the whole stack, web on http://localhost:3000
+cd web && pnpm install && pnpm dev             # or the web alone against a running API
+make web-verify                                # eslint (boundaries) + tsc + Vitest + build + bundle secret scan
+make web-e2e                                   # compose stack + Playwright, then tear down
+SCREENSHOTS_DIR=~/trainsync-screens make web-e2e   # also every page at 375/1280 px, light and dark
+```
+The Playwright specs in `web/e2e/`: `accounts` (invite → register → onboarding → Today → a
+workout → sign out → sign in), `dashboard` (Connect Strava, backfill, Today and Progress equal the
+API, activities, sync), `training` (program → workout with the rest timer → history; foods →
+today's kcal), `progress` (W → M → Y → All moves every block and the URL), `settings` (language,
+theme, coach voice, signing out another device), `isolation` (another user's ids give the
+not-found page; Admin only for the owner), `a11y` (axe and no sideways scroll on every page,
+dark and light) and `screenshots` (only with `SCREENSHOTS_DIR`). `dashboard` and `training` also
+write the README images in `docs/img/`. Lighthouse (mobile) on Today, Workout, Food and Progress
+measured 91–98 performance and 100 accessibility (ADR 0039).
 
 ## Training and nutrition (Phase 6)
 Gym training and food logging next to the Strava data (per user since Phase 8), in the API (`/v1/training`,
@@ -204,9 +280,8 @@ Gym training and food logging next to the Strava data (per user since Phase 8), 
 - **Check-ins** (`/training/checkins`): calendar of daily reports from the bot, streak and
   adherence ([ADR 0020](docs/decisions/0020-daily-check-in.md)).
 
-| Programs | Workout (plate sheet) | Progress | Nutrition |
-|---|---|---|---|
-| ![Program builder](docs/img/programs.png) | ![Workout screen with the plate calculator](docs/img/workout.png) | ![Progress charts](docs/img/progress.png) | ![Nutrition day](docs/img/nutrition.png) |
+Screenshots of these screens: [Screenshots](#screenshots). Since P8.16 they run on the new web
+UI ([Web app](#web-app)).
 
 ## Telegram bot
 A separate process (`python -m trainsync.entrypoints.bot`, compose service `bot`) that long-polls Telegram
@@ -292,16 +367,12 @@ channel (WhatsApp) can be added without touching the job.
 
 ## Configuration added in Phase 5
 All variables are listed with comments in [.env.example](.env.example). Everything here is
-optional for the API and the worker; the web app needs one required variable,
-`DASHBOARD_SESSION_SECRET`.
+optional for the API and the worker. The web app's variables (one required,
+`DASHBOARD_SESSION_SECRET`) are in [Web app](#web-app).
 
 | Variable | Used by | Default | Purpose |
 |---|---|---|---|
-| `OAUTH_RETURN_TO_ALLOWLIST` | API | empty | Browser URLs the OAuth callback may redirect back to (exact match, comma-separated). Empty = the callback always answers JSON ([ADR 0015](docs/decisions/0015-signed-oauth-return-to.md)) |
-| `TRAINSYNC_API_URL` | web | `http://localhost:8000` | Where the web server reaches the API |
-| `WEB_PUBLIC_URL` | web | `http://localhost:3000` | Browser-facing dashboard URL (the OAuth `return_to`; the only Origin the BFF accepts for writes) |
-| `DASHBOARD_SESSION_SECRET` | web | required | Encrypts the session cookie that carries the API session token (AES-256-GCM); at least 32 characters |
-| `DASHBOARD_COOKIE_SECURE` | web | `true` in production | Session cookie `Secure` flag; set `false` only for plain-HTTP setups other than localhost |
+| `OAUTH_RETURN_TO_ALLOWLIST` | API | empty | Browser URLs the OAuth callback may redirect back to (exact match, comma-separated): the web's `/sync`, `/onboarding` and `/me/connections`. Empty = the callback always answers JSON ([ADR 0015](docs/decisions/0015-signed-oauth-return-to.md)) |
 | `TELEGRAM_BOT_TOKEN` | bot, worker | empty | From @BotFather. Empty = the bot only serves metrics and no notifications are sent |
 | `TELEGRAM_ALLOWED_CHAT_IDS` | worker, migrations | empty | Since Phase 8 only the owner's bootstrap: migration 0017 links the first one (if no notify chat) to the owner; stack-alert fallback |
 | `TELEGRAM_NOTIFY_CHAT_ID` | worker, migrations | first allowlisted chat | The owner's bootstrap chat (linked by migration 0017) and stack-alert chat; notifications go to each user's linked chat |
@@ -432,8 +503,8 @@ curl -s http://localhost:8000/metrics | grep strava_
 | `make test-fault` | one fault-injection test per row of the [failure-modes table](docs/architecture.md#failure-modes-this-design-handles) |
 | `make audit` | `pip-audit` over every locked dependency (hash-pinned) |
 | `make compose-smoke` | builds the images, starts the whole stack (including `web` and `bot`) with healthchecks, runs the OAuth flow, checks the web login gate, the BFF and that no response carries the API key, tears down |
-| `make web-verify` | web: locked install, eslint, `tsc`, Vitest (BFF, access gate, components, axe), `next build` with canary secrets, then a scan that fails if any secret is in a browser-served file |
-| `make web-e2e` | compose stack + Playwright: log in, Connect Strava, backfill, dashboard numbers equal `/v1/stats/summary` and `/v1/stats/weekly`, activity list and detail, sync page, no API key in BFF responses or HTML; writes the screenshots in `docs/img/` |
+| `make web-verify` | web: locked install, eslint (incl. the layer boundaries), `tsc`, Vitest (BFF, access gate, every UI primitive with role, keyboard and axe, pages, tr/en message key parity, no raw colours outside the tokens), `next build` with canary secrets, then a scan that fails if any secret is in a browser-served file |
+| `make web-e2e` | compose stack + Playwright ([specs](#web-app)): invite → register → onboarding → a workout → sign out and in, Connect Strava and backfill, Today and Progress equal the API, period switching, settings, tenant isolation, Admin hidden for users, axe on every page in both themes, no API key in BFF responses or HTML; writes the screenshots in `docs/img/` (and every page into `SCREENSHOTS_DIR` when set) |
 
 CI (`.github/workflows/ci.yml`) runs all of these in the `verify`, `audit`, `fault`, `compose`,
 `web` and `e2e` jobs, plus a docker job that builds the image and checks
@@ -508,7 +579,7 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 | [0018](docs/decisions/0018-rule-based-programs.md) | Rule-based programs; LLM optional on top |
 | [0019](docs/decisions/0019-energy-balance-estimates-and-open-food-facts.md) | Energy-balance estimates and the Open Food Facts lookup |
 | [0020](docs/decisions/0020-daily-check-in.md) | Daily check-in: streaks, adherence, scheduler bookkeeping, conversation state |
-| [0021](docs/decisions/0021-web-workout-screen-and-pwa.md) | Web workout screen: timestamp timers, retry queue, PWA without a service worker |
+| [0021](docs/decisions/0021-web-workout-screen-and-pwa.md) | Web workout screen: timestamp timers, retry queue, PWA without a service worker (a shell-only one since ADR 0039) |
 | [0022](docs/decisions/0022-public-gateway-with-a-route-allowlist.md) | Production compose with a public-route gateway (Caddy, path allowlist) |
 | [0023](docs/decisions/0023-macos-launchagent-and-control-script.md) | The Mac as a server: a login LaunchAgent and one control script |
 | [0024](docs/decisions/0024-encrypted-pg-dump-backups-with-a-restore-check.md) | Nightly encrypted pg_dump to iCloud Drive, GFS retention, scripted restore check |
@@ -526,6 +597,7 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 | [0036](docs/decisions/0036-telegram-per-user-and-acting-as.md) | One bot for everyone: chat linking, acting as a user, per-user settings and schedules |
 | [0037](docs/decisions/0037-strava-per-user-fair-sync-deletion-export.md) | Strava per user, fair sync, account deletion and data export |
 | [0038](docs/decisions/0038-progress-stats-aggregation.md) | Progress statistics: local-day SQL aggregation, period rules, trigger-versioned cache |
+| [0039](docs/decisions/0039-web-ui-stack.md) | Web UI stack: Tailwind v4 tokens, shadcn-style primitives, next-intl from the user's settings, mobile-first shell, shell-only service worker |
 
 ## Status
 - [x] Phase 1 — Foundation, OAuth, Strava client
@@ -535,5 +607,5 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 - [x] Phase 5 — Web dashboard and Telegram bot
 - [x] Phase 6 — Strength training, programs and nutrition
 - [ ] Phase 7 — Deploy (Mac backend + Vercel web) — built and tested; waiting for the owner checks in [docs/operations.md](docs/operations.md#owner-checks) ([evidence](docs/phases/phase-7-deploy.md#evidence))
-- [x] Phase 8 — Multi-user (invite-only accounts, per-user data, Strava and Telegram) and progress statistics (P8.10 API, P8.11 bot `/stats` and weekly / monthly digests) — deployed together with Phase 7 once its owner checks pass; dashboard pages for sign-up, reset and settings follow in the web UI tasks
+- [x] Phase 8 — Multi-user (invite-only accounts, per-user data, Strava and Telegram) and progress statistics (P8.10 API, P8.11 bot `/stats` and weekly / monthly digests), and the new web UI (P8.12–P8.17: design tokens and primitives, tr/en, sign-up, onboarding, settings, admin, Today, Progress, Workout, Food, e2e + axe + Lighthouse gate, [ADR 0039](docs/decisions/0039-web-ui-stack.md)) — deployed together with Phase 7 once its owner checks pass
 - [ ] Phase 9 — Body composition, Apple Health and adaptive programs

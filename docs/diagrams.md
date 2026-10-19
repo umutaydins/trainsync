@@ -36,6 +36,8 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [31. Sequence — linking a Telegram chat with /link](#31-sequence--linking-a-telegram-chat-with-link-p84-adr-0036)
 - [32. Sequence — progress summary with the versioned cache](#32-sequence--progress-summary-with-the-versioned-cache-p810-adr-0038)
 - [33. Sequence — Monday progress digest](#33-sequence--monday-progress-digest-p811-adr-0038)
+- [34. Layers — web app and allowed imports](#34-layers--web-app-and-allowed-imports-p812-adr-0039)
+- [35. Sequence — first render in the user's language](#35-sequence--first-render-in-the-users-language-p812-adr-0039)
 
 ---
 
@@ -54,10 +56,14 @@ flowchart LR
         direction LR
         subgraph web["Web process (Next.js, web/)"]
             gate["proxy.ts<br/>session-cookie gate → /login"]
-            authh["route handlers<br/>/api/auth/* · /api/account · /api/strava/connect<br/>login, register, reset, delete"]
-            pages["server components<br/>dashboard · activities · sync<br/>training · nutrition (PWA)"]
+            authh["route handlers<br/>/api/auth/* · /api/account · /api/strava/connect<br/>login, register, reset, delete, export"]
+            pages["app/ routes (server components)<br/>Today · Workout · Food · Progress · Me<br/>activities · sync · onboarding · admin"]
+            features["features/&lt;domain&gt;<br/>components · loaders · client calls<br/>components/ui primitives · tokens"]
+            intl["i18n/request.ts (next-intl)<br/>lang · tz cookies → locale, zone,<br/>messages/{en,tr}/&lt;namespace&gt;.json"]
+            prefs["lib/preferences.ts<br/>sets lang · tz cookies from<br/>/v1/me/settings · /v1/me"]
             bff["BFF route /api/ts/v1/*<br/>method + path allowlist, CSRF on writes"]
             upstream["lib/upstream.ts<br/>unseals the cookie, adds Bearer token"]
+            sw["sw.js service worker<br/>shell + /offline only"]
         end
 
         subgraph bot["Bot process (python -m trainsync.entrypoints.bot)"]
@@ -129,8 +135,15 @@ flowchart LR
     gate --> bff
     browser -- "email + password" --> authh
     authh -- "POST /v1/auth/login · register · reset" --> accounts
-    pages --> upstream
+    pages --> features
+    pages --> intl
+    features --> upstream
+    features -- "client calls" --> bff
     bff --> upstream
+    authh --> prefs
+    bff --> prefs
+    prefs --> upstream
+    browser -. "offline navigation" .-> sw
     upstream -- "Authorization: Bearer" --> principal
 
     tg_user -. "messages" .-> telegram
@@ -157,6 +170,8 @@ flowchart LR
 ```
 
 The web app and the bot are clients of the read API: neither touches PostgreSQL (ADRs 0011, 0012).
+In the web, routes compose features; the language and time zone of every render come from the
+`lang` / `tz` cookies the BFF sets from the user's settings (ADR 0039, diagrams 34 and 35).
 The web holds no API key: each browser's API session token travels sealed in its httpOnly cookie
 (ADR 0034). The bot acts as the user its chat is linked to, with a service key the public gateway
 cannot impersonate because it strips `X-Acting-User` (ADR 0036). New-activity notifications run in the worker with its own
@@ -1854,4 +1869,76 @@ sequenceDiagram
             end
         end
     end
+```
+
+## 34. Layers — web app and allowed imports (P8.12, ADR 0039)
+
+ESLint (`web/eslint.config.mjs`) enforces it in `make web-verify`, like import-linter does for the
+backend (ADR 0033). `app/` routes stay thin; `i18n/` and `styles/` are leaves.
+
+```mermaid
+flowchart TB
+  app["app/ — routes, layouts, route handlers (BFF)"]
+  features["features/&lt;domain&gt; — components, loaders, client calls, hooks<br/>activities · admin · auth · checkins · legal · nutrition · onboarding<br/>progress · settings · shell · sync · today · training"]
+  subgraph leaves["shared layers"]
+    direction LR
+    lib["lib/ — upstream, api, session, csrf,<br/>preferences, theme, format"]
+    ui["components/ui/ — Radix / vaul primitives"]
+    i18n["i18n/ — config, request,<br/>messages/{en,tr}/&lt;namespace&gt;.json"]
+  end
+  styles["styles/ — tokens.css, globals.css"]
+  app --> features
+  app --> lib & ui & i18n
+  features --> lib & ui & i18n
+  lib --> i18n
+  ui --> lib
+  ui -. "token utilities" .-> styles
+```
+
+`lib/` may not import `app`, `features` or `components`; `components/ui/` may not import `app` or
+`features`; `features/` may not import `app`; `i18n/` imports nothing from the app.
+
+## 35. Sequence — first render in the user's language (P8.12, ADR 0039)
+
+The language and time zone are user settings, not part of the URL. The BFF caches them in two
+cookies so no render has to ask the API first; a change in Me or onboarding goes through the BFF,
+which refreshes the cookie from the API's answer.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Browser
+    participant L as /api/auth/login (BFF)
+    participant API as trainsync API
+    participant P as proxy.ts
+    participant R as i18n/request.ts (next-intl)
+    participant RSC as Page (server components)
+
+    U->>L: POST {email, password, next}
+    L->>API: POST /v1/auth/login
+    API-->>L: {token, expires_at, user}
+    par lib/preferences.ts with the new token
+        L->>API: GET /v1/me/settings
+        API-->>L: {lang: "tr", ...}
+    and
+        L->>API: GET /v1/me
+        API-->>L: {timezone: "Europe/Istanbul", ...}
+    end
+    L-->>U: 303 → next, Set-Cookie ts_session (sealed), lang=tr, tz=Europe/Istanbul
+    U->>P: GET next (cookies)
+    P->>RSC: session opens → render
+    RSC->>R: getRequestConfig()
+    alt lang cookie is en or tr
+        R-->>RSC: locale from the cookie
+    else no or unknown cookie
+        R-->>RSC: first supported Accept-Language, else en
+    end
+    R-->>RSC: timeZone from tz (else UTC), messages/<locale>/*.json
+    RSC-->>U: HTML in Turkish, dates and numbers in Europe/Istanbul, theme from the theme cookie
+
+    Note over U,API: Later: the user switches the language in Me
+    U->>P: PATCH /api/ts/v1/me/settings {lang: "en"} (CSRF)
+    P->>API: via BFF + Bearer token
+    API-->>U: settings JSON, the BFF sets lang=en from it
+    U->>RSC: router refresh → next render in English
 ```

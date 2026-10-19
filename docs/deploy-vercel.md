@@ -25,7 +25,15 @@ preview  ──> https://<project>-<hash>-<team>.vercel.app ──────�
 | `TRAINSYNC_API_URL` | `https://<mac>.<tailnet>.ts.net` | `https://<mac>.<tailnet>.ts.net:8443` (demo backend) |
 | `WEB_PUBLIC_URL` | `https://<project>.vercel.app` | `https://<project>.vercel.app` (previews also accept their own URL, below) |
 | `DASHBOARD_SESSION_SECRET` | 32+ random characters | a different 32+ random string |
-| `UPSTREAM_TIMEOUT_MS` | optional, default 8000 | optional |
+| `OWNER_CONTACT_EMAIL` | your contact address (shown on `/privacy` and `/terms`) | same; unset = the placeholder `owner@example.com` |
+| `DASHBOARD_COOKIE_SECURE` | leave unset (`true` in a production build) | leave unset |
+| `UPSTREAM_TIMEOUT_MS` | optional, default 8000 (read by `lib/upstream.ts`) | optional |
+
+These are all the variables the web reads (`web/src/lib/env.ts`, `lib/session.ts`,
+`lib/upstream.ts`), all server-side. There is no `NEXT_PUBLIC_*` setting: the time zone and
+language come from each user's settings (ADR 0039), so a `NEXT_PUBLIC_TZ` left over from Phase 7
+can be deleted. The service worker's shell cache is versioned by the commit
+(`VERCEL_GIT_COMMIT_SHA`, set by Vercel; `web/next.config.ts`), so nothing to set for it.
 
 Mark the session secret as **Sensitive**. Never point Preview at the production backend: a
 preview build of any branch would then sign real users in. People sign in with their own email and
@@ -40,9 +48,13 @@ is refused (`web/tests/origins.test.ts`).
 
 **Backend side** (`.env.prod` on the Mac, then `scripts/mac-prod.sh up`):
 ```
-OAUTH_RETURN_TO_ALLOWLIST=https://<project>.vercel.app/sync
+OAUTH_RETURN_TO_ALLOWLIST=https://<project>.vercel.app/sync,https://<project>.vercel.app/onboarding,https://<project>.vercel.app/me/connections
 DASHBOARD_PUBLIC_URL=https://<project>.vercel.app
 ```
+"Connect with Strava" starts on three pages (Sync, the onboarding step and Me → Connections) and
+returns to the one it started on, as `<WEB_PUBLIC_URL><path>`. The allowlist is an exact match, so
+all three must be in it; a missing one ends the OAuth flow on the API's JSON answer instead of the
+web app.
 
 ## 3. Protect previews
 Settings → Deployment Protection → **Vercel Authentication** for Preview deployments (Standard
@@ -60,7 +72,8 @@ rather than a per-commit preview URL. This is the owner's call (owner check 29 i
 ## 4. Deploy and check
 Deploy `main`. Then (owner checks in operations.md):
 - Production: sign in with your account (`docs/operations.md` → Accounts), the dashboard shows
-  your data, "Connect Strava" goes to Strava, the Mac's callback and back to `/sync`.
+  your data, "Connect with Strava" goes to Strava, the Mac's callback and back to the page it
+  started on (`/sync`, `/onboarding` or `/me/connections`).
 - A preview (any PR): sign in with `demo@trainsync.invalid` / `trainsync-demo`, it shows demo
   data.
 - Mutations work (log a set in /training) — that is the CSRF origin check passing on Vercel.

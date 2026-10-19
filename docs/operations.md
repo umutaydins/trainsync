@@ -385,9 +385,10 @@ scripts/mac-prod.sh compose exec api python -m trainsync.entrypoints.cli invite 
 ```
 
 Links (invite, reset) are built on `DASHBOARD_PUBLIC_URL` (`/register?invite=…`,
-`/reset-password?token=…`), so set it in `.env.prod`. The dashboard pages for them come with the
-Phase 8 web UI tasks; until then the BFF routes `POST /api/auth/register` and `POST /api/auth/reset`
-(or the API's `POST /v1/auth/register` and `POST /v1/auth/reset`) take the code or token.
+`/reset-password?token=…`), so set it in `.env.prod`. The web app opens them directly (P8.13):
+`/register?invite=…` (or `/invite/<code>`) prefills the code and leads into onboarding,
+`/reset-password?token=…` sets a new password. The owner can also create invites and reset links
+in the web's Admin page (P8.14), which only the owner sees.
 
 ### Upgrading a single-user install (once, before the first Phase 8 deploy)
 
@@ -401,8 +402,10 @@ Phase 8 web UI tasks; until then the BFF routes `POST /api/auth/register` and `P
      `REGISTRATION_MODE` (default `invite`).
    - Keep `TELEGRAM_NOTIFY_CHAT_ID` / `TELEGRAM_ALLOWED_CHAT_IDS` as they are: migration 0017
      links that chat to the owner (Telegram linking below).
-2. In Vercel: remove `TRAINSYNC_API_KEY`, `TRAINSYNC_PUBLIC_API_URL` and `DASHBOARD_PASSWORD`
-   ([deploy-vercel.md](deploy-vercel.md)); the web deploy goes out with the backend deploy.
+2. In Vercel: remove `TRAINSYNC_API_KEY`, `TRAINSYNC_PUBLIC_API_URL`, `DASHBOARD_PASSWORD` and
+   `NEXT_PUBLIC_TZ`, add `OWNER_CONTACT_EMAIL` ([deploy-vercel.md](deploy-vercel.md)); in
+   `.env.prod` extend `OAUTH_RETURN_TO_ALLOWLIST` with `<web>/onboarding` and
+   `<web>/me/connections` next to `<web>/sync`. The web deploy goes out with the backend deploy.
 3. `make deploy` (pre-deploy backup, migrations 0015–0017, smoke test).
 4. Set the owner's password (the migration creates the account with an unusable one):
    `scripts/mac-prod.sh compose exec api python -m trainsync.entrypoints.cli owner set-password`.
