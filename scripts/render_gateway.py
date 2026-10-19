@@ -17,6 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 ROUTES = ROOT / "deploy" / "gateway" / "routes.toml"
 CADDYFILE = ROOT / "deploy" / "gateway" / "Caddyfile"
 UPSTREAM = "api:8000"
+# The webhook path with a query string; the access log keeps only the path ($1).
+WEBHOOK_QUERY_RE = "^(/webhooks/strava[^?]*)[?].*$"
 
 
 @dataclass(frozen=True)
@@ -86,6 +88,19 @@ def _route_block(route: Route) -> list[str]:
     return lines
 
 
+def _log_filter(indent: str) -> list[str]:
+    """Strava's subscription handshake puts hub.verify_token (a secret) in the query string of
+    /webhooks/strava: log that path without any query. The API key header never reaches a log
+    either (Caddy redacts only Cookie and Authorization by itself)."""
+    return [
+        f"{indent}format filter {{",
+        f"{indent}\twrap json",
+        f"{indent}\trequest>uri regexp {WEBHOOK_QUERY_RE} $1",
+        f"{indent}\trequest>headers>X-Api-Key delete",
+        f"{indent}}}",
+    ]
+
+
 def render(gateway: Gateway | None = None) -> str:
     gateway = gateway or load()
     lines = [
@@ -100,6 +115,11 @@ def render(gateway: Gateway | None = None) -> str:
         "\t\ttrusted_proxies static private_ranges",
         "\t\tclient_ip_headers X-Forwarded-For",
         "\t}",
+        # Error logs (e.g. a 502 while the api restarts) carry the request too.
+        "\tlog default {",
+        "\t\toutput stdout",
+        *_log_filter("\t\t"),
+        "\t}",
         "}",
         "",
         ":8080 {",
@@ -113,7 +133,7 @@ def render(gateway: Gateway | None = None) -> str:
         "\t}",
         "\tlog {",
         "\t\toutput stdout",
-        "\t\tformat json",
+        *_log_filter("\t\t"),
         "\t}",
         "",
     ]

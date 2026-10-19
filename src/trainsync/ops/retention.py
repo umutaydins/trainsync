@@ -9,6 +9,10 @@ does not wipe out everything older than the gap:
 - monthly: the newest of each of the 6 most recent months that have one;
 - the newest backup overall is always kept.
 
+Pre-deploy backups (label `predeploy…`, written by `make deploy` before migrating) sit outside
+those buckets: the newest `predeploy` (3) of them are always kept, older ones are deleted, and
+they never take the place of a nightly backup in a bucket.
+
 A backup kept by one rule still counts for the others (a Sunday backup can be both the daily
 and the weekly one). Names that do not parse are left alone (never deleted). Backups dated
 after `now` (clock skew, a restored file) are kept and take no bucket.
@@ -25,6 +29,7 @@ NAME_RE = re.compile(
 )
 SUFFIX = ".dump.age"
 COUNTS_SUFFIX = ".counts.json"
+PREDEPLOY = "predeploy"
 
 
 @dataclass(frozen=True)
@@ -32,6 +37,7 @@ class Policy:
     daily: int = 7
     weekly: int = 4
     monthly: int = 6
+    predeploy: int = 3
 
 
 DEFAULT_POLICY = Policy()
@@ -41,6 +47,11 @@ DEFAULT_POLICY = Policy()
 class Backup:
     name: str
     taken_at: datetime
+    label: str | None = None
+
+    @property
+    def predeploy(self) -> bool:
+        return (self.label or "").startswith(PREDEPLOY)
 
 
 @dataclass(frozen=True)
@@ -63,7 +74,7 @@ def parse_name(name: str) -> Backup | None:
         taken_at = datetime.strptime(match["ts"], "%Y%m%d-%H%M%S").replace(tzinfo=UTC)
     except ValueError:  # e.g. month 13: shaped right, not a date
         return None
-    return Backup(name=name, taken_at=taken_at)
+    return Backup(name=name, taken_at=taken_at, label=match["label"])
 
 
 def counts_name(backup: str) -> str:
@@ -98,12 +109,15 @@ def plan(names: Iterable[str], now: datetime, policy: Policy = DEFAULT_POLICY) -
         else:
             parsed.append(backup)
     parsed.sort(key=lambda b: (b.taken_at, b.name), reverse=True)
+    predeploy = [b for b in parsed if b.predeploy]
+    regular = [b for b in parsed if not b.predeploy]
 
     keep = set(future)
-    if parsed:
-        keep.add(parsed[0].name)
-    keep |= _newest_per_bucket(parsed, lambda t: t.date(), policy.daily)
-    keep |= _newest_per_bucket(parsed, lambda t: t.isocalendar()[:2], policy.weekly)
-    keep |= _newest_per_bucket(parsed, lambda t: (t.year, t.month), policy.monthly)
+    keep |= {b.name for b in predeploy[: policy.predeploy]}
+    if regular:
+        keep.add(regular[0].name)
+    keep |= _newest_per_bucket(regular, lambda t: t.date(), policy.daily)
+    keep |= _newest_per_bucket(regular, lambda t: t.isocalendar()[:2], policy.weekly)
+    keep |= _newest_per_bucket(regular, lambda t: (t.year, t.month), policy.monthly)
     delete = [b.name for b in parsed if b.name not in keep]
     return Plan(keep=tuple(sorted(keep)), delete=tuple(sorted(delete)), ignored=tuple(ignored))

@@ -3,6 +3,7 @@
 Names follow docs/architecture.md and docs/diagrams.md, hence the N818 exemptions.
 """
 
+from dataclasses import dataclass
 from datetime import datetime
 
 
@@ -38,12 +39,28 @@ class StravaNotFound(StravaError):  # noqa: N818
     """The requested object does not exist (404)."""
 
 
+@dataclass(frozen=True, slots=True)
+class StravaFieldError:
+    """One entry of the `errors` list in Strava's error body (never carries credentials)."""
+
+    resource: str
+    field: str
+    code: str
+
+    def __str__(self) -> str:
+        return f"resource={self.resource} field={self.field} code={self.code}"
+
+
 class StravaRequestError(StravaError):
     """Strava rejected the request with a non-retryable 4xx."""
 
-    def __init__(self, status_code: int) -> None:
+    def __init__(
+        self, status_code: int, message: str = "", errors: tuple[StravaFieldError, ...] = ()
+    ) -> None:
         super().__init__(f"strava rejected the request with {status_code}")
         self.status_code = status_code
+        self.message = message
+        self.errors = errors
 
 
 class StravaUnavailable(StravaError):  # noqa: N818

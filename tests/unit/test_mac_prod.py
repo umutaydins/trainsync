@@ -307,3 +307,68 @@ def test_start_stack_gives_up_after_the_wait(mac: Mac) -> None:
     assert result.returncode == 1
     assert "did not come up within 20s" in result.stdout
     assert mac.call_lines().count("sleep 5") == 4
+
+
+def _state(mac: Mac, tag: str) -> None:
+    state = mac.home / "Library/Application Support/trainsync/deploy-state"
+    _write(state, f"current_sha={tag}ffff\ncurrent_tag={tag}\nprevious_tag=old000000000\n")
+
+
+def _tags(mac: Mac) -> list[str]:
+    return [line for line in mac.call_lines() if line.startswith("TAG=")]
+
+
+@pytest.mark.parametrize("command", [("status",), ("logs", "api"), ("up",)])
+def test_without_any_tag_the_last_deploy_decides(mac: Mac, command: tuple[str, ...]) -> None:
+    _write(mac.env_file, "TRAINSYNC_TAG=\n")
+    _state(mac, "fee1dead0001")
+    result = mac.run(MAC_PROD, *command)
+    assert result.returncode == 0, result.stderr
+    assert set(_tags(mac)) == {"TAG=fee1dead0001"}
+
+
+def test_without_a_deploy_record_the_running_stack_decides(mac: Mac) -> None:
+    _write(mac.env_file, "GATEWAY_PORT=8080\n")
+    mac.stub(
+        "docker",
+        'echo "TAG=$TRAINSYNC_TAG" >> "$STUB_CALLS"\n'
+        'case "$*" in *"ps --format"*) echo "trainsync:5ca1ab1e0001" ;; esac',
+    )
+    result = mac.run(MAC_PROD, "status")
+    assert result.returncode == 0, result.stderr
+    # The lookup itself runs with a placeholder; the real command with the running tag.
+    assert _tags(mac) == ["TAG=unknown", "TAG=5ca1ab1e0001"]
+
+
+def test_the_shell_tag_wins_and_tag_prints_it(mac: Mac) -> None:
+    _state(mac, "fee1dead0001")
+    assert mac.run(MAC_PROD, "tag", TRAINSYNC_TAG="explicit").stdout == "explicit\n"
+    assert mac.run(MAC_PROD, "tag").stdout == "abc123\n"  # the env file's value
+    _write(mac.env_file, "TRAINSYNC_TAG=\n")
+    assert mac.run(MAC_PROD, "tag").stdout == "fee1dead0001\n"
+
+
+def test_compose_passes_any_command_through(mac: Mac) -> None:
+    result = mac.run(MAC_PROD, "compose", "exec", "redis", "redis-cli", "ttl", "coach:soft")
+    assert result.returncode == 0, result.stderr
+    assert mac.call_lines()[-2].endswith("compose.prod.yml exec redis redis-cli ttl coach:soft")
+
+
+def test_restore_check_resolves_the_tag_itself(mac: Mac) -> None:
+    _write(mac.env_file, "TRAINSYNC_TAG=\n")
+    _state(mac, "fee1dead0001")
+    result = mac.run(ROOT / "scripts" / "restore-check.sh", ENV_FILE=str(mac.env_file))
+    assert result.returncode == 0, result.stderr
+    assert mac.call_lines()[-2].endswith("backup restore-check latest")
+    assert _tags(mac)[-1] == "TAG=fee1dead0001"
+
+
+def test_make_backup_now_resolves_the_tag_itself(mac: Mac) -> None:
+    _write(mac.env_file, "TRAINSYNC_TAG=\n")
+    _state(mac, "fee1dead0001")
+    make = shutil.which("make")
+    assert make is not None
+    result = mac.execute([make, "-s", "-C", str(ROOT), "backup-now", "LABEL=predeploy"])
+    assert result.returncode == 0, result.stderr
+    assert mac.call_lines()[-2].endswith("compose.prod.yml run --rm backup now predeploy")
+    assert _tags(mac)[-1] == "TAG=fee1dead0001"

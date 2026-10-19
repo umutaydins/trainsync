@@ -44,8 +44,11 @@ scripts/mac-prod.sh up
 uv run python scripts/strava-subscription.py view
 ```
 `delete` removes it (e.g. before moving the backend to another host); `create` again afterwards.
-A `400` from `create` means one already exists (`view`, `delete`) or the callback was not
-reachable/verified (check Funnel and `make public-check`).
+`create` accepts Strava's `200` and `201`. On a `4xx` it prints Strava's error body (one
+`resource=… field=… code=…` line per error). `code=already exists`: it then shows the existing
+subscription and its `STRAVA_WEBHOOK_SUBSCRIPTION_ID=` line (exit 0 when that one already points
+at this callback; otherwise `delete` it and `create` again). Any other `400` usually means the
+callback was not reachable or not verified (check Funnel and `make public-check`).
 
 ## 4. Check a real webhook
 Edit the title of a recent activity on strava.com. Within a minute it shows up in

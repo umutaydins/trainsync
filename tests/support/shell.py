@@ -85,6 +85,10 @@ class Mac:
         self.stubs[name] = body
 
     def run(self, script: Path, *args: str, **env: str) -> subprocess.CompletedProcess[str]:
+        return self.execute([BASH, str(script), *args], **env)
+
+    def execute(self, argv: list[str], **env: str) -> subprocess.CompletedProcess[str]:
+        """Any program (e.g. `make`) with the stubs on PATH and the fake HOME."""
         behavior = self.tmp / "behavior"
         behavior.mkdir(exist_ok=True)
         for name, body in self.stubs.items():
@@ -99,7 +103,7 @@ class Mac:
             **env,
         }
         return subprocess.run(  # noqa: S603  (our own scripts, fixed args)
-            [BASH, str(script), *args],
+            argv,
             env=full_env,
             capture_output=True,
             text=True,

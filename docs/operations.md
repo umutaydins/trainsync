@@ -29,10 +29,16 @@ scripts/mac-prod.sh build              # build the images for the current tag
 scripts/mac-prod.sh doctor             # is the Mac fit to serve? (also: make doctor)
 scripts/mac-prod.sh install-agent      # start the stack at every login
 scripts/mac-prod.sh uninstall-agent    # stop doing that (the running stack is untouched)
+scripts/mac-prod.sh compose ARGS...    # any docker compose command (exec, run, ps, …) on the stack
+scripts/mac-prod.sh tag                # the image tag all of the above use
 ```
 
-Image tag: `TRAINSYNC_TAG` from the shell, else from `.env.prod`, else the current git SHA
-(12 characters). Leave it empty in `.env.prod` so the checked-out commit decides.
+Image tag: `TRAINSYNC_TAG` from the shell, else from `.env.prod`, else the tag the last
+`make deploy` / `make rollback` started (`deploy-state`), else the tag of the running api
+container, else the current git SHA (12 characters). Leave it empty in `.env.prod`. `make
+backup-now`, `make restore-check` and every command in this document go through the same
+lookup, so none of them needs `TRAINSYNC_TAG` in the shell (compose.prod.yml refuses to start
+without a tag, which is why plain `docker compose --env-file .env.prod …` fails).
 
 `doctor` checks, and prints the fix command for every failure (exit 1 if any fails):
 
@@ -99,6 +105,13 @@ The LaunchAgent runs at login, so a reboot brings the stack back only once a use
 
 `stack.log` is appended to on every login and is small; delete it whenever you like.
 
+The gateway's access and error logs never carry the query string of `/webhooks/strava` (Strava's
+subscription handshake sends `hub.verify_token` there) or the `X-API-Key` header: a Caddy log
+filter rendered by `scripts/render_gateway.py`, checked by `make prod-check`. Lines written
+before that filter (deploys before 2026-10-19) may still hold the verify token: `docker compose
+logs` keeps them until the gateway container is recreated, which the next deploy does; rotate
+`STRAVA_WEBHOOK_VERIFY_TOKEN` (Rotating secrets) if those logs ever left the Mac.
+
 ## Deploy and rollback
 
 Design: [ADR 0026](decisions/0026-manual-make-deploy-instead-of-a-self-hosted-runner.md).
@@ -153,7 +166,7 @@ so the LaunchAgent at login) starts the current tag from it when `.env.prod` lea
    tables or columns those migrations added are lost.
 3. If any crossed migration is `reversible = False`, rollback refuses and prints the restore
    procedure:
-   1. `docker compose --env-file .env.prod -f compose.prod.yml stop api worker bot`
+   1. `scripts/mac-prod.sh compose stop api worker bot`
    2. find the pre-deploy backup `trainsync-…-predeploy<sha7>.dump.age` in `BACKUP_HOST_DIR`
    3. `scripts/restore-check.sh PATH/…-predeploy<sha7>.dump.age`
    4. restore it as in "Restoring for real" below (step 3 there)
@@ -219,6 +232,13 @@ scheduled workflow `.github/workflows/public-check.yml` runs it every 6 hours fr
 network once the repository variable `PUBLIC_CHECK_URL` is set (it skips while it is not).
 GitHub runs schedules only from the default branch, so it starts after the Phase 7 merge.
 
+Run from the Mac itself (or any tailnet device), the Funnel name resolves to the Mac's tailnet
+address and the request never touches Funnel's public relays. `public_check.py` then prints
+`WARN … resolves to the tailnet` (or `… Tailscale-User-Login`, a header only tailnet traffic
+gets) and `NOT A PUBLIC CHECK`: the route matrix is still valid, public reachability is not
+shown. Prove that from outside: a phone on mobile data, `gh workflow run public-check.yml`, or a
+multi-location probe such as check-host.net (HTTP check on `<url>/health/live`).
+
 ### Limits and the fallback
 
 - Funnel is a Tailscale beta feature: behaviour and limits can change, and it can be switched off
@@ -233,6 +253,18 @@ GitHub runs schedules only from the default branch, so it starts after the Phase
   `127.0.0.1:8080`; set `PUBLIC_API_BASE_URL` to the new `https://api.<domain>`, update Strava's
   callback domain, re-create the webhook subscription, update Vercel, and point
   `PUBLIC_CHECK_URL` at it. Nothing in the app or the gateway changes.
+
+### Known issues
+
+- **Funnel relay 185.40.234.55 resets TLS** (seen 2026-10-18/19 with check-host.net): it closes
+  the connection right after the ClientHello, while relays 185.40.234.75 and 185.40.234.198
+  answer 200 from everywhere. Clients that DNS sends to that relay fail; nothing on the Mac
+  causes or fixes it. Support step: open a ticket at <https://tailscale.com/contact/support>
+  with the Funnel host name, the relay IP, the UTC time and the check-host.net report link.
+  Reproduce from outside the tailnet with
+  `curl -v --resolve <host>:443:185.40.234.55 https://<host>/health/live` (compare with
+  `.75`). If it persists and Strava webhooks or the dashboard fail, use the Cloudflare Tunnel
+  fallback above.
 
 ## Alerts
 
@@ -259,7 +291,7 @@ The backup service's own messages (backup FAILED, weekly restore check) stay as 
 - **Stack alerts**: Redis keys `alert:circuit_open`, `alert:dead_letters`, `alert:backup_stale`,
   `alert:sync_stale` = `{"bad_since": …, "alerted": …}`, no expiry; Redis persists them
   (`appendonly yes`), so a restarted worker neither repeats an alert nor misses a recovery. Look:
-  `docker compose --env-file .env.prod -f compose.prod.yml exec redis redis-cli --scan --pattern 'alert:*'`.
+  `scripts/mac-prod.sh compose exec redis redis-cli --scan --pattern 'alert:*'`.
 - A send that definitely failed leaves the state as it was: the next run sends again. A send with
   an unknown outcome (timeout after sending) counts as sent.
 
@@ -286,7 +318,7 @@ The backup service's own messages (backup FAILED, weekly restore check) stay as 
 - Uptime by hand: `gh workflow run uptime.yml`, then `gh run list --workflow uptime.yml -L 1` and
   `gh run view <id> --log | grep 'uptime:'`.
 - Uptime drill (owner check 25): stop the gateway for 35 minutes,
-  `docker compose --env-file .env.prod -f compose.prod.yml stop gateway`; within two scheduled
+  `scripts/mac-prod.sh compose stop gateway`; within two scheduled
   runs (≤ 30 min, plus GitHub's delay) "real is DOWN" arrives; `scripts/mac-prod.sh up` and the
   next run sends "real RECOVERED". Faster: run `gh workflow run uptime.yml` twice while it is stopped.
 - Stack alert drill (owner check 26), without breaking anything: set
@@ -342,7 +374,7 @@ All secrets live in `.env.prod` (and, for the web app, in Vercel's environment).
 | `STATE_SIGNING_KEY` | replace it; `mac-prod.sh up` | only an OAuth login started in the minutes before fails; start it again |
 | `STRAVA_CLIENT_SECRET` | "Reset" on strava.com/settings/api, put the new value in `.env.prod`, `mac-prod.sh up` | token refreshes fail until the new value is in; existing access tokens keep working until they expire |
 | `STRAVA_WEBHOOK_VERIFY_TOKEN` | change it, `mac-prod.sh up`, then `strava-subscription.py delete` and `create` (Strava checks it only when subscribing) | none |
-| `POSTGRES_PASSWORD` | `docker compose --env-file .env.prod -f compose.prod.yml exec postgres psql -U trainsync -c "ALTER USER trainsync PASSWORD '<new>'"`, then set it in `.env.prod`, `mac-prod.sh up` | the app reconnects with the new password |
+| `POSTGRES_PASSWORD` | `scripts/mac-prod.sh compose exec postgres psql -U trainsync -c "ALTER USER trainsync PASSWORD '<new>'"`, then set it in `.env.prod`, `mac-prod.sh up` | the app reconnects with the new password |
 | `TELEGRAM_BOT_TOKEN` | BotFather → `/revoke`, new token into `.env.prod` (and the GitHub secret for uptime alerts: `gh secret set TELEGRAM_BOT_TOKEN`), `mac-prod.sh up` | the bot is silent until the new token is in |
 | `DASHBOARD_PASSWORD`, `DASHBOARD_SESSION_SECRET` (Vercel) | change in Vercel → redeploy | a new session secret logs every browser out |
 | Backup age key (`BACKUP_AGE_RECIPIENT` / identity) | see "Backups and restore": new key pair, new recipient in `.env.prod`; **keep the old identity** as long as backups made with it are within retention (6 months) | old backups still need the old identity to restore |
@@ -368,7 +400,7 @@ Design: [ADR 0030](decisions/0030-coach-intensity-and-guardrails.md), task
   below the nutrition target. Profanity is not filtered.
 - **Soft mode**: `/yumusak` in the chat → normal intensity for 24 h; `/sert` → back. It is the
   Redis key `coach:soft` (TTL 24 h), shared by bot and worker:
-  `docker compose --env-file .env.prod -f compose.prod.yml exec redis redis-cli ttl coach:soft`.
+  `scripts/mac-prod.sh compose exec redis redis-cli ttl coach:soft`.
 - **Timed messages** (worker, to `TELEGRAM_NOTIFY_CHAT_ID`; off without a bot token, or with
   `COACH_MESSAGES_ENABLED=false`): on a scheduled program day 30 min before the start, at the
   start, +30 and +90 min nudges and a "missed" message at +180 min, each only while no workout
@@ -403,7 +435,7 @@ Design: [ADR 0031](decisions/0031-runtime-bot-language.md), task
   and the worker's reminders, notifications and stack alerts (read at send time, no restart). The
   host uptime check (`ops/uptime.py`) stays English.
 - Check or reset it:
-  `docker compose --env-file .env.prod -f compose.prod.yml exec postgres psql -U trainsync -c "select * from chat_settings"`;
+  `scripts/mac-prod.sh compose exec postgres psql -U trainsync -c "select * from chat_settings"`;
   `delete from chat_settings` returns every chat to `BOT_LANG` (restart the bot to drop its cache:
   `scripts/mac-prod.sh restart bot`).
 
@@ -425,34 +457,38 @@ that command on the Mac.
 | 8 | Funnel prerequisites (MagicDNS, HTTPS certificates, `funnel` node attribute) | Tailscale admin console, then `tailscale funnel status` | PENDING | | (agent read-only look on 2026-10-18: Tailscale up as `trainsync`, `No serve config`) |
 | 9 | Funnel on | `scripts/funnel.sh on && scripts/funnel.sh status` | PENDING | | |
 | 10 | `PUBLIC_API_BASE_URL` set | put the value from `funnel.sh status` into `.env.prod`, `scripts/mac-prod.sh up` (recreates the containers with the new env; `restart` would not), then `grep PUBLIC_API_BASE_URL .env.prod` | PENDING | | |
-| 11 | Public check from outside (real URL) | `make public-check URL=https://<host>.<tailnet>.ts.net` | PENDING | | |
-| 12 | Scheduled public check | `gh variable set PUBLIC_CHECK_URL --body https://<host>.<tailnet>.ts.net && gh workflow run public-check.yml`, then `gh run list --workflow public-check.yml -L 1` | PENDING | | |
+| 11 | Public check from outside (real URL) | `make public-check URL=https://<host>.<tailnet>.ts.net` | PASS | 2026-10-18/19 | owner: 16/16 OK, but run from the Mac over the tailnet (not public proof, see Funnel → Known issues). External proof: check-host.net HTTP check, Funnel relays 185.40.234.75 and 185.40.234.198 answer 200 from every location; relay 185.40.234.55 resets TLS after ClientHello (Tailscale side, open) |
+| 12 | Scheduled public check | `gh variable set PUBLIC_CHECK_URL --body https://<host>.<tailnet>.ts.net && gh workflow run public-check.yml`, then `gh run list --workflow public-check.yml -L 1` | PASS | 2026-10-18/19 | owner: repository variable `PUBLIC_CHECK_URL` set (a workflow run result is not recorded yet) |
 | 13 | `gh` can read CI on the Mac | `gh auth status && gh run list --workflow ci -L 1` | PENDING | | |
-| 14 | First real deploy | `make deploy`, then `tail -n 1 ~/Library/Logs/trainsync/deploys.log && scripts/deploy.sh status` | PENDING | | |
+| 14 | First real deploy | `make deploy`, then `tail -n 1 ~/Library/Logs/trainsync/deploys.log && scripts/deploy.sh status` | PASS | 2026-10-18/19 | owner: first `make deploy` of d3e1af2 succeeded (deploys.log success line; smoke: ready, `/v1/sync/status`, Telegram `getMe`). Later deploys succeeded too: 4f87a42 (coach, migration 0010) and the PR #6 merge 5dfaf89 (bot language, migration 0011) |
 | 15 | Rollback drill | after a deploy with no migrations: `make rollback`, then `tail -n 2 ~/Library/Logs/trainsync/deploys.log && scripts/mac-prod.sh status`; then `make deploy` again | PENDING | | |
-| 16 | Strava API application (P7.7) | follow [strava-setup.md](strava-setup.md) §1, then `grep -c '^STRAVA_CLIENT_' .env.prod` (expect 2) | PENDING | | |
-| 17 | Real Strava connected, backfill done (P7.7) | `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/sync/status"` after connecting (strava-setup.md §2) | PENDING | | |
-| 18 | Webhook subscription (P7.7) | `uv run python scripts/strava-subscription.py create` then `… view` (strava-setup.md §3) | PENDING | | |
-| 19 | A real webhook arrives (P7.7) | edit an activity title on strava.com, then `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/activities?limit=1"` | PENDING | | |
+| 16 | Strava API application (P7.7) | follow [strava-setup.md](strava-setup.md) §1, then `grep -c '^STRAVA_CLIENT_' .env.prod` (expect 2) | PASS | 2026-10-18/19 | owner: Strava API application created, client id and secret in `.env.prod` |
+| 17 | Real Strava connected, backfill done (P7.7) | `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/sync/status"` after connecting (strava-setup.md §2) | PASS | 2026-10-18/19 | owner: account connected, backfill done, 79 activities |
+| 18 | Webhook subscription (P7.7) | `uv run python scripts/strava-subscription.py create` then `… view` (strava-setup.md §3) | PASS | 2026-10-18/19 | owner: subscription id 377572 |
+| 19 | A real webhook arrives (P7.7) | edit an activity title on strava.com, then `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/activities?limit=1"` | PASS | 2026-10-18/19 | owner: a real `update` webhook processed end to end in about 1 s |
 | 20 | Vercel project and env (P7.6) | follow [deploy-vercel.md](deploy-vercel.md) §1–3; paste `vercel env ls` (or a screenshot list of names per environment, no values) | PENDING | | |
 | 21 | Production on Vercel shows real data (P7.6) | open `https://<project>.vercel.app`, log in; record the dashboard's activity count and `curl -s -H "X-API-Key: <key>" "$PUBLIC_API_BASE_URL/v1/stats/summary"` count | PENDING | | |
 | 22 | Preview shows demo data, CSRF passes on Vercel (P7.6) | open a PR preview, log in with the demo password, log one set in /training (expect 403 "demo" from the read-only demo, not "cross-origin") | PENDING | | |
 | 23 | Uptime variables and secrets (P7.8) | `gh variable set UPTIME_URL --body https://<host>.<tailnet>.ts.net && gh variable set UPTIME_DEMO_URL --body https://<host>.<tailnet>.ts.net:8443 && gh secret set TELEGRAM_BOT_TOKEN && gh secret set TELEGRAM_ALERT_CHAT_ID` (each `gh secret set` prompts for the value, so it stays out of the shell history), then `gh variable list && gh secret list` | PENDING | | |
 | 24 | Uptime workflow runs (P7.8) | `gh workflow run uptime.yml`, then `gh run list --workflow uptime.yml -L 1` and `gh run view <id> --log \| grep 'uptime:'` | PENDING | | |
 | 25 | Uptime drill (P7.8) | Alerts → Testing the alerts: stop the gateway for 35 min; paste the DOWN and RECOVERED messages (time + text) | PENDING | | |
-| 26 | Stack alert drill (P7.8) | Alerts → Testing the alerts: `ALERT_BACKUP_MAX_AGE_HOURS=0.01`, then back; paste both messages and `docker compose --env-file .env.prod -f compose.prod.yml exec redis redis-cli get alert:backup_stale` | PENDING | | |
+| 26 | Stack alert drill (P7.8) | Alerts → Testing the alerts: `ALERT_BACKUP_MAX_AGE_HOURS=0.01`, then back; paste both messages and `scripts/mac-prod.sh compose exec redis redis-cli get alert:backup_stale` | PENDING | | |
 | 27 | Demo stack running (P7.9) | `cp .env.demo.example .env.demo && chmod 600 .env.demo`, set `DEMO_API_KEY`, then `docker compose --env-file .env.demo -f compose.demo.yml up -d --build && docker compose --env-file .env.demo -f compose.demo.yml ps` | PENDING | | |
 | 28 | Demo public on :8443 (P7.9) | `scripts/funnel.sh on all && curl -s -o /dev/null -w '%{http_code}\n' -H "X-API-Key: <demo key>" https://<host>.<tailnet>.ts.net:8443/v1/activities` (expect 200) and the same with `-X PUT …/v1/nutrition/profile` (expect 403) | PENDING | | |
 | 29 | Preview shows the demo, README link filled in (P7.9) | decide preview protection ([deploy-vercel.md](deploy-vercel.md) §3), open the preview URL logged out of Vercel, log in with `trainsync-demo`, confirm demo data (program "Upper/Lower 4-day"); put the URL into README "Live demo" | PENDING | | |
 | 30 | Coach intensity chosen (P6.11) | set `BOT_INTENSITY` (and, for savage, `BOT_TONE=hardcore`) in `.env.prod`, `scripts/mac-prod.sh up`, then `scripts/mac-prod.sh logs bot \| grep bot_startup` (shows `intensity`) | PENDING | | |
 | 31 | Program days scheduled (P6.11) | set `weekday` / `start_time` on the active program's days (API), then wait for the 30-minute reminder on the next training day | PENDING | | |
 | 32 | Bot language switch (P6.12) | in the chat: `/lang`, press "English", then `/week` (English); `/lang tr`, `/week` (Turkish); `scripts/mac-prod.sh restart bot`, `/week` (still Turkish) | PENDING | | |
+| 33 | Gateway logs carry no webhook secret (ops-fixes) | after deploying it: `scripts/mac-prod.sh compose logs gateway \| grep -c -e verify_token -e X-Api-Key` (expect 0); if older logs left the Mac, rotate `STRAVA_WEBHOOK_VERIFY_TOKEN` | PENDING | | |
+| 34 | Prod commands without `TRAINSYNC_TAG` (ops-fixes) | in a fresh shell: `scripts/mac-prod.sh tag && scripts/mac-prod.sh status && make backup-now && make restore-check` | PENDING | | |
+| 35 | Public check from outside the tailnet (ops-fixes) | from a device off the tailnet: `make public-check URL=…` shows no `NOT A PUBLIC CHECK`; or `gh workflow run public-check.yml` and `gh run list --workflow public-check.yml -L 1` | PENDING | | |
 
 ## Backups and restore
 
 Design: [ADR 0024](decisions/0024-encrypted-pg-dump-backups-with-a-restore-check.md).
 The `backup` service of `compose.prod.yml` takes one encrypted `pg_dump -Fc` a day after
-`BACKUP_TIME` (03:30 Europe/Istanbul by default), keeps 7 daily / 4 weekly / 6 monthly, and
+`BACKUP_TIME` (03:30 Europe/Istanbul by default), keeps 7 daily / 4 weekly / 6 monthly (the
+pre-deploy backups of `make deploy` are counted apart: the newest 3 always stay), and
 after the backup on `RESTORE_CHECK_WEEKDAY` (7 = Sunday) restores it into a scratch database
 and compares row counts. Failures and the weekly result go to Telegram when
 `TELEGRAM_BOT_TOKEN` and a chat are set.
@@ -492,18 +528,18 @@ make backup-now                      # one backup now + retention (LABEL=predepl
 make restore-check                   # newest backup → scratch DB → row counts vs the sidecar
 scripts/restore-check.sh PATH/trainsync-….dump.age          # a specific backup
 scripts/restore-check.sh --identity KEY.txt [PATH]          # with another identity file
-docker compose --env-file .env.prod -f compose.prod.yml logs backup
-docker compose --env-file .env.prod -f compose.prod.yml run --rm backup prune --dry-run
+scripts/mac-prod.sh compose logs backup
+scripts/mac-prod.sh compose run --rm backup prune --dry-run
 make restore-check-ci                # CI variant: seeded DB, throwaway key, bad backups must fail
 ```
 
 ### Restoring for real
 
-1. Stop writers: `docker compose --env-file .env.prod -f compose.prod.yml stop api worker bot`.
+1. Stop writers: `scripts/mac-prod.sh compose stop api worker bot`.
 2. Check the backup first: `scripts/restore-check.sh PATH/trainsync-….dump.age`.
 3. Restore into the live database (replaces its contents):
    ```
-   docker compose --env-file .env.prod -f compose.prod.yml run --rm \
+   scripts/mac-prod.sh compose run --rm \
      -v PATH_DIR:/restore:ro -v ~/.config/trainsync/backup-identity.txt:/run/key:ro \
      --entrypoint bash backup -c \
      'age -d -i /run/key /restore/trainsync-….dump.age | pg_restore --clean --if-exists --no-owner --no-acl -d trainsync'
@@ -515,8 +551,8 @@ make restore-check-ci                # CI variant: seeded DB, throwaway key, bad
 ### Owner checks
 
 - [ ] Key pair generated, identity in the password manager and at `BACKUP_AGE_IDENTITY_FILE`.
-- [ ] `make backup-now` wrote a `.dump.age` + `.counts.json` into iCloud Drive (date, size).
-- [ ] `make restore-check` passed on it (date, output line "row counts match …").
+- [x] `make backup-now` wrote a `.dump.age` + `.counts.json` into iCloud Drive (date, size). PASS 2026-10-18/19 (owner).
+- [x] `make restore-check` passed on it (date, output line "row counts match …"). PASS 2026-10-18/19 (owner): 18 tables, row counts match.
 - [ ] The container can read the `chmod 600` identity file through Docker Desktop's file
       sharing (`make restore-check` would say "no age identity" otherwise).
 - [ ] After the first Sunday: the weekly result arrived on Telegram.
