@@ -27,6 +27,9 @@ def client_id(name: str) -> uuid.UUID:
 class Reply:
     text: str
     keyboard: Keyboard | None = None
+    # Sent as it is, never given a max-profanity opener (ADR 0032): calm replies to pain or
+    # distress, and the assistant's own words.
+    plain: bool = False
 
 
 @dataclass(frozen=True, slots=True)

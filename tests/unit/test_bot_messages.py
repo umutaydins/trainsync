@@ -419,3 +419,23 @@ def test_blocklist_catches_what_it_should() -> None:
     # The allowed mild words and ordinary injury talk pass.
     assert not blocked("Hassiktir, ulan, lan. Damn, hell, crap. Sakatlık mı, dinlenme mi?")
     assert not blocked("Injured or resting?")
+
+
+@pytest.mark.parametrize("lang", ["tr", "en"])
+def test_the_distress_reply_names_the_configured_emergency_number(lang: str) -> None:
+    """ADR 0032: the number comes from EMERGENCY_NUMBER, never from the pack."""
+    default = messages_for(make_settings(bot_lang=lang))
+    assert "112" in default.neutral(NeutralKey.SAFETY_DISTRESS)
+    other = messages_for(make_settings(bot_lang=lang, emergency_number="911"))
+    distress = other.neutral(NeutralKey.SAFETY_DISTRESS)
+    assert "911" in distress
+    assert "112" not in distress
+    for texts in NEUTRAL_TEXTS.values():
+        assert "112" not in texts[NeutralKey.SAFETY_DISTRESS]
+
+
+def test_emergency_number_is_validated() -> None:
+    assert make_settings(emergency_number="+4930110").emergency_number == "+4930110"
+    for bad in ("", "1", "call 112", "1-1-2"):
+        with pytest.raises(ValueError, match="emergency_number"):
+            make_settings(emergency_number=bad)

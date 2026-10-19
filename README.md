@@ -218,6 +218,7 @@ A separate process (`python -m trainsync.bot`, compose service `bot`) that long-
 | `/report` (or "rapor") | start the daily check-in now |
 | `/yumusak`, `/sert` | coach soft mode for 24 hours, and back ([ADR 0030](docs/decisions/0030-coach-intensity-and-guardrails.md)) |
 | `/lang` (or `/lang tr`, `/lang en`) | the chat's language, stored and kept across restarts; help stays English ([ADR 0031](docs/decisions/0031-runtime-bot-language.md)) |
+| `/swear` (or `/swear max`, `/swear roast`) | savage profanity for this chat: `max` swears in every savage message, `roast` only in the roasts; stored like `/lang` ([ADR 0032](docs/decisions/0032-food-roast-profanity-level-and-distress.md)) |
 
 **Daily check-in**: at `CHECKIN_TIME` (local, `CHECKIN_TZ`) the worker asks once whether you
 trained, unless today's check-in exists, and reminds once after `CHECKIN_REMINDER_MINUTES`. With
@@ -228,11 +229,16 @@ double taps never store anything twice. Nutrition and body-weight messages are n
 
 **Coach**: with `BOT_INTENSITY=savage` (and `BOT_TONE=hardcore`) the coach is
 deliberately brutal: unrestricted swearing in Turkish or English, excuses and missed work roasted, then one
-concrete action for today. The worker also speaks up on its own: before and at a scheduled
+concrete action for today. Unhealthy choices (junk food, sugar, alcohol, cigarettes, staying up
+late, high-sugar or ultra-processed `/eat` logs) get a roast of the choice, one concrete move and
+the day's target unchanged. `BOT_PROFANITY=max` (or `/swear max` in the chat) makes every savage
+message swear, not only the roasts. The worker also speaks up on its own: before and at a scheduled
 workout, nudges when it does not start, "rest is over", and a verdict at the end (any
-intensity; quiet hours 23:00–07:00). Hard guardrails hold in every intensity: never body,
-weight or appearance, no slurs, no push through pain or illness, food is never roasted
-([ADR 0030](docs/decisions/0030-coach-intensity-and-guardrails.md)).
+intensity; quiet hours 23:00–07:00). Hard guardrails hold in every intensity and profanity level:
+never body, weight or appearance, no slurs, no push through pain or illness, never skipping meals
+or eating below the target, and distress (guilt, purging, not eating, self-hate, bingeing) gets a
+calm reply without swearing ([ADR 0030](docs/decisions/0030-coach-intensity-and-guardrails.md),
+[ADR 0032](docs/decisions/0032-food-roast-profanity-level-and-distress.md)).
 
 **Natural-language questions** (optional): with `ANTHROPIC_API_KEY` set, any plain text such as
 "how far did I run in September?" goes to Claude with four tools that map 1:1 to read endpoints
@@ -290,7 +296,11 @@ optional for the API and the worker; the web app needs its three required ones (
 | `ASSISTANT_MODEL` | bot | `claude-sonnet-5-5` | Claude model for questions |
 | `ASSISTANT_RATE_LIMIT_PER_HOUR` | bot | `20` | Questions per chat per hour (counted in Redis) |
 | `BOT_TONE`, `BOT_LANG` | bot, worker | `neutral`, `en` | Wording of replies, notifications and the assistant: `neutral` or `hardcore` (a blunt coach, mild profanity, pushes on effort only), `en` or `tr`; compose passes both through ([ADR 0016](docs/decisions/0016-bot-message-packs-and-tone.md)). `BOT_LANG` is the default: `/lang` stores a language per chat ([ADR 0031](docs/decisions/0031-runtime-bot-language.md)) |
-| `BOT_INTENSITY` | bot, worker | `normal` | `savage`: the owner's opt-in to an unrestricted, roasting coach (with `hardcore` + `tr`); guardrails always hold ([ADR 0030](docs/decisions/0030-coach-intensity-and-guardrails.md)) |
+| `BOT_INTENSITY` | bot, worker | `normal` | `savage`: the owner's opt-in to an unrestricted, roasting coach (with `hardcore`, either language); guardrails always hold ([ADR 0030](docs/decisions/0030-coach-intensity-and-guardrails.md)) |
+| `BOT_PROFANITY` | bot, worker | `roast` | `max`: every savage message swears; `/swear` stores a level per chat ([ADR 0032](docs/decisions/0032-food-roast-profanity-level-and-distress.md)) |
+| `SUGAR_LIMIT_G` | bot | `50` | Savage: a day's free sugar (sweets, desserts, sugary drinks, NOVA 4) above this is called out on the next `/eat` |
+| `EMERGENCY_NUMBER` | bot, worker | `112` | Named in the calm reply to distress talk |
+| `HIGH_SUGAR_PER_100G` | bot | `22.5` | Savage: one `/eat` item above this sugar per 100 g gets a roast (fruit, vegetables, plain dairy never) |
 | `WORKOUT_REMINDER_TIME`, `QUIET_HOURS` | worker, bot | `18:00`, `23:00-07:00` | Default start of program days; local window with no proactive coach message |
 | `COACH_MESSAGES_ENABLED`, `COACH_MESSAGES_FILE` | worker, bot | on with a bot token, `config/messages.local.yaml` | Timed coach messages; your own extra lines (git-ignored, example in `config/`) |
 
@@ -425,6 +435,7 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 | [0029](docs/decisions/0029-backend-on-a-personal-mac-and-how-to-move-it.md) | Backend on a personal Mac behind Tailscale Funnel; how to move it to a VPS |
 | [0030](docs/decisions/0030-coach-intensity-and-guardrails.md) | Coach intensity (savage), timed coach messages and hard guardrails |
 | [0031](docs/decisions/0031-runtime-bot-language.md) | Runtime bot language per chat (`/lang`), stored through the API |
+| [0032](docs/decisions/0032-food-roast-profanity-level-and-distress.md) | Savage food roast, per-chat profanity level (`/swear`), distress guardrail |
 
 ## Status
 - [x] Phase 1 — Foundation, OAuth, Strava client

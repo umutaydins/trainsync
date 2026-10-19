@@ -27,10 +27,11 @@ PACK = MessagePack(
             "/plates 102.5: plates per side\n"
             "/report: daily check-in\n"
             "/yumusak: soft coach for 24 h · /sert: back to normal\n"
-            "/lang: Türkçe / English",
+            "/lang: Türkçe / English\n"
+            "/swear: max / roast (savage profanity)",
         ),
         Key.NO_ASSISTANT: ("I don't do small talk. Commands only.\n\n{help}",),
-        Key.UNKNOWN_COMMAND: ("/{command}? Not a thing.\n\n{help}",),
+        Key.UNKNOWN_COMMAND: ("/{command}? Not a thing. The real ones: /help",),
         Key.USAGE_STATS: ("Wrong. Usage: /stats [4w|12w|52w] [sport], e.g. /stats 12w run",),
         Key.API_DOWN: (
             "Can't reach the trainsync API. Not your fault, for once. Try again in a minute.",
@@ -184,6 +185,11 @@ PACK = MessagePack(
         Key.LANG_CHOOSE: ("Pick a language. Then get back to work.",),
         Key.LANG_SET: ("English it is. Same rules, no excuses.",),
         Key.LANG_USAGE: ("/lang, /lang en or /lang tr. Not that hard.",),
+        Key.SWEAR_CHOOSE: ("Savage profanity: max, everywhere, or roast, only in the roasts?",),
+        Key.SWEAR_SET_MAX: ("Max it is. Counts once the savage coach is on.",),
+        Key.SWEAR_SET_ROAST: ("Roast it is. Swearing stays in the roasts.",),
+        Key.SWEAR_USAGE: ("/swear, /swear max or /swear roast. Pick one.",),
+        Key.HELP_POINTER: ("The real commands: /help",),
         Key.COACH_FACT_SESSION: NEUTRAL.texts[Key.COACH_FACT_SESSION],
         Key.COACH_FACT_UNDER: NEUTRAL.texts[Key.COACH_FACT_UNDER],
         Key.COACH_FACT_MISSING: NEUTRAL.texts[Key.COACH_FACT_MISSING],

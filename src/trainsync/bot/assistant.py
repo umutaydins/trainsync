@@ -28,10 +28,10 @@ from redis.asyncio import Redis
 from trainsync.bot.messages import Key, Messages
 from trainsync.bot.read_api import ReadApi, ReadApiError
 from trainsync.coach.guardrails import violations
-from trainsync.coach.mode import CoachMode
+from trainsync.coach.mode import CURRENT_PROFANITY, CoachMode
 from trainsync.core.clock import Clock
 from trainsync.core.logging import get_logger
-from trainsync.core.settings import BotLang, BotTone
+from trainsync.core.settings import BotLang, BotProfanity, BotTone
 
 log = get_logger(__name__)
 
@@ -71,7 +71,10 @@ GUARDRAILS = (
     "the athlete mentions pain, injury, illness, dizziness, chest pain or the like, drop any "
     "push or roast and tell them to rest and, if it is serious or persists, see a doctor; never "
     "push eating below their nutrition target and never suggest 'burning off' food or exercise "
-    "as punishment for eating. Food: eat it, log it, stay in the daily target."
+    "as punishment for eating, skipping meals or eating less to make up for it. If the athlete "
+    "talks about guilt over food, throwing up, not eating, hating themselves or bingeing, drop "
+    "every roast and every swear word and answer calmly and kindly; suggest talking to someone "
+    "they trust or a professional if it keeps happening."
 )
 # BOT_INTENSITY=savage (ADR 0030): the owner's explicit opt-in.
 SAVAGE = (
@@ -81,7 +84,16 @@ SAVAGE = (
     "excuses, skipped workouts and weak effort without mercy, compared with his program and "
     "history from the tools, then always give one concrete action for today. Keep it short. You "
     "may end with a short, original English punchline (cold, quotable, never a quote of a real "
-    "person). The hard limits above still apply and override this paragraph."
+    "person). Unhealthy choices (junk food, sugar, alcohol, cigarettes, staying up late) get a "
+    "hard roast of the choice, never of the body, then one concrete move (a smaller portion, a "
+    "better swap, log it now); the day's kcal target stays the target. The hard limits above "
+    "still apply and override this paragraph."
+)
+# BOT_PROFANITY=max or `/swear max` while savage (ADR 0032).
+MAX_PROFANITY = (
+    "Profanity: MAX. Swear naturally in every reply, in the reply language: neutral answers, "
+    "numbers, praise and good news too, not only roasts. The hard limits above still override "
+    "this: no swearing at all in a reply about pain, illness or distress."
 )
 
 # BOT_TONE / BOT_LANG (ADR 0016). The persona changes the wording, never the numbers.
@@ -289,6 +301,7 @@ class Assistant:
         max_tool_calls: int = MAX_TOOL_CALLS,
         timeout_s: float = TIMEOUT_S,
         mode: CoachMode | None = None,
+        profanity: BotProfanity = "roast",
     ) -> None:
         self._planner = planner
         self._api = read_api
@@ -297,6 +310,8 @@ class Assistant:
         self._msg = msg
         # The effective intensity (savage unless soft mode); None = never savage.
         self._mode = mode
+        # BOT_PROFANITY; a chat's /swear choice (`using_profanity`) overrides it.
+        self._profanity = profanity
         self._max_tool_calls = max_tool_calls
         self._timeout_s = timeout_s
 
@@ -316,7 +331,13 @@ class Assistant:
 
     async def _loop(self, question: str) -> str:
         savage = self._mode is not None and await self._mode.savage()
-        system = system_prompt(self._clock(), self._msg.tone, self._msg.lang, savage=savage)
+        system = system_prompt(
+            self._clock(),
+            self._msg.tone,
+            self._msg.lang,
+            savage=savage,
+            profanity=CURRENT_PROFANITY.get() or self._profanity,
+        )
         messages: list[BetaMessageParam] = [{"role": "user", "content": question}]
         calls = 0
         over_limit = False
@@ -390,10 +411,17 @@ class Assistant:
 
 
 def system_prompt(
-    now: datetime, tone: BotTone = "neutral", lang: BotLang = "en", *, savage: bool = False
+    now: datetime,
+    tone: BotTone = "neutral",
+    lang: BotLang = "en",
+    *,
+    savage: bool = False,
+    profanity: BotProfanity = "roast",
 ) -> str:
     today = now.date()
     persona = f"{PERSONAS[tone]}\n\n{SAVAGE}" if savage else PERSONAS[tone]
+    if savage and profanity == "max":
+        persona = f"{persona}\n\n{MAX_PROFANITY}"
     return SYSTEM_PROMPT.format(
         today=today.isoformat(),
         weekday=today.strftime("%A"),

@@ -23,6 +23,8 @@ from trainsync.api.activities import ActivityOut
 from trainsync.bot.formatting import format_new_activity
 from trainsync.bot.messages import Messages, using_lang
 from trainsync.bot.telegram import TelegramApi
+from trainsync.coach.mode import using_profanity
+from trainsync.coach.voice import CoachVoice
 from trainsync.core.clock import Clock, Sleep
 from trainsync.core.logging import get_logger
 from trainsync.core.metrics import NOTIFICATIONS
@@ -31,7 +33,7 @@ from trainsync.db.models import NotificationKind
 from trainsync.db.repositories.notifications import NotificationRepository
 from trainsync.db.repositories.reads import ReadRepository
 from trainsync.notify.base import DeliveryUnknownError, Notifier, NotifyFailedError, NullNotifier
-from trainsync.notify.language import stored_lang
+from trainsync.notify.language import stored_prefs
 from trainsync.notify.telegram import TelegramNotifier
 from trainsync.sync.context import job_log_context
 
@@ -50,6 +52,8 @@ class NotifyDeps:
     dashboard_url: str
     clock: Clock
     msg: Messages  # BOT_TONE / BOT_LANG wording (ADR 0016)
+    # Max profanity in savage (ADR 0032): the notification gets an opener too. None: never.
+    voice: CoachVoice | None = None
 
 
 def build_notifier(
@@ -85,8 +89,11 @@ async def send_new_activity(deps: NotifyDeps, strava_activity_id: int) -> str:
         if row is None:
             return _count(deps, "skipped")  # deleted, or the athlete left, before we got here
         activity = ActivityOut.from_row(row, include_raw=False)
-        with using_lang(await stored_lang(deps.sessionmaker, deps.chat_ref)):
+        prefs = await stored_prefs(deps.sessionmaker, deps.chat_ref)
+        with using_lang(prefs.lang), using_profanity(prefs.profanity):
             text = format_new_activity(activity, deps.dashboard_url, deps.msg)
+            if deps.voice is not None:
+                text = await deps.voice.decorate(text)
 
     kind = NotificationKind.NEW_ACTIVITY
     async with deps.sessionmaker.begin() as session:

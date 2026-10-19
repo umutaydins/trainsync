@@ -394,10 +394,20 @@ Design: [ADR 0030](decisions/0030-coach-intensity-and-guardrails.md), task
   `BOT_TONE=hardcore` and works in both chat languages; it is an explicit opt-in to unrestricted profanity and
   brutal roasting of excuses and missed work, in the coach lines and in the assistant (whose
   system prompt says the user asked for it). The worker and bot log `intensity` at startup.
-- **Guardrails** (every intensity, in code and in the assistant prompt): never body, weight or
-  appearance; no slurs; pain, injury, illness, dizziness, chest pain → no roast, rest / see a
-  doctor; food is never roasted ("eat it, log it, stay in your daily target"), nothing pushes
-  below the nutrition target. Profanity is not filtered.
+- **Guardrails** (every intensity and profanity level, in code and in the assistant prompt):
+  never body, weight or appearance; no slurs; distress (guilt spiral, threw up, haven't eaten,
+  self-hate, binge talk) → a calm, supportive reply without swearing that names
+  `EMERGENCY_NUMBER` (default 112); pain, injury, illness,
+  dizziness, chest pain → no roast, rest / see a doctor; never burn-it-off, punishment cardio,
+  skipped meals or eating below the nutrition target. Profanity is not filtered.
+- **Food rule** (savage, ADR 0032): junk, sugar, soft and energy drinks, fast or fried food,
+  alcohol, cigarettes and staying up late in the chat, and `/eat` logs with more than
+  `HIGH_SUGAR_PER_100G` (22.5 g) sugar per 100 g or NOVA group 4, or that take the day's *free*
+  sugar past `SUGAR_LIMIT_G` (50 g), get a `food_roast` line about the choice, one concrete move
+  (portion, swap, log it now) and the day's kcal target unchanged. Free sugar = sweets, desserts,
+  sugary drinks and NOVA 4 foods; fruit, vegetables and plain dairy never count and are never
+  roasted for sugar. Sugar, NOVA and the food group come from Open Food Facts (`categories_tags`)
+  or a manual food (`food_group`).
 - **Soft mode**: `/yumusak` in the chat → normal intensity for 24 h; `/sert` → back. It is the
   Redis key `coach:soft` (TTL 24 h), shared by bot and worker:
   `scripts/mac-prod.sh compose exec redis redis-cli ttl coach:soft`.
@@ -438,6 +448,27 @@ Design: [ADR 0031](decisions/0031-runtime-bot-language.md), task
   `scripts/mac-prod.sh compose exec postgres psql -U trainsync -c "select * from chat_settings"`;
   `delete from chat_settings` returns every chat to `BOT_LANG` (restart the bot to drop its cache:
   `scripts/mac-prod.sh restart bot`).
+
+## Profanity (/swear)
+
+Design: [ADR 0032](decisions/0032-food-roast-profanity-level-and-distress.md), task
+[P6.13](tasks/P6.13-food-roast-and-profanity.md).
+
+- `BOT_PROFANITY=roast` (default) swears only in the savage lines; `max` swears in every savage
+  message: confirmations, reminders, check-in questions, summaries, praise, errors (a rotated
+  `max_opener` line in front of messages that carry no savage line) and the assistant (its
+  system prompt). It only applies while savage is in effect: not with `BOT_INTENSITY=normal`,
+  not in `/yumusak`.
+- `/swear` in the chat shows "max" / "roast" buttons; `/swear max` and `/swear roast` switch
+  directly. The choice is `chat_settings.profanity` (backed up with the database); no value =
+  `BOT_PROFANITY`. The worker reads it at send time, like the language.
+- Calm replies to pain and distress never get an opener or a swear word, in any mode.
+- Own max lines: a `max:` section inside `tr:` / `en:` in `config/messages.local.yaml` (same
+  categories plus `max_opener`), and a top-level `punchline_en_max` for both languages.
+- Check or reset it:
+  `scripts/mac-prod.sh compose exec postgres psql -U trainsync -c "select * from chat_settings"`;
+  `update chat_settings set profanity = null` returns every chat to `BOT_PROFANITY` (then
+  `scripts/mac-prod.sh restart bot` to drop the bot's cache).
 
 ## Owner checks
 
@@ -482,6 +513,9 @@ that command on the Mac.
 | 33 | Gateway logs carry no webhook secret (ops-fixes) | after deploying it: `scripts/mac-prod.sh compose logs gateway \| grep -c -e verify_token -e X-Api-Key` (expect 0); if older logs left the Mac, rotate `STRAVA_WEBHOOK_VERIFY_TOKEN` | PENDING | | |
 | 34 | Prod commands without `TRAINSYNC_TAG` (ops-fixes) | in a fresh shell: `scripts/mac-prod.sh tag && scripts/mac-prod.sh status && make backup-now && make restore-check` | PENDING | | |
 | 35 | Public check from outside the tailnet (ops-fixes) | from a device off the tailnet: `make public-check URL=…` shows no `NOT A PUBLIC CHECK`; or `gh workflow run public-check.yml` and `gh run list --workflow public-check.yml -L 1` | PENDING | | |
+| 36 | Profanity switch (P6.13) | with `BOT_INTENSITY=savage`: `/swear max`, then `/kcal` (an opener line on top), `/swear roast`, `/kcal` (none); `scripts/mac-prod.sh restart bot`, `/kcal` (still none) | PENDING | | |
+| 37 | Food roast and sugar data (P6.13) | in savage: "bu akşam baklava yiyeceğim" (a roast, one move, the day's target); `/eat` a high-sugar product found through Open Food Facts (a roast after the log line) | PENDING | | |
+| 38 | Distress reply (P6.13) | in max: "bugün hiçbir şey yemedim" → the calm reply, no swearing, no roast | PENDING | | |
 
 ## Backups and restore
 

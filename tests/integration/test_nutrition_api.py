@@ -245,6 +245,60 @@ async def test_editing_a_food_does_not_change_past_days(api: httpx.AsyncClient) 
     assert (day["intake_kcal"], day["macros_complete"]) == (200.0, False)
 
 
+async def test_sugar_and_nova_are_snapshotted_and_summed(api: httpx.AsyncClient) -> None:
+    """ADR 0032: the savage food roast reads these from the log and the day summary."""
+    baklava = await _food(
+        api, name="Baklava", kcal_100g=430, sugars_100g=30, nova_group=4, fat_100g=23
+    )
+    assert (baklava["sugars_100g"], baklava["nova_group"]) == (30.0, 4)
+    entry = await _ok(await _log(api, baklava["id"], 120), 201)
+    assert (entry["sugars_g"], entry["sugars_100g"], entry["nova_group"]) == (36.0, 30.0, 4)
+    await _ok(await api.patch(f"{BASE}/foods/{baklava['id']}", json={"sugars_100g": 40}))
+    fresh = await _ok(await api.patch(f"{BASE}/foods/{baklava['id']}", json={"nova_group": 3}))
+    assert (fresh["sugars_100g"], fresh["nova_group"]) == (40.0, 3)
+    await _ok(await _log(api, baklava["id"], 50), 201)
+    oats = await _food(api, **FIXTURE["foods"]["oats"])  # sugar unknown
+    await _ok(await _log(api, oats["id"], 80), 201)
+    day = await _ok(await api.get(f"{BASE}/summary", params={"date": "2026-10-14"}))
+    assert day["sugars_g"] == 56.0  # 36 (snapshot) + 20; the oats count as nothing
+    assert (
+        await api.post(f"{BASE}/foods", json={"name": "x", "kcal_100g": 1, "nova_group": 5})
+    ).status_code == 422
+
+
+async def test_only_free_sugar_counts_in_the_day_summary(api: httpx.AsyncClient) -> None:
+    """ADR 0032: fruit and plain dairy never count toward the limit; cola and baklava do."""
+    apple = await _food(api, name="Apple", kcal_100g=52, sugars_100g=10.4, food_group="fruit")
+    yoghurt = await _food(
+        api,
+        name="Plain yoghurt",
+        kcal_100g=61,
+        sugars_100g=4.7,
+        nova_group=4,
+        food_group="plain_dairy",
+    )
+    cola = await _food(
+        api, name="Cola", kcal_100g=42, sugars_100g=10.6, nova_group=4, food_group="sugary_drink"
+    )
+    baklava = await _food(api, name="Baklava", kcal_100g=430, sugars_100g=30, nova_group=3)
+    assert baklava["food_group"] is None
+    baklava = await _ok(
+        await api.patch(f"{BASE}/foods/{baklava['id']}", json={"food_group": "dessert"})
+    )
+    assert baklava["food_group"] == "dessert"
+    for food, grams in ((apple, 600), (yoghurt, 500)):
+        await _ok(await _log(api, food["id"], grams), 201)
+    day = await _ok(await api.get(f"{BASE}/summary", params={"date": "2026-10-14"}))
+    assert (day["sugars_g"], day["free_sugars_g"]) == (85.9, 0.0)
+    entry = await _ok(await _log(api, cola["id"], 330), 201)
+    assert entry["food_group"] == "sugary_drink"
+    await _ok(await _log(api, baklava["id"], 100), 201)
+    day = await _ok(await api.get(f"{BASE}/summary", params={"date": "2026-10-14"}))
+    assert (day["sugars_g"], day["free_sugars_g"]) == (150.9, 65.0)
+    bad = await api.post(f"{BASE}/foods", json={"name": "x", "kcal_100g": 1, "food_group": "y"})
+    assert bad.status_code == 422
+
+
 async def test_food_log_validation(api: httpx.AsyncClient) -> None:
     oats = await _food(api, **FIXTURE["foods"]["oats"])
     assert (await _log(api, 999_999, 50)).status_code == 404
@@ -330,6 +384,17 @@ async def test_barcode_lookup_caches_then_answers_locally(api: httpx.AsyncClient
 
     # A cached product can be logged like any other food.
     assert (await _log(api, food["id"], 40)).status_code == 201
+
+
+@respx.mock
+async def test_a_cached_product_gets_its_food_group_from_the_categories(
+    api: httpx.AsyncClient,
+) -> None:
+    barcode = "5449000000996"
+    cola = {**product(code=barcode, name="Cola"), "categories_tags": ["en:beverages", "en:sodas"]}
+    respx.get(product_url(barcode)).mock(return_value=found(cola))
+    body = await _ok(await api.get(f"{BASE}/foods/lookup", params={"barcode": barcode}))
+    assert body["items"][0]["food_group"] == "sugary_drink"
 
 
 @respx.mock

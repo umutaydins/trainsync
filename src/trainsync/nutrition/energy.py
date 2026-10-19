@@ -13,6 +13,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
 
 from trainsync.db.models import ActivityBaseline, Sex
+from trainsync.nutrition.sugar import counts_as_free_sugar
 
 TENTH = Decimal("0.1")
 
@@ -103,6 +104,9 @@ class IntakeEntry:
     protein_100g: Decimal | None = None
     carbs_100g: Decimal | None = None
     fat_100g: Decimal | None = None
+    sugars_100g: Decimal | None = None
+    food_group: str | None = None
+    nova_group: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +118,10 @@ class Intake:
     entries: int
     # False when any entry's food has an unknown macro (its share is missing from the sums).
     macros_complete: bool
+    # Known sugar values only (ADR 0032); not part of `macros_complete`.
+    sugars_g: Decimal = Decimal(0)
+    # The part of `sugars_g` that counts toward SUGAR_LIMIT_G (`sugar.counts_as_free_sugar`).
+    free_sugars_g: Decimal = Decimal(0)
 
 
 def per_grams(per_100g: Decimal, grams: Decimal) -> Decimal:
@@ -121,7 +129,7 @@ def per_grams(per_100g: Decimal, grams: Decimal) -> Decimal:
 
 
 def intake(entries: Iterable[IntakeEntry]) -> Intake:
-    kcal = protein = carbs = fat = Decimal(0)
+    kcal = protein = carbs = fat = sugars = free_sugars = Decimal(0)
     count = 0
     complete = True
     for e in entries:
@@ -131,7 +139,20 @@ def intake(entries: Iterable[IntakeEntry]) -> Intake:
         protein += per_grams(e.protein_100g or Decimal(0), e.grams)
         carbs += per_grams(e.carbs_100g or Decimal(0), e.grams)
         fat += per_grams(e.fat_100g or Decimal(0), e.grams)
-    return Intake(tenth(kcal), tenth(protein), tenth(carbs), tenth(fat), count, complete)
+        sugar = per_grams(e.sugars_100g or Decimal(0), e.grams)
+        sugars += sugar
+        if counts_as_free_sugar(e.food_group, e.nova_group):
+            free_sugars += sugar
+    return Intake(
+        tenth(kcal),
+        tenth(protein),
+        tenth(carbs),
+        tenth(fat),
+        count,
+        complete,
+        tenth(sugars),
+        tenth(free_sugars),
+    )
 
 
 # ---------------------------------------------------------------- balance

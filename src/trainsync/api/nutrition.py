@@ -21,6 +21,7 @@ from trainsync.core.clock import Clock
 from trainsync.db.models import (
     ActivityBaseline,
     Food,
+    FoodGroup,
     FoodLog,
     FoodSource,
     Meal,
@@ -71,6 +72,9 @@ FOOD_EXAMPLE: dict[str, Any] = {
     "protein_100g": 13.5,
     "carbs_100g": 58.7,
     "fat_100g": 7.0,
+    "sugars_100g": 1.1,
+    "nova_group": 1,
+    "food_group": "other",
     "source": "openfoodfacts",
     "favorite": True,
 }
@@ -87,6 +91,21 @@ FOOD_IN_EXAMPLE: dict[str, Any] = {
 
 Kcal100 = Annotated[float, Field(ge=0, le=1000, description="kcal per 100 g")]
 Macro100 = Annotated[float | None, Field(ge=0, le=100, description="g per 100 g; null = unknown")]
+Nova = Annotated[
+    int | None,
+    Field(
+        ge=1, le=4, description="Open Food Facts NOVA group, 4 = ultra-processed; null = unknown"
+    ),
+]
+
+
+GroupField = Annotated[
+    FoodGroup | None,
+    Field(
+        description="Decides whether the sugar is free sugar (sweets, dessert, sugary_drink"
+        " count; fruit, vegetable, plain_dairy never do); null = unknown"
+    ),
+]
 
 
 class FoodOut(BaseModel):
@@ -100,6 +119,9 @@ class FoodOut(BaseModel):
     protein_100g: float | None = Field(description="null = unknown")
     carbs_100g: float | None = Field(description="null = unknown")
     fat_100g: float | None = Field(description="null = unknown")
+    sugars_100g: float | None = Field(default=None, description="null = unknown")
+    nova_group: Nova = None
+    food_group: GroupField = None
     source: FoodSource = Field(description="`openfoodfacts` rows are cached lookups")
     favorite: bool
 
@@ -114,6 +136,9 @@ class FoodOut(BaseModel):
             protein_100g=_f(row.protein_100g),
             carbs_100g=_f(row.carbs_100g),
             fat_100g=_f(row.fat_100g),
+            sugars_100g=_f(row.sugars_100g),
+            nova_group=row.nova_group,
+            food_group=FoodGroup(row.food_group) if row.food_group else None,
             source=FoodSource(row.source),
             favorite=row.favorite,
         )
@@ -129,6 +154,9 @@ class FoodIn(BaseModel):
     protein_100g: Macro100 = None
     carbs_100g: Macro100 = None
     fat_100g: Macro100 = None
+    sugars_100g: Macro100 = None
+    nova_group: Nova = None
+    food_group: GroupField = None
     favorite: bool = False
 
 
@@ -145,6 +173,9 @@ class FoodPatch(BaseModel):
     protein_100g: Macro100 = None
     carbs_100g: Macro100 = None
     fat_100g: Macro100 = None
+    sugars_100g: Macro100 = None
+    nova_group: Nova = None
+    food_group: GroupField = None
 
 
 class FoodList(BaseModel):
@@ -289,6 +320,9 @@ async def create_food(sessionmaker: SessionmakerDep, body: FoodIn) -> FoodOut:
         protein_100g=_dec(body.protein_100g),
         carbs_100g=_dec(body.carbs_100g),
         fat_100g=_dec(body.fat_100g),
+        sugars_100g=_dec(body.sugars_100g),
+        nova_group=body.nova_group,
+        food_group=body.food_group,
         source=FoodSource.MANUAL.value,
         favorite=body.favorite,
     )
@@ -378,6 +412,8 @@ def _dec(value: float | None) -> Decimal | None:
 def _patch_value(field: str, value: object) -> object:
     if isinstance(value, str) and field == "name":
         return value.strip()
+    if field in ("nova_group", "food_group"):
+        return value
     return Decimal(str(value)) if isinstance(value, float | int) else value
 
 
@@ -398,6 +434,10 @@ LOG_EXAMPLE: dict[str, Any] = {
     "protein_g": 10.8,
     "carbs_g": 47.0,
     "fat_g": 5.6,
+    "sugars_g": 0.9,
+    "sugars_100g": 1.1,
+    "nova_group": 1,
+    "food_group": "other",
     "created_at": "2026-10-14T07:12:03Z",
 }
 
@@ -425,6 +465,12 @@ class LogOut(BaseModel):
     protein_g: float | None = Field(description="null when the food's value is unknown")
     carbs_g: float | None = Field(description="null when the food's value is unknown")
     fat_g: float | None = Field(description="null when the food's value is unknown")
+    sugars_g: float | None = Field(
+        default=None, description="null when the food's value is unknown"
+    )
+    sugars_100g: float | None = Field(default=None, description="Snapshot; null = unknown")
+    nova_group: Nova = None
+    food_group: GroupField = None
     created_at: datetime
 
     @classmethod
@@ -445,6 +491,10 @@ class LogOut(BaseModel):
             protein_g=amount(log.protein_100g),
             carbs_g=amount(log.carbs_100g),
             fat_g=amount(log.fat_100g),
+            sugars_g=amount(log.sugars_100g),
+            sugars_100g=_f(log.sugars_100g),
+            nova_group=log.nova_group,
+            food_group=FoodGroup(log.food_group) if log.food_group else None,
             created_at=log.created_at,
         )
 
@@ -665,6 +715,8 @@ DAY_EXAMPLE: dict[str, Any] = {
     "protein_g": 131.2,
     "carbs_g": 270.0,
     "fat_g": 80.4,
+    "sugars_g": 41.5,
+    "free_sugars_g": 18.0,
     "entry_count": 9,
     "macros_complete": True,
     "kcal_target": 2600,
@@ -708,6 +760,12 @@ class DaySummary(BaseModel):
     protein_g: float
     carbs_g: float
     fat_g: float
+    sugars_g: float = Field(default=0.0, description="Known sugar values only")
+    free_sugars_g: float = Field(
+        default=0.0,
+        description="The part of sugars_g that counts toward the daily sugar limit:"
+        " sweets, desserts, sugary drinks and NOVA 4 foods; never fruit, vegetables, plain dairy",
+    )
     entry_count: int
     macros_complete: bool = Field(
         description="False if a logged food has an unknown macro (missing from the sums)"
@@ -748,6 +806,8 @@ class DaySummary(BaseModel):
             protein_g=float(d.intake.protein_g),
             carbs_g=float(d.intake.carbs_g),
             fat_g=float(d.intake.fat_g),
+            sugars_g=float(d.intake.sugars_g),
+            free_sugars_g=float(d.intake.free_sugars_g),
             entry_count=d.intake.entries,
             macros_complete=d.intake.macros_complete,
             kcal_target=target,

@@ -127,12 +127,12 @@ export interface paths {
         };
         /**
          * Settings of a chat
-         * @description The language the chat chose with `/lang`, or null.
+         * @description The language (`/lang`) and profanity level (`/swear`) the chat chose, or null.
          */
         get: operations["get_chat_settings_v1_chats__chat_id__settings_get"];
         /**
          * Store the settings of a chat
-         * @description Idempotent: the same body twice stores one row.
+         * @description Idempotent: the same body twice stores one row. A field left out keeps its stored value; at least one is required.
          */
         put: operations["put_chat_settings_v1_chats__chat_id__settings_put"];
         post?: never;
@@ -1157,22 +1157,26 @@ export interface components {
         };
         /**
          * ChatSettingsIn
+         * @description Either field or both; a field left out keeps its stored value.
          * @example {
          *       "lang": "en"
          *     }
+         * @example {
+         *       "profanity": "max"
+         *     }
          */
         ChatSettingsIn: {
-            /**
-             * Lang
-             * @enum {string}
-             */
-            lang: "en" | "tr";
+            /** Lang */
+            lang?: ("en" | "tr") | null;
+            /** Profanity */
+            profanity?: ("roast" | "max") | null;
         };
         /**
          * ChatSettingsOut
          * @example {
          *       "chat_id": 123456789,
-         *       "lang": "tr"
+         *       "lang": "tr",
+         *       "profanity": "max"
          *     }
          */
         ChatSettingsOut: {
@@ -1183,6 +1187,11 @@ export interface components {
              * @description null: never chosen, the bot uses BOT_LANG
              */
             lang: ("en" | "tr") | null;
+            /**
+             * Profanity
+             * @description null: never chosen, the bot uses BOT_PROFANITY
+             */
+            profanity?: ("roast" | "max") | null;
         };
         /**
          * CheckinIn
@@ -1451,12 +1460,16 @@ export interface components {
          *           "created_at": "2026-10-14T07:12:03Z",
          *           "date": "2026-10-14",
          *           "fat_g": 5.6,
+         *           "food_group": "other",
          *           "food_id": 7,
          *           "food_name": "Rolled oats",
          *           "grams": 80,
          *           "kcal": 297.6,
          *           "meal": "breakfast",
-         *           "protein_g": 10.8
+         *           "nova_group": 1,
+         *           "protein_g": 10.8,
+         *           "sugars_100g": 1.1,
+         *           "sugars_g": 0.9
          *         }
          *       ]
          *     }
@@ -1500,12 +1513,14 @@ export interface components {
          *       "exercise_unknown_count": 0,
          *       "expenditure_kcal": 3118.1,
          *       "fat_g": 80.4,
+         *       "free_sugars_g": 18,
          *       "intake_kcal": 2410.5,
          *       "kcal_remaining": 189.5,
          *       "kcal_target": 2600,
          *       "macros_complete": true,
          *       "protein_g": 131.2,
          *       "protein_target_g": 140,
+         *       "sugars_g": 41.5,
          *       "weight_date": "2026-10-12",
          *       "weight_kg": 80
          *     }
@@ -1570,6 +1585,12 @@ export interface components {
             expenditure_kcal: number | null;
             /** Fat G */
             fat_g: number;
+            /**
+             * Free Sugars G
+             * @description The part of sugars_g that counts toward the daily sugar limit: sweets, desserts, sugary drinks and NOVA 4 foods; never fruit, vegetables, plain dairy
+             * @default 0
+             */
+            free_sugars_g: number;
             /** Intake Kcal */
             intake_kcal: number;
             /**
@@ -1588,6 +1609,12 @@ export interface components {
             protein_g: number;
             /** Protein Target G */
             protein_target_g: number | null;
+            /**
+             * Sugars G
+             * @description Known sugar values only
+             * @default 0
+             */
+            sugars_g: number;
             /** Weight Date */
             weight_date: string | null;
             /**
@@ -1741,6 +1768,12 @@ export interface components {
             secondary_muscles?: components["schemas"]["Muscle"][] | null;
         };
         /**
+         * FoodGroup
+         * @description What decides whether a food's sugar is free sugar (ADR 0032); null = unknown.
+         * @enum {string}
+         */
+        FoodGroup: "sweets" | "dessert" | "sugary_drink" | "fruit" | "vegetable" | "plain_dairy" | "other";
+        /**
          * FoodIn
          * @example {
          *       "carbs_100g": 0,
@@ -1771,6 +1804,8 @@ export interface components {
              * @default false
              */
             favorite: boolean;
+            /** @description Decides whether the sugar is free sugar (sweets, dessert, sugary_drink count; fruit, vegetable, plain_dairy never do); null = unknown */
+            food_group?: components["schemas"]["FoodGroup"] | null;
             /**
              * Kcal 100G
              * @description kcal per 100 g
@@ -1779,10 +1814,20 @@ export interface components {
             /** Name */
             name: string;
             /**
+             * Nova Group
+             * @description Open Food Facts NOVA group, 4 = ultra-processed; null = unknown
+             */
+            nova_group?: number | null;
+            /**
              * Protein 100G
              * @description g per 100 g; null = unknown
              */
             protein_100g?: number | null;
+            /**
+             * Sugars 100G
+             * @description g per 100 g; null = unknown
+             */
+            sugars_100g?: number | null;
         };
         /**
          * FoodList
@@ -1794,11 +1839,14 @@ export interface components {
          *           "carbs_100g": 58.7,
          *           "fat_100g": 7,
          *           "favorite": true,
+         *           "food_group": "other",
          *           "id": 7,
          *           "kcal_100g": 372,
          *           "name": "Rolled oats",
+         *           "nova_group": 1,
          *           "protein_100g": 13.5,
-         *           "source": "openfoodfacts"
+         *           "source": "openfoodfacts",
+         *           "sugars_100g": 1.1
          *         }
          *       ]
          *     }
@@ -1817,11 +1865,14 @@ export interface components {
          *           "carbs_100g": 58.7,
          *           "fat_100g": 7,
          *           "favorite": true,
+         *           "food_group": "other",
          *           "id": 7,
          *           "kcal_100g": 372,
          *           "name": "Rolled oats",
+         *           "nova_group": 1,
          *           "protein_100g": 13.5,
-         *           "source": "openfoodfacts"
+         *           "source": "openfoodfacts",
+         *           "sugars_100g": 1.1
          *         }
          *       ],
          *       "remote": "ok"
@@ -1845,11 +1896,14 @@ export interface components {
          *       "carbs_100g": 58.7,
          *       "fat_100g": 7,
          *       "favorite": true,
+         *       "food_group": "other",
          *       "id": 7,
          *       "kcal_100g": 372,
          *       "name": "Rolled oats",
+         *       "nova_group": 1,
          *       "protein_100g": 13.5,
-         *       "source": "openfoodfacts"
+         *       "source": "openfoodfacts",
+         *       "sugars_100g": 1.1
          *     }
          */
         FoodOut: {
@@ -1869,6 +1923,8 @@ export interface components {
             fat_100g: number | null;
             /** Favorite */
             favorite: boolean;
+            /** @description Decides whether the sugar is free sugar (sweets, dessert, sugary_drink count; fruit, vegetable, plain_dairy never do); null = unknown */
+            food_group?: components["schemas"]["FoodGroup"] | null;
             /** Id */
             id: number;
             /** Kcal 100G */
@@ -1876,12 +1932,22 @@ export interface components {
             /** Name */
             name: string;
             /**
+             * Nova Group
+             * @description Open Food Facts NOVA group, 4 = ultra-processed; null = unknown
+             */
+            nova_group?: number | null;
+            /**
              * Protein 100G
              * @description null = unknown
              */
             protein_100g: number | null;
             /** @description `openfoodfacts` rows are cached lookups */
             source: components["schemas"]["FoodSource"];
+            /**
+             * Sugars 100G
+             * @description null = unknown
+             */
+            sugars_100g?: number | null;
         };
         /**
          * FoodPatch
@@ -1904,15 +1970,27 @@ export interface components {
              * @description g per 100 g; null = unknown
              */
             fat_100g?: number | null;
+            /** @description Decides whether the sugar is free sugar (sweets, dessert, sugary_drink count; fruit, vegetable, plain_dairy never do); null = unknown */
+            food_group?: components["schemas"]["FoodGroup"] | null;
             /** Kcal 100G */
             kcal_100g?: number | null;
             /** Name */
             name?: string | null;
             /**
+             * Nova Group
+             * @description Open Food Facts NOVA group, 4 = ultra-processed; null = unknown
+             */
+            nova_group?: number | null;
+            /**
              * Protein 100G
              * @description g per 100 g; null = unknown
              */
             protein_100g?: number | null;
+            /**
+             * Sugars 100G
+             * @description g per 100 g; null = unknown
+             */
+            sugars_100g?: number | null;
         };
         /**
          * FoodSource
@@ -2026,12 +2104,16 @@ export interface components {
          *       "created_at": "2026-10-14T07:12:03Z",
          *       "date": "2026-10-14",
          *       "fat_g": 5.6,
+         *       "food_group": "other",
          *       "food_id": 7,
          *       "food_name": "Rolled oats",
          *       "grams": 80,
          *       "kcal": 297.6,
          *       "meal": "breakfast",
-         *       "protein_g": 10.8
+         *       "nova_group": 1,
+         *       "protein_g": 10.8,
+         *       "sugars_100g": 1.1,
+         *       "sugars_g": 0.9
          *     }
          */
         LogOut: {
@@ -2062,6 +2144,8 @@ export interface components {
              * @description null when the food's value is unknown
              */
             fat_g: number | null;
+            /** @description Decides whether the sugar is free sugar (sweets, dessert, sugary_drink count; fruit, vegetable, plain_dairy never do); null = unknown */
+            food_group?: components["schemas"]["FoodGroup"] | null;
             /** Food Id */
             food_id: number;
             /** Food Name */
@@ -2072,10 +2156,25 @@ export interface components {
             kcal: number;
             meal: components["schemas"]["Meal"];
             /**
+             * Nova Group
+             * @description Open Food Facts NOVA group, 4 = ultra-processed; null = unknown
+             */
+            nova_group?: number | null;
+            /**
              * Protein G
              * @description null when the food's value is unknown
              */
             protein_g: number | null;
+            /**
+             * Sugars 100G
+             * @description Snapshot; null = unknown
+             */
+            sugars_100g?: number | null;
+            /**
+             * Sugars G
+             * @description null when the food's value is unknown
+             */
+            sugars_g?: number | null;
         };
         /**
          * Meal
@@ -2882,12 +2981,14 @@ export interface components {
          *           "exercise_unknown_count": 0,
          *           "expenditure_kcal": 3118.1,
          *           "fat_g": 80.4,
+         *           "free_sugars_g": 18,
          *           "intake_kcal": 2410.5,
          *           "kcal_remaining": 189.5,
          *           "kcal_target": 2600,
          *           "macros_complete": true,
          *           "protein_g": 131.2,
          *           "protein_target_g": 140,
+         *           "sugars_g": 41.5,
          *           "weight_date": "2026-10-12",
          *           "weight_kg": 80
          *         }

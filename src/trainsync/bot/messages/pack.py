@@ -15,7 +15,7 @@ from datetime import date, datetime
 
 from trainsync.bot.messages.keys import Key
 from trainsync.bot.messages.neutral import NEUTRAL_TEXTS, NeutralKey
-from trainsync.core.settings import BotLang, BotTone
+from trainsync.core.settings import DEFAULT_EMERGENCY_NUMBER, BotLang, BotTone
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,8 +51,11 @@ class Messages:
         rng: random.Random | None = None,
         *,
         languages: Mapping[BotLang, MessagePack] | None = None,
+        emergency_number: str = DEFAULT_EMERGENCY_NUMBER,
     ) -> None:
         self._default = pack
+        # Filled into every neutral text that asks for it (the distress reply, ADR 0032).
+        self._context: Mapping[str, object] = {"emergency": emergency_number}
         self._languages: Mapping[BotLang, MessagePack] = languages or {}
         self._rng = rng or random.Random()  # noqa: S311  (wording, not crypto)
 
@@ -78,7 +81,7 @@ class Messages:
 
     def neutral(self, key: NeutralKey, **fields: object) -> str:
         """Tone-free wording (nutrition, scale, sleep, energy): the same in every tone."""
-        return NEUTRAL_TEXTS[self.pack.lang][key].format(**fields)
+        return NEUTRAL_TEXTS[self.pack.lang][key].format(**{**self._context, **fields})
 
     def help(self) -> str:
         """The tone's help plus the tone-free nutrition lines. Command names and their

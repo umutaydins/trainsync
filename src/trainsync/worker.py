@@ -12,6 +12,7 @@ from arq.connections import ArqRedis, RedisSettings
 from prometheus_client import start_http_server
 
 from trainsync.bot.messages import messages_for
+from trainsync.coach.voice import build_voice
 from trainsync.core.clock import Clock, Sleep, real_sleep, utc_now
 from trainsync.core.crypto import TokenCipher
 from trainsync.core.logging import configure_logging, get_logger, warn_dev_secrets
@@ -93,17 +94,14 @@ async def startup(ctx: dict[str, Any]) -> None:
         exit_stack=stack,
     )
     notifier, chat_ref = build_notifier(settings, http, sleep)
+    msg = messages_for(settings)
+    voice = build_voice(settings, redis, msg)
     ctx[NOTIFY_CTX_KEY] = NotifyDeps(
-        sessionmaker,
-        notifier,
-        chat_ref,
-        settings.dashboard_public_url,
-        clock,
-        messages_for(settings),
+        sessionmaker, notifier, chat_ref, settings.dashboard_public_url, clock, msg, voice
     )
     ctx[ALERTS_CTX_KEY] = build_alert_deps(settings, sessionmaker, redis, notifier, chat_ref, clock)
     ctx[CHECKIN_CTX_KEY] = build_checkin_deps(
-        settings, sessionmaker, http, clock, sleep, messages_for(settings)
+        settings, sessionmaker, http, clock, sleep, msg, voice
     )
     ctx[COACH_CTX_KEY] = build_coach_deps(
         settings, sessionmaker, http, redis, clock, sleep, messages_for(settings)
@@ -115,6 +113,7 @@ async def startup(ctx: dict[str, Any]) -> None:
         checkin=settings.checkin_active,
         coach=settings.coach_active,
         intensity=settings.bot_intensity,
+        profanity=settings.bot_profanity,
         alerts=chat_ref is not None,
         backup_dir=settings.backup_dir or None,
     )

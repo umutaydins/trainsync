@@ -536,24 +536,47 @@
         "type": "object"
       },
       "ChatSettingsIn": {
+        "description": "Either field or both; a field left out keeps its stored value.",
         "examples": [
           {
             "lang": "en"
+          },
+          {
+            "profanity": "max"
           }
         ],
         "properties": {
           "lang": {
-            "enum": [
-              "en",
-              "tr"
+            "anyOf": [
+              {
+                "enum": [
+                  "en",
+                  "tr"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Lang",
-            "type": "string"
+            "title": "Lang"
+          },
+          "profanity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "roast",
+                  "max"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profanity"
           }
         },
-        "required": [
-          "lang"
-        ],
         "title": "ChatSettingsIn",
         "type": "object"
       },
@@ -561,7 +584,8 @@
         "examples": [
           {
             "chat_id": 123456789,
-            "lang": "tr"
+            "lang": "tr",
+            "profanity": "max"
           }
         ],
         "properties": {
@@ -584,6 +608,22 @@
             ],
             "description": "null: never chosen, the bot uses BOT_LANG",
             "title": "Lang"
+          },
+          "profanity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "roast",
+                  "max"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null: never chosen, the bot uses BOT_PROFANITY",
+            "title": "Profanity"
           }
         },
         "required": [
@@ -1110,12 +1150,16 @@
                 "created_at": "2026-10-14T07:12:03Z",
                 "date": "2026-10-14",
                 "fat_g": 5.6,
+                "food_group": "other",
                 "food_id": 7,
                 "food_name": "Rolled oats",
                 "grams": 80,
                 "kcal": 297.6,
                 "meal": "breakfast",
-                "protein_g": 10.8
+                "nova_group": 1,
+                "protein_g": 10.8,
+                "sugars_100g": 1.1,
+                "sugars_g": 0.9
               }
             ]
           }
@@ -1169,12 +1213,14 @@
             "exercise_unknown_count": 0,
             "expenditure_kcal": 3118.1,
             "fat_g": 80.4,
+            "free_sugars_g": 18.0,
             "intake_kcal": 2410.5,
             "kcal_remaining": 189.5,
             "kcal_target": 2600,
             "macros_complete": true,
             "protein_g": 131.2,
             "protein_target_g": 140,
+            "sugars_g": 41.5,
             "weight_date": "2026-10-12",
             "weight_kg": 80.0
           }
@@ -1294,6 +1340,12 @@
             "title": "Fat G",
             "type": "number"
           },
+          "free_sugars_g": {
+            "default": 0.0,
+            "description": "The part of sugars_g that counts toward the daily sugar limit: sweets, desserts, sugary drinks and NOVA 4 foods; never fruit, vegetables, plain dairy",
+            "title": "Free Sugars G",
+            "type": "number"
+          },
           "intake_kcal": {
             "title": "Intake Kcal",
             "type": "number"
@@ -1340,6 +1392,12 @@
               }
             ],
             "title": "Protein Target G"
+          },
+          "sugars_g": {
+            "default": 0.0,
+            "description": "Known sugar values only",
+            "title": "Sugars G",
+            "type": "number"
           },
           "weight_date": {
             "anyOf": [
@@ -1694,6 +1752,20 @@
         "title": "ExerciseUpdate",
         "type": "object"
       },
+      "FoodGroup": {
+        "description": "What decides whether a food's sugar is free sugar (ADR 0032); null = unknown.",
+        "enum": [
+          "sweets",
+          "dessert",
+          "sugary_drink",
+          "fruit",
+          "vegetable",
+          "plain_dairy",
+          "other"
+        ],
+        "title": "FoodGroup",
+        "type": "string"
+      },
       "FoodIn": {
         "examples": [
           {
@@ -1763,6 +1835,17 @@
             "title": "Favorite",
             "type": "boolean"
           },
+          "food_group": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FoodGroup"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Decides whether the sugar is free sugar (sweets, dessert, sugary_drink count; fruit, vegetable, plain_dairy never do); null = unknown"
+          },
           "kcal_100g": {
             "description": "kcal per 100 g",
             "maximum": 1000.0,
@@ -1775,6 +1858,20 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "nova_group": {
+            "anyOf": [
+              {
+                "maximum": 4.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Open Food Facts NOVA group, 4 = ultra-processed; null = unknown",
+            "title": "Nova Group"
           },
           "protein_100g": {
             "anyOf": [
@@ -1789,6 +1886,20 @@
             ],
             "description": "g per 100 g; null = unknown",
             "title": "Protein 100G"
+          },
+          "sugars_100g": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "g per 100 g; null = unknown",
+            "title": "Sugars 100G"
           }
         },
         "required": [
@@ -1808,11 +1919,14 @@
                 "carbs_100g": 58.7,
                 "fat_100g": 7.0,
                 "favorite": true,
+                "food_group": "other",
                 "id": 7,
                 "kcal_100g": 372.0,
                 "name": "Rolled oats",
+                "nova_group": 1,
                 "protein_100g": 13.5,
-                "source": "openfoodfacts"
+                "source": "openfoodfacts",
+                "sugars_100g": 1.1
               }
             ]
           }
@@ -1842,11 +1956,14 @@
                 "carbs_100g": 58.7,
                 "fat_100g": 7.0,
                 "favorite": true,
+                "food_group": "other",
                 "id": 7,
                 "kcal_100g": 372.0,
                 "name": "Rolled oats",
+                "nova_group": 1,
                 "protein_100g": 13.5,
-                "source": "openfoodfacts"
+                "source": "openfoodfacts",
+                "sugars_100g": 1.1
               }
             ],
             "remote": "ok"
@@ -1888,11 +2005,14 @@
             "carbs_100g": 58.7,
             "fat_100g": 7.0,
             "favorite": true,
+            "food_group": "other",
             "id": 7,
             "kcal_100g": 372.0,
             "name": "Rolled oats",
+            "nova_group": 1,
             "protein_100g": 13.5,
-            "source": "openfoodfacts"
+            "source": "openfoodfacts",
+            "sugars_100g": 1.1
           }
         ],
         "properties": {
@@ -1946,6 +2066,17 @@
             "title": "Favorite",
             "type": "boolean"
           },
+          "food_group": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FoodGroup"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Decides whether the sugar is free sugar (sweets, dessert, sugary_drink count; fruit, vegetable, plain_dairy never do); null = unknown"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -1957,6 +2088,20 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "nova_group": {
+            "anyOf": [
+              {
+                "maximum": 4.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Open Food Facts NOVA group, 4 = ultra-processed; null = unknown",
+            "title": "Nova Group"
           },
           "protein_100g": {
             "anyOf": [
@@ -1973,6 +2118,18 @@
           "source": {
             "$ref": "#/components/schemas/FoodSource",
             "description": "`openfoodfacts` rows are cached lookups"
+          },
+          "sugars_100g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null = unknown",
+            "title": "Sugars 100G"
           }
         },
         "required": [
@@ -2039,6 +2196,17 @@
             "description": "g per 100 g; null = unknown",
             "title": "Fat 100G"
           },
+          "food_group": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FoodGroup"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Decides whether the sugar is free sugar (sweets, dessert, sugary_drink count; fruit, vegetable, plain_dairy never do); null = unknown"
+          },
           "kcal_100g": {
             "anyOf": [
               {
@@ -2065,6 +2233,20 @@
             ],
             "title": "Name"
           },
+          "nova_group": {
+            "anyOf": [
+              {
+                "maximum": 4.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Open Food Facts NOVA group, 4 = ultra-processed; null = unknown",
+            "title": "Nova Group"
+          },
           "protein_100g": {
             "anyOf": [
               {
@@ -2078,6 +2260,20 @@
             ],
             "description": "g per 100 g; null = unknown",
             "title": "Protein 100G"
+          },
+          "sugars_100g": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "g per 100 g; null = unknown",
+            "title": "Sugars 100G"
           }
         },
         "title": "FoodPatch",
@@ -2266,12 +2462,16 @@
             "created_at": "2026-10-14T07:12:03Z",
             "date": "2026-10-14",
             "fat_g": 5.6,
+            "food_group": "other",
             "food_id": 7,
             "food_name": "Rolled oats",
             "grams": 80,
             "kcal": 297.6,
             "meal": "breakfast",
-            "protein_g": 10.8
+            "nova_group": 1,
+            "protein_g": 10.8,
+            "sugars_100g": 1.1,
+            "sugars_g": 0.9
           }
         ],
         "properties": {
@@ -2325,6 +2525,17 @@
             "description": "null when the food's value is unknown",
             "title": "Fat G"
           },
+          "food_group": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FoodGroup"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Decides whether the sugar is free sugar (sweets, dessert, sugary_drink count; fruit, vegetable, plain_dairy never do); null = unknown"
+          },
           "food_id": {
             "title": "Food Id",
             "type": "integer"
@@ -2344,6 +2555,20 @@
           "meal": {
             "$ref": "#/components/schemas/Meal"
           },
+          "nova_group": {
+            "anyOf": [
+              {
+                "maximum": 4.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Open Food Facts NOVA group, 4 = ultra-processed; null = unknown",
+            "title": "Nova Group"
+          },
           "protein_g": {
             "anyOf": [
               {
@@ -2355,6 +2580,30 @@
             ],
             "description": "null when the food's value is unknown",
             "title": "Protein G"
+          },
+          "sugars_100g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Snapshot; null = unknown",
+            "title": "Sugars 100G"
+          },
+          "sugars_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null when the food's value is unknown",
+            "title": "Sugars G"
           }
         },
         "required": [
@@ -3888,12 +4137,14 @@
                 "exercise_unknown_count": 0,
                 "expenditure_kcal": 3118.1,
                 "fat_g": 80.4,
+                "free_sugars_g": 18.0,
                 "intake_kcal": 2410.5,
                 "kcal_remaining": 189.5,
                 "kcal_target": 2600,
                 "macros_complete": true,
                 "protein_g": 131.2,
                 "protein_target_g": 140,
+                "sugars_g": 41.5,
                 "weight_date": "2026-10-12",
                 "weight_kg": 80.0
               }
@@ -5989,7 +6240,7 @@
     },
     "/v1/chats/{chat_id}/settings": {
       "get": {
-        "description": "The language the chat chose with `/lang`, or null.",
+        "description": "The language (`/lang`) and profanity level (`/swear`) the chat chose, or null.",
         "operationId": "get_chat_settings_v1_chats__chat_id__settings_get",
         "parameters": [
           {
@@ -6050,7 +6301,7 @@
         ]
       },
       "put": {
-        "description": "Idempotent: the same body twice stores one row.",
+        "description": "Idempotent: the same body twice stores one row. A field left out keeps its stored value; at least one is required.",
         "operationId": "put_chat_settings_v1_chats__chat_id__settings_put",
         "parameters": [
           {

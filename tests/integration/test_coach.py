@@ -20,6 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import make_settings
+from tests.support.swears import swears
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, error, ok, sent_messages
 from trainsync.bot.common import client_id
 from trainsync.bot.messages import PACKS, Key, Messages, messages_for
@@ -29,7 +30,7 @@ from trainsync.coach.lines import MemoryRecentStore, load_pack, load_packs
 from trainsync.coach.mode import CoachMode, MemorySoftModeStore
 from trainsync.coach.savage_tr import LINES
 from trainsync.coach.voice import CoachVoice
-from trainsync.core.settings import BotLang
+from trainsync.core.settings import BotLang, BotProfanity
 from trainsync.db.models import Notification, Program, ProgramDay, ProgramExercise
 from trainsync.db.repositories.chat_settings import ChatSettingsRepository
 from trainsync.db.repositories.training import (
@@ -420,3 +421,70 @@ async def test_the_worker_speaks_the_language_stored_for_the_chat(
     assert await run_reminders(deps) == "sent"
     if not savage:
         assert texts(send)[-1] == MSG(Key.COACH_REMINDER_NOW, day="Push A", time="18:00")
+
+
+async def store_profanity(
+    sessionmaker: async_sessionmaker[AsyncSession], level: BotProfanity
+) -> None:
+    async with sessionmaker.begin() as session:
+        await ChatSettingsRepository(session).set(CHAT, MONDAY_18, profanity=level)
+
+
+def savage_deps(deps: CoachDeps) -> CoachDeps:
+    msg = messages_for(make_settings(bot_lang="tr", bot_tone="hardcore"))
+    packs = load_packs(None)
+    voice = CoachVoice(
+        msg=msg,
+        mode=CoachMode(configured=True, soft=MemorySoftModeStore()),
+        pack=packs["tr"],
+        recent=MemoryRecentStore(),
+        rng=random.Random(4),
+        packs=packs,
+    )
+    return replace(deps, msg=msg, voice=voice)
+
+
+async def test_max_reaches_the_reminders_read_at_send_time(
+    coach: tuple[CoachDeps, respx.Route],
+    clock: Clock,
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    """BOT_PROFANITY is roast; the chat chose max with /swear (ADR 0032)."""
+    deps, send = coach
+    deps = savage_deps(deps)
+    packs = load_packs(None)
+    await program(sessionmaker)
+    await store_profanity(sessionmaker, "max")
+    clock.local(17, 30)
+    assert await run_reminders(deps) == "sent"
+    fact, line = texts(send)[-1].split("\n", 1)
+    assert fact == "Push A · 18:00"
+    assert any(line.startswith(x) for x in packs["tr"].max[Category.REMINDER_BEFORE]), line
+    assert swears(line)
+    await store_profanity(sessionmaker, "roast")
+    clock.local(18, 0)
+    assert await run_reminders(deps) == "sent"
+    line = texts(send)[-1].split("\n", 1)[1]
+    assert any(line.startswith(x) for x in packs["tr"].lines[Category.REMINDER_NOW]), line
+
+
+async def test_max_praise_after_a_complete_workout(
+    coach: tuple[CoachDeps, respx.Route],
+    clock: Clock,
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    deps, send = coach
+    deps = savage_deps(deps)
+    await store_profanity(sessionmaker, "max")
+    day_id, bench = await program(sessionmaker, sets=2)
+    workout = await start(sessionmaker, clock.now, day_id, uuid.uuid4())
+    await log(sessionmaker, workout, bench, 1, 5, "80", clock.now)
+    clock.now += timedelta(seconds=150)
+    await log(sessionmaker, workout, bench, 2, 5, "80", clock.now)
+    async with sessionmaker.begin() as session:
+        await WorkoutRepository(session).finish(workout, clock.now)
+    assert await workout_finished(deps, workout) == "sent"
+    praise = texts(send)[-1].split("\n")[-1]
+    good = load_packs(None)["tr"].max[Category.WORKOUT_DONE_GOOD]
+    assert any(praise.startswith(x) for x in good), praise
+    assert swears(praise)

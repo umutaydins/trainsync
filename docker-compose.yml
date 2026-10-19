@@ -110,6 +110,10 @@ services:
       BOT_TONE: ${BOT_TONE:-neutral}  # notification wording (ADR 0016)
       BOT_LANG: ${BOT_LANG:-en}
       BOT_INTENSITY: ${BOT_INTENSITY:-normal}  # coach (P6.11, ADR 0030)
+      BOT_PROFANITY: ${BOT_PROFANITY:-roast}  # /swear default (P6.13, ADR 0032)
+      SUGAR_LIMIT_G: ${SUGAR_LIMIT_G:-50}
+      HIGH_SUGAR_PER_100G: ${HIGH_SUGAR_PER_100G:-22.5}
+      EMERGENCY_NUMBER: ${EMERGENCY_NUMBER:-112}
       WORKOUT_REMINDER_TIME: ${WORKOUT_REMINDER_TIME:-18:00}
       QUIET_HOURS: ${QUIET_HOURS:-23:00-07:00}
       # Daily check-in prompt (P6.9, ADR 0020); empty CHECKIN_ENABLED = on with a bot token.
@@ -140,6 +144,10 @@ services:
       BOT_TONE: ${BOT_TONE:-neutral}  # reply wording and assistant persona (ADR 0016)
       BOT_LANG: ${BOT_LANG:-en}
       BOT_INTENSITY: ${BOT_INTENSITY:-normal}  # coach (P6.11, ADR 0030)
+      BOT_PROFANITY: ${BOT_PROFANITY:-roast}  # /swear default (P6.13, ADR 0032)
+      SUGAR_LIMIT_G: ${SUGAR_LIMIT_G:-50}
+      HIGH_SUGAR_PER_100G: ${HIGH_SUGAR_PER_100G:-22.5}
+      EMERGENCY_NUMBER: ${EMERGENCY_NUMBER:-112}
       WORKOUT_REMINDER_TIME: ${WORKOUT_REMINDER_TIME:-18:00}
       QUIET_HOURS: ${QUIET_HOURS:-23:00-07:00}
       # The bot's "today" (P6.8) and the check-in conversation (P6.9).

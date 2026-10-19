@@ -19,6 +19,7 @@ from pydantic import SecretStr
 from tests.support.bot_api import API, FakeApi, install, planned
 from tests.support.messages import NEUTRAL_EN as MSG
 from tests.support.state import MemoryStateStore
+from tests.support.swears import swears
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, message_update, ok, sent_messages
 from trainsync.bot.checkin import (
     MINUS,
@@ -35,10 +36,11 @@ from trainsync.bot.read_api import ReadApi
 from trainsync.bot.telegram import TelegramApi, Update
 from trainsync.bot.training import TrainingCommands
 from trainsync.coach.categories import Category
-from trainsync.coach.lines import MemoryRecentStore, load_pack
+from trainsync.coach.lines import SAVAGE_MAX, MemoryRecentStore, load_pack
 from trainsync.coach.mode import CoachMode, MemorySoftModeStore
 from trainsync.coach.savage_tr import LINES
 from trainsync.coach.voice import CoachVoice
+from trainsync.core.settings import BotProfanity
 
 NOW = datetime(2026, 10, 18, 18, 5, tzinfo=UTC)  # 21:05 in Istanbul
 DAY = "2026-10-18"
@@ -149,6 +151,7 @@ def make_chat(
             CheckinFlow(api, store, clock, ZONE, msg, voice),
             TrainingCommands(api, store, clock, ZONE, msg),
         ],
+        voice=voice,
     )
     return Chat(dispatcher, router)
 
@@ -372,13 +375,14 @@ async def test_hardcore_pushes_only_on_a_skip_without_reason(
     assert first_line != PACKS["neutral", "en"].texts[Key.CHECKIN_SKIPPED_NO_REASON][0]
 
 
-def savage_voice(msg: Messages) -> CoachVoice:
+def savage_voice(msg: Messages, profanity: BotProfanity = "roast") -> CoachVoice:
     return CoachVoice(
         msg=msg,
         mode=CoachMode(configured=True, soft=MemorySoftModeStore()),
         pack=load_pack(None),
         recent=MemoryRecentStore(),
         rng=random.Random(2),
+        profanity=profanity,
     )
 
 
@@ -414,7 +418,7 @@ async def test_a_pain_reason_is_never_roasted_even_in_savage(
     reply = await chat.say("dizim ağrıyor, canım istemedi")
     assert reply.startswith(msg(Key.CHECKIN_SICK_SAVED))
     assert msg.neutral(NeutralKey.SAFETY_PAIN) in reply
-    assert not any(line in reply for c in Category for line in LINES[c])
+    assert not any(line in reply for lines in LINES.values() for line in lines)
 
 
 @pytest.mark.parametrize(
@@ -543,3 +547,24 @@ async def test_api_down_on_a_press(chat: Chat, fake: FakeApi, router: respx.Mock
     router["put_checkin"].mock(return_value=httpx.Response(503))
     reply = await chat.tap("😴 Rest day")
     assert reply == MSG(Key.API_DOWN)
+
+
+async def test_in_max_the_check_in_questions_swear_but_calm_answers_never_do(
+    http: httpx.AsyncClient, router: respx.MockRouter, fake: FakeApi
+) -> None:
+    """ADR 0032: max reaches the check-in prompt; pain and distress replies stay clean."""
+    msg = Messages(PACKS["hardcore", "tr"], random.Random(3))
+    chat = make_chat(http, router, MemoryStateStore(), msg, savage_voice(msg, "max"))
+    openers = SAVAGE_MAX["tr"][Category.MAX_OPENER]
+    prompt = await chat.say("/report")
+    assert prompt.split("\n", 1)[0] in openers, prompt
+    await chat.tap("❌ Atladım")
+    calm = await chat.say("bugün hiçbir şey yemedim, kendimden nefret ediyorum")
+    assert msg.neutral(NeutralKey.SAFETY_DISTRESS) in calm
+    assert not swears(calm), calm
+    second = make_chat(http, router, MemoryStateStore(), msg, savage_voice(msg, "max"))
+    await second.say("/report")
+    await second.tap("❌ Atladım")
+    pain = await second.say("dizim ağrıyor")
+    assert msg.neutral(NeutralKey.SAFETY_PAIN) in pain
+    assert not swears(pain), pain

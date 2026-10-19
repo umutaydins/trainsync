@@ -11,6 +11,7 @@ trainsync bot
 /report: daily check-in
 /yumusak: soft coach for 24 h · /sert: back to normal
 /lang: Türkçe / English
+/swear: max / roast (savage profanity)
 /eat <food> <grams>: log food, e.g. /eat oats 60
 /kcal: today's intake and macros
 /weight 78.4: today's scale reading
@@ -30,28 +31,13 @@ trainsync bot
 /report: daily check-in
 /yumusak: soft coach for 24 h · /sert: back to normal
 /lang: Türkçe / English
+/swear: max / roast (savage profanity)
 /eat <food> <grams>: log food, e.g. /eat oats 60
 /kcal: today's intake and macros
 /weight 78.4: today's scale reading
 
 ## unknown command
-Unknown command /foo.
-
-trainsync bot
-/week: this week vs last week
-/last: latest activity
-/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run
-/status: sync health
-/today: today's planned workout
-/log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)
-/done: finish the workout
-/plates 102.5: plates per side
-/report: daily check-in
-/yumusak: soft coach for 24 h · /sert: back to normal
-/lang: Türkçe / English
-/eat <food> <grams>: log food, e.g. /eat oats 60
-/kcal: today's intake and macros
-/weight 78.4: today's scale reading
+Unknown command /foo. Everything I can do: /help
 
 ## usage
 Usage: /stats [4w|12w|52w] [sport], e.g. /stats 12w run

@@ -1,17 +1,37 @@
 """Effective intensity (ADR 0030): savage only when configured (hardcore and savage, in either
 language since ADR 0031) and not in the owner's 24-hour soft mode (`/yumusak`). Soft mode is a
-Redis key that the bot sets and the worker reads."""
+Redis key that the bot sets and the worker reads.
 
+The profanity level (ADR 0032) is per chat, like the language: `using_profanity()` sets the
+chat's stored choice for the current task (the bot per update, the worker per send); without
+one, `BOT_PROFANITY` applies.
+"""
+
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Protocol
 
 from redis.asyncio import Redis
 
-from trainsync.core.settings import Settings
+from trainsync.core.settings import BotProfanity, Settings
 
 SOFT_KEY = "coach:soft"
 SOFT_FOR = timedelta(hours=24)
+
+CURRENT_PROFANITY: ContextVar[BotProfanity | None] = ContextVar("trainsync_profanity", default=None)
+
+
+@contextmanager
+def using_profanity(level: BotProfanity | None) -> Iterator[None]:
+    """The chat's profanity level inside this block (None: `BOT_PROFANITY`)."""
+    token = CURRENT_PROFANITY.set(level)
+    try:
+        yield
+    finally:
+        CURRENT_PROFANITY.reset(token)
 
 
 class SoftModeStore(Protocol):

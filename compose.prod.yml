@@ -31,6 +31,11 @@ x-app-env: &app-env
   BOT_LANG: ${BOT_LANG:-en}
   # Coach (P6.11, ADR 0030): `savage` is the owner's explicit opt-in.
   BOT_INTENSITY: ${BOT_INTENSITY:-normal}
+  # P6.13, ADR 0032: roast | max (every savage message swears); /swear per chat.
+  BOT_PROFANITY: ${BOT_PROFANITY:-roast}
+  SUGAR_LIMIT_G: ${SUGAR_LIMIT_G:-50}
+  HIGH_SUGAR_PER_100G: ${HIGH_SUGAR_PER_100G:-22.5}
+  EMERGENCY_NUMBER: ${EMERGENCY_NUMBER:-112}
   COACH_MESSAGES_ENABLED: ${COACH_MESSAGES_ENABLED:-}
   WORKOUT_REMINDER_TIME: ${WORKOUT_REMINDER_TIME:-18:00}
   QUIET_HOURS: ${QUIET_HOURS:-23:00-07:00}

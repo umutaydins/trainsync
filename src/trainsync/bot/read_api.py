@@ -152,7 +152,8 @@ class ReadApi:
 
     async def put_chat_settings(self, chat_id: int, body: ChatSettingsIn) -> ChatSettingsOut:
         path = f"/v1/chats/{chat_id}/settings"
-        return await self._send("PUT", path, body.model_dump(mode="json"), ChatSettingsOut)
+        body_json = body.model_dump(mode="json", exclude_none=True)
+        return await self._send("PUT", path, body_json, ChatSettingsOut)
 
     async def _get[M: BaseModel](self, path: str, params: dict[str, Any], model: type[M]) -> M:
         return await self._request("GET", path, model, params=params)
