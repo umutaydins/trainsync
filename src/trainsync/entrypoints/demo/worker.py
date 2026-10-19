@@ -25,7 +25,7 @@ log = get_logger(__name__)
 
 DEMO_CTX_KEY = "demo"
 # arq runs crons in the worker's local time: UTC in the image. 03:00 UTC is after midnight in
-# Europe/Istanbul (the default CHECKIN_TZ), so the reset moves the twelve weeks to the new day.
+# the demo's zone (CHECKIN_TZ), so the reset moves the twelve weeks to the new day.
 RESET_HOUR_UTC = 3
 _DEFAULT_REDIS_URL: str = Settings.model_fields["redis_url"].default
 

@@ -1,7 +1,7 @@
 """The decisions the backup container's shell loop delegates to Python (ADR 0024).
 
     python3 -m trainsync.ops.backup_cli name [--label L]          # new backup file name (UTC)
-    python3 -m trainsync.ops.backup_cli due --dir D --at 03:30 --tz Europe/Istanbul
+    python3 -m trainsync.ops.backup_cli due --dir D --at 03:30 --tz Europe/Berlin
     python3 -m trainsync.ops.backup_cli latest --dir D
     python3 -m trainsync.ops.backup_cli prune --dir D [--dry-run]
     python3 -m trainsync.ops.backup_cli compare-counts EXPECTED.json ACTUAL.json

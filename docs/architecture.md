@@ -448,7 +448,7 @@ The bot stays an API client (read and write, its service key acting as the linke
   (also `80x5,5,4` and `bw x12x3`, one parser in `modules/chat/parsing.py` shared with the check-in),
   `/done` (finish, summary with volume and records), `/eat <food> <grams>`, `/kcal`, `/weight 78.4`.
 - **Local day**: "today" is the linked user's day in their time zone (`users.timezone`; a new
-  account defaults to `CHECKIN_TZ`, `Europe/Istanbul`), not UTC:
+  account defaults to `CHECKIN_TZ`, UTC unless set), not the server's zone:
   `/log` adds to the open workout started on that day (or starts a free one), `/eat`, `/kcal` and
   `/weight` send that date explicitly. The meal is picked from the local hour.
 - **Idempotency**: client ids are `uuid5` of `tg:{chat}:{update_id}:{n}` (`/log` set n) and

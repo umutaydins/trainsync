@@ -409,7 +409,7 @@ All optional; defaults in [.env.example](.env.example), and compose passes them 
 | `OPENFOODFACTS_ENABLED` | API | `true` | Food lookup in Open Food Facts (public, no key); `false` = local foods only |
 | `OPENFOODFACTS_BASE_URL`, `OPENFOODFACTS_USER_AGENT`, `OPENFOODFACTS_TIMEOUT_S` | API | public API, `trainsync/0.1 (…)`, `3` | Lookup endpoint, the User-Agent OFF asks for, timeout |
 | `CHECKIN_ENABLED` | worker | on with a bot token | Evening check-in prompt |
-| `CHECKIN_TIME`, `CHECKIN_TZ` | worker, bot | `21:00`, `Europe/Istanbul` | Local prompt time; the zone is also the bot's "today" |
+| `CHECKIN_TIME`, `CHECKIN_TZ` | worker, bot | `21:00`, `UTC` | Local prompt time; the zone of new accounts until they choose one |
 | `CHECKIN_REMINDER_MINUTES` | worker | `90` | One reminder after this many minutes; `0` = none |
 
 ## Configuration added in Phase 8

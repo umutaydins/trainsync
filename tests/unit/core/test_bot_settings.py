@@ -40,10 +40,10 @@ def test_checkin_settings() -> None:
     off = make_settings()
     assert (off.checkin_time, off.checkin_tz, off.checkin_reminder_minutes) == (
         time(21, 0),
-        "Europe/Istanbul",
+        "UTC",
         90,
     )
-    assert off.checkin_zone == ZoneInfo("Europe/Istanbul")
+    assert off.checkin_zone == ZoneInfo("UTC")
     assert not off.checkin_active  # no bot token
     on = make_settings(telegram_bot_token="1:t", telegram_allowed_chat_ids="42", checkin_enabled="")
     assert on.checkin_enabled is None
