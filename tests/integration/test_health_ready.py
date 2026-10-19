@@ -6,7 +6,7 @@ import pytest
 from asgi_lifespan import LifespanManager
 
 from trainsync.core.settings import Settings
-from trainsync.main import create_app
+from trainsync.entrypoints.api.app import create_app
 
 pytestmark = pytest.mark.integration
 

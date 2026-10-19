@@ -13,12 +13,12 @@ from fake_strava.config import FakeStravaConfig
 from fake_strava.state import FakeStravaState
 from tests.support.factories import create_athlete
 from tests.support.strava import fake_backed_client
+from trainsync.core.jobs import create_arq_redis, webhook_job_id
 from trainsync.core.settings import Settings
-from trainsync.db.models import WebhookEvent
-from trainsync.db.repositories.webhook_events import MAX_ATTEMPTS, WebhookEventRepository
-from trainsync.sync.queue import create_arq_redis, webhook_job_id
-from trainsync.sync.webhook_retry import STALE_AFTER, retry_job_id, retry_webhooks_once
-from trainsync.sync.webhooks import WebhookDeps, process_event
+from trainsync.modules.sync.models import WebhookEvent
+from trainsync.modules.sync.webhook_repository import MAX_ATTEMPTS, WebhookEventRepository
+from trainsync.modules.sync.webhook_retry import STALE_AFTER, retry_job_id, retry_webhooks_once
+from trainsync.modules.sync.webhooks import WebhookDeps, process_event
 
 T0 = datetime(2026, 10, 17, 12, 0, tzinfo=UTC)
 _keys = itertools.count()

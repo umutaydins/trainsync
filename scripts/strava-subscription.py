@@ -19,15 +19,15 @@ from pathlib import Path
 
 import httpx
 
+from trainsync.core.http import build_http_client
 from trainsync.core.settings import Settings
-from trainsync.strava.client import StravaClient
-from trainsync.strava.errors import (
+from trainsync.integrations.strava.client import StravaClient
+from trainsync.integrations.strava.errors import (
     StravaAuthError,
     StravaError,
     StravaNotFound,
     StravaRequestError,
 )
-from trainsync.strava.http import build_http_client
 
 ROOT = Path(__file__).resolve().parents[1]
 

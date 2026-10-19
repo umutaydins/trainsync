@@ -10,9 +10,9 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from trainsync.core.localtime import local_moment, local_today
-from trainsync.db.models import CheckinStatus
-from trainsync.notify.checkin import Decision, day_key, decide
-from trainsync.training.checkins import adherence, current_streak, longest_streak
+from trainsync.modules.checkin.models import CheckinStatus
+from trainsync.modules.checkin.streaks import adherence, current_streak, longest_streak
+from trainsync.modules.notifications.checkin import Decision, day_key, decide
 
 FIXTURE: dict[str, Any] = json.loads(
     (Path(__file__).parents[1] / "fixtures" / "checkins.json").read_text(encoding="utf-8")

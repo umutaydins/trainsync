@@ -24,7 +24,7 @@ being up or my rate-limit budget being available at read time.
   (including the evening check-in prompt).
 - **Strava client**: the only place that talks to Strava. Owns auth headers, token refresh,
   retries, rate-limit accounting and the circuit breaker.
-- **Bot process** (`python -m trainsync.bot`, Phase 5): Telegram long polling, deterministic
+- **Bot process** (`python -m trainsync.entrypoints.bot`, Phase 5): Telegram long polling, deterministic
   summary commands, training/nutrition commands and the daily check-in (Phase 6), chat allowlist. A client of the read API (HTTP + API key), never of the
   database (ADR 0012, ADR 0013). Optional natural-language questions: Claude chooses read-API
   calls through four validated tools, every number comes from the API (ADR 0014). All wording
@@ -281,9 +281,9 @@ The bot stays an API client (read and write, same API key). Commands live in `Fe
 - Public demo (P7.9, ADR 0028): `compose.demo.yml` runs the same image with `DEMO_MODE=true`.
   `DemoReadOnlyMiddleware` answers every non-GET request and `/auth/strava/*` with
   `403 This is a read-only demo.` (header `X-Trainsync-Demo: read-only`) before routing. The data
-  is `trainsync.demo.seed` (synthetic, fixed RNG, twelve weeks before today), written by
-  `python -m trainsync.demo reset` (wipe + seed in one transaction, DEMO_MODE only) on `up` and
-  nightly by the demo worker (`trainsync.demo.worker`, reset cron only).
+  is `trainsync.entrypoints.demo.seed` (synthetic, fixed RNG, twelve weeks before today), written by
+  `python -m trainsync.entrypoints.demo reset` (wipe + seed in one transaction, DEMO_MODE only) on `up` and
+  nightly by the demo worker (`trainsync.entrypoints.demo.worker`, reset cron only).
 
 ## Failure modes this design handles
 

@@ -26,10 +26,10 @@ from tests.support.openfoodfacts import (
     search_results,
 )
 from trainsync.core.settings import Settings
-from trainsync.db.models import FoodLog
-from trainsync.db.repositories.activities import ActivityRepository
-from trainsync.db.repositories.training import BodyMetricRepository
-from trainsync.main import create_app
+from trainsync.entrypoints.api.app import create_app
+from trainsync.modules.activities.repository import ActivityRepository
+from trainsync.modules.nutrition.models import FoodLog
+from trainsync.modules.training.repository import BodyMetricRepository
 
 FIXTURE = json.loads(
     (Path(__file__).parents[1] / "fixtures" / "nutrition_energy.json").read_text(encoding="utf-8")

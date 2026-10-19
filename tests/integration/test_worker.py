@@ -7,10 +7,10 @@ from arq import create_pool
 from arq.worker import Worker
 
 from tests.conftest import TEST_ENV
+from trainsync.core.jobs import redis_settings
 from trainsync.core.settings import Settings
-from trainsync.sync.context import worker_context
-from trainsync.sync.queue import redis_settings
-from trainsync.worker import WorkerSettings
+from trainsync.entrypoints.worker.settings import WorkerSettings
+from trainsync.modules.sync.context import worker_context
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -51,7 +51,13 @@ def test_arq_cli_starts_and_exits_cleanly(integration_settings: Settings) -> Non
         "REDIS_URL": integration_settings.redis_url,
     }
     result = subprocess.run(
-        [sys.executable, "-m", "arq", "trainsync.worker.WorkerSettings", "--burst"],
+        [
+            sys.executable,
+            "-m",
+            "arq",
+            "trainsync.entrypoints.worker.settings.WorkerSettings",
+            "--burst",
+        ],
         cwd=REPO_ROOT,
         env=env,
         capture_output=True,

@@ -3,10 +3,10 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from trainsync.db.repositories.tokens import Tokens
-from trainsync.strava.errors import StravaAuthError
-from trainsync.strava.models import TokenResponse
-from trainsync.strava.tokens import TokenManager, TokenRefreshTimeoutError
+from trainsync.integrations.strava.errors import StravaAuthError
+from trainsync.integrations.strava.models import TokenResponse
+from trainsync.modules.strava.token_repository import Tokens
+from trainsync.modules.strava.tokens import TokenManager, TokenRefreshTimeoutError
 
 NOW = datetime(2026, 10, 17, 12, 0, tzinfo=UTC)
 

@@ -210,7 +210,7 @@ def upgrade() -> None:
     )
 
     # Data migration: the built-in exercise library.
-    seed = resources.files("trainsync.training").joinpath("seed_exercises.json")
+    seed = resources.files("trainsync.modules.training").joinpath("seed_exercises.json")
     op.bulk_insert(exercises, json.loads(seed.read_text(encoding="utf-8")))
 
 

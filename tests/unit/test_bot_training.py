@@ -24,11 +24,11 @@ from tests.support.telegram import (
     ok,
     sent_messages,
 )
-from trainsync.bot.common import client_id, kg, number, sets_text, thousands
-from trainsync.bot.handlers import Commands, Dispatcher
-from trainsync.bot.messages import PACKS, Messages
-from trainsync.bot.nutrition import NutritionCommands, meal_at
-from trainsync.bot.parsing import (
+from trainsync.entrypoints.bot.dispatcher import Commands, Dispatcher
+from trainsync.integrations.telegram.client import TelegramApi, Update
+from trainsync.modules.chat.common import client_id, kg, number, sets_text, thousands
+from trainsync.modules.chat.nutrition import NutritionCommands, meal_at
+from trainsync.modules.chat.parsing import (
     ParsedSet,
     ParseError,
     parse_choice,
@@ -37,10 +37,10 @@ from trainsync.bot.parsing import (
     parse_number,
     parse_sets,
 )
-from trainsync.bot.read_api import ReadApi
-from trainsync.bot.telegram import TelegramApi, Update
-from trainsync.bot.training import TrainingCommands
-from trainsync.db.models import Meal
+from trainsync.modules.chat.read_api import ReadApi
+from trainsync.modules.chat.training import TrainingCommands
+from trainsync.modules.coach.packs import PACKS, Messages
+from trainsync.modules.nutrition.models import Meal
 
 NOW = datetime(2026, 10, 18, 15, 0, tzinfo=UTC)  # 18:00 in Istanbul, Sunday
 ZONE = ZoneInfo("Europe/Istanbul")

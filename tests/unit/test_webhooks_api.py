@@ -3,10 +3,11 @@ import pytest
 from fastapi import FastAPI
 
 from tests.conftest import make_settings
-from trainsync.api import deps
-from trainsync.api.webhooks import EXAMPLE_EVENT, StravaEvent
+from trainsync.core import deps
 from trainsync.core.settings import Settings
-from trainsync.main import create_app
+from trainsync.entrypoints.api.app import create_app
+from trainsync.modules.strava import dependencies as strava_deps
+from trainsync.modules.sync.webhook_router import EXAMPLE_EVENT, StravaEvent
 
 
 class MustNotBeUsed:
@@ -16,7 +17,7 @@ class MustNotBeUsed:
 
 def _app(settings: Settings) -> FastAPI:
     app = create_app(settings)
-    for dep in (deps.get_sessionmaker, deps.get_strava_client, deps.get_job_queue):
+    for dep in (deps.get_sessionmaker, strava_deps.get_strava_client, deps.get_job_queue):
         app.dependency_overrides[dep] = MustNotBeUsed
     return app
 

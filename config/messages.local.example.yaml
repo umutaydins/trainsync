@@ -1,7 +1,7 @@
 # Copy to config/messages.local.yaml (git-ignored) and add your own lines. They are merged into
 # the savage packs (BOT_INTENSITY=savage, BOT_TONE=hardcore) and sent verbatim (ADR 0030, 0031,
 # 0032). One section per chat language (tr:, en:) with the categories of
-# src/trainsync/coach/savage_tr.py / savage_en.py; any category or section may be left out.
+# src/trainsync/modules/coach/savage_tr.py / savage_en.py; any category or section may be left out.
 # punchline_en at the top level is appended in both languages. A `max:` section inside a language
 # holds lines for profanity `max` (/swear max), including `max_opener` (put in front of every
 # other savage message); punchline_en_max at the top level goes into both max pools. A line that

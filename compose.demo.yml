@@ -1,7 +1,7 @@
 # Public read-only demo stack (P7.9, ADR 0028): run with
 #   docker compose --env-file .env.demo -f compose.demo.yml up -d --build
 # Synthetic data only: the one-shot `seed` service wipes the database and writes the dataset of
-# src/trainsync/demo/seed.py, and the demo worker does the same every night at 03:00 UTC.
+# src/trainsync/entrypoints/demo/seed.py, and the demo worker does the same every night at 03:00 UTC.
 # DEMO_MODE=true makes the API answer every write with 403. Its own project name, volumes and
 # networks, so it never touches the production stack. No bot, no backups, no Telegram. Strava is
 # fake_strava on the internal network (the connect flow is refused anyway). Postgres, Redis and
@@ -10,7 +10,7 @@
 #
 # Secrets: none worth keeping. DEMO_API_KEY (for the Vercel preview BFF) comes from .env.demo
 # (git-ignored; template .env.demo.example); the token-encryption and OAuth-state keys are
-# generated per process start by `python -m trainsync.demo exec`; the rest are labelled public
+# generated per process start by `python -m trainsync.entrypoints.demo exec`; the rest are labelled public
 # demo values.
 
 name: trainsync-demo
@@ -77,7 +77,7 @@ services:
   migrate:
     <<: *demo-app
     restart: "no"
-    command: ["python", "-m", "trainsync.demo", "exec", "alembic", "upgrade", "head"]
+    command: ["python", "-m", "trainsync.entrypoints.demo", "exec", "alembic", "upgrade", "head"]
     healthcheck: { disable: true }
     mem_limit: 256m
     depends_on:
@@ -87,7 +87,7 @@ services:
   seed:
     <<: *demo-app
     restart: "no"
-    command: ["python", "-m", "trainsync.demo", "exec", "python", "-m", "trainsync.demo", "reset"]
+    command: ["python", "-m", "trainsync.entrypoints.demo", "exec", "python", "-m", "trainsync.entrypoints.demo", "reset"]
     healthcheck: { disable: true }
     mem_limit: 256m
     depends_on:
@@ -96,7 +96,7 @@ services:
   api:
     <<: *demo-app
     restart: unless-stopped
-    command: ["python", "-m", "trainsync.demo", "exec", "uvicorn", "trainsync.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+    command: ["python", "-m", "trainsync.entrypoints.demo", "exec", "uvicorn", "trainsync.entrypoints.api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
     # backend for Postgres/Redis; edge so the gateway can reach it.
     networks: [backend, edge]
     mem_limit: 384m
@@ -114,7 +114,7 @@ services:
   worker:
     <<: *demo-app
     restart: unless-stopped
-    command: ["python", "-m", "trainsync.demo", "exec", "arq", "trainsync.demo.worker.DemoWorkerSettings"]
+    command: ["python", "-m", "trainsync.entrypoints.demo", "exec", "arq", "trainsync.entrypoints.demo.worker.DemoWorkerSettings"]
     environment:
       <<: *demo-env
       HEALTHCHECK_URL: http://127.0.0.1:9100/metrics

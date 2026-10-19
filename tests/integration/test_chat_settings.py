@@ -11,8 +11,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from trainsync.core.settings import Settings
-from trainsync.db.models import ChatSetting
-from trainsync.main import create_app
+from trainsync.entrypoints.api.app import create_app
+from trainsync.modules.chat.models import ChatSetting
 
 pytestmark = pytest.mark.integration
 

@@ -22,24 +22,17 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.conftest import make_settings
 from tests.support.swears import swears
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, error, ok, sent_messages
-from trainsync.bot.common import client_id
-from trainsync.bot.messages import PACKS, Key, Messages, messages_for
-from trainsync.bot.telegram import TelegramApi
-from trainsync.coach.categories import Category
-from trainsync.coach.lines import MemoryRecentStore, load_pack, load_packs
-from trainsync.coach.mode import CoachMode, MemorySoftModeStore
-from trainsync.coach.savage_tr import LINES
-from trainsync.coach.voice import CoachVoice
 from trainsync.core.settings import BotLang, BotProfanity
-from trainsync.db.models import Notification, Program, ProgramDay, ProgramExercise
-from trainsync.db.repositories.chat_settings import ChatSettingsRepository
-from trainsync.db.repositories.training import (
-    ExerciseRepository,
-    ProgramRepository,
-    SetValues,
-    WorkoutRepository,
-)
-from trainsync.notify.coach import (
+from trainsync.integrations.telegram.client import TelegramApi
+from trainsync.modules.chat.common import client_id
+from trainsync.modules.chat.repository import ChatSettingsRepository
+from trainsync.modules.coach.categories import Category
+from trainsync.modules.coach.lines import MemoryRecentStore, load_pack, load_packs
+from trainsync.modules.coach.mode import CoachMode, MemorySoftModeStore
+from trainsync.modules.coach.packs import PACKS, Key, Messages, messages_for
+from trainsync.modules.coach.savage_tr import LINES
+from trainsync.modules.coach.voice import CoachVoice
+from trainsync.modules.notifications.coach import (
     CoachDeps,
     rest_over,
     run_reminders,
@@ -47,7 +40,15 @@ from trainsync.notify.coach import (
     workout_finished,
     workout_started,
 )
-from trainsync.training.progression import Rules
+from trainsync.modules.notifications.models import Notification
+from trainsync.modules.training.models import Program, ProgramDay, ProgramExercise
+from trainsync.modules.training.progression import Rules
+from trainsync.modules.training.repository import (
+    ExerciseRepository,
+    ProgramRepository,
+    SetValues,
+    WorkoutRepository,
+)
 
 pytestmark = pytest.mark.integration
 

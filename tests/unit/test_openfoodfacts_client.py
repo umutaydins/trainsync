@@ -17,7 +17,7 @@ from tests.support.openfoodfacts import (
     product_url,
     search_results,
 )
-from trainsync.nutrition.off_client import (
+from trainsync.integrations.openfoodfacts.client import (
     OffProduct,
     OpenFoodFactsClient,
     OpenFoodFactsUnavailableError,

@@ -16,14 +16,14 @@ from fake_strava.config import FakeStravaConfig
 from tests.support.factories import create_athlete
 from tests.support.messages import NEUTRAL_EN
 from tests.support.strava import fake_backed_client
-from trainsync.bot.assistant import Assistant
-from trainsync.bot.read_api import ReadApi
 from trainsync.core.clock import utc_now
 from trainsync.core.settings import Settings
-from trainsync.main import create_app
-from trainsync.strava.budget import UnlimitedBudget
-from trainsync.sync.backfill import run_backfill
-from trainsync.sync.context import SyncDeps
+from trainsync.entrypoints.api.app import create_app
+from trainsync.integrations.strava.budget import UnlimitedBudget
+from trainsync.modules.chat.assistant import Assistant
+from trainsync.modules.chat.read_api import ReadApi
+from trainsync.modules.sync.backfill import run_backfill
+from trainsync.modules.sync.context import SyncDeps
 
 pytestmark = pytest.mark.integration
 

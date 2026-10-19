@@ -15,13 +15,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from fake_strava.config import FakeStravaConfig
 from tests.support.factories import create_athlete
 from tests.support.strava import fake_backed_client
+from trainsync.core.jobs import create_arq_redis
 from trainsync.core.settings import Settings
-from trainsync.strava.errors import RateLimited
-from trainsync.strava.models import StravaActivity
-from trainsync.sync.backfill import backfill
-from trainsync.sync.context import CTX_KEY, WorkerContext
-from trainsync.sync.queue import create_arq_redis
-from trainsync.worker import shutdown, startup
+from trainsync.entrypoints.worker.settings import shutdown, startup
+from trainsync.integrations.strava.errors import RateLimited
+from trainsync.integrations.strava.models import StravaActivity
+from trainsync.modules.sync.backfill import backfill
+from trainsync.modules.sync.context import CTX_KEY, WorkerContext
 
 
 @pytest.fixture

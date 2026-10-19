@@ -8,8 +8,8 @@ from typing import Any
 
 import pytest
 
-from trainsync.training import math
-from trainsync.training.math import PersonalRecord, PrKind, SetEntry
+from trainsync.modules.training import math
+from trainsync.modules.training.math import PersonalRecord, PrKind, SetEntry
 
 FIXTURE: dict[str, Any] = json.loads(
     (Path(__file__).parents[1] / "fixtures" / "training_math.json").read_text(encoding="utf-8")

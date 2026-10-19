@@ -25,8 +25,8 @@ from tests.support.telegram import (
     ok,
     sent_messages,
 )
-from trainsync.bot import main as bot_main
-from trainsync.bot.handlers import (
+from trainsync.entrypoints.bot import main as bot_main
+from trainsync.entrypoints.bot.dispatcher import (
     Commands,
     Dispatcher,
     UsageError,
@@ -35,10 +35,10 @@ from trainsync.bot.handlers import (
     period_range,
     week_ranges,
 )
-from trainsync.bot.messages import Key
-from trainsync.bot.polling import Poller
-from trainsync.bot.read_api import ReadApi
-from trainsync.bot.telegram import TelegramApi, Update
+from trainsync.entrypoints.bot.polling import Poller
+from trainsync.integrations.telegram.client import TelegramApi, Update
+from trainsync.modules.chat.read_api import ReadApi
+from trainsync.modules.coach.packs import Key
 
 FIXTURE: dict[str, Any] = json.loads(
     (Path(__file__).parents[1] / "fixtures" / "bot_api_responses.json").read_text(encoding="utf-8")

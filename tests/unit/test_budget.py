@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from trainsync.strava.budget import Allowance, BudgetState, Priority, decide
+from trainsync.integrations.strava.budget import Allowance, BudgetState, Priority, decide
 
 NOW = datetime(2026, 10, 17, 12, 7, tzinfo=UTC)
 WINDOW = datetime(2026, 10, 17, 12, 0, tzinfo=UTC)

@@ -12,11 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.support.messages import NEUTRAL_EN
 from tests.support.telegram import BOT_TOKEN, TELEGRAM, SleepRecorder
-from trainsync.bot.telegram import TelegramApi
 from trainsync.core.clock import utc_now
-from trainsync.db.models import Notification
-from trainsync.notify.jobs import NOTIFY_CTX_KEY, NotifyDeps, notify_new_activity
-from trainsync.notify.telegram import TelegramNotifier
+from trainsync.integrations.telegram.client import TelegramApi
+from trainsync.integrations.telegram.notifier import TelegramNotifier
+from trainsync.modules.notifications.models import Notification
+from trainsync.modules.notifications.tasks import NOTIFY_CTX_KEY, NotifyDeps, notify_new_activity
 
 CHAT_ID = 4242
 DASHBOARD = "https://dash.test"

@@ -6,8 +6,7 @@ from importlib import resources
 
 import pytest
 
-from trainsync.db.models import Equipment, MovementPattern, ProgramGoal
-from trainsync.training.generator import (
+from trainsync.modules.training.generator import (
     DOSES,
     MAX_EXERCISES_PER_DAY,
     TEMPLATE_DAYS,
@@ -19,6 +18,7 @@ from trainsync.training.generator import (
     Template,
     generate,
 )
+from trainsync.modules.training.models import Equipment, MovementPattern, ProgramGoal
 
 OPTIONAL_EQUIPMENT = [e for e in Equipment if e is not Equipment.BODYWEIGHT]
 EQUIPMENT_SETS = [
@@ -30,7 +30,7 @@ MINUTES = (20, 30, 45, 60, 90)
 
 
 def seed_library() -> list[LibraryExercise]:
-    seed = resources.files("trainsync.training").joinpath("seed_exercises.json")
+    seed = resources.files("trainsync.modules.training").joinpath("seed_exercises.json")
     rows = json.loads(seed.read_text(encoding="utf-8"))
     return [
         LibraryExercise(

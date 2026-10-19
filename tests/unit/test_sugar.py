@@ -2,8 +2,8 @@
 
 import pytest
 
-from trainsync.db.models import FoodGroup
-from trainsync.nutrition.sugar import (
+from trainsync.modules.nutrition.models import FoodGroup
+from trainsync.modules.nutrition.sugar import (
     counts_as_free_sugar,
     food_group_from_categories,
     is_intrinsic,

@@ -3,7 +3,7 @@ import random
 import httpx
 import pytest
 
-from trainsync.strava.retry import RetryPolicy, is_retryable
+from trainsync.integrations.strava.retry import RetryPolicy, is_retryable
 
 
 def test_backoff_within_full_jitter_bounds() -> None:

@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import Field, SecretStr, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
-from trainsync.training.plates import DEFAULT_INVENTORY, parse_inventory
+from trainsync.core.plate_inventory import DEFAULT_INVENTORY, parse_inventory
 
 # The DEV-ONLY defaults in docker-compose.yml (`${VAR:-default}`) are labelled, so they are found
 # by their label instead of by a copy of the values: plain ones start with `dev-`, and the dev
@@ -62,8 +62,9 @@ class Settings(BaseSettings):
 
     env: Literal["dev", "test", "prod"] = "dev"
     log_level: str = "INFO"
-    # Public read-only demo (P7.9, ADR 0028): every write answers 403; `python -m trainsync.demo
-    # reset` (and the demo worker's nightly cron) refuse to run unless this is on.
+    # Public read-only demo (P7.9, ADR 0028): every write answers 403;
+    # `python -m trainsync.entrypoints.demo reset` (and the demo worker's nightly cron) refuse to
+    # run unless this is on.
     demo_mode: bool = False
 
     database_url: str = "postgresql+asyncpg://trainsync:trainsync@localhost:5432/trainsync"

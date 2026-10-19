@@ -10,7 +10,7 @@ handling of 429 `retry_after` and 5xx. The same `sendMessage` is used by the wor
 
 ## Decision
 A ~150-line client on the process's one shared `httpx.AsyncClient`
-(`trainsync/bot/telegram.py`), plus a small polling loop and a command dispatcher of our own.
+(`trainsync/integrations/telegram/client.py`), plus a small polling loop and a command dispatcher of our own.
 - 429: wait exactly `parameters.retry_after` (through the injected `sleep`), then retry.
 - 5xx / connection refused: exponential backoff 1, 2, 4 … s (capped at 30 s), bounded attempts.
 - A read timeout after the request was sent is "delivery unknown" and is *not* retried by the

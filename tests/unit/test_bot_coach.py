@@ -27,19 +27,19 @@ from tests.support.telegram import (
     ok,
     sent_messages,
 )
-from trainsync.bot.checkin import CheckinFlow
-from trainsync.bot.coach import CoachFeature
-from trainsync.bot.handlers import Commands, Dispatcher
-from trainsync.bot.messages import PACKS, Key, Messages, NeutralKey
-from trainsync.bot.read_api import ReadApi
-from trainsync.bot.telegram import TelegramApi, Update
-from trainsync.coach.categories import Category
-from trainsync.coach.guardrails import violations
-from trainsync.coach.lines import SAVAGE, SAVAGE_MAX, MemoryRecentStore, load_pack
-from trainsync.coach.mode import CoachMode, MemorySoftModeStore
-from trainsync.coach.savage_tr import LINES
-from trainsync.coach.voice import CoachVoice
 from trainsync.core.settings import BotLang, BotProfanity
+from trainsync.entrypoints.bot.dispatcher import Commands, Dispatcher
+from trainsync.integrations.telegram.client import TelegramApi, Update
+from trainsync.modules.chat.checkin import CheckinFlow
+from trainsync.modules.chat.coach import CoachFeature
+from trainsync.modules.chat.read_api import ReadApi
+from trainsync.modules.coach.categories import Category
+from trainsync.modules.coach.guardrails import violations
+from trainsync.modules.coach.lines import SAVAGE, SAVAGE_MAX, MemoryRecentStore, load_pack
+from trainsync.modules.coach.mode import CoachMode, MemorySoftModeStore
+from trainsync.modules.coach.packs import PACKS, Key, Messages, NeutralKey
+from trainsync.modules.coach.savage_tr import LINES
+from trainsync.modules.coach.voice import CoachVoice
 
 NOW = datetime(2026, 10, 19, 9, 0, tzinfo=UTC)  # Monday 12:00 in Istanbul
 ZONE = ZoneInfo("Europe/Istanbul")

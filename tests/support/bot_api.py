@@ -16,7 +16,7 @@ from typing import Any
 import httpx
 import respx
 
-from trainsync.nutrition.sugar import counts_as_free_sugar
+from trainsync.modules.nutrition.sugar import counts_as_free_sugar
 
 API = "http://trainsync-api"
 

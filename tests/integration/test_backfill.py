@@ -15,14 +15,15 @@ from fake_strava.state import FakeStravaState
 from tests.support.factories import create_athlete
 from tests.support.strava import fake_backed_client
 from trainsync.core.settings import Settings
-from trainsync.db.models import Activity, SyncRun
-from trainsync.db.repositories.athletes import AthleteRepository
-from trainsync.strava.budget import Allowance, Priority, UnlimitedBudget
-from trainsync.strava.errors import RateLimited, StravaAuthError, StravaUnavailable
-from trainsync.strava.models import StravaActivity
-from trainsync.sync.backfill import STALE_AFTER, backfill, run_backfill
-from trainsync.sync.common import UNAVAILABLE_DEFER
-from trainsync.sync.context import CTX_KEY, ActivitySource, SyncDeps
+from trainsync.integrations.strava.budget import Allowance, Priority, UnlimitedBudget
+from trainsync.integrations.strava.errors import RateLimited, StravaAuthError, StravaUnavailable
+from trainsync.integrations.strava.models import StravaActivity
+from trainsync.modules.activities.models import Activity
+from trainsync.modules.strava.repository import AthleteRepository
+from trainsync.modules.sync.backfill import STALE_AFTER, backfill, run_backfill
+from trainsync.modules.sync.common import UNAVAILABLE_DEFER
+from trainsync.modules.sync.context import CTX_KEY, ActivitySource, SyncDeps
+from trainsync.modules.sync.models import SyncRun
 
 NOW = datetime(2026, 10, 17, 12, 7, tzinfo=UTC)
 LIST_ENDPOINT = "GET /api/v3/athlete/activities"

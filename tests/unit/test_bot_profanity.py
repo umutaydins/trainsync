@@ -22,17 +22,17 @@ from tests.support.chat_settings import ChatSettingsApi
 from tests.support.state import MemoryStateStore
 from tests.support.swears import swears
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, message_update, ok, sent_messages
-from trainsync.bot.handlers import Commands, Dispatcher
-from trainsync.bot.language import ChatSettingsStore, LanguageFeature
-from trainsync.bot.messages import Key, Messages, NeutralKey, messages_for
-from trainsync.bot.nutrition import NutritionCommands
-from trainsync.bot.profanity import SwearFeature
-from trainsync.bot.read_api import ReadApi
-from trainsync.bot.telegram import TelegramApi, Update
-from trainsync.coach.categories import Category
-from trainsync.coach.lines import SAVAGE, SAVAGE_MAX, MemoryRecentStore, load_packs
-from trainsync.coach.mode import CoachMode, MemorySoftModeStore
-from trainsync.coach.voice import CoachVoice
+from trainsync.entrypoints.bot.dispatcher import Commands, Dispatcher
+from trainsync.integrations.telegram.client import TelegramApi, Update
+from trainsync.modules.chat.language import ChatSettingsStore, LanguageFeature
+from trainsync.modules.chat.nutrition import NutritionCommands
+from trainsync.modules.chat.profanity import SwearFeature
+from trainsync.modules.chat.read_api import ReadApi
+from trainsync.modules.coach.categories import Category
+from trainsync.modules.coach.lines import SAVAGE, SAVAGE_MAX, MemoryRecentStore, load_packs
+from trainsync.modules.coach.mode import CoachMode, MemorySoftModeStore
+from trainsync.modules.coach.packs import Key, Messages, NeutralKey, messages_for
+from trainsync.modules.coach.voice import CoachVoice
 
 NOW = datetime(2026, 10, 18, 9, 0, tzinfo=UTC)  # 12:00 in Istanbul: lunch
 ZONE = ZoneInfo("Europe/Istanbul")

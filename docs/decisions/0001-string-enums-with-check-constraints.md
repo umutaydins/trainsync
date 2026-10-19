@@ -12,7 +12,7 @@ versions, and makes downgrades awkward (a value cannot simply be dropped).
 ## Decision
 Store these columns as `VARCHAR(16)` with a named `CHECK (col IN (...))` constraint. The allowed
 values live in Python `StrEnum`s (`SyncKind`, `SyncStatus`, `WebhookStatus` in
-`trainsync.db.models`) and the CHECK expression is generated from them.
+`trainsync.modules.models`) and the CHECK expression is generated from them.
 
 ## Alternatives considered
 - Native `ENUM` types — strongest typing, but painful migrations as described above.

@@ -12,8 +12,14 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from trainsync.db.models import Exercise, Program, ProgramDay, ProgramExercise, WorkoutSet
-from trainsync.db.repositories.training import (
+from trainsync.modules.training.models import (
+    Exercise,
+    Program,
+    ProgramDay,
+    ProgramExercise,
+    WorkoutSet,
+)
+from trainsync.modules.training.repository import (
     BodyMetricRepository,
     ExerciseRepository,
     ProgramRepository,
@@ -27,7 +33,7 @@ T0 = datetime(2026, 10, 12, 18, 0, tzinfo=UTC)
 
 
 def seed_count() -> int:
-    seed = resources.files("trainsync.training").joinpath("seed_exercises.json")
+    seed = resources.files("trainsync.modules.training").joinpath("seed_exercises.json")
     return len(json.loads(seed.read_text(encoding="utf-8")))
 
 

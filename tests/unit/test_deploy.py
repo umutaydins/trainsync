@@ -152,7 +152,7 @@ def mac(tmp_path: Path) -> Deployer:
 @pytest.mark.parametrize(
     ("world", "value", "reason"),
     [
-        ("dirty", " M src/trainsync/main.py", "uncommitted changes"),
+        ("dirty", " M src/trainsync/entrypoints/api/app.py", "uncommitted changes"),
         ("branch", "p7-deploy", "on branch 'p7-deploy', not main"),
         ("origin", OLD_SHA, f"is not origin/main {OLD_SHA}"),
         ("ci", "in_progress ", "CI for"),

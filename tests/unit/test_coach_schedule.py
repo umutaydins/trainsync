@@ -6,8 +6,8 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from tests.conftest import make_settings
-from trainsync.coach.mode import CoachMode, MemorySoftModeStore, savage_configured
-from trainsync.coach.schedule import (
+from trainsync.modules.coach.mode import CoachMode, MemorySoftModeStore, savage_configured
+from trainsync.modules.coach.schedule import (
     GRACE,
     PlannedDay,
     Stage,

@@ -8,9 +8,9 @@ import httpx
 from tests.conftest import FAKE_STRAVA_BASE_URL
 from trainsync.core.clock import Clock, utc_now
 from trainsync.core.settings import Settings
-from trainsync.strava.budget import Allowance, Priority
-from trainsync.strava.client import RateLimitHook, StravaClient
-from trainsync.strava.ratelimit import RateLimitSnapshot
+from trainsync.integrations.strava.budget import Allowance, Priority
+from trainsync.integrations.strava.client import RateLimitHook, StravaClient
+from trainsync.integrations.strava.ratelimit import RateLimitSnapshot
 
 API = "https://strava.test/api/v3"
 OAUTH = "https://strava.test/oauth"

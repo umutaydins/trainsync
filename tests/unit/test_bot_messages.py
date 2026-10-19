@@ -20,12 +20,10 @@ from typing import Any
 import pytest
 
 from tests.conftest import make_settings
-from trainsync.api.activities import ActivityOut
-from trainsync.api.stats import StatsSummary, TotalsOut, WeeklyStats
-from trainsync.api.sync_status import SyncStatusOut
-from trainsync.bot import formatting
-from trainsync.bot.formatting import Verdict, week_verdict
-from trainsync.bot.messages import (
+from trainsync.modules.activities.router import ActivityOut
+from trainsync.modules.chat import formatting
+from trainsync.modules.chat.formatting import Verdict, week_verdict
+from trainsync.modules.coach.packs import (
     FIELDS,
     NEUTRAL_FIELDS,
     NEUTRAL_TEXTS,
@@ -37,6 +35,8 @@ from trainsync.bot.messages import (
     NeutralKey,
     messages_for,
 )
+from trainsync.modules.stats.router import StatsSummary, TotalsOut, WeeklyStats
+from trainsync.modules.sync.router import SyncStatusOut
 
 FIXTURE: dict[str, Any] = json.loads(
     (Path(__file__).parents[1] / "fixtures" / "bot_api_responses.json").read_text(encoding="utf-8")

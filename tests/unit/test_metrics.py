@@ -4,10 +4,10 @@ from fastapi import FastAPI
 from prometheus_client import REGISTRY
 
 from tests.conftest import make_settings
-from trainsync.api import deps
-from trainsync.main import create_app
-from trainsync.strava.breaker import CircuitBreaker
-from trainsync.strava.errors import StravaUnavailable
+from trainsync.core import deps
+from trainsync.entrypoints.api.app import create_app
+from trainsync.integrations.strava.breaker import CircuitBreaker
+from trainsync.integrations.strava.errors import StravaUnavailable
 
 
 class MustNotBeUsed:

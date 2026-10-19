@@ -31,21 +31,22 @@ from tests.support.telegram import (
     ok,
     sent_messages,
 )
-from trainsync.bot.checkin import CheckinFlow, prompt
-from trainsync.bot.handlers import Commands, Dispatcher
-from trainsync.bot.read_api import ReadApi
-from trainsync.bot.telegram import TelegramApi, Update
-from trainsync.bot.training import TrainingCommands
-from trainsync.coach.categories import Category
-from trainsync.coach.lines import MemoryRecentStore, load_packs
-from trainsync.coach.mode import CoachMode, MemorySoftModeStore
-from trainsync.coach.voice import CoachVoice
 from trainsync.core.settings import Settings
-from trainsync.db.models import DailyCheckin, WorkoutSet
-from trainsync.db.repositories.chat_settings import ChatSettingsRepository
-from trainsync.db.repositories.training import BodyMetricRepository
-from trainsync.main import create_app
-from trainsync.notify.checkin import CheckinDeps, run_checkin
+from trainsync.entrypoints.api.app import create_app
+from trainsync.entrypoints.bot.dispatcher import Commands, Dispatcher
+from trainsync.integrations.telegram.client import TelegramApi, Update
+from trainsync.modules.chat.checkin import CheckinFlow, prompt
+from trainsync.modules.chat.read_api import ReadApi
+from trainsync.modules.chat.repository import ChatSettingsRepository
+from trainsync.modules.chat.training import TrainingCommands
+from trainsync.modules.checkin.models import DailyCheckin
+from trainsync.modules.coach.categories import Category
+from trainsync.modules.coach.lines import MemoryRecentStore, load_packs
+from trainsync.modules.coach.mode import CoachMode, MemorySoftModeStore
+from trainsync.modules.coach.voice import CoachVoice
+from trainsync.modules.notifications.checkin import CheckinDeps, run_checkin
+from trainsync.modules.training.models import WorkoutSet
+from trainsync.modules.training.repository import BodyMetricRepository
 
 pytestmark = pytest.mark.integration
 

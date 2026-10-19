@@ -12,7 +12,9 @@ import pytest
 
 from tests.conftest import make_settings
 from trainsync.core.settings import BotLang, Settings
-from trainsync.notify.alerts import (
+from trainsync.integrations.notifier import DeliveryUnknownError, NotifyFailedError
+from trainsync.integrations.strava.breaker import BreakerState
+from trainsync.modules.notifications.alerts import (
     DETAILS,
     Action,
     AlertDeps,
@@ -28,9 +30,7 @@ from trainsync.notify.alerts import (
     run_alerts,
     step,
 )
-from trainsync.notify.base import DeliveryUnknownError, NotifyFailedError
 from trainsync.ops.retention import Backup
-from trainsync.strava.breaker import BreakerState
 
 T0 = datetime(2026, 10, 18, 9, 0, tzinfo=UTC)
 FRESH_BACKUP = Backup("trainsync-20261018-003000.dump.age", T0 - timedelta(hours=8, minutes=30))

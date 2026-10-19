@@ -9,13 +9,13 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import FAKE_STRAVA_BASE_URL
-from trainsync.api import deps
+from trainsync.core import deps
 from trainsync.core.crypto import TokenCipher
+from trainsync.core.jobs import ArqJobQueue
 from trainsync.core.settings import Settings
-from trainsync.db.models import Athlete, OAuthToken
-from trainsync.main import create_app
-from trainsync.strava.client import StravaClient
-from trainsync.sync.queue import ArqJobQueue
+from trainsync.entrypoints.api.app import create_app
+from trainsync.integrations.strava.client import StravaClient
+from trainsync.modules.strava.models import Athlete, OAuthToken
 
 PUBLIC_OAUTH = "http://localhost:8001/oauth"
 

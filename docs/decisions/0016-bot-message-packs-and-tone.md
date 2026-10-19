@@ -12,7 +12,7 @@ must never turn into insults.
 
 ## Decision
 - `BOT_TONE` (`neutral` default, `hardcore`) and `BOT_LANG` (`en` default, `tr`) pick one of four
-  packs in `src/trainsync/bot/messages/`. A pack maps every `Key` to one or more `str.format`
+  packs in `src/trainsync/modules/coach/packs/`. A pack maps every `Key` to one or more `str.format`
   templates, plus month and weekday short names. `formatting.py` still computes every number
   (km, durations, pace, percentages); packs only own the words around them.
 - `Messages` renders a key; with several variants it picks one with an injected

@@ -31,10 +31,10 @@ from tests.support.notify import (
 from tests.support.strava import fake_backed_client
 from tests.support.telegram import BOT_URL, SleepRecorder, ok, sent_messages
 from trainsync.core.clock import utc_now
+from trainsync.core.jobs import enqueue_new_activity_notification
 from trainsync.core.settings import Settings
-from trainsync.notify.jobs import NOTIFY_MAX_TRIES
-from trainsync.sync.queue import enqueue_new_activity_notification
-from trainsync.sync.webhooks import WebhookDeps
+from trainsync.modules.notifications.tasks import NOTIFY_MAX_TRIES
+from trainsync.modules.sync.webhooks import WebhookDeps
 
 TARGET = f"{API_URL}/webhooks/strava"
 

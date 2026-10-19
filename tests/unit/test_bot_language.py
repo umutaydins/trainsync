@@ -16,16 +16,16 @@ from pydantic import SecretStr
 from tests.conftest import make_settings
 from tests.support.chat_settings import ChatSettingsApi
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, message_update, ok, sent_messages
-from trainsync.bot.handlers import Commands, Dispatcher
-from trainsync.bot.language import ChatSettingsStore, LanguageFeature
-from trainsync.bot.messages import LANGUAGES, PACKS, Key, Messages, messages_for, using_lang
-from trainsync.bot.read_api import ReadApi
-from trainsync.bot.telegram import TelegramApi, Update
-from trainsync.coach.categories import Category
-from trainsync.coach.lines import MemoryRecentStore, load_packs
-from trainsync.coach.mode import CoachMode, MemorySoftModeStore
-from trainsync.coach.voice import CoachVoice
 from trainsync.core.settings import BotLang
+from trainsync.entrypoints.bot.dispatcher import Commands, Dispatcher
+from trainsync.integrations.telegram.client import TelegramApi, Update
+from trainsync.modules.chat.language import ChatSettingsStore, LanguageFeature
+from trainsync.modules.chat.read_api import ReadApi
+from trainsync.modules.coach.categories import Category
+from trainsync.modules.coach.lines import MemoryRecentStore, load_packs
+from trainsync.modules.coach.mode import CoachMode, MemorySoftModeStore
+from trainsync.modules.coach.packs import LANGUAGES, PACKS, Key, Messages, messages_for, using_lang
+from trainsync.modules.coach.voice import CoachVoice
 
 API = "http://trainsync-api"
 CHAT = 42

@@ -2,8 +2,8 @@
 
 from decimal import Decimal
 
-from trainsync.training.math import SetEntry
-from trainsync.training.progression import Action, Rules, Suggestion, suggest
+from trainsync.modules.training.math import SetEntry
+from trainsync.modules.training.progression import Action, Rules, Suggestion, suggest
 
 D = Decimal
 

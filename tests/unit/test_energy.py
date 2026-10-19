@@ -5,8 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from trainsync.db.models import ActivityBaseline, Sex
-from trainsync.nutrition.energy import (
+from trainsync.modules.nutrition.energy import (
     ActivityEnergy,
     IntakeEntry,
     KcalSource,
@@ -18,6 +17,7 @@ from trainsync.nutrition.energy import (
     intake,
     target_warning,
 )
+from trainsync.modules.nutrition.models import ActivityBaseline, Sex
 
 D = Decimal
 

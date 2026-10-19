@@ -29,17 +29,19 @@ from tests.support.strava import fake_backed_client
 from trainsync.core.clock import utc_now
 from trainsync.core.crypto import TokenCipher
 from trainsync.core.settings import Settings
-from trainsync.db.models import Activity, Athlete, OAuthToken, WebhookEvent
-from trainsync.db.repositories.activities import ActivityRepository
-from trainsync.db.repositories.tokens import SqlTokenStore, Tokens
-from trainsync.main import create_app
-from trainsync.strava.budget import RateBudget
-from trainsync.strava.errors import CircuitOpen, StravaAuthError
-from trainsync.strava.models import StravaActivity
-from trainsync.strava.ratelimit import parse_rate_limit
-from trainsync.sync.backfill import run_backfill
-from trainsync.sync.context import CTX_KEY, SyncDeps
-from trainsync.sync.webhooks import WebhookDeps, process_event, process_webhook_event
+from trainsync.entrypoints.api.app import create_app
+from trainsync.integrations.strava.budget import RateBudget
+from trainsync.integrations.strava.errors import CircuitOpen, StravaAuthError
+from trainsync.integrations.strava.models import StravaActivity
+from trainsync.integrations.strava.ratelimit import parse_rate_limit
+from trainsync.modules.activities.models import Activity
+from trainsync.modules.activities.repository import ActivityRepository
+from trainsync.modules.strava.models import Athlete, OAuthToken
+from trainsync.modules.strava.token_repository import SqlTokenStore, Tokens
+from trainsync.modules.sync.backfill import run_backfill
+from trainsync.modules.sync.context import CTX_KEY, SyncDeps
+from trainsync.modules.sync.models import WebhookEvent
+from trainsync.modules.sync.webhooks import WebhookDeps, process_event, process_webhook_event
 
 TARGET = "http://api/webhooks/strava"
 SUBSCRIPTION = 999  # matches the test settings

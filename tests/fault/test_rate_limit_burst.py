@@ -22,11 +22,11 @@ from tests.support.factories import create_athlete
 from tests.support.fake_webhooks import activity_event
 from tests.support.strava import fake_backed_client
 from trainsync.core.settings import Settings
-from trainsync.strava.budget import RateBudget
-from trainsync.strava.client import StravaClient
-from trainsync.sync.backfill import run_backfill
-from trainsync.sync.context import SyncDeps
-from trainsync.sync.webhooks import WebhookDeps
+from trainsync.integrations.strava.budget import RateBudget
+from trainsync.integrations.strava.client import StravaClient
+from trainsync.modules.sync.backfill import run_backfill
+from trainsync.modules.sync.context import SyncDeps
+from trainsync.modules.sync.webhooks import WebhookDeps
 
 LIMIT_15MIN = 40
 TARGET = f"{API_URL}/webhooks/strava"

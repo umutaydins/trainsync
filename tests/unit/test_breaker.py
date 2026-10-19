@@ -4,8 +4,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from trainsync.strava.breaker import BreakerState, CircuitBreaker
-from trainsync.strava.errors import (
+from trainsync.integrations.strava.breaker import BreakerState, CircuitBreaker
+from trainsync.integrations.strava.errors import (
     CircuitOpen,
     RateLimited,
     StravaNotFound,

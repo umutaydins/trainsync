@@ -13,8 +13,8 @@ from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from trainsync.core.settings import Settings
-from trainsync.db.repositories.training import ExerciseRepository
-from trainsync.main import create_app
+from trainsync.entrypoints.api.app import create_app
+from trainsync.modules.training.repository import ExerciseRepository
 
 pytestmark = pytest.mark.integration
 

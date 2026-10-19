@@ -18,7 +18,7 @@ from tests.support.telegram import (
     ok,
     sent_messages,
 )
-from trainsync.bot.telegram import (
+from trainsync.integrations.telegram.client import (
     Button,
     TelegramApi,
     TelegramDeliveryUnknownError,

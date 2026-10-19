@@ -98,7 +98,7 @@ services:
 
   worker:
     <<: *trainsync-image
-    command: ["arq", "trainsync.worker.WorkerSettings"]
+    command: ["arq", "trainsync.entrypoints.worker.settings.WorkerSettings"]
     environment:
       <<: *trainsync-env
       HEALTHCHECK_URL: http://127.0.0.1:9100/metrics
@@ -132,7 +132,7 @@ services:
   # and stays up, so the stack (and `make compose-smoke`) behaves the same with or without a token.
   bot:
     <<: *trainsync-image
-    command: ["python", "-m", "trainsync.bot"]
+    command: ["python", "-m", "trainsync.entrypoints.bot"]
     environment:
       <<: *trainsync-env
       HEALTHCHECK_URL: http://127.0.0.1:9101/metrics

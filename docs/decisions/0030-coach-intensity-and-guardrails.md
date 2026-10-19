@@ -18,14 +18,14 @@ no matter what he configures.
   the assistant's system prompt says so. `/yumusak` sets a Redis key (`coach:soft_until`, 24 h)
   read by both bot and worker; while it is set the effective intensity is `normal`; `/sert`
   deletes it.
-- **Savage lines are categories, not keys.** `src/trainsync/coach/savage_tr.py` holds original
+- **Savage lines are categories, not keys.** `src/trainsync/modules/coach/savage_tr.py` holds original
   lines per category (`excuse`, `missed_workout`, `under_target`, `workout_start`, `rest_over`,
   `workout_done_good`, `workout_done_bad`, `reminder_before`, `reminder_now`, `escalation`) plus
   `punchline_en`. A line is chosen at random among those not used in the last 10 sends of that
   category (Redis list per category, shared by bot and worker); about 1 in 4 savage messages gets
   a punchline appended. An optional, git-ignored `config/messages.local.yaml` adds the owner's own
   lines per category; they are merged in and sent verbatim.
-- **Guardrails are code, not style.** `src/trainsync/coach/guardrails.py`:
+- **Guardrails are code, not style.** `src/trainsync/modules/coach/guardrails.py`:
   - an injury/illness detector (pain, injury, illness, dizziness, chest pain, fainting, fever, …,
     Turkish and English) runs on every chat message first, in every tone and intensity; a hit
     gets a calm "rest / see a doctor" reply from the neutral layer and nothing else: no roast, no

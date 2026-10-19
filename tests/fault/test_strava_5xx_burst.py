@@ -12,12 +12,12 @@ from tests.fault.helpers import LIST, ManualClock, count_activities, fake_calls,
 from tests.support.factories import create_athlete, strava_activity
 from tests.support.strava import fake_backed_client
 from trainsync.core.settings import Settings
-from trainsync.db.models import SyncRun
-from trainsync.db.repositories.activities import ActivityRepository
-from trainsync.strava.breaker import BreakerState
-from trainsync.strava.budget import UnlimitedBudget
-from trainsync.sync.backfill import run_backfill
-from trainsync.sync.context import SyncDeps
+from trainsync.integrations.strava.breaker import BreakerState
+from trainsync.integrations.strava.budget import UnlimitedBudget
+from trainsync.modules.activities.repository import ActivityRepository
+from trainsync.modules.sync.backfill import run_backfill
+from trainsync.modules.sync.context import SyncDeps
+from trainsync.modules.sync.models import SyncRun
 
 PER_PAGE = 20
 

@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from trainsync.demo import seed
+from trainsync.entrypoints.demo import seed
 
 SOURCE = inspect.getsource(seed)
 TREE = ast.parse(SOURCE)
@@ -27,7 +27,7 @@ ALLOWED_IMPORTS = {
     "datetime",
     "decimal",
     "zoneinfo",
-    "trainsync.strava.models",
+    "trainsync.integrations.strava.models",
 }
 FORBIDDEN_CALLS = {"open", "eval", "exec", "compile", "__import__", "input", "getattr"}
 

@@ -7,7 +7,7 @@ import httpx
 import pytest
 
 from trainsync.core.settings import Settings
-from trainsync.main import create_app
+from trainsync.entrypoints.api.app import create_app
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TAGS = {

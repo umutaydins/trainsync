@@ -6,10 +6,10 @@ import pytest
 from fastapi import FastAPI, HTTPException
 
 from tests.conftest import make_settings
-from trainsync.api import deps
-from trainsync.api.activities import decode_cursor, encode_cursor
-from trainsync.db.repositories.reads import Keyset
-from trainsync.main import create_app
+from trainsync.core import deps
+from trainsync.entrypoints.api.app import create_app
+from trainsync.modules.activities.reads import Keyset
+from trainsync.modules.activities.router import decode_cursor, encode_cursor
 
 
 class MustNotBeUsed:

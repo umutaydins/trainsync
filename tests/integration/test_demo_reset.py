@@ -12,13 +12,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import TEST_ENV
+from trainsync.core.jobs import redis_settings
 from trainsync.core.settings import Settings, get_settings
-from trainsync.db.models import Activity, Exercise, FoodLog, Workout
-from trainsync.demo.__main__ import main as demo_cli
-from trainsync.demo.store import DemoModeRequiredError, reset
-from trainsync.demo.worker import DemoWorkerSettings
-from trainsync.main import create_app
-from trainsync.sync.queue import redis_settings
+from trainsync.entrypoints.api.app import create_app
+from trainsync.entrypoints.demo.__main__ import main as demo_cli
+from trainsync.entrypoints.demo.store import DemoModeRequiredError, reset
+from trainsync.entrypoints.demo.worker import DemoWorkerSettings
+from trainsync.modules.activities.models import Activity
+from trainsync.modules.nutrition.models import FoodLog
+from trainsync.modules.training.models import Exercise, Workout
 
 NOW = datetime(2026, 10, 18, 9, 30, tzinfo=UTC)
 KEY = {"X-API-Key": "test-api-key"}

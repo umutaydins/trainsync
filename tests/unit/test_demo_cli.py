@@ -1,9 +1,10 @@
-"""`python -m trainsync.demo exec`: the demo's keys are generated per process, never stored."""
+"""`python -m trainsync.entrypoints.demo exec`: the demo's keys are generated per process, never
+stored."""
 
 import pytest
 from cryptography.fernet import Fernet
 
-from trainsync.demo import __main__ as cli
+from trainsync.entrypoints.demo import __main__ as cli
 
 
 class ExecCalledError(Exception):

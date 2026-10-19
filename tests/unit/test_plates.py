@@ -5,7 +5,8 @@ from decimal import Decimal
 import pytest
 
 from tests.conftest import make_settings
-from trainsync.training.plates import DEFAULT_INVENTORY, parse_inventory, plates_per_side
+from trainsync.core.plate_inventory import DEFAULT_INVENTORY, parse_inventory
+from trainsync.modules.training.plates import plates_per_side
 
 D = Decimal
 

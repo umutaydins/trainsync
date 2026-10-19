@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
-from trainsync.strava.breaker import BreakerState
-from trainsync.strava.breaker_status import BreakerReport, overall_state
+from trainsync.integrations.strava.breaker import BreakerState
+from trainsync.integrations.strava.breaker_status import BreakerReport, overall_state
 
 NOW = datetime(2026, 10, 18, 9, 0, tzinfo=UTC)
 

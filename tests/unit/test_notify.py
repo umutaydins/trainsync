@@ -10,10 +10,15 @@ from pydantic import SecretStr
 
 from tests.conftest import make_settings
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, SleepRecorder, error, ok
-from trainsync.bot.telegram import TelegramApi
-from trainsync.notify.base import DeliveryUnknownError, Notifier, NotifyFailedError, NullNotifier
-from trainsync.notify.jobs import build_notifier, retry_delay
-from trainsync.notify.telegram import TelegramNotifier
+from trainsync.integrations.notifier import (
+    DeliveryUnknownError,
+    Notifier,
+    NotifyFailedError,
+    NullNotifier,
+)
+from trainsync.integrations.telegram.client import TelegramApi
+from trainsync.integrations.telegram.notifier import TelegramNotifier
+from trainsync.modules.notifications.tasks import build_notifier, retry_delay
 
 
 @pytest.fixture

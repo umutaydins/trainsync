@@ -11,12 +11,12 @@ from fastapi import FastAPI
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from trainsync.api import deps
-from trainsync.api.webhooks import EXAMPLE_EVENT
+from trainsync.core import deps
+from trainsync.core.jobs import ArqJobQueue, webhook_job_id
 from trainsync.core.settings import Settings
-from trainsync.db.models import WebhookEvent
-from trainsync.main import create_app
-from trainsync.sync.queue import ArqJobQueue, webhook_job_id
+from trainsync.entrypoints.api.app import create_app
+from trainsync.modules.sync.models import WebhookEvent
+from trainsync.modules.sync.webhook_router import EXAMPLE_EVENT
 
 LATENCY_SAMPLES = 300
 P99_BUDGET_MS = 100.0

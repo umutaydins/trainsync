@@ -1,7 +1,7 @@
 import httpx
 
 from trainsync.core.settings import Settings
-from trainsync.main import create_app
+from trainsync.entrypoints.api.app import create_app
 
 
 def _client(settings: Settings) -> httpx.AsyncClient:
@@ -26,6 +26,6 @@ async def test_provided_request_id_is_echoed(settings: Settings) -> None:
 async def test_importing_main_needs_no_env() -> None:
     import importlib
 
-    import trainsync.main
+    import trainsync.entrypoints.api.app
 
-    importlib.reload(trainsync.main)
+    importlib.reload(trainsync.entrypoints.api.app)

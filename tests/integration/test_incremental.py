@@ -15,20 +15,21 @@ from fake_strava.config import FakeStravaConfig
 from fake_strava.state import FakeStravaState
 from tests.support.factories import create_athlete
 from tests.support.strava import fake_backed_client
+from trainsync.core.jobs import redis_settings
 from trainsync.core.settings import Settings
-from trainsync.db.models import Activity, SyncRun
-from trainsync.strava.budget import UnlimitedBudget
-from trainsync.strava.errors import RateLimited
-from trainsync.strava.models import StravaActivity
-from trainsync.sync.backfill import run_backfill
-from trainsync.sync.context import CTX_KEY, ActivitySource, SyncDeps
-from trainsync.sync.incremental import (
+from trainsync.integrations.strava.budget import UnlimitedBudget
+from trainsync.integrations.strava.errors import RateLimited
+from trainsync.integrations.strava.models import StravaActivity
+from trainsync.modules.activities.models import Activity
+from trainsync.modules.sync.backfill import run_backfill
+from trainsync.modules.sync.context import CTX_KEY, ActivitySource, SyncDeps
+from trainsync.modules.sync.incremental import (
     enqueue_incremental_jobs,
     incremental_sync,
     run_incremental,
     window_key,
 )
-from trainsync.sync.queue import redis_settings
+from trainsync.modules.sync.models import SyncRun
 
 NOW = datetime(2026, 10, 18, 12, 40, tzinfo=UTC)
 

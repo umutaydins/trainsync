@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from redis.asyncio import Redis
 
 from tests.fault.helpers import ManualClock
-from trainsync.bot.assistant import RedisRateLimiter
+from trainsync.modules.chat.assistant import RedisRateLimiter
 
 
 async def test_per_chat_hourly_limit(redis: Redis) -> None:

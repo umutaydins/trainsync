@@ -9,9 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import make_settings
 from tests.support.factories import create_athlete
-from trainsync.db.models import SyncKind, SyncRun, SyncStatus, WebhookEvent, WebhookStatus
-from trainsync.db.repositories.webhook_events import MAX_ATTEMPTS
-from trainsync.notify.alerts import (
+from trainsync.integrations.notifier import NullNotifier
+from trainsync.integrations.strava.breaker import BreakerState
+from trainsync.integrations.strava.breaker_status import RedisBreakerPublisher
+from trainsync.modules.notifications.alerts import (
     AlertDeps,
     AlertState,
     Condition,
@@ -20,9 +21,8 @@ from trainsync.notify.alerts import (
     build_alert_deps,
     run_alerts,
 )
-from trainsync.notify.base import NullNotifier
-from trainsync.strava.breaker import BreakerState
-from trainsync.strava.breaker_status import RedisBreakerPublisher
+from trainsync.modules.sync.models import SyncKind, SyncRun, SyncStatus, WebhookEvent, WebhookStatus
+from trainsync.modules.sync.webhook_repository import MAX_ATTEMPTS
 
 NOW = datetime(2026, 10, 18, 9, 0, tzinfo=UTC)
 

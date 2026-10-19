@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from trainsync.strava.ratelimit import (
+from trainsync.integrations.strava.ratelimit import (
     next_daily_reset,
     next_window_reset,
     parse_rate_limit,

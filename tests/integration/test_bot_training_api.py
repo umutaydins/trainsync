@@ -21,15 +21,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.support.messages import NEUTRAL_EN as MSG
 from tests.support.state import MemoryStateStore
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, message_update, ok, sent_messages
-from trainsync.bot.common import RedisStateStore, client_id
-from trainsync.bot.handlers import Commands, Dispatcher
-from trainsync.bot.read_api import ReadApi
-from trainsync.bot.telegram import TelegramApi, Update
-from trainsync.bot.training import TrainingCommands
 from trainsync.core.settings import Settings
-from trainsync.db.models import Workout, WorkoutSet
-from trainsync.db.repositories.training import ExerciseRepository
-from trainsync.main import create_app
+from trainsync.entrypoints.api.app import create_app
+from trainsync.entrypoints.bot.dispatcher import Commands, Dispatcher
+from trainsync.integrations.telegram.client import TelegramApi, Update
+from trainsync.modules.chat.common import RedisStateStore, client_id
+from trainsync.modules.chat.read_api import ReadApi
+from trainsync.modules.chat.training import TrainingCommands
+from trainsync.modules.training.models import Workout, WorkoutSet
+from trainsync.modules.training.repository import ExerciseRepository
 
 pytestmark = pytest.mark.integration
 

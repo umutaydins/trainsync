@@ -21,7 +21,10 @@ from tests.support.messages import NEUTRAL_EN as MSG
 from tests.support.state import MemoryStateStore
 from tests.support.swears import swears
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, message_update, ok, sent_messages
-from trainsync.bot.checkin import (
+from trainsync.core.settings import BotProfanity
+from trainsync.entrypoints.bot.dispatcher import Commands, Dispatcher
+from trainsync.integrations.telegram.client import TelegramApi, Update
+from trainsync.modules.chat.checkin import (
     MINUS,
     STATE_TTL_S,
     CheckinFlow,
@@ -30,17 +33,14 @@ from trainsync.bot.checkin import (
     state_key,
     workout_client_id,
 )
-from trainsync.bot.handlers import Commands, Dispatcher
-from trainsync.bot.messages import PACKS, Key, Messages, NeutralKey
-from trainsync.bot.read_api import ReadApi
-from trainsync.bot.telegram import TelegramApi, Update
-from trainsync.bot.training import TrainingCommands
-from trainsync.coach.categories import Category
-from trainsync.coach.lines import SAVAGE_MAX, MemoryRecentStore, load_pack
-from trainsync.coach.mode import CoachMode, MemorySoftModeStore
-from trainsync.coach.savage_tr import LINES
-from trainsync.coach.voice import CoachVoice
-from trainsync.core.settings import BotProfanity
+from trainsync.modules.chat.read_api import ReadApi
+from trainsync.modules.chat.training import TrainingCommands
+from trainsync.modules.coach.categories import Category
+from trainsync.modules.coach.lines import SAVAGE_MAX, MemoryRecentStore, load_pack
+from trainsync.modules.coach.mode import CoachMode, MemorySoftModeStore
+from trainsync.modules.coach.packs import PACKS, Key, Messages, NeutralKey
+from trainsync.modules.coach.savage_tr import LINES
+from trainsync.modules.coach.voice import CoachVoice
 
 NOW = datetime(2026, 10, 18, 18, 5, tzinfo=UTC)  # 21:05 in Istanbul
 DAY = "2026-10-18"

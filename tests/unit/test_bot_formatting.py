@@ -8,10 +8,10 @@ from typing import Any
 import pytest
 
 from tests.support.messages import NEUTRAL_EN as MSG
-from trainsync.api.activities import ActivityOut
-from trainsync.api.stats import StatsSummary, WeeklyStats
-from trainsync.api.sync_status import SyncStatusOut
-from trainsync.bot import formatting
+from trainsync.modules.activities.router import ActivityOut
+from trainsync.modules.chat import formatting
+from trainsync.modules.stats.router import StatsSummary, WeeklyStats
+from trainsync.modules.sync.router import SyncStatusOut
 
 FIXTURE: dict[str, Any] = json.loads(
     (Path(__file__).parents[1] / "fixtures" / "bot_api_responses.json").read_text(encoding="utf-8")

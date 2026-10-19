@@ -5,7 +5,7 @@
 
 import pytest
 
-from trainsync.coach.guardrails import (
+from trainsync.modules.coach.guardrails import (
     FoodKind,
     Trigger,
     Violation,

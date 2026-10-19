@@ -13,13 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.support.factories import create_athlete, strava_activity
 from tests.support.messages import NEUTRAL_EN as MSG
-from trainsync.api.stats import StatsSummary
-from trainsync.bot import formatting
-from trainsync.bot.handlers import Commands, week_ranges
-from trainsync.bot.read_api import ReadApi
 from trainsync.core.settings import Settings
-from trainsync.db.repositories.activities import ActivityRepository
-from trainsync.main import create_app
+from trainsync.entrypoints.api.app import create_app
+from trainsync.entrypoints.bot.dispatcher import Commands, week_ranges
+from trainsync.modules.activities.repository import ActivityRepository
+from trainsync.modules.chat import formatting
+from trainsync.modules.chat.read_api import ReadApi
+from trainsync.modules.stats.router import StatsSummary
 
 NOW = datetime(2026, 10, 15, 18, 0, tzinfo=UTC)  # Thursday
 KEY = "test-api-key"

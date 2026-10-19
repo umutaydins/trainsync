@@ -26,7 +26,7 @@ from testcontainers.redis import RedisContainer
 
 from tests.conftest import make_settings
 from trainsync.core.settings import Settings
-from trainsync.db.models import Base
+from trainsync.modules.models import Base
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

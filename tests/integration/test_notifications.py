@@ -38,17 +38,19 @@ from tests.support.notify import (
 from tests.support.strava import fake_backed_client
 from tests.support.telegram import BOT_URL, error, ok, sent_messages
 from trainsync.core.clock import utc_now
+from trainsync.core.jobs import enqueue_new_activity_notification
 from trainsync.core.settings import Settings
-from trainsync.db.models import Activity, Athlete, WebhookEvent
-from trainsync.db.repositories.activities import ActivityRepository
-from trainsync.main import create_app
-from trainsync.notify.base import NullNotifier
-from trainsync.notify.jobs import NOTIFY_MAX_TRIES, NotifyDeps, send_new_activity
-from trainsync.strava.budget import UnlimitedBudget
-from trainsync.sync.backfill import run_backfill
-from trainsync.sync.context import SyncDeps
-from trainsync.sync.queue import enqueue_new_activity_notification
-from trainsync.sync.webhooks import WebhookDeps, process_event
+from trainsync.entrypoints.api.app import create_app
+from trainsync.integrations.notifier import NullNotifier
+from trainsync.integrations.strava.budget import UnlimitedBudget
+from trainsync.modules.activities.models import Activity
+from trainsync.modules.activities.repository import ActivityRepository
+from trainsync.modules.notifications.tasks import NOTIFY_MAX_TRIES, NotifyDeps, send_new_activity
+from trainsync.modules.strava.models import Athlete
+from trainsync.modules.sync.backfill import run_backfill
+from trainsync.modules.sync.context import SyncDeps
+from trainsync.modules.sync.models import WebhookEvent
+from trainsync.modules.sync.webhooks import WebhookDeps, process_event
 
 TARGET = "http://api/webhooks/strava"
 SUBSCRIPTION = 999

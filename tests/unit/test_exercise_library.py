@@ -1,14 +1,14 @@
-"""P6.1: the seeded exercise library (src/trainsync/training/seed_exercises.json)."""
+"""P6.1: the seeded exercise library (src/trainsync/modules/training/seed_exercises.json)."""
 
 import json
 from importlib import resources
 from typing import Any
 
-from trainsync.db.models import Equipment, MovementPattern, Muscle
+from trainsync.modules.training.models import Equipment, MovementPattern, Muscle
 
 
 def library() -> list[dict[str, Any]]:
-    seed = resources.files("trainsync.training").joinpath("seed_exercises.json")
+    seed = resources.files("trainsync.modules.training").joinpath("seed_exercises.json")
     rows: list[dict[str, Any]] = json.loads(seed.read_text(encoding="utf-8"))
     return rows
 

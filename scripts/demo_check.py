@@ -95,7 +95,7 @@ def check_config() -> None:
     for name in ("api", "worker", "seed", "migrate"):
         if services[name]["environment"].get("DEMO_MODE") != "true":
             fail(f"{name} must run with DEMO_MODE=true")
-    if "trainsync.demo.worker.DemoWorkerSettings" not in services["worker"]["command"]:
+    if "trainsync.entrypoints.demo.worker.DemoWorkerSettings" not in services["worker"]["command"]:
         fail("the worker must be the demo worker (reset only, no Strava sync)")
     volumes = {v.get("source") for s in services.values() for v in s.get("volumes", [])}
     if not volumes or not all(str(v).startswith("demo-") for v in volumes):
@@ -162,7 +162,16 @@ def check_writes() -> None:
 
 
 def check_reset() -> None:
-    reset = ["python", "-m", "trainsync.demo", "exec", "python", "-m", "trainsync.demo", "reset"]
+    reset = [
+        "python",
+        "-m",
+        "trainsync.entrypoints.demo",
+        "exec",
+        "python",
+        "-m",
+        "trainsync.entrypoints.demo",
+        "reset",
+    ]
     result = compose("exec", "-T", "worker", *reset)
     if "demo reset: ResetSummary(" not in result.stdout:
         fail(f"the in-stack reset printed no summary: {result.stdout[-500:]}")

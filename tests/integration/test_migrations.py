@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from tests.support.containers import alembic_config
-from trainsync.db.models import Base
+from trainsync.modules.models import Base
 
 pytestmark = pytest.mark.integration
 

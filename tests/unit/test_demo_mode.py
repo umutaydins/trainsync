@@ -12,8 +12,8 @@ import httpx
 import pytest
 
 from tests.conftest import make_settings
-from trainsync.api.middleware import DEMO_DETAIL, DEMO_HEADER, is_demo_blocked
-from trainsync.main import create_app
+from trainsync.entrypoints.api.app import create_app
+from trainsync.entrypoints.api.middleware import DEMO_DETAIL, DEMO_HEADER, is_demo_blocked
 
 KEY = {"X-API-Key": "test-api-key"}
 SAMPLE_PATH_VALUES = {

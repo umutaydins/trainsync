@@ -24,18 +24,15 @@ from pydantic import SecretStr
 
 from tests.conftest import make_settings
 from tests.support.messages import NEUTRAL_EN as MSG
-from trainsync.bot import main as bot_main
-from trainsync.bot.assistant import (
-    TOOLS,
-    AnthropicPlanner,
-    Assistant,
-    system_prompt,
-)
-from trainsync.bot.messages import PACKS, Key, Messages, messages_for, using_lang
-from trainsync.bot.read_api import ReadApi
-from trainsync.coach.mode import CoachMode, MemorySoftModeStore, using_profanity
 from trainsync.core.redis import create_redis
 from trainsync.core.settings import BotTone
+from trainsync.entrypoints.bot import main as bot_main
+from trainsync.integrations.anthropic.planner import AnthropicPlanner
+from trainsync.integrations.anthropic.tools import TOOLS
+from trainsync.modules.chat.assistant import Assistant, system_prompt
+from trainsync.modules.chat.read_api import ReadApi
+from trainsync.modules.coach.mode import CoachMode, MemorySoftModeStore, using_profanity
+from trainsync.modules.coach.packs import PACKS, Key, Messages, messages_for, using_lang
 
 API = "http://trainsync-api"
 NOW = datetime(2026, 10, 18, 9, 0, tzinfo=UTC)

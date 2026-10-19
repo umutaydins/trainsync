@@ -9,8 +9,8 @@ import respx
 
 from tests.support.strava import API, OAUTH, Recorder, StubTokens, activity_json, make_client
 from trainsync.core.settings import Settings
-from trainsync.strava.budget import Allowance
-from trainsync.strava.errors import (
+from trainsync.integrations.strava.budget import Allowance
+from trainsync.integrations.strava.errors import (
     RateLimited,
     StravaAuthError,
     StravaNotFound,
@@ -170,12 +170,13 @@ async def test_token_endpoint_rejection_is_auth_error(
 
 # Outbound clients for other services (Phase 5), named one by one; they must not touch Strava.
 NON_STRAVA_HTTP_CLIENTS = {
-    "bot/telegram.py",
-    "bot/read_api.py",
-    "notify/jobs.py",
-    "notify/checkin.py",
-    "notify/coach.py",
-    "nutrition/off_client.py",
+    "core/http.py",
+    "integrations/telegram/client.py",
+    "modules/chat/read_api.py",
+    "modules/notifications/tasks.py",
+    "modules/notifications/checkin.py",
+    "modules/notifications/coach.py",
+    "integrations/openfoodfacts/client.py",
 }
 
 
@@ -188,7 +189,7 @@ def test_only_strava_package_imports_httpx() -> None:
         if pattern.search(path.read_text()) and path.parent.name != "strava"
     }
     assert importers - NON_STRAVA_HTTP_CLIENTS == set()
-    strava_access = re.compile(r"strava\.com|strava_(api|oauth)_|trainsync\.strava\b")
+    strava_access = re.compile(r"strava\.com|strava_(api|oauth)_|trainsync\.integrations\.strava\b")
     for name in NON_STRAVA_HTTP_CLIENTS:
         assert not strava_access.search((src / name).read_text()), name
 

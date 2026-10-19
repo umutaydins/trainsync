@@ -2,8 +2,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.support.factories import create_athlete, strava_activity
-from trainsync.db.models import Activity
-from trainsync.db.repositories.activities import ActivityRepository
+from trainsync.modules.activities.models import Activity
+from trainsync.modules.activities.repository import ActivityRepository
 
 
 async def _upsert(

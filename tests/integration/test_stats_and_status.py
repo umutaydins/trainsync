@@ -13,15 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.support.factories import create_athlete, strava_activity
 from trainsync.core.settings import Settings
-from trainsync.db.models import SyncKind, SyncStatus, WebhookEvent
-from trainsync.db.repositories.activities import ActivityRepository
-from trainsync.db.repositories.sync_runs import SyncRunRepository
-from trainsync.main import create_app
-from trainsync.strava.breaker import CircuitBreaker
-from trainsync.strava.breaker_status import RedisBreakerPublisher
-from trainsync.strava.budget import RateBudget
-from trainsync.strava.errors import StravaUnavailable
-from trainsync.strava.ratelimit import parse_rate_limit
+from trainsync.entrypoints.api.app import create_app
+from trainsync.integrations.strava.breaker import CircuitBreaker
+from trainsync.integrations.strava.breaker_status import RedisBreakerPublisher
+from trainsync.integrations.strava.budget import RateBudget
+from trainsync.integrations.strava.errors import StravaUnavailable
+from trainsync.integrations.strava.ratelimit import parse_rate_limit
+from trainsync.modules.activities.repository import ActivityRepository
+from trainsync.modules.sync.models import SyncKind, SyncStatus, WebhookEvent
+from trainsync.modules.sync.repository import SyncRunRepository
 
 FIXTURE = json.loads(
     (Path(__file__).parents[1] / "fixtures" / "weekly_stats.json").read_text(encoding="utf-8")

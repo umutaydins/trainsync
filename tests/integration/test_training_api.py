@@ -15,16 +15,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from trainsync.core.settings import Settings
-from trainsync.db.models import Workout, WorkoutSet
-from trainsync.db.repositories.training import ExerciseRepository
-from trainsync.main import create_app
-from trainsync.training.math import (
-    SetEntry,
-    best_e1rm,
-    e1rm,
-    volume,
-    weekly_muscle_volume,
-)
+from trainsync.entrypoints.api.app import create_app
+from trainsync.modules.training.math import SetEntry, best_e1rm, e1rm, volume, weekly_muscle_volume
+from trainsync.modules.training.models import Workout, WorkoutSet
+from trainsync.modules.training.repository import ExerciseRepository
 
 pytestmark = pytest.mark.integration
 

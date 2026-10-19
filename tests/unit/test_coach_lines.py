@@ -12,9 +12,10 @@ from pathlib import Path
 import pytest
 
 from tests.support.swears import swears
-from trainsync.coach.categories import MESSAGE_CATEGORIES, ROAST_CATEGORIES, Category
-from trainsync.coach.guardrails import mentions_distress, mentions_pain, violations
-from trainsync.coach.lines import (
+from trainsync.core.settings import BotLang
+from trainsync.modules.coach.categories import MESSAGE_CATEGORIES, ROAST_CATEGORIES, Category
+from trainsync.modules.coach.guardrails import mentions_distress, mentions_pain, violations
+from trainsync.modules.coach.lines import (
     RECENT,
     SAVAGE,
     SAVAGE_MAX,
@@ -28,9 +29,8 @@ from trainsync.coach.lines import (
     pick,
     read_local,
 )
-from trainsync.coach.punchlines import MAX_PUNCHLINES, PUNCHLINES
-from trainsync.coach.savage_tr import LINES
-from trainsync.core.settings import BotLang
+from trainsync.modules.coach.punchlines import MAX_PUNCHLINES, PUNCHLINES
+from trainsync.modules.coach.savage_tr import LINES
 
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE = ROOT / "config" / "messages.local.example.yaml"

@@ -6,9 +6,9 @@ import respx
 
 from tests.support.strava import API, NOW, Recorder, StubTokens, activity_json, make_client
 from trainsync.core.settings import Settings
-from trainsync.strava.breaker import BreakerState
-from trainsync.strava.budget import Allowance
-from trainsync.strava.errors import (
+from trainsync.integrations.strava.breaker import BreakerState
+from trainsync.integrations.strava.budget import Allowance
+from trainsync.integrations.strava.errors import (
     CircuitOpen,
     RateLimited,
     StravaError,

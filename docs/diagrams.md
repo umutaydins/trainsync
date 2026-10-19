@@ -53,7 +53,7 @@ flowchart LR
             upstream["lib/upstream.ts<br/>adds X-API-Key"]
         end
 
-        subgraph bot["Bot process (python -m trainsync.bot)"]
+        subgraph bot["Bot process (python -m trainsync.entrypoints.bot)"]
             poller["Poller<br/>getUpdates long polling"]
             dispatch["Dispatcher<br/>chat allowlist"]
             cmds["Commands<br/>/week /last /stats /status"]
@@ -149,7 +149,7 @@ flowchart TB
             web["web<br/>Next.js standalone :3000"]
             api["api<br/>uvicorn :8000"]
             worker["worker<br/>arq · metrics :9100"]
-            bot["bot<br/>python -m trainsync.bot<br/>metrics :9101"]
+            bot["bot<br/>python -m trainsync.entrypoints.bot<br/>metrics :9101"]
             migrate["migrate<br/>alembic upgrade head<br/>(one-shot)"]
             fake["fake-strava<br/>uvicorn :8001"]
             pg[("postgres:16<br/>volume pgdata")]
@@ -1345,7 +1345,7 @@ stateDiagram-v2
     end note
 ```
 
-Stack alerts, per condition (`src/trainsync/notify/alerts.py`, worker cron every 5 minutes; state
+Stack alerts, per condition (`src/trainsync/modules/notifications/alerts.py`, worker cron every 5 minutes; state
 in Redis `alert:<condition>`). Grace: 30 min for the circuit breaker, 0 for the others (their
 threshold is in the observation: dead letters > 0, backup > 36 h, sync > 2 h).
 
@@ -1383,7 +1383,7 @@ flowchart TB
             rd[("redis")]
             fs["fake_strava (no real Strava)"]
             worker["demo worker<br/>reset cron 03:00 UTC"]
-            seed["seed (one-shot on up)<br/>python -m trainsync.demo reset"]
+            seed["seed (one-shot on up)<br/>python -m trainsync.entrypoints.demo reset"]
         end
     end
 

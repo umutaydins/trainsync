@@ -12,10 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from tests.support.factories import BASE_DATE, create_athlete, strava_activity
 from trainsync.core.settings import Settings
-from trainsync.db.models import Athlete
-from trainsync.db.repositories.activities import ActivityRepository
-from trainsync.db.repositories.reads import ActivityFilter, Keyset, activity_page_query
-from trainsync.main import create_app
+from trainsync.entrypoints.api.app import create_app
+from trainsync.modules.activities.reads import ActivityFilter, Keyset, activity_page_query
+from trainsync.modules.activities.repository import ActivityRepository
+from trainsync.modules.strava.models import Athlete
 
 KEY = {"X-API-Key": "test-api-key"}
 SPORTS = ("Run", "Ride", "Swim")

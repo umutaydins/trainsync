@@ -11,11 +11,11 @@ from fake_strava.clock import FakeClock
 from tests.conftest import FAKE_STRAVA_BASE_URL, fake_strava_login
 from trainsync.core.crypto import TokenCipher
 from trainsync.core.settings import Settings
-from trainsync.db.models import Athlete, OAuthToken
-from trainsync.db.repositories.tokens import SqlTokenStore, TokenRepository, Tokens
-from trainsync.strava.client import StravaClient
-from trainsync.strava.models import TokenResponse
-from trainsync.strava.tokens import RedisRefreshLock, TokenManager
+from trainsync.integrations.strava.client import StravaClient
+from trainsync.integrations.strava.models import TokenResponse
+from trainsync.modules.strava.models import Athlete, OAuthToken
+from trainsync.modules.strava.token_repository import SqlTokenStore, TokenRepository, Tokens
+from trainsync.modules.strava.tokens import RedisRefreshLock, TokenManager
 
 
 async def _athlete(sessionmaker: async_sessionmaker[AsyncSession], strava_id: int = 1001) -> int:

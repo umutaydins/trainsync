@@ -13,12 +13,12 @@ from fake_strava.state import FakeStravaState
 from tests.support.factories import create_athlete
 from tests.support.strava import fake_backed_client
 from trainsync.core.settings import Settings
-from trainsync.db.models import Activity
-from trainsync.strava.budget import RateBudget
-from trainsync.strava.client import StravaClient
-from trainsync.strava.ratelimit import RateLimitSnapshot, Usage, next_window_reset
-from trainsync.sync.backfill import run_backfill
-from trainsync.sync.context import SyncDeps
+from trainsync.integrations.strava.budget import RateBudget
+from trainsync.integrations.strava.client import StravaClient
+from trainsync.integrations.strava.ratelimit import RateLimitSnapshot, Usage, next_window_reset
+from trainsync.modules.activities.models import Activity
+from trainsync.modules.sync.backfill import run_backfill
+from trainsync.modules.sync.context import SyncDeps
 
 LIST_ENDPOINT = "GET /api/v3/athlete/activities"
 
