@@ -1,13 +1,16 @@
 import "server-only";
 
-import { BACKEND_UNREACHABLE_TEXT } from "@/lib/backend-copy";
 import { serverEnv } from "@/lib/env";
 
 export type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 export type MutationMethod = "POST" | "PUT" | "PATCH" | "DELETE";
 
-/** Shown when the API cannot be reached at all (network error or timeout). */
-export const BACKEND_UNREACHABLE = BACKEND_UNREACHABLE_TEXT;
+/**
+ * The BFF's error code when the API cannot be reached at all (network error or timeout). An API
+ * error for clients, not copy: the screens say it in the user's language (`common.states`).
+ */
+export const BACKEND_UNREACHABLE =
+  "The trainsync backend is not answering (the server may be asleep or offline). Your data is safe; try again in a few minutes.";
 
 const READ: readonly Method[] = ["GET"];
 const READ_WRITE: readonly Method[] = ["GET", "POST", "PUT", "DELETE"];

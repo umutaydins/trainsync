@@ -20,7 +20,7 @@ import { ProgramBuilder } from "@/features/training/components/program-builder";
 import { RestTimerPanel } from "@/features/training/components/rest-timer";
 import { WorkoutScreen } from "@/features/training/components/workout-screen";
 import { WorkoutSummaryCard } from "@/features/training/components/workout-summary";
-import { ErrorState } from "@/components/ui";
+import { Failure } from "@/components/ui/states";
 import { activity, page, syncStatus } from "./support/fixtures";
 import { violations } from "./support/axe";
 import { CHICKEN, OATS, UNKNOWN_EXERCISE, daySummary, entry, profile, weekly } from "./support/nutrition-fixtures";
@@ -41,7 +41,7 @@ describe("accessibility (axe)", () => {
     ["activity list", <ActivityList key="l" initial={page([1, 2], "c")} query={{}} />],
     ["activity detail", <ActivityDetailCard key="d" activity={activity(1)} />],
     ["login form", <LoginForm key="lf" next="/" />],
-    ["error state", <ErrorState key="e" message="boom" />],
+    ["error state", <Failure key="e" title="Could not load this" message="boom" />],
     ["sync status", <SyncStatusView key="ss" initial={syncStatus()} />],
     ["sync status (empty)", <SyncStatusView key="se" initial={syncStatus({ athletes: [], rate_limit: null })} />],
     ["workout screen", <WorkoutScreen key="ws" initial={workout()} exercises={[BENCH, CURL]} store={memoryStore()} />],

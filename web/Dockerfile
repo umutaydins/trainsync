@@ -13,9 +13,6 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Display time zone, inlined into the client bundle at build time.
-ARG NEXT_PUBLIC_TZ=Europe/Istanbul
-ENV NEXT_PUBLIC_TZ=${NEXT_PUBLIC_TZ}
 RUN pnpm build
 
 FROM node:22-alpine AS runtime

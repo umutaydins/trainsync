@@ -25,7 +25,6 @@ preview  ──> https://<project>-<hash>-<team>.vercel.app ──────�
 | `TRAINSYNC_API_URL` | `https://<mac>.<tailnet>.ts.net` | `https://<mac>.<tailnet>.ts.net:8443` (demo backend) |
 | `WEB_PUBLIC_URL` | `https://<project>.vercel.app` | `https://<project>.vercel.app` (previews also accept their own URL, below) |
 | `DASHBOARD_SESSION_SECRET` | 32+ random characters | a different 32+ random string |
-| `NEXT_PUBLIC_TZ` | `Europe/Istanbul` | `Europe/Istanbul` |
 | `UPSTREAM_TIMEOUT_MS` | optional, default 8000 | optional |
 
 Mark the session secret as **Sensitive**. Never point Preview at the production backend: a

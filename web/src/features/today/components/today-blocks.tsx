@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { Empty, Failure } from "@/components/ui/states";
+import { useActivityFormat } from "@/features/activities/use-activity-format";
 import { StatGrid } from "@/features/progress/components/block";
 import { StatCard } from "@/features/progress/components/stat-card";
 import { formatDuration, formatNumber, km } from "@/features/progress/format";
@@ -15,7 +16,6 @@ import { BETTER } from "@/features/progress/types";
 import type { DaySummary } from "@/features/nutrition/types";
 import type { StravaConnection } from "@/features/settings/types";
 import type { Loaded } from "@/lib/api";
-import { sportLabel } from "@/lib/format";
 import type { ActivityPage } from "@/lib/types";
 
 const KM_DIGITS = 1;
@@ -119,6 +119,7 @@ export function LatestActivity({ latest, strava }: { latest: Loaded<ActivityPage
   const t = useTranslations("today.activity");
   const format = useFormatter();
   const locale = useLocale();
+  const fmt = useActivityFormat();
   if (!latest.ok) return <Failure title={t("failed")} message={latest.error} />;
   const activity = latest.data.items[0];
   if (!activity) {
@@ -155,7 +156,7 @@ export function LatestActivity({ latest, strava }: { latest: Loaded<ActivityPage
         <span className="min-w-0 flex-1">
           <span className="block truncate text-lg font-bold group-hover:text-accent-ink">{activity.name}</span>
           <span className="block text-sm text-muted">
-            {sportLabel(activity.sport_type)} · {format.dateTime(new Date(activity.start_date), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+            {fmt.sport(activity.sport_type)} · {format.dateTime(new Date(activity.start_date), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
           </span>
         </span>
         <span className="shrink-0 text-right tabular">

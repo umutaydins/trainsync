@@ -302,7 +302,6 @@ optional for the API and the worker; the web app needs one required variable,
 | `WEB_PUBLIC_URL` | web | `http://localhost:3000` | Browser-facing dashboard URL (the OAuth `return_to`; the only Origin the BFF accepts for writes) |
 | `DASHBOARD_SESSION_SECRET` | web | required | Encrypts the session cookie that carries the API session token (AES-256-GCM); at least 32 characters |
 | `DASHBOARD_COOKIE_SECURE` | web | `true` in production | Session cookie `Secure` flag; set `false` only for plain-HTTP setups other than localhost |
-| `NEXT_PUBLIC_TZ` | web (build time) | `Europe/Istanbul` | Display time zone |
 | `TELEGRAM_BOT_TOKEN` | bot, worker | empty | From @BotFather. Empty = the bot only serves metrics and no notifications are sent |
 | `TELEGRAM_ALLOWED_CHAT_IDS` | worker, migrations | empty | Since Phase 8 only the owner's bootstrap: migration 0017 links the first one (if no notify chat) to the owner; stack-alert fallback |
 | `TELEGRAM_NOTIFY_CHAT_ID` | worker, migrations | first allowlisted chat | The owner's bootstrap chat (linked by migration 0017) and stack-alert chat; notifications go to each user's linked chat |
