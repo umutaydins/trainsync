@@ -3,9 +3,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { Block, BlockEmpty, StatGrid } from "@/features/progress/components/block";
 import { CategoryBars } from "@/features/progress/components/category-bars";
 import { StatCard } from "@/features/progress/components/stat-card";
-import { effortUnit, formatDuration, formatEffort, formatNumber, km, paceChangePct } from "@/features/progress/format";
+import { effortUnit, formatEffort, formatNumber, km, paceChangePct } from "@/features/progress/format";
 import type { Endurance, Period, SportGroupStats } from "@/features/progress/types";
 import { BETTER } from "@/features/progress/types";
+import { useDuration } from "@/lib/use-duration";
 
 const KM_DIGITS = 1;
 
@@ -13,6 +14,7 @@ const KM_DIGITS = 1;
 export function EnduranceBlock({ endurance, period }: { endurance: Endurance; period: Period }) {
   const t = useTranslations("progress.endurance");
   const locale = useLocale();
+  const duration = useDuration();
   const { totals } = endurance;
   const groups = endurance.by_group.filter((g) => (g.count.value ?? 0) > 0);
   const empty = (totals.count.value ?? 0) === 0;
@@ -25,7 +27,7 @@ export function EnduranceBlock({ endurance, period }: { endurance: Endurance; pe
         <>
           <StatGrid>
             <StatCard label={t("distance")} value={km(totals.distance_m.value ?? 0)} digits={KM_DIGITS} unit={t("km")} change={totals.distance_m} better={BETTER.distance} period={period} testId="stat-distance" />
-            <StatCard label={t("time")} text={formatDuration(totals.moving_time_s.value ?? 0)} unit={t("hours")} change={totals.moving_time_s} better={BETTER.time} period={period} />
+            <StatCard label={t("time")} text={duration(totals.moving_time_s.value ?? 0)} change={totals.moving_time_s} better={BETTER.time} period={period} />
             <StatCard label={t("elevation")} value={totals.elevation_gain_m.value} unit={t("meters")} change={totals.elevation_gain_m} better={BETTER.elevation} period={period} />
             <StatCard label={t("count")} value={totals.count.value} change={totals.count} better={BETTER.count} period={period} testId="stat-activities" />
           </StatGrid>

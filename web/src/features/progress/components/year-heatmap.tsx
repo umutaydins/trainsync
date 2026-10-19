@@ -21,7 +21,8 @@ const MONDAY = "2024-01-01";
 const ISO_DAY_LENGTH = 10;
 
 /**
- * GitHub-style training year: one cell per day, darker = more minutes. A grid for assistive
+ * GitHub-style training calendar of the last 12 months (or of a past year, January to December;
+ * the current year up to today): one cell per day up to today, darker = more minutes. A grid for assistive
  * tech (arrow keys move by day and week, every cell has its label); tapping a cell shows its day.
  */
 export function YearHeatmap({
@@ -40,7 +41,7 @@ export function YearHeatmap({
   const grid = heatmapGrid(heatmap.days);
   const ordered = [...heatmap.days].sort((a, b) => a.day.localeCompare(b.day));
   const todayIndex = ordered.findIndex((d) => d.day === today);
-  // Today in this year, else its last day (a past year); the parent keys this by year.
+  // Today when shown, else the last day (a past year); the parent keys this by window.
   const [focused, setFocused] = useState(todayIndex >= 0 ? todayIndex : Math.max(0, ordered.length - 1));
   const cells = useRef<(HTMLDivElement | null)[]>([]);
   const scroller = useRef<HTMLDivElement>(null);
@@ -71,7 +72,11 @@ export function YearHeatmap({
   };
 
   const active = ordered[focused];
-  const yearLink = (year: number) => progressHref({ ...query, year });
+  const yearLink = (year: number | undefined) => progressHref({ ...query, year });
+  // Older: last 12 months → this year → the year before …; newer: back again.
+  const shownYear = heatmap.rolling ? currentYear + 1 : heatmap.year;
+  const older = shownYear - 1 >= firstYear ? shownYear - 1 : null;
+  const newer = heatmap.rolling ? null : heatmap.year < currentYear ? heatmap.year + 1 : undefined;
   const total = ordered.reduce((sum, d) => sum + (d.value > 0 ? 1 : 0), 0);
 
   return (
@@ -79,16 +84,16 @@ export function YearHeatmap({
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted">{t("activeDays", { count: total })}</p>
         <nav aria-label={t("yearPicker")} className="flex items-center gap-1">
-          {heatmap.year > firstYear ? (
-            <Link href={yearLink(heatmap.year - 1)} scroll={false} aria-label={t("year", { year: heatmap.year - 1 })} className={buttonVariants({ variant: "ghost", size: "icon" })}>
+          {older !== null ? (
+            <Link href={yearLink(older)} scroll={false} aria-label={t("year", { year: older })} className={buttonVariants({ variant: "ghost", size: "icon" })}>
               <ChevronLeft aria-hidden />
             </Link>
           ) : null}
-          <span className="min-w-12 text-center font-bold tabular">
-            {heatmap.year}
+          <span className="min-w-12 whitespace-nowrap text-center font-bold tabular" data-testid="heatmap-range">
+            {heatmap.rolling ? t("rolling") : heatmap.year}
           </span>
-          {heatmap.year < currentYear ? (
-            <Link href={yearLink(heatmap.year + 1)} scroll={false} aria-label={t("year", { year: heatmap.year + 1 })} className={buttonVariants({ variant: "ghost", size: "icon" })}>
+          {newer !== null ? (
+            <Link href={yearLink(newer)} scroll={false} aria-label={newer === undefined ? t("showRolling") : t("year", { year: newer })} className={buttonVariants({ variant: "ghost", size: "icon" })}>
               <ChevronRight aria-hidden />
             </Link>
           ) : null}
@@ -98,12 +103,12 @@ export function YearHeatmap({
         <div className="relative inline-flex flex-col gap-1 pl-8">
           <div aria-hidden className="relative h-4" style={{ width: grid.weeks * CELL_PITCH_PX }}>
             {grid.months.map(({ month, week }) => (
-              <span key={month} className="absolute top-0 text-[11px] text-muted" style={{ left: week * CELL_PITCH_PX }}>
+              <span key={`${month}-${week}`} className="absolute top-0 text-[11px] text-muted" style={{ left: week * CELL_PITCH_PX }}>
                 {formatDay(locale, `2024-${String(month).padStart(2, "0")}-01`, { month: "short" })}
               </span>
             ))}
           </div>
-          <div role="grid" aria-label={t("label", { year: heatmap.year })} onKeyDown={onKey} className="flex flex-col gap-[3px]">
+          <div role="grid" aria-label={heatmap.rolling ? t("labelRolling") : t("label", { year: heatmap.year })} onKeyDown={onKey} className="flex flex-col gap-[3px]">
             {grid.rows.map((row, weekday) => (
               <div role="row" key={weekday} className="relative flex gap-[3px]">
                 {WEEKDAY_LABEL_ROWS.some((w) => w === weekday) ? (

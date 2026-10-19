@@ -58,4 +58,46 @@ describe("SyncStatusView", () => {
     expect(within(screen.getByTestId("run-backfill")).getByText("Başarılı")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "15 dakika" })).toBeInTheDocument();
   });
+
+  describe("a failed run", () => {
+    const RAW = "StravaAuthError: refresh token rejected (invalid_grant)";
+    function failed() {
+      const status = syncStatus();
+      const run = { ...status.athletes[0]!.backfill!, status: "failed", error_code: "strava_auth" as const, error: RAW };
+      return { ...status, athletes: [{ ...status.athletes[0]!, backfill: run }] };
+    }
+
+    it("says what happened and offers Reconnect; no raw exception for a member", () => {
+      render(<SyncStatusView initial={{ ...failed(), athletes: failed().athletes.map((a) => ({ ...a, backfill: { ...a.backfill!, error: null } })) }} />);
+      const error = screen.getByTestId("run-error");
+      expect(error).toHaveAttribute("data-code", "strava_auth");
+      expect(within(error).getByText("Strava connection expired")).toBeInTheDocument();
+      expect(within(error).getByRole("link", { name: "Reconnect Strava" })).toHaveAttribute("href", "/api/strava/connect");
+      expect(screen.queryByTestId("run-error-detail")).not.toBeInTheDocument();
+      expect(document.body).not.toHaveTextContent("StravaAuthError");
+    });
+
+    it("never shows the raw text to a member, even if the API sent it", () => {
+      render(<SyncStatusView initial={failed()} />);
+      expect(document.body).not.toHaveTextContent("StravaAuthError");
+    });
+
+    it("the owner gets the technical detail folded away", () => {
+      render(<SyncStatusView initial={failed()} isOwner />);
+      const detail = screen.getByTestId("run-error-detail");
+      expect(detail.tagName).toBe("DETAILS");
+      expect(detail).not.toHaveAttribute("open");
+      expect(within(detail).getByText("Technical details")).toBeInTheDocument();
+      expect(within(detail).getByText(RAW)).toBeInTheDocument();
+    });
+
+    it("in Turkish, and an unknown failure without a reconnect", () => {
+      const status = failed();
+      const other = { ...status, athletes: [{ ...status.athletes[0]!, backfill: { ...status.athletes[0]!.backfill!, error_code: "internal" as const } }] };
+      render(<SyncStatusView initial={other} />, "tr");
+      const error = screen.getByTestId("run-error");
+      expect(within(error).getByText("Senkron başarısız")).toBeInTheDocument();
+      expect(within(error).queryByRole("link")).not.toBeInTheDocument();
+    });
+  });
 });

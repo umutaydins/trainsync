@@ -3,7 +3,6 @@ import { PACE_GROUPS } from "@/features/progress/types";
 
 /** Pure, locale-aware number and date helpers of the progress and Today screens. */
 
-const SECONDS_PER_HOUR = 3600;
 const SECONDS_PER_MINUTE = 60;
 const METERS_PER_KM = 1000;
 const SWIM_PACE_METERS = 100;
@@ -31,14 +30,6 @@ export function formatChangePct(locale: string, pct: number): string {
 
 export function km(meters: number): number {
   return meters / METERS_PER_KM;
-}
-
-/** `h:mm` (seconds dropped, so totals never run ahead). */
-export function formatDuration(seconds: number): string {
-  const total = Math.max(0, Math.floor(seconds));
-  const hours = Math.floor(total / SECONDS_PER_HOUR);
-  const minutes = Math.floor((total % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE);
-  return `${hours}:${String(minutes).padStart(2, "0")}`;
 }
 
 function clock(seconds: number): string {

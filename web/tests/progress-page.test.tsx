@@ -56,9 +56,13 @@ describe("progress route", () => {
     expect(screen.getByTestId("volume-chart")).toBeInTheDocument();
   });
 
-  it("a year in the future asks for this year", async () => {
+  it("no year, or one still to come, asks for the last 12 months; a past year for that year", async () => {
     await ProgressPage({ searchParams: Promise.resolve({ year: "2099" }) });
-    expect(progressApi.heatmap).toHaveBeenCalledWith(2026);
+    expect(progressApi.heatmap).toHaveBeenLastCalledWith(undefined);
+    await ProgressPage({ searchParams: Promise.resolve({}) });
+    expect(progressApi.heatmap).toHaveBeenLastCalledWith(undefined);
+    await ProgressPage({ searchParams: Promise.resolve({ year: "2025" }) });
+    expect(progressApi.heatmap).toHaveBeenLastCalledWith(2025);
   });
 
 });

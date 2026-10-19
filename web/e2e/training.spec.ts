@@ -34,9 +34,9 @@ test("training and nutrition: program → workout with rest timer → history; t
     await expectNoAxe(page, "/training/programs (preview)");
     await page.screenshot({ path: screenshotPath("programs"), fullPage: true });
     await page.getByRole("button", { name: "Save program" }).click();
-    await expect(page.getByRole("status")).toContainText("Saved");
+    await expect(page.getByTestId("program-status")).toContainText("Saved");
     await page.getByRole("button", { name: "Activate it" }).click();
-    await expect(page.getByRole("status")).toContainText("Program activated");
+    await expect(page.getByTestId("program-status")).toContainText("Program activated");
     await expect(page.getByTestId("program-list").getByText("Active")).toBeVisible();
   });
 

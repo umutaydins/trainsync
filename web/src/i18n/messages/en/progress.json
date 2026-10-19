@@ -101,7 +101,6 @@
     "elevation": "Elevation",
     "count": "Activities",
     "km": "km",
-    "hours": "h",
     "meters": "m",
     "bpm": "bpm",
     "pace": "Avg pace",
@@ -160,6 +159,7 @@
     "none": "No lifts yet. Log a workout and your records show up here.",
     "pick": "Lift",
     "empty": "No records for {lift} yet.",
+    "single": "One record for {lift} so far: {value} kg on {date}. The chart starts with the second.",
     "summary": "{lift}: {count, plural, one {# record} other {# records}}, best estimated 1RM {best} kg on {date}.",
     "caption": "Estimated 1RM records of {lift}",
     "columns": {
@@ -196,6 +196,9 @@
   "heatmap": {
     "title": "Training year",
     "label": "Training minutes per day in {year}",
+    "labelRolling": "Training minutes per day in the last 12 months",
+    "rolling": "Last 12 months",
+    "showRolling": "Show the last 12 months",
     "yearPicker": "Year",
     "year": "Show {year}",
     "activeDays": "{count, plural, one {# day} other {# days}} with training",

@@ -11,7 +11,7 @@ export const REFRESH_MS = 15_000;
 const MS_PER_S = 1000;
 
 /** Sync health, refreshed from the BFF every 15 s. Keeps the last good data if a refresh fails. */
-export function SyncStatusView({ initial, intervalMs = REFRESH_MS }: { initial: SyncStatus; intervalMs?: number }) {
+export function SyncStatusView({ initial, intervalMs = REFRESH_MS, isOwner = false }: { initial: SyncStatus; intervalMs?: number; isOwner?: boolean }) {
   const t = useTranslations("sync");
   const format = useFormatter();
   const [status, setStatus] = useState(initial);
@@ -48,7 +48,7 @@ export function SyncStatusView({ initial, intervalMs = REFRESH_MS }: { initial: 
         {updatedAt ? ` · ${t("updated", { time: format.dateTime(updatedAt, { timeStyle: "medium" }) })}` : ""}
       </p>
       {failed !== null ? <LoadFailed title={t("refreshFailed")} status={failed} /> : null}
-      <SyncRuns status={status} />
+      <SyncRuns status={status} isOwner={isOwner} />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Webhooks status={status} />
         <RateLimits status={status} />

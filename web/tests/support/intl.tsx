@@ -42,10 +42,10 @@ export const MESSAGES = {
 } satisfies Record<Locale, Record<(typeof NAMESPACES)[number], unknown>>;
 
 /** `render` inside the intl provider; `rerender` keeps it (the provider is the wrapper). */
-export function renderWithIntl(ui: ReactElement, locale: Locale = "en"): RenderResult {
+export function renderWithIntl(ui: ReactElement, locale: Locale = "en", timeZone = "UTC"): RenderResult {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <NextIntlClientProvider locale={locale} messages={MESSAGES[locale]} timeZone="UTC">
+      <NextIntlClientProvider locale={locale} messages={MESSAGES[locale]} timeZone={timeZone}>
         {children}
       </NextIntlClientProvider>
     );

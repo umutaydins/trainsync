@@ -27,6 +27,7 @@ export function syncStatus(overrides: Partial<SyncStatus> = {}): SyncStatus {
     status: "succeeded",
     pages: 2,
     upserted: 300,
+    error_code: null,
     error: null,
     started_at: "2026-10-18T09:00:00Z",
     updated_at: "2026-10-18T09:01:00Z",

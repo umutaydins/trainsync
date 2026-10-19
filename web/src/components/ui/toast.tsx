@@ -15,7 +15,10 @@ interface ToastMessage {
 const TOAST_MS = 3500;
 const ToastContext = createContext<(text: string, tone?: Tone) => void>(() => {});
 
-/** Short confirmations ("Saved", "Set logged"); announced politely to screen readers. */
+/**
+ * Short confirmations ("Saved", "Set logged"); announced politely to screen readers. Radix also
+ * copies the text into a hidden live region, so tests find a toast by `data-testid="toast"`.
+ */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const show = useCallback((text: string, tone: Tone = "neutral") => {
@@ -28,6 +31,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((toast) => (
           <ToastPrimitive.Root
             key={toast.id}
+            data-testid="toast"
+            data-tone={toast.tone}
             onOpenChange={(open) => {
               if (!open) setToasts((current) => current.filter((t) => t.id !== toast.id));
             }}

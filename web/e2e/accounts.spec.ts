@@ -105,7 +105,7 @@ test("invite → register → onboarding → Today → a workout → sign out �
     await page.getByRole("dialog", { name: "Rest" }).getByRole("button", { name: "Skip" }).click();
 
     await page.getByRole("button", { name: "Finish workout" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Workout done." })).toBeVisible();
+    await expect(page.getByTestId("workout-done")).toHaveText("Workout done.");
     await expect(page.getByTestId("workout-summary")).toHaveAttribute("data-volume", String(KG * REPS));
   });
 

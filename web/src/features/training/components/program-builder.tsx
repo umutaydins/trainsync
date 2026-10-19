@@ -76,7 +76,7 @@ export function ProgramBuilder({ initial, exercises }: { initial: ProgramSummary
   return (
     <div className="flex flex-col gap-4">
       {message ? (
-        <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-ok/30 bg-ok-soft p-4 text-sm font-medium text-ok">
+        <div role="status" data-testid="program-status" className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-ok/30 bg-ok-soft p-4 text-sm font-medium text-ok">
           <span className="inline-flex items-center gap-2">
             <CheckCircle2 aria-hidden className="size-5" />
             {message.text}

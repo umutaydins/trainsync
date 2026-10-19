@@ -53,10 +53,14 @@ test("progress: W → M → Y → All moves every block, the URL, the stats; cha
     });
   }
 
-  await test.step("the heatmap shows this year's training days", async () => {
+  await test.step("the heatmap shows the last 12 months up to today, never a future day", async () => {
     const heatmap = page.getByTestId("heatmap");
     await expect(heatmap.getByRole("grid")).toBeVisible();
-    const thisYear = DAYS_AGO.filter((daysAgo) => localDay(daysAgo) >= starts.year).length;
-    await expect(heatmap.locator('[role="gridcell"][data-level]:not([data-level="0"])')).toHaveCount(thisYear);
+    await expect(heatmap.getByTestId("heatmap-range")).toHaveText("Last 12 months");
+    const lastYear = DAYS_AGO.filter((daysAgo) => daysAgo < 365).length;
+    await expect(heatmap.locator('[role="gridcell"][data-level]:not([data-level="0"])')).toHaveCount(lastYear);
+    const days = (await heatmap.locator("[data-day]").evaluateAll((cells) => cells.map((c) => c.getAttribute("data-day") ?? ""))).sort();
+    expect(days).toHaveLength(365);
+    expect(days.at(-1)).toBe(localDay(0));
   });
 });
