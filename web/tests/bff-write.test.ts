@@ -357,6 +357,15 @@ describe("BFF mutations: upstream answers", () => {
     expect(response.headers.get("set-cookie")).toMatch(/ts_session=;/);
   });
 
+  it("keeps the session when a password change is refused for a wrong current password", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "the current password is wrong" }, 401));
+    const response = await call("POST", "v1/me/password", {
+      body: JSON.stringify({ current_password: "wrong", new_password: "a brand new password" }),
+    });
+    expect(response.status).toBe(401);
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
   it("says so when the read-only demo refuses a write, and only for its marked 403", async () => {
     const demo = new Response(JSON.stringify({ detail: "This is a read-only demo." }), {
       status: 403,

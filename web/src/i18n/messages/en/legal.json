@@ -33,7 +33,7 @@
       },
       "export": {
         "title": "Export and deletion",
-        "body": "You can download all your data at any time in Me → Export. You can delete your account in Me → Delete account: you are signed out everywhere and Telegram is unlinked at once, then a background job revokes Strava and deletes every row of your account."
+        "body": "You can download all your data at any time in Me → Data → Export. You can delete your account in Me → Data → Delete account: you are signed out everywhere and Telegram is unlinked at once, then a background job revokes Strava and deletes every row of your account."
       },
       "retention": {
         "title": "Backups",
@@ -76,7 +76,7 @@
       },
       "ending": {
         "title": "Ending",
-        "body": "You can delete your account at any time in Me → Delete account. The owner may suspend or delete an account that misuses the service, and will tell you when possible."
+        "body": "You can delete your account at any time in Me → Data → Delete account. The owner may suspend or delete an account that misuses the service, and will tell you when possible."
       },
       "changes": {
         "title": "Changes",

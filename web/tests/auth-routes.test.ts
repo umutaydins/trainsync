@@ -127,8 +127,10 @@ describe("account route handlers (P8.7)", () => {
       });
     await connect(at("/onboarding"));
     await connect(at("https://evil.example/x"));
-    const [onboarding, evil] = calls();
+    await connect(at("/me/connections"));
+    const [onboarding, evil, settings] = calls();
     expect(new URL(onboarding?.url ?? "").searchParams.get("return_to")).toBe("http://localhost:3000/onboarding");
+    expect(new URL(settings?.url ?? "").searchParams.get("return_to")).toBe("http://localhost:3000/me/connections");
     expect(new URL(evil?.url ?? "").searchParams.get("return_to")).toBe("http://localhost:3000/sync");
     fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "boom" }, 500));
     expect((await connect(at("/onboarding"))).headers.get("location")).toBe("/onboarding");

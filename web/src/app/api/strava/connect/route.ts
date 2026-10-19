@@ -12,7 +12,7 @@ const DEFAULT_RETURN_PATH = "/sync";
  * Pages Strava may send the browser back to (`?return_to=`). Each must also be in the API's
  * OAUTH_RETURN_TO_ALLOWLIST as `<WEB_PUBLIC_URL><path>`, else the API ignores it.
  */
-const RETURN_PATHS: readonly string[] = [DEFAULT_RETURN_PATH, "/onboarding"];
+const RETURN_PATHS: readonly string[] = [DEFAULT_RETURN_PATH, "/onboarding", "/me/connections"];
 
 /**
  * "Connect with Strava": asks the API for the authorize URL, whose signed state names the signed-in

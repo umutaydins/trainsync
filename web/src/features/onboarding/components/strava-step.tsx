@@ -55,27 +55,41 @@ export function StravaStep({
           {!connected && failure ? <p className="mt-0.5 text-bad">{t("strava.failed", { reason: failure })}</p> : null}
         </div>
       </div>
-      {connected ? null : (
-        // A full page navigation: the BFF answers with a redirect to strava.com.
-        <a href={STRAVA_CONNECT_HREF} className="self-start rounded-[6px]">
-          <Image
-            src={CONNECT_BUTTON.src}
-            width={CONNECT_BUTTON.width}
-            height={CONNECT_BUTTON.height}
-            alt={t("strava.connectLabel")}
-            unoptimized
-            priority
-          />
-        </a>
-      )}
-      <Image
-        src={POWERED_BY.src}
-        width={POWERED_BY.width}
-        height={POWERED_BY.height}
-        alt={t("strava.poweredBy")}
-        unoptimized
-        style={{ height: POWERED_BY_HEIGHT_PX, width: "auto" }}
-      />
+      {connected ? null : <StravaConnectButton href={STRAVA_CONNECT_HREF} />}
+      <PoweredByStrava />
     </StepFrame>
+  );
+}
+
+/** Strava's official "Connect with Strava" button, a full page navigation to the BFF route. */
+export function StravaConnectButton({ href }: { href: string }) {
+  const t = useTranslations("onboarding.strava");
+  return (
+    // The BFF answers with a redirect to strava.com.
+    <a href={href} className="self-start rounded-[6px]">
+      <Image
+        src={CONNECT_BUTTON.src}
+        width={CONNECT_BUTTON.width}
+        height={CONNECT_BUTTON.height}
+        alt={t("connectLabel")}
+        unoptimized
+        priority
+      />
+    </a>
+  );
+}
+
+/** The "Powered by Strava" attribution. */
+export function PoweredByStrava() {
+  const t = useTranslations("onboarding.strava");
+  return (
+    <Image
+      src={POWERED_BY.src}
+      width={POWERED_BY.width}
+      height={POWERED_BY.height}
+      alt={t("poweredBy")}
+      unoptimized
+      style={{ height: POWERED_BY_HEIGHT_PX, width: "auto" }}
+    />
   );
 }

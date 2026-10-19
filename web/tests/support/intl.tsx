@@ -14,11 +14,15 @@ import enOnboarding from "@/i18n/messages/en/onboarding.json";
 import trAuth from "@/i18n/messages/tr/auth.json";
 import trLegal from "@/i18n/messages/tr/legal.json";
 import trOnboarding from "@/i18n/messages/tr/onboarding.json";
+import enSettings from "@/i18n/messages/en/settings.json";
+import trSettings from "@/i18n/messages/tr/settings.json";
+import enAdmin from "@/i18n/messages/en/admin.json";
+import trAdmin from "@/i18n/messages/tr/admin.json";
 
 /** Every message file, synchronously (tests do not go through next-intl's request config). */
 export const MESSAGES = {
-  en: { common: enCommon, nav: enNav, auth: enAuth, onboarding: enOnboarding, legal: enLegal },
-  tr: { common: trCommon, nav: trNav, auth: trAuth, onboarding: trOnboarding, legal: trLegal },
+  en: { common: enCommon, nav: enNav, auth: enAuth, onboarding: enOnboarding, legal: enLegal, settings: enSettings, admin: enAdmin },
+  tr: { common: trCommon, nav: trNav, auth: trAuth, onboarding: trOnboarding, legal: trLegal, settings: trSettings, admin: trAdmin },
 } satisfies Record<Locale, Record<(typeof NAMESPACES)[number], unknown>>;
 
 /** `render` inside the intl provider; `rerender` keeps it (the provider is the wrapper). */

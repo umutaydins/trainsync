@@ -33,7 +33,7 @@
       },
       "export": {
         "title": "Dışa aktarma ve silme",
-        "body": "Tüm verilerini istediğin an Ben → Dışa aktar bölümünden indirebilirsin. Hesabını Ben → Hesabı sil bölümünden silebilirsin: her yerde oturumun hemen kapanır ve Telegram bağlantın kaldırılır, ardından arka planda Strava erişimi iptal edilir ve hesabına ait her kayıt silinir."
+        "body": "Tüm verilerini istediğin an Ben → Veriler → Dışa aktar bölümünden indirebilirsin. Hesabını Ben → Veriler → Hesabı sil bölümünden silebilirsin: her yerde oturumun hemen kapanır ve Telegram bağlantın kaldırılır, ardından arka planda Strava erişimi iptal edilir ve hesabına ait her kayıt silinir."
       },
       "retention": {
         "title": "Yedekler",
@@ -76,7 +76,7 @@
       },
       "ending": {
         "title": "Sonlandırma",
-        "body": "Hesabını istediğin an Ben → Hesabı sil bölümünden silebilirsin. Sahibi, servisi kötüye kullanan bir hesabı askıya alabilir ya da silebilir ve mümkünse sana haber verir."
+        "body": "Hesabını istediğin an Ben → Veriler → Hesabı sil bölümünden silebilirsin. Sahibi, servisi kötüye kullanan bir hesabı askıya alabilir ya da silebilir ve mümkünse sana haber verir."
       },
       "changes": {
         "title": "Değişiklikler",

@@ -18,6 +18,13 @@ export const dynamic = "force-dynamic";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
+/**
+ * Paths whose 401 means "the password you typed is wrong" (POST /v1/me/password checks the current
+ * one), not "your session is gone": those keep the browser session. A truly dead session is still
+ * caught by the next read.
+ */
+const PASSWORD_CHECKS: ReadonlySet<string> = new Set(["/v1/me/password"]);
+
 type Context = { params: Promise<{ path: string[] }> };
 
 /**
@@ -115,7 +122,7 @@ function reply(target: string, result: UpstreamResult, isMutation: boolean): Nex
         ? { error: result.error, detail: result.detail }
         : { error: result.error };
     const response = NextResponse.json(body, { status: result.status, headers: NO_STORE });
-    if (result.status === 401) endSession(response);
+    if (result.status === 401 && !PASSWORD_CHECKS.has(target)) endSession(response);
     return response;
   }
   if (result.status === 204 || result.status === 205 || result.status === 304) {
