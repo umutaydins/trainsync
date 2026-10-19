@@ -1,9 +1,10 @@
 """The demo dataset (P7.9, ADR 0028): synthetic, deterministic, built from code only.
 
 Everything here comes from the constants in this module and one `random.Random(DEMO_RNG_SEED)`;
-nothing is read from a file, the network or the environment (tests/unit/test_demo_seed.py checks
-the source). `build_dataset(now, zone)` depends only on the local date of `now`, so the nightly
-reset slides the same twelve weeks forward and the dashboard's default ranges always show data.
+nothing is read from a file, the network or the environment
+(tests/unit/entrypoints/demo/test_demo_seed.py checks the source). `build_dataset(now, zone)`
+depends only on the local date of `now`, so the nightly reset slides the same twelve weeks forward
+and the dashboard's default ranges always show data.
 
 The athlete has no name: the data model stores none, and the demo invents none.
 """

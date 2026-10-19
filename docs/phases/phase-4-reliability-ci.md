@@ -36,7 +36,7 @@ Task criteria:
 
 | Task | Proven by |
 |---|---|
-| P4.1 metrics, log correlation | `tests/integration/test_metrics.py::test_worker_metrics_after_a_backfill` (scrapes the worker's own metrics port: `strava_requests_total`, `sync_jobs_total{kind="backfill",status="succeeded"}`), `::test_log_lines_inside_a_job_carry_job_id`; `tests/unit/test_metrics.py` (route templates, every metric family exposed, breaker open → `strava_circuit_state` 2); ADR 0010 |
+| P4.1 metrics, log correlation | `tests/integration/entrypoints/worker/test_metrics.py::test_worker_metrics_after_a_backfill` (scrapes the worker's own metrics port: `strava_requests_total`, `sync_jobs_total{kind="backfill",status="succeeded"}`), `::test_log_lines_inside_a_job_carry_job_id`; `tests/unit/core/test_metrics.py` (route templates, every metric family exposed, breaker open → `strava_circuit_state` 2); ADR 0010 |
 | P4.2 fault suite | `tests/fault/` (`make test-fault`, 11 tests in ~20 s locally; CI `fault` job); each row of the failure-modes table links to its module in `docs/architecture.md` |
 | P4.3 load test | `make loadtest` (`scripts/loadtest.sh`, `loadtest/locustfile.py`, `scripts/loadtest_summary.py`); manual `.github/workflows/loadtest.yml`; results and the honest p99 discussion in README |
 | P4.4 CI hardening | `pyproject.toml` `[tool.coverage]` `fail_under = 85` enforced by `make coverage` in `make verify`; `make audit`; Dockerfile `HEALTHCHECK` (worker checks its metrics port, compose waits on it); CI jobs `verify` (coverage.xml artifact), `audit`, `fault`, `docker`, `compose`; badge pending a remote (`QUESTIONS.md`) |

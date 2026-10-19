@@ -391,7 +391,7 @@ About 10% of webhook requests are re-deliveries of an event already sent, which 
 - Missed under the mixed load: webhook p99 is 220 ms, at about 280 req/s overall in one API
   process.
 - A webhook POST is one INSERT and one Redis write (7 ms p99 in
-  `tests/integration/test_webhook_intake.py`). Under mixed load it spends most of its time queued
+  `tests/integration/modules/sync/test_webhook_intake.py`). Under mixed load it spends most of its time queued
   behind `/v1` reads in the same event loop and CPU.
 - The fix, if it ever matters, is to run more API processes behind a load balancer. That stays
   far under Strava's 2-second deadline in either case. A single athlete produces a few events a

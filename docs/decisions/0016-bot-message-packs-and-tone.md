@@ -31,7 +31,7 @@ must never turn into insults.
   "Reply in English/Turkish" line per language. It lives in `assistant.py`, not in the packs: it
   is an instruction to the model, not text a user reads.
 - CI guards: every pack defines every key and only uses its key's fields; a snapshot per
-  tone × language (`tests/unit/snapshots/bot_messages/`); a blocklist of slurs, insults, stronger
+  tone × language (`tests/unit/modules/coach/packs/snapshots/bot_messages/`); a blocklist of slurs, insults, stronger
   profanity and body/weight words that no pack may contain.
 
 ## Alternatives considered

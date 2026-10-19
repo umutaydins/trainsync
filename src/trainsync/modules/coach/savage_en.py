@@ -2,11 +2,11 @@
 0032): original lines, per category, the same categories and pools (`LINES` for profanity
 `roast`, `MAX` for `max`) as `savage_tr`.
 
-The owner opted into unrestricted profanity, in English too. The lines roast the excuse, the
-effort or an unhealthy choice (`food_roast`): never body, weight or appearance, never identity,
-never restriction or punishment for eating, never a push through pain or distress
-(tests/unit/test_coach_lines.py checks the guardrail blocklists). Lines carry no numbers: the
-facts go in a separate line the code writes. No line quotes or imitates a real person.
+The owner opted into unrestricted profanity, in English too. The lines roast the excuse, the effort
+or an unhealthy choice (`food_roast`): never body, weight or appearance, never identity, never
+restriction or punishment for eating, never a push through pain or distress
+(tests/unit/modules/coach/test_coach_lines.py checks the guardrail blocklists). Lines carry no
+numbers: the facts go in a separate line the code writes. No line quotes or imitates a real person.
 """
 
 from collections.abc import Mapping

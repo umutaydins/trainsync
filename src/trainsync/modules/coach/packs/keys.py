@@ -1,8 +1,8 @@
 """Every user-facing message key and the fields its templates may use.
 
-A pack must define every key (tests/unit/test_bot_messages.py). Templates are `str.format`
-strings; a variant may leave a field out but never use one that is not listed here. An empty
-template means "no line" (the neutral packs use that for the coach's week verdicts).
+A pack must define every key (tests/unit/modules/coach/packs/test_bot_messages.py). Templates are
+`str.format` strings; a variant may leave a field out but never use one that is not listed here. An
+empty template means "no line" (the neutral packs use that for the coach's week verdicts).
 """
 
 from collections.abc import Mapping
@@ -260,7 +260,7 @@ FIELDS: Mapping[Key, frozenset[str]] = {
 }
 
 # Answers that stay calm in every tone: no pushing on rest or on being sick or injured
-# (tests/unit/test_bot_messages.py checks the hardcore wording of these, too).
+# (tests/unit/modules/coach/packs/test_bot_messages.py checks the hardcore wording of these, too).
 RESPECTFUL: frozenset[Key] = frozenset(
     {Key.CHECKIN_REST_SAVED, Key.CHECKIN_SICK_SAVED, Key.CHECKIN_BTN_REST, Key.CHECKIN_BTN_SICK}
 )

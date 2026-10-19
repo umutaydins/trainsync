@@ -2,12 +2,12 @@
 in two pools: `LINES` (profanity `roast`) and `MAX` (profanity `max`: every line swears, plus the
 `max_opener` lines put in front of every other savage message).
 
-The owner opted into unrestricted profanity, so the lines swear freely. They roast the excuse,
-the effort or an unhealthy choice (`food_roast`): never body, weight or appearance, never
-identity, never restriction or punishment for eating, never a push through pain or distress
-(tests/unit/test_coach_lines.py checks the guardrail blocklists). Lines carry no numbers: the
-facts (weights, reps, times) go in a separate line the code writes. No line quotes or imitates a
-real person.
+The owner opted into unrestricted profanity, so the lines swear freely. They roast the excuse, the
+effort or an unhealthy choice (`food_roast`): never body, weight or appearance, never identity,
+never restriction or punishment for eating, never a push through pain or distress
+(tests/unit/modules/coach/test_coach_lines.py checks the guardrail blocklists). Lines carry no
+numbers: the facts (weights, reps, times) go in a separate line the code writes. No line quotes or
+imitates a real person.
 """
 
 # Turkish text: the dotless i (U+0131) is a letter here, not a confusable.

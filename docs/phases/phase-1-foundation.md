@@ -29,23 +29,23 @@ Phase criteria:
 
 | Criterion | Proven by |
 |---|---|
-| `docker compose up` starts everything; `/health/ready` returns 200 | `make compose-smoke` (`scripts/compose_smoke.sh`: `up --wait`, then `GET /health/ready`); `tests/integration/test_health_ready.py` |
-| Connecting through fake_strava stores an athlete and encrypted tokens | `tests/integration/test_oauth_flow.py::test_connect_stores_athlete_encrypted_tokens_and_enqueues_backfill`; `make compose-smoke` (asserts Fernet ciphertext in `oauth_tokens`) |
-| Unit: backoff timing bounds | `tests/unit/test_strava_retry.py::test_backoff_within_full_jitter_bounds`, `::test_backoff_ceiling_grows_then_caps` |
-| Unit: retryable vs non-retryable status codes | `tests/unit/test_strava_retry.py` (statuses, transport errors); `tests/unit/test_strava_client.py::test_retries_transient_failures_then_succeeds`, `::test_does_not_retry_client_errors`, `::test_gives_up_after_max_attempts` |
-| Unit: rate-limit header parsing | `tests/unit/test_strava_ratelimit.py` |
-| Token refresh race (two concurrent calls → one refresh) | `tests/integration/test_tokens.py::test_concurrent_access_token_calls_refresh_once` (real Redis + Postgres + fake_strava, counts `POST /oauth/token`); logic in `tests/unit/test_token_manager.py` |
+| `docker compose up` starts everything; `/health/ready` returns 200 | `make compose-smoke` (`scripts/compose_smoke.sh`: `up --wait`, then `GET /health/ready`); `tests/integration/entrypoints/api/test_health_ready.py` |
+| Connecting through fake_strava stores an athlete and encrypted tokens | `tests/integration/modules/strava/test_oauth_flow.py::test_connect_stores_athlete_encrypted_tokens_and_enqueues_backfill`; `make compose-smoke` (asserts Fernet ciphertext in `oauth_tokens`) |
+| Unit: backoff timing bounds | `tests/unit/integrations/strava/test_strava_retry.py::test_backoff_within_full_jitter_bounds`, `::test_backoff_ceiling_grows_then_caps` |
+| Unit: retryable vs non-retryable status codes | `tests/unit/integrations/strava/test_strava_retry.py` (statuses, transport errors); `tests/unit/integrations/strava/test_strava_client.py::test_retries_transient_failures_then_succeeds`, `::test_does_not_retry_client_errors`, `::test_gives_up_after_max_attempts` |
+| Unit: rate-limit header parsing | `tests/unit/integrations/strava/test_strava_ratelimit.py` |
+| Token refresh race (two concurrent calls → one refresh) | `tests/integration/modules/strava/test_tokens.py::test_concurrent_access_token_calls_refresh_once` (real Redis + Postgres + fake_strava, counts `POST /oauth/token`); logic in `tests/unit/modules/strava/test_token_manager.py` |
 | ruff, mypy, pytest green | `make verify` |
 
 Task criteria:
 
 | Task | Proven by |
 |---|---|
-| P1.1 settings, logging, app | `tests/unit/test_settings.py`, `tests/unit/test_logging.py`, `tests/unit/test_app.py`; `uv sync --frozen` |
-| P1.2 models, migration, readiness | `tests/integration/test_migrations.py` (round trip, `compare_metadata` no diff, indexes), `tests/integration/test_models.py` (unique, FK cascade, CHECK), `tests/integration/test_health_ready.py` (200, 503 for Redis / DB down, no leak); integration tests are auto-marked by `tests/integration/conftest.py` and excluded by `make test-unit` |
-| P1.3 cipher, signed state | `tests/unit/test_crypto.py`, `tests/unit/test_state.py` |
-| P1.4 fake_strava | `tests/unit/test_fake_strava.py` (OAuth + rotation, pagination 200/100/[], filters, headers + 429 until quarter hour, error rate, 401, deterministic seed) |
-| P1.5 Strava client | `tests/unit/test_strava_client.py`, `tests/unit/test_strava_retry.py`, `tests/unit/test_strava_ratelimit.py`; `::test_only_strava_package_imports_httpx` |
-| P1.6 tokens | `tests/integration/test_tokens.py` (ciphertext, race, owner-only release, TTL), `tests/unit/test_token_manager.py` (proactive refresh, rotation, lock released on error, bounded wait), `tests/unit/test_strava_client.py::test_401_refreshes_once_and_retries_once`, `::test_second_401_is_auth_error` |
-| P1.7 OAuth endpoints | `tests/unit/test_auth.py` (redirect params, rejections write nothing), `tests/integration/test_oauth_flow.py` (full flow, double callback, reconnect, internal vs public URL) |
+| P1.1 settings, logging, app | `tests/unit/core/test_settings.py`, `tests/unit/core/test_logging.py`, `tests/unit/entrypoints/api/test_app.py`; `uv sync --frozen` |
+| P1.2 models, migration, readiness | `tests/integration/migrations/test_migrations.py` (round trip, `compare_metadata` no diff, indexes), `tests/integration/modules/test_models.py` (unique, FK cascade, CHECK), `tests/integration/entrypoints/api/test_health_ready.py` (200, 503 for Redis / DB down, no leak); integration tests are auto-marked by `tests/integration/conftest.py` and excluded by `make test-unit` |
+| P1.3 cipher, signed state | `tests/unit/core/test_crypto.py`, `tests/unit/core/test_state.py` |
+| P1.4 fake_strava | `tests/unit/fake_strava/test_fake_strava.py` (OAuth + rotation, pagination 200/100/[], filters, headers + 429 until quarter hour, error rate, 401, deterministic seed) |
+| P1.5 Strava client | `tests/unit/integrations/strava/test_strava_client.py`, `tests/unit/integrations/strava/test_strava_retry.py`, `tests/unit/integrations/strava/test_strava_ratelimit.py`; `::test_only_strava_package_imports_httpx` |
+| P1.6 tokens | `tests/integration/modules/strava/test_tokens.py` (ciphertext, race, owner-only release, TTL), `tests/unit/modules/strava/test_token_manager.py` (proactive refresh, rotation, lock released on error, bounded wait), `tests/unit/integrations/strava/test_strava_client.py::test_401_refreshes_once_and_retries_once`, `::test_second_401_is_auth_error` |
+| P1.7 OAuth endpoints | `tests/unit/modules/strava/test_auth.py` (redirect params, rejections write nothing), `tests/integration/modules/strava/test_oauth_flow.py` (full flow, double callback, reconnect, internal vs public URL) |
 | P1.8 compose | `make compose-smoke` (cleans up on failure via `trap`); image runs as uid 10001 (checked in CI `docker` job) |

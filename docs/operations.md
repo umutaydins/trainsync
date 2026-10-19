@@ -179,8 +179,8 @@ SHA (the script refuses otherwise and says which `git switch --detach` to run).
 Writing a migration: set `reversible = True` only if `downgrade()` restores the previous schema
 and keeps every row the previous code can read; data migrations that cannot be undone, dropped
 columns or tables with data, and narrowing type changes are `reversible = False`. The Alembic
-template forces the choice; `tests/unit/test_migration_reversibility.py` checks every file and
-`tests/integration/test_migrations.py` steps every migration down and up again.
+template forces the choice; `tests/unit/migrations/test_migration_reversibility.py` checks every file and
+`tests/integration/migrations/test_migrations.py` steps every migration down and up again.
 
 Going back further than one deploy: `git switch --detach <sha>`, `scripts/mac-prod.sh build`,
 `scripts/mac-prod.sh up`, after checking the migrations in between the same way.
@@ -312,8 +312,8 @@ The backup service's own messages (backup FAILED, weekly restore check) stay as 
 
 ### Testing the alerts
 
-- Unit tests (no network, no Telegram): `uv run pytest tests/unit/test_uptime.py
-  tests/unit/test_stack_alerts.py` — down / still down / recovered / flapping, and for each stack
+- Unit tests (no network, no Telegram): `uv run pytest tests/unit/ops/test_uptime.py
+  tests/unit/modules/notifications/test_stack_alerts.py` — down / still down / recovered / flapping, and for each stack
   condition: starts → one alert, persists → none, clears → one recovery.
 - Uptime by hand: `gh workflow run uptime.yml`, then `gh run list --workflow uptime.yml -L 1` and
   `gh run view <id> --log | grep 'uptime:'`.

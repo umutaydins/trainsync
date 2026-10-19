@@ -1,7 +1,7 @@
 # The only paths the public gateway forwards to the API (P7.1). Everything else is 404.
 # This file is the single place to change the public surface: `scripts/render_gateway.py` renders
 # deploy/gateway/Caddyfile from it, `make prod-check` builds its curl matrix from it, and
-# tests/unit/test_gateway_routes.py checks both. Later phases add exceptions here (e.g. the
+# tests/unit/scripts/test_gateway_routes.py checks both. Later phases add exceptions here (e.g. the
 # Phase 8 import upload with a larger body limit).
 #
 # path        Caddy path matcher; a trailing `*` is a prefix match.

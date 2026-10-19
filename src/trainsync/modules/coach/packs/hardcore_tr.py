@@ -1,8 +1,8 @@
 """Hardcore tone, Turkish: "Koç", an original tough-love running coach (ADR 0016).
 
 Short, blunt sentences; mild profanity only (lan, ulan, hassiktir). Pushes on effort and
-consistency, never on the athlete's body, appearance or identity (tests/unit/test_bot_messages.py
-checks a blocklist).
+consistency, never on the athlete's body, appearance or identity
+(tests/unit/modules/coach/packs/test_bot_messages.py checks a blocklist).
 """
 
 # Turkish text: the dotless i (U+0131) is a letter here, not a confusable.

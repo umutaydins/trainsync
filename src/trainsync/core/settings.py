@@ -13,10 +13,11 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from trainsync.core.plate_inventory import DEFAULT_INVENTORY, parse_inventory
 
-# The DEV-ONLY defaults in docker-compose.yml (`${VAR:-default}`) are labelled, so they are found
-# by their label instead of by a copy of the values: plain ones start with `dev-`, and the dev
-# Fernet key decodes to `dev-only-…`. Running with ENV=prod while one of them is still in use logs
-# a warning at startup (tests/unit/test_dev_defaults.py checks every compose default is labelled).
+# The DEV-ONLY defaults in docker-compose.yml (`${VAR:-default}`) are labelled, so they are found by
+# their label instead of by a copy of the values: plain ones start with `dev-`, and the dev Fernet
+# key decodes to `dev-only-…`. Running with ENV=prod while one of them is still in use logs a
+# warning at startup (tests/unit/core/test_dev_defaults.py checks every compose default is
+# labelled).
 DEV_ONLY_PREFIX = "dev-"
 DEV_ONLY_SECRETS = (
     "STRAVA_CLIENT_SECRET",

@@ -1,8 +1,8 @@
 """Hardcore tone, English: "Coach", an original tough-love running coach (ADR 0016).
 
 Short, blunt sentences; mild profanity only (damn, hell, crap). Pushes on effort and consistency,
-never on the athlete's body, appearance or identity (tests/unit/test_bot_messages.py checks a
-blocklist).
+never on the athlete's body, appearance or identity
+(tests/unit/modules/coach/packs/test_bot_messages.py checks a blocklist).
 """
 
 from trainsync.modules.coach.packs.keys import Key

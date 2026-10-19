@@ -1,9 +1,9 @@
 """Tone-free wording: nutrition, body weight, sleep and energy (P6.8, P6.9).
 
-These texts are the same in every `BOT_TONE`: the scale is never commented on, and food only by
-the savage coach's roast of a choice (ADR 0032), which sits next to these lines, not in them. They
-are deliberately kept out of the tone packs (tests/unit/test_bot_messages.py checks that no pack
-has them and that every language defines every key). One template per key, no variants.
+These texts are the same in every `BOT_TONE`: the scale is never commented on, and food only by the
+savage coach's roast of a choice (ADR 0032), which sits next to these lines, not in them. They are
+deliberately kept out of the tone packs (tests/unit/modules/coach/packs/test_bot_messages.py checks
+that no pack has them and that every language defines every key). One template per key, no variants.
 Units are part of the fields (`78.4 kg`), computed in code.
 """
 
