@@ -1,0 +1,67 @@
+{
+  "title": "Activities",
+  "subtitle": "Newest first",
+  "loading": "Loading activities",
+  "failed": "Could not load activities",
+  "detailFailed": "Could not load this activity",
+  "back": "Activities",
+  "activity": "Activity",
+  "filters": {
+    "label": "Filter activities",
+    "from": "From",
+    "to": "To",
+    "sport": "Sport",
+    "all": "All sports"
+  },
+  "list": {
+    "caption": "Activities, newest first",
+    "date": "Date",
+    "name": "Name",
+    "sport": "Sport",
+    "distance": "Distance",
+    "time": "Time",
+    "effort": "Pace / speed",
+    "elevation": "Elevation",
+    "hr": "Avg HR",
+    "showing": "Showing {count, plural, one {# activity} other {# activities}}",
+    "moreFailed": "Could not load more activities"
+  },
+  "empty": {
+    "filtered": "No activities match these filters",
+    "filteredHint": "Change the dates or the sport.",
+    "noStrava": "Strava is not connected",
+    "noStravaHint": "Connect Strava to bring in your runs, rides and swims.",
+    "connect": "Connect Strava",
+    "notSynced": "No activities yet",
+    "notSyncedHint": "Strava is connected; the first sync may still be running.",
+    "toSync": "See sync status"
+  },
+  "detail": {
+    "distance": "Distance",
+    "moving": "Moving time",
+    "pace": "Avg pace",
+    "speed": "Avg speed",
+    "elevation": "Elevation gain",
+    "elapsed": "Elapsed time",
+    "hr": "Avg heart rate",
+    "footer": "Strava activity {id} · stored {time}"
+  },
+  "sports": {
+    "Run": "Run",
+    "TrailRun": "Trail run",
+    "VirtualRun": "Virtual run",
+    "Walk": "Walk",
+    "Hike": "Hike",
+    "Ride": "Ride",
+    "VirtualRide": "Virtual ride",
+    "GravelRide": "Gravel ride",
+    "MountainBikeRide": "Mountain bike ride",
+    "EBikeRide": "E-bike ride",
+    "Swim": "Swim",
+    "WeightTraining": "Weight training",
+    "Workout": "Workout",
+    "Yoga": "Yoga",
+    "Rowing": "Rowing",
+    "Elliptical": "Elliptical"
+  }
+}

@@ -1,22 +1,17 @@
-import { render } from "@testing-library/react";
-import axe from "axe-core";
 import type { ReactElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ActivityDetailCard } from "@/features/activities/components/activity-detail";
 import { ActivityFiltersForm } from "@/features/activities/components/activity-filters";
 import { ActivityList } from "@/features/activities/components/activity-list";
-import { WeeklySkeleton } from "@/features/dashboard/components/blocks";
-import { DashboardFilters } from "@/features/dashboard/components/filters";
-import { KpiTiles } from "@/features/dashboard/components/kpi-tiles";
-import { SportBreakdown } from "@/features/dashboard/components/sport-breakdown";
-import { WeeklyChart } from "@/features/dashboard/components/weekly-chart";
 import { LoginForm } from "@/features/auth/components/login-form";
 import { SyncStatusView } from "@/features/sync/components/sync-status-view";
 import { AddFood } from "@/features/nutrition/components/add-food";
 import { MealList } from "@/features/nutrition/components/meal-list";
 import { ProfileForm } from "@/features/nutrition/components/profile-form";
-import { DailyRings, EnergyBalanceCard, WeeklyAverages } from "@/features/nutrition/components/summary-cards";
+import { EnergyBalanceCard } from "@/features/nutrition/components/balance-card";
+import { DailyRings } from "@/features/nutrition/components/totals-card";
+import { WeeklyAverages } from "@/features/nutrition/components/week-card";
 import { HistoryList } from "@/features/training/components/history-list";
 import { PlateBar } from "@/features/training/components/plate-bar";
 import { PrBoard } from "@/features/training/components/pr-board";
@@ -25,8 +20,9 @@ import { ProgramBuilder } from "@/features/training/components/program-builder";
 import { RestTimerPanel } from "@/features/training/components/rest-timer";
 import { WorkoutScreen } from "@/features/training/components/workout-screen";
 import { WorkoutSummaryCard } from "@/features/training/components/workout-summary";
-import { ErrorState } from "@/components/ui";
-import { activity, page, summary, syncStatus, week } from "./support/fixtures";
+import { Failure } from "@/components/ui/states";
+import { activity, page, syncStatus } from "./support/fixtures";
+import { violations } from "./support/axe";
 import { CHICKEN, OATS, UNKNOWN_EXERCISE, daySummary, entry, profile, weekly } from "./support/nutrition-fixtures";
 import { BENCH, CURL, PLATES_MIXED, memoryStore, workout } from "./support/training-fixtures";
 
@@ -35,29 +31,17 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
 
-async function violations(ui: ReactElement): Promise<string[]> {
-  const { container } = render(<main>{ui}</main>);
-  const result = await axe.run(container, {
-    // jsdom cannot compute colours; contrast is covered by the design tokens.
-    rules: { "color-contrast": { enabled: false } },
-  });
-  return result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
-}
-
-const RANGE = { preset: "12w" as const, from: "2026-07-27", to: "2026-10-18" };
+beforeEach(() => {
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("min-width"), addEventListener: () => undefined, removeEventListener: () => undefined }));
+});
 
 describe("accessibility (axe)", () => {
   it.each<[string, ReactElement]>([
-    ["dashboard filters", <DashboardFilters key="f" range={RANGE} sports={["Ride", "Run"]} />],
-    ["KPI tiles", <KpiTiles key="k" summary={summary()} />],
-    ["weekly chart", <WeeklyChart key="w" weeks={[week("2026-09-07"), week("2026-09-14", 2, 21_000)]} />],
-    ["weekly skeleton", <WeeklySkeleton key="s" />],
-    ["sport breakdown", <SportBreakdown key="b" summary={summary()} />],
     ["activity filters", <ActivityFiltersForm key="a" filters={{ sport_type: "Run" }} sports={["Ride", "Run"]} />],
     ["activity list", <ActivityList key="l" initial={page([1, 2], "c")} query={{}} />],
     ["activity detail", <ActivityDetailCard key="d" activity={activity(1)} />],
     ["login form", <LoginForm key="lf" next="/" />],
-    ["error state", <ErrorState key="e" message="boom" />],
+    ["error state", <Failure key="e" title="Could not load this" message="boom" />],
     ["sync status", <SyncStatusView key="ss" initial={syncStatus()} />],
     ["sync status (empty)", <SyncStatusView key="se" initial={syncStatus({ athletes: [], rate_limit: null })} />],
     ["workout screen", <WorkoutScreen key="ws" initial={workout()} exercises={[BENCH, CURL]} store={memoryStore()} />],

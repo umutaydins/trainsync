@@ -82,7 +82,7 @@ services:
     environment:
       <<: *trainsync-env
       # Where the OAuth callback may send the browser back to (the web dashboard's sync page).
-      OAUTH_RETURN_TO_ALLOWLIST: http://localhost:3000/sync
+      OAUTH_RETURN_TO_ALLOWLIST: http://localhost:3000/sync,http://localhost:3000/onboarding,http://localhost:3000/me/connections
       # Plate calculator and double progression (P6.3, ADR 0018).
       GYM_BAR_KG: ${GYM_BAR_KG:-20}
       GYM_PLATES: ${GYM_PLATES:-25x2,20x2,15x2,10x2,5x2,2.5x2,1.25x2}
@@ -124,7 +124,7 @@ services:
       # Daily check-in prompt (P6.9, ADR 0020); empty CHECKIN_ENABLED = on with a bot token.
       CHECKIN_ENABLED: ${CHECKIN_ENABLED:-}
       CHECKIN_TIME: ${CHECKIN_TIME:-21:00}
-      CHECKIN_TZ: ${CHECKIN_TZ:-Europe/Istanbul}
+      CHECKIN_TZ: ${CHECKIN_TZ:-UTC}
       CHECKIN_REMINDER_MINUTES: ${CHECKIN_REMINDER_MINUTES:-90}
       # Weekly / monthly progress digests (P8.11); empty = on with a bot token.
       STATS_DIGEST_ENABLED: ${STATS_DIGEST_ENABLED:-}
@@ -161,7 +161,7 @@ services:
       # The bot's "today" (P6.8) and the check-in conversation (P6.9).
       CHECKIN_ENABLED: ${CHECKIN_ENABLED:-}
       CHECKIN_TIME: ${CHECKIN_TIME:-21:00}
-      CHECKIN_TZ: ${CHECKIN_TZ:-Europe/Istanbul}
+      CHECKIN_TZ: ${CHECKIN_TZ:-UTC}
       CHECKIN_REMINDER_MINUTES: ${CHECKIN_REMINDER_MINUTES:-90}
     ports: ["9101:9101"]  # bot /metrics (BOT_METRICS_PORT)
     volumes: ["./config:/app/config:ro"]  # own coach lines (optional, P6.11)

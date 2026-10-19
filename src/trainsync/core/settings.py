@@ -250,7 +250,7 @@ class Settings(BaseSettings):
     openfoodfacts_enabled: bool = True
     openfoodfacts_base_url: str = "https://world.openfoodfacts.org"
     # OFF asks every client to identify itself: app name, version and a contact URL.
-    openfoodfacts_user_agent: str = "trainsync/0.1 (+https://github.com/umutaydins/trainsync)"
+    openfoodfacts_user_agent: str = "trainsync/0.1"
     # Whole-request budget; on a timeout the endpoint answers with local results only.
     openfoodfacts_timeout_s: float = Field(default=3.0, gt=0, le=30)
 
@@ -274,7 +274,7 @@ class Settings(BaseSettings):
     # bot token is set. CHECKIN_TZ is also the bot's "today" for /log, /eat, /kcal and /weight.
     checkin_enabled: bool | None = None
     checkin_time: time = time(21, 0)
-    checkin_tz: str = "Europe/Istanbul"
+    checkin_tz: str = "UTC"
     # One reminder this many minutes after the prompt when nothing was answered; 0 = none.
     checkin_reminder_minutes: int = Field(default=90, ge=0, le=720)
 

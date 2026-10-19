@@ -10,7 +10,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from trainsync.modules.chat.common import thousands
-from trainsync.modules.chat.formatting import day_range, duration, km
+from trainsync.modules.chat.formatting import day_range
+from trainsync.modules.chat.units import duration, km
 from trainsync.modules.coach.categories import Category
 from trainsync.modules.coach.packs import Key, Messages, NeutralKey
 from trainsync.modules.coach.voice import CoachVoice

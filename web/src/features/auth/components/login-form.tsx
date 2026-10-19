@@ -1,9 +1,18 @@
 "use client";
 
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { loginError } from "@/features/auth/errors";
 
 /** Posts to /api/auth/login; on success the handler redirects (303) and sets the session cookie. */
 export function LoginForm({ next }: { next: string }) {
+  const t = useTranslations("auth");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -12,74 +21,59 @@ export function LoginForm({ next }: { next: string }) {
     setPending(true);
     setError(null);
     const form = new FormData(event.currentTarget);
+    let status = 0;
+    let retryAfter: string | null = null;
     try {
       const response = await fetch("/api/auth/login", { method: "POST", body: form });
       if (response.ok && response.redirected) {
         window.location.assign(response.url);
         return;
       }
-      setError(errorMessage(response));
+      status = response.status;
+      retryAfter = response.headers.get("retry-after");
     } catch {
-      setError("Network error. Try again.");
+      status = 0;
     }
+    const { key, minutes } = loginError(status, retryAfter);
+    setError(t(`login.errors.${key}`, { minutes: minutes ?? 0 }));
     setPending(false);
   }
 
   return (
-    <form method="post" action="/api/auth/login" onSubmit={onSubmit} className="mt-6 space-y-4">
+    <form method="post" action="/api/auth/login" onSubmit={onSubmit} className="flex flex-col gap-5">
       <input type="hidden" name="next" value={next} />
-      <div className="space-y-1.5">
-        <label htmlFor="email" className="block text-sm font-medium">
-          Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          autoComplete="username"
-          autoFocus
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? "login-error" : undefined}
-          className="block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <label htmlFor="password" className="block text-sm font-medium">
-          Password
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          autoComplete="current-password"
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? "login-error" : undefined}
-          className="block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
-        />
+      <Field label={t("fields.email")}>
+        <Input name="email" type="email" required autoComplete="username" autoFocus />
+      </Field>
+      <Field label={t("fields.password")}>
+        <Input name="password" type="password" required autoComplete="current-password" />
+      </Field>
+      <div className="-mt-2 flex justify-end">
+        <Link
+          href="/forgot-password"
+          className="inline-flex h-touch items-center text-sm font-semibold text-accent-ink underline-offset-4 hover:underline"
+        >
+          {t("login.forgot")}
+        </Link>
       </div>
       {error ? (
-        <p id="login-error" role="alert" className="text-sm text-bad">
+        <p id="login-error" role="alert" className="rounded-control bg-bad-soft px-4 py-3 text-sm font-medium text-bad">
           {error}
         </p>
       ) : null}
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-accent-contrast transition hover:opacity-90 disabled:opacity-60"
-      >
-        {pending ? "Signing in…" : "Sign in"}
-      </button>
+      <Button type="submit" size="lg" block disabled={pending}>
+        {pending ? t("login.submitting") : t("login.submit")}
+        {pending ? null : <ArrowRight aria-hidden />}
+      </Button>
+      <p className="text-center text-sm text-muted">
+        {t("login.noAccount")}{" "}
+        <Link
+          href="/register"
+          className="inline-flex h-touch items-center font-semibold text-accent-ink underline-offset-4 hover:underline"
+        >
+          {t("login.register")}
+        </Link>
+      </p>
     </form>
   );
-}
-
-function errorMessage(response: Response): string {
-  if (response.status === 401) return "Wrong email or password.";
-  if (response.status === 429) {
-    const minutes = Math.ceil(Number(response.headers.get("retry-after") ?? "900") / 60);
-    return `Too many failed attempts. Try again in ${minutes} min.`;
-  }
-  return "Sign-in failed. Try again.";
 }

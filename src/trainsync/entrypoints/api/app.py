@@ -102,7 +102,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(chats.service_router)
     for router in training.ROUTERS:
         app.include_router(router)
-    app.include_router(nutrition.router)
+    for router in nutrition.ROUTERS:
+        app.include_router(router)
     app.include_router(checkins.router)
     _document_validation_errors(app)
 

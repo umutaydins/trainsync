@@ -117,3 +117,14 @@ class DeleteAccountIn(BaseModel):
     model_config = ConfigDict(json_schema_extra={"examples": [{"password": "correct horse"}]})
 
     password: Annotated[str, Field(min_length=1, max_length=128)]
+
+
+class CoachPreviewOut(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"line": "Clean session. Do it again next time.", "savage": False}]
+        }
+    )
+
+    line: str
+    savage: bool = Field(description="A savage line (BOT_INTENSITY=savage with the hardcore tone)")

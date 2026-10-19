@@ -1,0 +1,116 @@
+{
+  "title": "Workout",
+  "loading": "Loading workout",
+  "loadFailed": "Could not load this workout",
+  "empty": "No exercises yet. Add one below.",
+  "addExercise": "Add exercise",
+  "finish": "Finish workout",
+  "finishing": "Finishing…",
+  "finishFailed": "Could not finish the workout",
+  "pending": "{count, plural, one {# set is} other {# sets are}} still waiting to be saved. Check the connection and try again.",
+  "offline": "The server is not answering. Your sets are kept on this phone; try again in a moment.",
+  "header": {
+    "time": "Workout time",
+    "sets": "{count, plural, one {# set} other {# sets}}",
+    "queued": "{count} waiting to sync",
+    "screenOn": "Screen stays on"
+  },
+  "exercise": {
+    "plan": "{sets} × {reps} · rest {rest} s",
+    "restOnly": "Rest {rest} s",
+    "suggested": "Suggested",
+    "why": {
+      "start": "start weight",
+      "increase": "all reps reached last time",
+      "hold": "same as last time",
+      "deload": "lighter after two short sessions"
+    },
+    "plates": "Plates",
+    "addSet": "Add set"
+  },
+  "set": {
+    "number": "Set {index}",
+    "last": "Last time {reps} × {weight}",
+    "lastNone": "Last time: none",
+    "weight": "Weight (kg)",
+    "reps": "Reps",
+    "kg": "kg",
+    "weightLabel": "Weight in kg, {name} set {index}",
+    "repsLabel": "Reps, {name} set {index}",
+    "lessWeight": "Less weight, {name} set {index}",
+    "moreWeight": "More weight, {name} set {index}",
+    "fewerReps": "Fewer reps, {name} set {index}",
+    "moreReps": "More reps, {name} set {index}",
+    "log": "Log {name} set {index}",
+    "update": "Update {name} set {index}",
+    "done": "Set done",
+    "doneLabel": "Set done, {name} set {index}",
+    "status": {
+      "saving": "Saving…",
+      "saved": "Logged",
+      "queued": "Saved on this phone, will retry"
+    },
+    "errors": {
+      "reps": "Reps: a whole number from 0 to 100.",
+      "weight": "Weight: 0 to 500 kg in 0.25 kg steps.",
+      "rejected": "The server did not take this set. Check the numbers and tap again."
+    }
+  },
+  "rest": {
+    "title": "Rest",
+    "label": "{exercise} · set {index}",
+    "after": "After {label}",
+    "over": "Rest over",
+    "next": "Next: {label}",
+    "progress": "Rest so far",
+    "step": "{seconds} s",
+    "less": "−{seconds} s rest",
+    "more": "+{seconds} s rest",
+    "skip": "Skip",
+    "done": "Done",
+    "hide": "Hide timer",
+    "show": "Show the rest timer",
+    "notify": "Notify me when the rest is over"
+  },
+  "plates": {
+    "title": "Plates for {weight}",
+    "loading": "Loading plates",
+    "failed": "Could not work out the plates",
+    "eachSide": "Each side",
+    "empty": "none (empty bar)",
+    "barLabel": "Bar {bar} with {plates} kg on each side",
+    "emptyBarLabel": "Bar {bar} without plates",
+    "loaded": "Bar {bar} · loaded {loaded}",
+    "under": "{difference} under the {target} target",
+    "over": "{difference} over the {target} target",
+    "sideList": "Plates on one side",
+    "chip": "{weight} {color}",
+    "colors": {
+      "red": "red",
+      "blue": "blue",
+      "yellow": "yellow",
+      "green": "green",
+      "white": "white",
+      "black": "black",
+      "silver": "silver",
+      "grey": "grey"
+    }
+  },
+  "summary": {
+    "done": "Workout done.",
+    "freeWorkout": "Free workout",
+    "duration": "Duration",
+    "inProgress": "in progress",
+    "volume": "Volume",
+    "sets": "Sets",
+    "records": "Records ({count})",
+    "noRecords": "No new records this time.",
+    "openHistory": "Open in history",
+    "back": "Back to training"
+  },
+  "sets": {
+    "title": "Sets",
+    "none": "No sets were logged.",
+    "warmup": "warm-up"
+  }
+}

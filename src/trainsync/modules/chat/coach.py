@@ -37,7 +37,7 @@ from trainsync.modules.coach.guardrails import (
 from trainsync.modules.coach.mode import SoftModeStore
 from trainsync.modules.coach.packs import Key, Messages, NeutralKey
 from trainsync.modules.coach.voice import CoachVoice
-from trainsync.modules.nutrition.router import DaySummary
+from trainsync.modules.nutrition.schemas import DaySummary
 
 log = get_logger(__name__)
 

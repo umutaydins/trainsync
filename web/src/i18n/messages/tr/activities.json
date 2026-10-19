@@ -1,0 +1,67 @@
+{
+  "title": "Aktiviteler",
+  "subtitle": "En yeni önce",
+  "loading": "Aktiviteler yükleniyor",
+  "failed": "Aktiviteler yüklenemedi",
+  "detailFailed": "Bu aktivite yüklenemedi",
+  "back": "Aktiviteler",
+  "activity": "Aktivite",
+  "filters": {
+    "label": "Aktiviteleri süz",
+    "from": "Başlangıç",
+    "to": "Bitiş",
+    "sport": "Spor",
+    "all": "Tüm sporlar"
+  },
+  "list": {
+    "caption": "Aktiviteler, en yeni önce",
+    "date": "Tarih",
+    "name": "Ad",
+    "sport": "Spor",
+    "distance": "Mesafe",
+    "time": "Süre",
+    "effort": "Tempo / hız",
+    "elevation": "Tırmanış",
+    "hr": "Ort. nabız",
+    "showing": "{count} aktivite gösteriliyor",
+    "moreFailed": "Daha fazla aktivite yüklenemedi"
+  },
+  "empty": {
+    "filtered": "Bu süzgeçlere uyan aktivite yok",
+    "filteredHint": "Tarihleri ya da sporu değiştir.",
+    "noStrava": "Strava bağlı değil",
+    "noStravaHint": "Koşu, bisiklet ve yüzmelerin gelsin diye Strava'yı bağla.",
+    "connect": "Strava'yı bağla",
+    "notSynced": "Henüz aktivite yok",
+    "notSyncedHint": "Strava bağlı; ilk senkron hâlâ sürüyor olabilir.",
+    "toSync": "Senkron durumuna bak"
+  },
+  "detail": {
+    "distance": "Mesafe",
+    "moving": "Hareket süresi",
+    "pace": "Ort. tempo",
+    "speed": "Ort. hız",
+    "elevation": "Tırmanış",
+    "elapsed": "Toplam süre",
+    "hr": "Ort. nabız",
+    "footer": "Strava aktivitesi {id} · kaydedildi {time}"
+  },
+  "sports": {
+    "Run": "Koşu",
+    "TrailRun": "Arazi koşusu",
+    "VirtualRun": "Sanal koşu",
+    "Walk": "Yürüyüş",
+    "Hike": "Doğa yürüyüşü",
+    "Ride": "Bisiklet",
+    "VirtualRide": "Sanal bisiklet",
+    "GravelRide": "Gravel bisiklet",
+    "MountainBikeRide": "Dağ bisikleti",
+    "EBikeRide": "Elektrikli bisiklet",
+    "Swim": "Yüzme",
+    "WeightTraining": "Ağırlık antrenmanı",
+    "Workout": "Antrenman",
+    "Yoga": "Yoga",
+    "Rowing": "Kürek",
+    "Elliptical": "Eliptik"
+  }
+}

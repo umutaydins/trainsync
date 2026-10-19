@@ -5,8 +5,8 @@ judges exactly what the web shows."""
 from dataclasses import dataclass
 from decimal import Decimal
 
-from trainsync.modules.training.routes.workouts import PlannedExercise, WorkoutDetail
 from trainsync.modules.training.schemas import SetOut
+from trainsync.modules.training.workout_schemas import PlannedExercise, WorkoutDetail
 
 
 def target_weight(planned: PlannedExercise) -> Decimal | None:

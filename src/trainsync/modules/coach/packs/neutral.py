@@ -159,7 +159,7 @@ _EN: Mapping[NeutralKey, str] = {
     NeutralKey.CHECKIN_ASK_ENERGY: "Energy today, from 1 (low) to 5 (high)?",
     NeutralKey.CHECKIN_INVALID_NUMBER: "Please reply with a number like {example}, or tap Skip.",
     NeutralKey.CHECKIN_SUMMARY_SCALE: "Scale: {value}",
-    NeutralKey.CHECKIN_SUMMARY_SLEEP: "Sleep: {hours}",
+    NeutralKey.CHECKIN_SUMMARY_SLEEP: "Sleep: {hours} h",
     NeutralKey.CHECKIN_SUMMARY_ENERGY: "Energy: {energy}/5",
     NeutralKey.SAFETY_PAIN: (
         "That sounds like pain or illness. No training through it: rest, and see a doctor if it "
@@ -238,7 +238,7 @@ _TR: Mapping[NeutralKey, str] = {
     NeutralKey.CHECKIN_ASK_ENERGY: "Bugün enerjin 1 (düşük) ile 5 (yüksek) arasında kaç?",
     NeutralKey.CHECKIN_INVALID_NUMBER: "{example} gibi bir sayı yaz ya da Geç'e dokun.",
     NeutralKey.CHECKIN_SUMMARY_SCALE: "Tartı: {value}",
-    NeutralKey.CHECKIN_SUMMARY_SLEEP: "Uyku: {hours}",
+    NeutralKey.CHECKIN_SUMMARY_SLEEP: "Uyku: {hours} h",
     NeutralKey.CHECKIN_SUMMARY_ENERGY: "Enerji: {energy}/5",
     NeutralKey.SAFETY_PAIN: (
         "Bu ağrı ya da hastalık gibi duruyor. Bununla antrenman yok: dinlen; ağrı keskinse, "

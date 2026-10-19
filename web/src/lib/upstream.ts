@@ -1,13 +1,16 @@
 import "server-only";
 
-import { BACKEND_UNREACHABLE_TEXT } from "@/lib/backend-copy";
 import { serverEnv } from "@/lib/env";
 
 export type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 export type MutationMethod = "POST" | "PUT" | "PATCH" | "DELETE";
 
-/** Shown when the API cannot be reached at all (network error or timeout). */
-export const BACKEND_UNREACHABLE = BACKEND_UNREACHABLE_TEXT;
+/**
+ * The BFF's error code when the API cannot be reached at all (network error or timeout). An API
+ * error for clients, not copy: the screens say it in the user's language (`common.states`).
+ */
+export const BACKEND_UNREACHABLE =
+  "The trainsync backend is not answering (the server may be asleep or offline). Your data is safe; try again in a few minutes.";
 
 const READ: readonly Method[] = ["GET"];
 const READ_WRITE: readonly Method[] = ["GET", "POST", "PUT", "DELETE"];
@@ -29,7 +32,7 @@ export const RULES: readonly { pattern: RegExp; methods: readonly Method[] }[] =
   { pattern: /^\/v1\/activities$/, methods: READ },
   { pattern: /^\/v1\/activities\/\d{1,20}$/, methods: READ },
   { pattern: /^\/v1\/stats\/weekly$/, methods: READ },
-  { pattern: /^\/v1\/stats\/summary$/, methods: READ },
+  { pattern: /^\/v1\/stats\/(?:summary|series|heatmap|prs)$/, methods: READ },
   { pattern: /^\/v1\/sync\/status$/, methods: READ },
   // The account (P8.1-P8.6). The web app deletes it and signs out through its own route
   // handlers, which also end the browser session.
@@ -42,6 +45,7 @@ export const RULES: readonly { pattern: RegExp; methods: readonly Method[] }[] =
   { pattern: /^\/v1\/me\/(?:telegram|strava)$/, methods: READ_DELETE },
   { pattern: /^\/v1\/me\/telegram\/code$/, methods: POST_ONLY },
   { pattern: /^\/v1\/me\/export$/, methods: READ },
+  { pattern: /^\/v1\/me\/coach-preview$/, methods: READ },
   // Owner only; the API answers 403 to everyone else.
   { pattern: /^\/v1\/admin\/(?:invites|users)$/, methods: ["GET", "POST"] },
   { pattern: /^\/v1\/admin\/invites\/\d{1,20}$/, methods: DELETE_ONLY },

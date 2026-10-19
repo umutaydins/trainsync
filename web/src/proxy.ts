@@ -17,7 +17,16 @@ const PUBLIC_PATHS = new Set([
   "/api/auth/registration",
   "/api/auth/reset",
   "/api/health",
+  // PWA: the service worker and the page it shows offline carry no data.
+  "/sw.js",
+  "/offline",
 ]);
+/** Path prefixes reachable without a session: invite and reset links carry their own code. */
+const PUBLIC_PREFIXES = ["/invite/", "/reset-password/"];
+
+function isPublic(pathname: string): boolean {
+  return PUBLIC_PATHS.has(pathname) || PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
 
 /**
  * Access gate: every page and BFF call needs a session cookie that opens (sealed, unexpired; the
@@ -26,7 +35,7 @@ const PUBLIC_PATHS = new Set([
  */
 export function proxy(request: NextRequest): NextResponse {
   const { pathname, search } = request.nextUrl;
-  if (PUBLIC_PATHS.has(pathname)) return NextResponse.next();
+  if (isPublic(pathname)) return NextResponse.next();
 
   const secret = process.env.DASHBOARD_SESSION_SECRET ?? "";
   const token = request.cookies.get(SESSION_COOKIE)?.value;
@@ -47,7 +56,7 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  // Everything except Next's own static assets, the favicon and the PWA manifest and icons (the
-  // browser fetches the manifest without cookies; none of these carry data).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest|icons/).*)"],
+  // Everything except Next's own static assets, the favicon, the PWA manifest and icons (the
+  // browser fetches the manifest without cookies) and Strava's brand assets; none carry data.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest|icons/|strava/).*)"],
 };

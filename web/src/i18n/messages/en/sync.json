@@ -1,0 +1,65 @@
+{
+  "title": "Sync",
+  "subtitle": "Strava sync health",
+  "loading": "Loading sync status",
+  "failed": "Could not load sync status",
+  "connect": "Connect Strava",
+  "connected": "Strava connected. The backfill is queued and shows up below.",
+  "connectFailed": "Connecting Strava failed",
+  "connectFailedHint": "Strava did not finish the connection. Try again.",
+  "refresh": "Refreshes every {seconds} s",
+  "updated": "updated {time}",
+  "refreshFailed": "Refresh failed, showing the last known state",
+  "runs": {
+    "title": "Sync runs",
+    "athlete": "Strava athlete {id}",
+    "backfill": "Backfill",
+    "incremental": "Incremental",
+    "never": "never ran",
+    "pages": "Pages",
+    "upserted": "Upserted",
+    "started": "Started",
+    "finished": "Finished",
+    "lastProgress": "Last progress",
+    "status": {
+      "succeeded": "Succeeded",
+      "running": "Running",
+      "paused": "Paused",
+      "failed": "Failed",
+      "queued": "Queued"
+    }
+  },
+  "noStrava": "No Strava account connected",
+  "noStravaHint": "Connect Strava to start the first backfill.",
+  "webhooks": {
+    "title": "Webhooks",
+    "pending": "Pending",
+    "processing": "Processing",
+    "failed": "Failed (retrying)",
+    "dead": "Dead letters",
+    "lastReceived": "Last received {time}",
+    "never": "Last received: never"
+  },
+  "rate": {
+    "title": "Strava rate limit",
+    "short": "15 minutes",
+    "daily": "Daily",
+    "blocked": "Blocked after a 429 until {time}",
+    "pauses": "Backfill pauses above 80% of the 15-minute budget.",
+    "empty": "No usage yet",
+    "emptyHint": "Shown once Strava has answered."
+  },
+  "circuit": {
+    "title": "Circuit breaker",
+    "none": "No process has reported yet.",
+    "states": {
+      "closed": "Closed",
+      "half_open": "Half-open",
+      "open": "Open"
+    }
+  },
+  "freshness": {
+    "synced": "Last synced {ago}",
+    "never": "Not synced yet"
+  }
+}

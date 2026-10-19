@@ -1,0 +1,71 @@
+{
+  "loading": "Loading today",
+  "greeting": {
+    "morning": "Good morning, {name}",
+    "afternoon": "Good afternoon, {name}",
+    "evening": "Good evening, {name}"
+  },
+  "greetingNoName": {
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "evening": "Good evening"
+  },
+  "sync": {
+    "synced": "Synced {ago}",
+    "never": "Not synced yet"
+  },
+  "workout": {
+    "title": "Today’s workout",
+    "failed": "Could not load your program",
+    "freeWorkout": "Free workout",
+    "inProgress": "In progress · {sets, plural, one {# set} other {# sets}} logged",
+    "resume": "Continue workout",
+    "noProgram": "No program yet",
+    "noProgramHint": "Pick or build a program and today’s workout shows up here.",
+    "pickProgram": "Choose a program",
+    "rest": "Rest day",
+    "next": "Next: {day} on {weekday}",
+    "seeProgram": "See the program",
+    "more": "+{count} more",
+    "start": "Start workout",
+    "starting": "Starting…"
+  },
+  "week": {
+    "title": "This week",
+    "failed": "Could not load this week",
+    "more": "Progress",
+    "distance": "Distance",
+    "km": "km",
+    "workouts": "Workouts",
+    "activeDays": "Active days",
+    "streak": "Streak",
+    "weeks": "{count, plural, one {week} other {weeks}}"
+  },
+  "food": {
+    "title": "Today’s food",
+    "failed": "Could not load today’s food",
+    "empty": "Nothing logged today",
+    "log": "Log food",
+    "open": "Food",
+    "target": "Daily target: {value} kcal",
+    "ringLabel": "{value} of {target} kcal",
+    "of": "of {value}",
+    "noTarget": "No daily target set",
+    "left": "{value} kcal to the target",
+    "above": "{value} kcal above the target",
+    "macros": "Protein {protein} g · Carbs {carbs} g · Fat {fat} g",
+    "entries": "{count, plural, one {# entry} other {# entries}}"
+  },
+  "activity": {
+    "title": "Latest activity",
+    "failed": "Could not load your activities",
+    "all": "All",
+    "km": "{value} km",
+    "noStrava": "Connect Strava",
+    "noStravaHint": "Your rides, runs and swims sync here on their own once Strava is connected.",
+    "connect": "Connect Strava",
+    "waiting": "No activities yet",
+    "waitingHint": "Strava is connected. New activities appear here after the next sync.",
+    "sync": "Open sync"
+  }
+}

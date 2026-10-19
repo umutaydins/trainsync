@@ -8,6 +8,7 @@ repeated answer never creates a second row; a body weight is also written to `bo
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Any
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Path, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -177,7 +178,7 @@ async def list_checkins(
     start: Annotated[date | None, Query(alias="from", examples=["2026-10-01"])] = None,
     end: Annotated[date | None, Query(alias="to", examples=["2026-10-18"])] = None,
 ) -> CheckinList:
-    start, end = _range(start, end, local_today(clock, settings.checkin_zone), 84)
+    start, end = _range(start, end, local_today(clock, ZoneInfo(principal.timezone)), 84)
     async with sessionmaker() as session:
         rows = await CheckinRepository(session, principal.user_id).between(start, end)
     items = [CheckinOut.from_row(r) for r in rows]
@@ -206,7 +207,7 @@ async def checkin_summary(
     start: Annotated[date | None, Query(alias="from", examples=["2026-09-28"])] = None,
     end: Annotated[date | None, Query(alias="to", examples=["2026-10-18"])] = None,
 ) -> CheckinSummary:
-    today = local_today(clock, settings.checkin_zone)
+    today = local_today(clock, ZoneInfo(principal.timezone))
     end = end or today
     start = start or end - timedelta(days=end.weekday() + 21)
     start, end = _range(start, end, today, 28)

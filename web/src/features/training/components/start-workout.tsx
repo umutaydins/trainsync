@@ -1,9 +1,12 @@
 "use client";
 
+import { Play } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
-import { buttonClass, secondaryButtonClass } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { isBackendDown } from "@/features/shell/components/load-failed";
 import { put, type MutationResult } from "@/lib/mutate";
 import type { WorkoutDetail } from "@/features/training/types";
 
@@ -21,20 +24,28 @@ const defaultSend: Send = (path, body) => put<WorkoutDetail>(path, body);
 export function StartWorkoutButton({
   programDayId,
   label,
+  busyLabel,
   secondary = false,
+  size = "md",
+  block = false,
   send = defaultSend,
   newId = () => crypto.randomUUID(),
 }: {
   programDayId?: number;
   label: string;
+  /** Shown while the start is in flight (pages with translations pass their own). */
+  busyLabel?: string;
   secondary?: boolean;
+  size?: "md" | "lg";
+  block?: boolean;
   /** Test seams. */
   send?: Send;
   newId?: () => string;
 }) {
+  const t = useTranslations("training.start");
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<"failed" | "offline" | null>(null);
   const clientId = useRef<string | null>(null);
   // State updates land after the click handler, so a double tap needs a synchronous guard.
   const inFlight = useRef(false);
@@ -53,22 +64,18 @@ export function StartWorkoutButton({
     }
     inFlight.current = false;
     setBusy(false);
-    setError(`${result.ok ? "No answer from the API" : result.error}. Tap again to retry.`);
+    setError(!result.ok && isBackendDown(result.status) ? "offline" : "failed");
   }
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={() => void start()}
-        disabled={busy}
-        className={`${secondary ? secondaryButtonClass : buttonClass} min-h-11 w-full sm:w-auto`}
-      >
-        {busy ? "Starting…" : label}
-      </button>
+    <div className={block ? "w-full" : undefined}>
+      <Button variant={secondary ? "secondary" : "primary"} size={size} block={block} onClick={() => void start()} disabled={busy}>
+        <Play aria-hidden />
+        {busy ? (busyLabel ?? t("starting")) : label}
+      </Button>
       {error ? (
-        <p role="alert" className="mt-1 text-xs text-bad">
-          {error}
+        <p role="alert" className="mt-1.5 text-sm text-bad">
+          {t(error)}
         </p>
       ) : null}
     </div>

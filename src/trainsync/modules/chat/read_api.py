@@ -19,16 +19,16 @@ from trainsync.modules.activities.router import ActivityDetail, ActivityPage
 from trainsync.modules.chat.router import ChatOwner, LinkIn
 from trainsync.modules.checkin.router import CheckinIn, CheckinOut, CheckinSummary
 from trainsync.modules.coach.mode import CURRENT_USER
-from trainsync.modules.nutrition.router import DaySummary, FoodList, FoodLookup, LogIn, LogOut
+from trainsync.modules.nutrition.schemas import DaySummary, FoodList, FoodLookup, LogIn, LogOut
 from trainsync.modules.stats.periods import Period
 from trainsync.modules.stats.totals import ActivitySummary, StatsSummary, WeeklyStats
 from trainsync.modules.sync.router import SyncStatusOut
+from trainsync.modules.training.routes.body_metrics import BodyMetricIn, BodyMetricOut
 from trainsync.modules.training.routes.exercises import ExerciseList
 from trainsync.modules.training.routes.next_day import NextDay
 from trainsync.modules.training.routes.planning import PlatesOut
-from trainsync.modules.training.routes.progress import BodyMetricIn, BodyMetricOut
-from trainsync.modules.training.routes.workouts import SetIn, WorkoutDetail, WorkoutPage
 from trainsync.modules.training.schemas import SetOut
+from trainsync.modules.training.workout_schemas import SetIn, WorkoutDetail, WorkoutPage
 from trainsync.modules.users.schemas import SettingsOut, SettingsPatch
 
 ACTING_USER_HEADER = "X-Acting-User"

@@ -13,7 +13,7 @@ export interface RestTimer {
   endsAt: number;
   /** The planned length, for the progress ring (seconds, after ± adjustments). */
   durationS: number;
-  /** What the rest follows, e.g. "Bench Press · set 2". */
+  /** What the rest follows, e.g. "Bench Press · set 2" (in the user's language). */
   label: string;
   /** Set once the zero alert (vibration, sound, notification) has fired, so a reload does not repeat it. */
   alerted: boolean;
@@ -78,7 +78,15 @@ export interface SetDraft {
   /** Fixed at the first tap, so retries do not move the set in time. */
   completedAt: string | null;
   status: "idle" | "saving" | "saved" | "queued" | "error";
-  error?: string;
+  error?: SetError;
+}
+
+/** Why a row is in `error`: numbers out of the API's bounds, or the API refused the set (4xx). */
+export const SET_ERRORS = ["reps", "weight", "rejected"] as const;
+export type SetError = (typeof SET_ERRORS)[number];
+
+function isSetError(value: unknown): value is SetError {
+  return typeof value === "string" && (SET_ERRORS as readonly string[]).includes(value);
 }
 
 export interface WorkoutLocalState {
@@ -116,7 +124,8 @@ export function loadWorkoutState(store: KeyValueStore | null, workoutId: number)
       version: 1,
       workoutId,
       rest: isRestTimer(value.rest) ? value.rest : null,
-      rows: value.rows.filter(isSetDraft),
+      // Rows saved by an older version may carry an error text instead of a key.
+      rows: value.rows.filter(isSetDraft).map((r) => ({ ...r, error: isSetError(r.error) ? r.error : undefined })),
       extraExercises: Array.isArray(value.extraExercises) ? value.extraExercises : [],
     };
   } catch {

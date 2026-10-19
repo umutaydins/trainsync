@@ -54,7 +54,7 @@ export function fromPreview(preview: ProgramPreview): DraftProgram {
         return {
           key: key(),
           exerciseId: e.exercise_id,
-          name: shown?.exercise_id === e.exercise_id ? shown.name : `Exercise ${e.exercise_id}`,
+          name: shown?.exercise_id === e.exercise_id ? shown.name : `#${e.exercise_id}`,
           equipment: "",
           sets: s(e.sets),
           repMin: s(e.rep_min),
@@ -123,35 +123,42 @@ function int(value: string, min: number, max: number): number | null {
   return value.trim() !== "" && Number.isInteger(n) && n >= min && n <= max ? n : null;
 }
 
-export type Checked = { ok: true; body: ProgramIn } | { ok: false; errors: string[] };
+/** A field the API would refuse: a message key of `training.programs.errors`, with its place. */
+export interface DraftError {
+  key: "name" | "weeks" | "days" | "dayName" | "tooMany" | "sets" | "reps" | "repsOrder" | "rest" | "weight";
+  day?: number;
+  name?: string;
+}
+
+export type Checked = { ok: true; body: ProgramIn } | { ok: false; errors: DraftError[] };
 
 /** The API's limits, checked before sending so the form can say which field is off. */
 export function toProgramIn(draft: DraftProgram): Checked {
-  const errors: string[] = [];
+  const errors: DraftError[] = [];
   const weeks = int(draft.weeks, 1, 52);
-  if (!draft.name.trim()) errors.push("Program name is empty");
-  if (weeks === null) errors.push("Weeks: 1 to 52");
-  if (draft.days.length === 0 || draft.days.length > 7) errors.push("A program has 1 to 7 days");
+  if (!draft.name.trim()) errors.push({ key: "name" });
+  if (weeks === null) errors.push({ key: "weeks" });
+  if (draft.days.length === 0 || draft.days.length > 7) errors.push({ key: "days" });
   const days = draft.days.map((day, d) => {
-    const where = `Day ${d + 1}`;
-    if (!day.name.trim()) errors.push(`${where}: name is empty`);
-    if (day.exercises.length > 20) errors.push(`${where}: at most 20 exercises`);
+    const where = { day: d + 1 };
+    if (!day.name.trim()) errors.push({ key: "dayName", ...where });
+    if (day.exercises.length > 20) errors.push({ key: "tooMany", ...where });
     return {
       name: day.name.trim(),
       exercises: day.exercises.map((e) => {
-        const at = `${where}, ${e.name}`;
+        const at = { ...where, name: e.name };
         const sets = int(e.sets, 1, 10);
         const repMin = int(e.repMin, 1, 100);
         const repMax = int(e.repMax, 1, 100);
         const rest = int(e.restSeconds, 0, 900);
         const weightText = e.startWeightKg.trim().replace(",", ".");
         const weight = weightText === "" ? null : Number(weightText);
-        if (sets === null) errors.push(`${at}: sets 1 to 10`);
-        if (repMin === null || repMax === null) errors.push(`${at}: reps 1 to 100`);
-        else if (repMin > repMax) errors.push(`${at}: minimum reps above maximum`);
-        if (rest === null) errors.push(`${at}: rest 0 to 900 s`);
+        if (sets === null) errors.push({ key: "sets", ...at });
+        if (repMin === null || repMax === null) errors.push({ key: "reps", ...at });
+        else if (repMin > repMax) errors.push({ key: "repsOrder", ...at });
+        if (rest === null) errors.push({ key: "rest", ...at });
         if (weight !== null && (!Number.isFinite(weight) || weight < 0 || weight > 500 || Math.round(weight * 4) !== weight * 4)) {
-          errors.push(`${at}: start weight 0 to 500 kg in 0.25 steps`);
+          errors.push({ key: "weight", ...at });
         }
         return {
           exercise_id: e.exerciseId,

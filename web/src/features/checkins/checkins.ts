@@ -12,18 +12,20 @@ export type CheckinList = Schemas["CheckinList"];
 
 export const STATUSES: readonly CheckinStatus[] = ["done", "partial", "skipped", "rest", "sick_or_injured"];
 
-/** Label and a glyph per status: colour is never the only cue. */
-export const STATUS_META: Record<CheckinStatus, { label: string; glyph: string; cell: string }> = {
-  done: { label: "Done", glyph: "✓", cell: "bg-ok text-white" },
-  partial: { label: "Partly", glyph: "½", cell: "bg-ok-soft text-ok ring-1 ring-inset ring-ok/40" },
-  skipped: { label: "Skipped", glyph: "✕", cell: "bg-bad-soft text-bad ring-1 ring-inset ring-bad/40" },
-  rest: { label: "Rest day", glyph: "z", cell: "bg-accent/15 text-accent" },
-  sick_or_injured: { label: "Sick or injured", glyph: "+", cell: "bg-warn-soft text-warn ring-1 ring-inset ring-warn/40" },
+/** A glyph per status besides its colour (colour is never the only cue); the label is `checkins.statuses.<status>`. */
+export const STATUS_META: Record<CheckinStatus, { glyph: string; cell: string }> = {
+  done: { glyph: "✓", cell: "bg-ok text-white" },
+  partial: { glyph: "½", cell: "bg-ok-soft text-ok ring-1 ring-inset ring-ok/40" },
+  skipped: { glyph: "✕", cell: "bg-bad-soft text-bad ring-1 ring-inset ring-bad/40" },
+  rest: { glyph: "z", cell: "bg-accent-soft text-accent-ink" },
+  sick_or_injured: { glyph: "+", cell: "bg-warn-soft text-warn ring-1 ring-inset ring-warn/40" },
 };
 
 const DAY_MS = 86_400_000;
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+const PERCENT = 100;
+/** Any Monday, to name the weekdays in the user's language. */
+const MONDAY = Date.UTC(2024, 0, 1);
+const WEEK_DAYS = 7;
 
 /** `YYYY-MM-DD` ↔ a UTC-midnight timestamp; check-in dates are plain local days, no time zone. */
 export function parseDay(day: string): number {
@@ -39,9 +41,15 @@ export function weekdayIndex(day: string): number {
   return (new Date(parseDay(day)).getUTCDay() + 6) % 7;
 }
 
-export function dayLabel(day: string): string {
-  const d = new Date(parseDay(day));
-  return `${WEEKDAYS[weekdayIndex(day)]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+/** `Mon, Oct 5` / `5 Eki Pzt`: a check-in day in the user's language. */
+export function dayLabel(locale: string, day: string): string {
+  return new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(parseDay(day));
+}
+
+/** One-letter weekday names, Monday first. */
+export function weekdayInitials(locale: string): string[] {
+  const format = new Intl.DateTimeFormat(locale, { weekday: "narrow", timeZone: "UTC" });
+  return Array.from({ length: WEEK_DAYS }, (_, i) => format.format(MONDAY + i * DAY_MS));
 }
 
 export interface HeatmapCell {
@@ -68,10 +76,7 @@ export function heatmapWeeks(from: string, to: string, items: readonly Checkin[]
   return weeks;
 }
 
-export function formatAdherence(summary: Pick<CheckinSummary, "adherence">): string {
-  return summary.adherence === null ? "—" : `${Math.round(summary.adherence * 100)}%`;
-}
-
-export function plural(n: number, word: string): string {
-  return `${n} ${word}${n === 1 ? "" : "s"}`;
+export function formatAdherence(locale: string, summary: Pick<CheckinSummary, "adherence">): string {
+  if (summary.adherence === null) return "—";
+  return new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }).format(Math.round(summary.adherence * PERCENT) / PERCENT);
 }

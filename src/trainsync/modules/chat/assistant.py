@@ -11,10 +11,8 @@ gets at most `max_tool_calls` tool calls and `timeout_s` seconds in total, and e
 import asyncio
 import json
 import re
-from dataclasses import dataclass
-from datetime import date, datetime
-from typing import Annotated, Protocol
-from zoneinfo import ZoneInfo
+from datetime import date
+from typing import Annotated
 
 import anthropic
 from anthropic.types.beta import (
@@ -24,104 +22,39 @@ from anthropic.types.beta import (
     BetaToolUseBlock,
 )
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationError, model_validator
-from redis.asyncio import Redis
 
 from trainsync.core.clock import Clock
 from trainsync.core.logging import get_logger
-from trainsync.core.settings import BotLang, BotProfanity, BotTone
+from trainsync.core.settings import BotProfanity
 from trainsync.integrations.anthropic.planner import Planner
 from trainsync.integrations.anthropic.tools import (
     MAX_LIST_LIMIT,
     TOOLS,
 )
+from trainsync.modules.chat.assistant_limits import Asker, DailyQuota, RateLimiter, RedisRateLimiter
+from trainsync.modules.chat.assistant_prompt import system_prompt
 from trainsync.modules.chat.read_api import ReadApi, ReadApiError
 from trainsync.modules.coach.guardrails import violations
 from trainsync.modules.coach.mode import CURRENT_PROFANITY, CoachMode
 from trainsync.modules.coach.packs import Key, Messages
 
-log = get_logger(__name__)
+__all__ = [
+    "MAX_TOOL_CALLS",
+    "TIMEOUT_S",
+    "Asker",
+    "Assistant",
+    "DailyQuota",
+    "RateLimiter",
+    "RedisRateLimiter",
+    "ToolError",
+    "system_prompt",
+]
 
-# A day key outlives its day in every time zone.
-DAILY_KEY_TTL_S = 2 * 24 * 3600
+log = get_logger(__name__)
 
 MAX_TOOL_CALLS = 5
 TIMEOUT_S = 20.0
 MAX_RANGE_DAYS = 3660  # ten years
-
-SYSTEM_PROMPT = """\
-You answer questions about one athlete's training, in a Telegram chat, using only the tools.
-
-- Every number in your answer must come from a tool result in this conversation. Never estimate, \
-recall or invent a value. If the tools can't answer the question, say so.
-- Each result carries `last_synced_at`. If it is null, call get_sync_status before answering: \
-with no athletes, say no Strava account is connected yet; with a backfill or incremental run \
-`running` or `paused`, say the first sync is still in progress; only otherwise say there is no \
-synced data. If it is more than a day before today, mention how old the data is.
-- An empty result means no activities in that range: say so, don't guess.
-- Metric units: km with one decimal (convert from metres), hours and minutes, metres of \
-elevation, pace in min/km for runs.
-- Dates are UTC calendar days; ranges are inclusive. A month is its first to its last day.
-- Plain text, no Markdown, at most a few short lines.
-- {language}
-
-{guardrails}
-
-{persona}
-
-Today is {today} ({weekday}).
-"""
-
-# Hard limits in every tone and intensity (ADR 0030); the code enforces them too.
-GUARDRAILS = (
-    "Hard limits, whatever the tone: never comment on the athlete's body, weight or appearance; "
-    "no slurs about ethnicity, religion, sexual orientation, disability, gender or similar; if "
-    "the athlete mentions pain, injury, illness, dizziness, chest pain or the like, drop any "
-    "push or roast and tell them to rest and, if it is serious or persists, see a doctor; never "
-    "push eating below their nutrition target and never suggest 'burning off' food or exercise "
-    "as punishment for eating, skipping meals or eating less to make up for it. If the athlete "
-    "talks about guilt over food, throwing up, not eating, hating themselves or bingeing, drop "
-    "every roast and every swear word and answer calmly and kindly; suggest talking to someone "
-    "they trust or a professional if it keeps happening."
-)
-# BOT_INTENSITY=savage (ADR 0030): the owner's explicit opt-in.
-SAVAGE = (
-    "Intensity: SAVAGE. The user explicitly asked for this tone and set it himself: you are his "
-    'brutal coach ("Koç" / "Coach"). Profanity has no limit: swear as hard as you like, in the '
-    "reply language. Roast "
-    "excuses, skipped workouts and weak effort without mercy, compared with his program and "
-    "history from the tools, then always give one concrete action for today. Keep it short. You "
-    "may end with a short, original English punchline (cold, quotable, never a quote of a real "
-    "person). Unhealthy choices (junk food, sugar, alcohol, cigarettes, staying up late) get a "
-    "hard roast of the choice, never of the body, then one concrete move (a smaller portion, a "
-    "better swap, log it now); the day's kcal target stays the target. The hard limits above "
-    "still apply and override this paragraph."
-)
-# BOT_PROFANITY=max or `/swear max` while savage (ADR 0032).
-MAX_PROFANITY = (
-    "Profanity: MAX. Swear naturally in every reply, in the reply language: neutral answers, "
-    "numbers, praise and good news too, not only roasts. The hard limits above still override "
-    "this: no swearing at all in a reply about pain, illness or distress."
-)
-
-# BOT_TONE / BOT_LANG (ADR 0016). The persona changes the wording, never the numbers.
-PERSONAS: dict[BotTone, str] = {
-    "neutral": "Tone: friendly, factual and brief.",
-    "hardcore": (
-        'Tone: you are Coach ("Koç" in Turkish), an original tough-love running coach. Short, '
-        "blunt sentences. Mild profanity is allowed, and only these words: damn, hell, crap in "
-        "English; lan, ulan, hassiktir in Turkish. Use it sparingly. Judge only effort and "
-        "consistency: never comment on the athlete's body, weight, appearance or identity, and "
-        "never insult them. Do not name, quote or imitate any real person. If this week's "
-        "training time is under half of last week's, push hard; at or above last week's, "
-        "acknowledge it, then raise the bar. If the last two weeks are both empty, ask whether "
-        "it is injury or rest instead of pushing. The rules above still hold: every number "
-        "comes from a tool result."
-    ),
-}
-LANGUAGES: dict[BotLang, str] = {
-    "en": "Reply in English.",
-    "tr": "Reply in Turkish.",
-}
 
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -173,55 +106,6 @@ def _check_dates(start: date, end: date) -> None:
         raise ValueError("`to` is before `from`")
     if (end - start).days > MAX_RANGE_DAYS:
         raise ValueError(f"range longer than {MAX_RANGE_DAYS} days")
-
-
-class RateLimiter(Protocol):
-    async def allow(self, chat_id: int) -> bool: ...
-
-
-class RedisRateLimiter:
-    """Fixed one-hour windows per chat: `INCR` a key that expires with its window."""
-
-    def __init__(self, redis: Redis, limit_per_hour: int, clock: Clock) -> None:
-        self._redis = redis
-        self._limit = limit_per_hour
-        self._clock = clock
-
-    async def allow(self, chat_id: int) -> bool:
-        window = int(self._clock().timestamp()) // 3600
-        key = f"assistant:quota:{chat_id}:{window}"
-        count = int(await self._redis.incr(key))
-        if count == 1:
-            await self._redis.expire(key, 3600)
-        return count <= self._limit
-
-
-@dataclass(frozen=True, slots=True)
-class Asker:
-    """Who asks: the daily limit counts per user and local day; the owner is exempt."""
-
-    user_id: int
-    timezone: str
-    unlimited: bool = False
-
-
-class DailyQuota:
-    """`ASSISTANT_DAILY_LIMIT` questions per user per local day (the owner pays for the key)."""
-
-    def __init__(self, redis: Redis, limit: int, clock: Clock) -> None:
-        self._redis = redis
-        self._limit = limit
-        self._clock = clock
-
-    async def allow(self, asker: Asker) -> bool:
-        if asker.unlimited:
-            return True
-        day = self._clock().astimezone(ZoneInfo(asker.timezone)).date()
-        key = f"assistant:daily:{asker.user_id}:{day:%Y%m%d}"
-        count = int(await self._redis.incr(key))
-        if count == 1:
-            await self._redis.expire(key, DAILY_KEY_TTL_S)
-        return count <= self._limit
 
 
 class ToolError(Exception):
@@ -352,27 +236,6 @@ class Assistant:
         except ReadApiError as exc:
             raise ToolError(f"The trainsync API failed: {exc}") from None
         raise ToolError(f"Unknown tool {name!r}")
-
-
-def system_prompt(
-    now: datetime,
-    tone: BotTone = "neutral",
-    lang: BotLang = "en",
-    *,
-    savage: bool = False,
-    profanity: BotProfanity = "roast",
-) -> str:
-    today = now.date()
-    persona = f"{PERSONAS[tone]}\n\n{SAVAGE}" if savage else PERSONAS[tone]
-    if savage and profanity == "max":
-        persona = f"{persona}\n\n{MAX_PROFANITY}"
-    return SYSTEM_PROMPT.format(
-        today=today.isoformat(),
-        weekday=today.strftime("%A"),
-        language=LANGUAGES[lang],
-        persona=persona,
-        guardrails=GUARDRAILS,
-    )
 
 
 def _text(response: BetaMessage) -> str:

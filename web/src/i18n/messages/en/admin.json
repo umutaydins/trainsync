@@ -1,0 +1,51 @@
+{
+  "title": "Admin",
+  "subtitle": "Invites and accounts. You never see anyone's training data here.",
+  "loadFailed": "Could not load the admin page",
+  "copyFailed": "Could not copy. Select the link and copy it by hand.",
+  "invites": {
+    "title": "Invites",
+    "body": "An invite link lets one person create an account. The link is shown only once.",
+    "note": "Note (optional)",
+    "noteHint": "Who it is for; only you see it.",
+    "create": "Create invite",
+    "createFailed": "Could not create the invite. Try again.",
+    "createdTitle": "Invite created",
+    "createdBody": "Copy the link now: it is not shown again.",
+    "link": "Invite link",
+    "empty": "No invites yet",
+    "emptyBody": "Create one to bring someone in.",
+    "noNote": "No note",
+    "created": "Created {date}",
+    "expires": "Expires {date}",
+    "usedOn": "Used {date}",
+    "revokedOn": "Revoked {date}",
+    "status": {
+      "open": "Active",
+      "used": "Used",
+      "expired": "Expired",
+      "revoked": "Revoked"
+    },
+    "revoke": "Revoke",
+    "revokeLabel": "Revoke the invite {invite}",
+    "revokeTitle": "Revoke this invite?",
+    "revokeBody": "The link stops working at once.",
+    "revoked": "Invite revoked",
+    "revokeFailed": "Could not revoke the invite. Try again.",
+    "loadFailed": "Could not load the invites"
+  },
+  "users": {
+    "title": "Accounts",
+    "body": "Account facts only. A reset link lets someone who forgot the password set a new one.",
+    "empty": "No accounts",
+    "owner": "Owner",
+    "joined": "Joined {date}",
+    "reset": "Reset link",
+    "resetLabel": "Password reset link for {name}",
+    "resetFailed": "Could not create a reset link. Try again.",
+    "linkTitle": "Reset link for {name}",
+    "linkBody": "Valid until {time}, once. Copy it now: it is not shown again.",
+    "link": "Reset link",
+    "loadFailed": "Could not load the accounts"
+  }
+}

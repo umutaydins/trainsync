@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { PlateBar } from "@/features/training/components/plate-bar";
 import { plateLook } from "@/features/training/plates";
+import { renderWithIntl as render } from "./support/intl";
 import { PLATES_100, PLATES_MIXED } from "./support/training-fixtures";
 
 function drawn(side: "left" | "right") {

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { startSession } from "@/lib/auth";
 import { clientIp, loginLimiter } from "@/lib/login-limit";
+import { loadPreferences, rememberPreferences } from "@/lib/preferences";
 import { safeNextPath, seeOther } from "@/lib/session";
 import { authRequest } from "@/lib/upstream";
 
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (typeof token !== "string") return NextResponse.json({ error: "sign-in failed" }, { status: 502 });
   const response = new NextResponse(null, seeOther(safeNextPath(next)));
   startSession(response, token);
+  rememberPreferences(response, await loadPreferences(token));
   return response;
 }
 

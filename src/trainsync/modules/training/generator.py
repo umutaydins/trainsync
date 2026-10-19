@@ -12,46 +12,48 @@ session length.
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal
-from enum import StrEnum
 
+from trainsync.modules.training.generator_templates import (
+    DEFAULT_TEMPLATE,
+    TEMPLATE_DAYS,
+    TEMPLATE_NAMES,
+    TEMPLATES,
+    Role,
+    Slot,
+    Template,
+)
 from trainsync.modules.training.models import Equipment, MovementPattern, ProgramGoal
 
-P = MovementPattern
+__all__ = [
+    "DEFAULT_WEEKS",
+    "DOSES",
+    "MAX_EXERCISES_PER_DAY",
+    "MIN_SESSION_MINUTES",
+    "TEMPLATE_DAYS",
+    "Day",
+    "Dose",
+    "GeneratorError",
+    "LibraryExercise",
+    "PlannedExercise",
+    "Program",
+    "Request",
+    "Role",
+    "Template",
+    "fit",
+    "generate",
+    "resolve_template",
+]
 
 SETUP_SECONDS = 60  # walk over, set up, first warm-up
 WORK_SECONDS = 45  # one working set
 MIN_SESSION_MINUTES = 20
 MAX_EXERCISES_PER_DAY = 8
 DEFAULT_WEEKS = 8
+SECONDS_PER_MINUTE = 60
+# fit(): compound sets are first cut down to this, then (after dropping compounds) to 1.
+COMPOUND_SET_FLOOR = 3
+MIN_SETS = 1
 
-
-class Template(StrEnum):
-    FULL_BODY = "full_body"
-    UPPER_LOWER = "upper_lower"
-    PUSH_PULL_LEGS = "push_pull_legs"
-
-
-class Role(StrEnum):
-    COMPOUND = "compound"
-    ACCESSORY = "accessory"
-
-
-TEMPLATE_DAYS: dict[Template, tuple[int, ...]] = {
-    Template.FULL_BODY: (2, 3),
-    Template.UPPER_LOWER: (4,),
-    Template.PUSH_PULL_LEGS: (3, 6),
-}
-DEFAULT_TEMPLATE: dict[int, Template] = {
-    2: Template.FULL_BODY,
-    3: Template.FULL_BODY,
-    4: Template.UPPER_LOWER,
-    6: Template.PUSH_PULL_LEGS,
-}
-TEMPLATE_NAMES = {
-    Template.FULL_BODY: "Full Body",
-    Template.UPPER_LOWER: "Upper/Lower",
-    Template.PUSH_PULL_LEGS: "Push/Pull/Legs",
-}
 
 _COMPOUND_EQUIPMENT = (
     Equipment.BARBELL,
@@ -129,7 +131,7 @@ class Day:
 
     @property
     def minutes(self) -> Decimal:
-        return Decimal(sum(e.seconds for e in self.exercises)) / 60
+        return Decimal(sum(e.seconds for e in self.exercises)) / SECONDS_PER_MINUTE
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,158 +145,6 @@ class Program:
 
 class GeneratorError(ValueError):
     """The request cannot produce a program (unsupported days for the template, too short)."""
-
-
-@dataclass(frozen=True, slots=True)
-class Slot:
-    pattern: MovementPattern
-    role: Role
-    variant: int = 0
-
-
-def _c(pattern: MovementPattern, variant: int = 0) -> Slot:
-    return Slot(pattern, Role.COMPOUND, variant)
-
-
-def _a(pattern: MovementPattern, variant: int = 0) -> Slot:
-    return Slot(pattern, Role.ACCESSORY, variant)
-
-
-def _push(v: int) -> list[Slot]:
-    return [
-        _c(P.HORIZONTAL_PUSH, v),
-        _c(P.VERTICAL_PUSH, v),
-        _c(P.HORIZONTAL_PUSH, v + 1),
-        _a(P.CHEST_FLY, v),
-        _a(P.LATERAL_RAISE, v),
-        _a(P.TRICEPS, v),
-    ]
-
-
-def _pull(v: int) -> list[Slot]:
-    return [
-        _c(P.VERTICAL_PULL, v),
-        _c(P.HORIZONTAL_PULL, v),
-        _c(P.HORIZONTAL_PULL, v + 1),
-        _a(P.REAR_DELT, v),
-        _a(P.BICEPS, v),
-        _a(P.BICEPS, v + 1),
-    ]
-
-
-def _legs(v: int) -> list[Slot]:
-    return [
-        _c(P.SQUAT, v),
-        _c(P.HINGE, v),
-        _c(P.LUNGE, v),
-        _a(P.KNEE_EXTENSION, v),
-        _a(P.KNEE_FLEXION, v),
-        _a(P.CALF_RAISE, v),
-        _a(P.CORE, v),
-    ]
-
-
-FULL_BODY_DAYS: list[tuple[str, list[Slot]]] = [
-    (
-        "Full Body A",
-        [
-            _c(P.SQUAT),
-            _c(P.HORIZONTAL_PUSH),
-            _c(P.HORIZONTAL_PULL),
-            _a(P.LATERAL_RAISE),
-            _a(P.BICEPS),
-            _a(P.CORE),
-        ],
-    ),
-    (
-        "Full Body B",
-        [
-            _c(P.HINGE),
-            _c(P.VERTICAL_PUSH),
-            _c(P.VERTICAL_PULL),
-            _c(P.LUNGE),
-            _a(P.TRICEPS),
-            _a(P.REAR_DELT),
-            _a(P.CALF_RAISE),
-        ],
-    ),
-    (
-        "Full Body C",
-        [
-            _c(P.SQUAT, 1),
-            _c(P.HORIZONTAL_PUSH, 1),
-            _c(P.VERTICAL_PULL, 1),
-            _c(P.HINGE, 1),
-            _a(P.CHEST_FLY),
-            _a(P.KNEE_FLEXION),
-            _a(P.BICEPS, 1),
-            _a(P.CORE, 1),
-        ],
-    ),
-]
-UPPER_LOWER_DAYS: list[tuple[str, list[Slot]]] = [
-    (
-        "Upper A",
-        [
-            _c(P.HORIZONTAL_PUSH),
-            _c(P.HORIZONTAL_PULL),
-            _c(P.VERTICAL_PUSH),
-            _c(P.VERTICAL_PULL),
-            _a(P.LATERAL_RAISE),
-            _a(P.BICEPS),
-            _a(P.TRICEPS),
-        ],
-    ),
-    (
-        "Lower A",
-        [
-            _c(P.SQUAT),
-            _c(P.HINGE, 1),
-            _c(P.LUNGE),
-            _a(P.KNEE_FLEXION),
-            _a(P.CALF_RAISE),
-            _a(P.CORE),
-        ],
-    ),
-    (
-        "Upper B",
-        [
-            _c(P.VERTICAL_PUSH, 1),
-            _c(P.VERTICAL_PULL, 1),
-            _c(P.HORIZONTAL_PUSH, 1),
-            _c(P.HORIZONTAL_PULL, 1),
-            _a(P.CHEST_FLY),
-            _a(P.REAR_DELT),
-            _a(P.BICEPS, 1),
-            _a(P.TRICEPS, 1),
-        ],
-    ),
-    (
-        "Lower B",
-        [
-            _c(P.HINGE),
-            _c(P.SQUAT, 1),
-            _c(P.LUNGE, 1),
-            _a(P.KNEE_EXTENSION),
-            _a(P.KNEE_FLEXION),
-            _a(P.CALF_RAISE),
-            _a(P.CORE, 1),
-        ],
-    ),
-]
-PPL_DAYS: list[tuple[str, list[Slot]]] = [
-    ("Push A", _push(0)),
-    ("Pull A", _pull(0)),
-    ("Legs A", _legs(0)),
-    ("Push B", _push(1)),
-    ("Pull B", _pull(1)),
-    ("Legs B", _legs(1)),
-]
-TEMPLATES: dict[Template, list[tuple[str, list[Slot]]]] = {
-    Template.FULL_BODY: FULL_BODY_DAYS,
-    Template.UPPER_LOWER: UPPER_LOWER_DAYS,
-    Template.PUSH_PULL_LEGS: PPL_DAYS,
-}
 
 
 def resolve_template(days_per_week: int, template: Template | None) -> Template:
@@ -372,16 +222,16 @@ def _seconds(exercises: Sequence[PlannedExercise]) -> int:
 def fit(exercises: Sequence[PlannedExercise], minutes: int) -> list[PlannedExercise]:
     """Trim to the budget: drop accessories (last first), cut compound sets to 3, drop
     compounds (last first, keeping one), then cut the remaining sets down to 1."""
-    budget = minutes * 60
+    budget = minutes * SECONDS_PER_MINUTE
     day = list(exercises)
     while _seconds(day) > budget and any(e.role is Role.ACCESSORY for e in day):
         last = max(i for i, e in enumerate(day) if e.role is Role.ACCESSORY)
         del day[last]
-    for floor in (3, 1):
+    for floor in (COMPOUND_SET_FLOOR, MIN_SETS):
         for index in reversed(range(len(day))):
             while _seconds(day) > budget and day[index].sets > floor:
                 day[index] = replace(day[index], sets=day[index].sets - 1)
-        while floor == 3 and _seconds(day) > budget and len(day) > 1:
+        while floor == COMPOUND_SET_FLOOR and _seconds(day) > budget and len(day) > 1:
             day.pop()
     return day
 

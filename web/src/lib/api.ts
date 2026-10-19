@@ -8,10 +8,10 @@ import type {
   ActivitiesQuery,
   ActivityDetail,
   ActivityPage,
+  Me,
   RangeQuery,
   StatsSummary,
   SyncStatus,
-  WeeklyStats,
 } from "@/lib/types";
 import { toSearchParams } from "@/lib/types";
 import { upstreamGet } from "@/lib/upstream";
@@ -49,13 +49,11 @@ export const api = {
   activities: (query: ActivitiesQuery = {}) => getJson<ActivityPage>("/v1/activities", query),
   activity: cache((id: number) => getJson<ActivityDetail>(`/v1/activities/${id}`)),
   // Primitive arguments, so `cache` (which compares arguments by identity) can dedupe them.
-  weekly: cache((from?: string, to?: string, sportType?: string) =>
-    getJson<WeeklyStats>("/v1/stats/weekly", rangeQuery(from, to, sportType)),
-  ),
   summary: cache((from?: string, to?: string, sportType?: string) =>
     getJson<StatsSummary>("/v1/stats/summary", rangeQuery(from, to, sportType)),
   ),
   syncStatus: cache(() => getJson<SyncStatus>("/v1/sync/status")),
+  me: cache(() => getJson<Me>("/v1/me")),
 };
 
 export type Loaded<T> = { ok: true; data: T } | { ok: false; status: number; error: string };

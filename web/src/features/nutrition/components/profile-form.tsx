@@ -1,162 +1,119 @@
 "use client";
 
+import { Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 
-import { Card, ErrorState, buttonClass, inputClass, secondaryButtonClass } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Failure } from "@/components/ui/states";
+import { isBackendDown } from "@/features/shell/components/load-failed";
+import { ProfileFields } from "@/features/nutrition/components/profile-fields";
+import { type ProfileField, profileValues, toProfile } from "@/features/nutrition/profile";
+import type { Profile } from "@/features/nutrition/types";
+import { useNutritionFormat } from "@/features/nutrition/use-nutrition-format";
 import { put } from "@/lib/mutate";
-import type { ActivityBaseline, Profile, ProfileIn } from "@/features/nutrition/types";
-import { kcal } from "@/features/nutrition/types";
 
-const BASELINES: { value: ActivityBaseline; text: string }[] = [
-  { value: "sedentary", text: "Sedentary (mostly sitting)" },
-  { value: "light", text: "Light (on your feet some of the day)" },
-  { value: "moderate", text: "Moderate (on your feet most of the day)" },
-];
+const WEIGHT_MAX_KG = 500;
+const CENTS = 100;
 
-function optionalInt(value: string): number | null | "bad" {
-  if (value.trim() === "") return null;
-  const n = Number(value);
-  return Number.isInteger(n) ? n : "bad";
-}
+type Problem = "weightError" | { status: number };
 
 /**
- * Profile and targets (PUT /v1/nutrition/profile) and today's body weight. A target below the
- * estimated basal rate is saved as entered; the API's note is shown as information.
+ * Profile and targets (`PUT /v1/nutrition/profile`, the same fields as the onboarding) and the
+ * day's body weight. A target below the estimated basal rate is saved as entered; the page says so
+ * as information, in the user's language.
  */
 export function ProfileForm({ profile, date }: { profile: Profile | null; date: string }) {
+  const t = useTranslations("nutrition.profile");
+  const states = useTranslations("common.states");
+  const fmt = useNutritionFormat();
   const router = useRouter();
-  const [values, setValues] = useState({
-    sex: profile?.sex ?? "male",
-    birthYear: profile ? String(profile.birth_year) : "",
-    height: profile ? String(profile.height_cm) : "",
-    baseline: profile?.activity_baseline ?? "light",
-    kcalTarget: profile?.kcal_target != null ? String(profile.kcal_target) : "",
-    proteinTarget: profile?.protein_target_g != null ? String(profile.protein_target_g) : "",
-  });
+  const [values, setValues] = useState(() => profileValues(profile));
+  const [invalid, setInvalid] = useState<ProfileField | null>(null);
   const [weight, setWeight] = useState(profile?.weight_kg != null ? String(profile.weight_kg) : "");
-  const [note, setNote] = useState<string | null>(profile?.warning ?? null);
+  const [belowBmr, setBelowBmr] = useState<number | null>(profile?.warning ? (profile.bmr_kcal ?? null) : null);
+  const [hasNote, setHasNote] = useState(Boolean(profile?.warning));
   const [saved, setSaved] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [problem, setProblem] = useState<Problem | null>(null);
   const [busy, setBusy] = useState(false);
+  const dayText = fmt.day(date);
 
-  async function save(event: React.FormEvent) {
+  async function save(event: FormEvent) {
     event.preventDefault();
-    const birthYear = Number(values.birthYear);
-    const height = Number(values.height.replace(",", "."));
-    const kcalTarget = optionalInt(values.kcalTarget);
-    const proteinTarget = optionalInt(values.proteinTarget);
-    if (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > 2100) return setError("Birth year: 1900 to 2100");
-    if (!Number.isFinite(height) || height < 100 || height > 250) return setError("Height: 100 to 250 cm");
-    if (kcalTarget === "bad" || (kcalTarget !== null && (kcalTarget < 1 || kcalTarget > 10000))) return setError("kcal target: 1 to 10000, or empty");
-    if (proteinTarget === "bad" || (proteinTarget !== null && (proteinTarget < 0 || proteinTarget > 1000))) {
-      return setError("Protein target: 0 to 1000 g, or empty");
-    }
-    const body: ProfileIn = {
-      sex: values.sex,
-      birth_year: birthYear,
-      height_cm: height,
-      activity_baseline: values.baseline,
-      kcal_target: kcalTarget,
-      protein_target_g: proteinTarget,
-    };
+    const checked = toProfile(values);
+    if (!checked.ok) return setInvalid(checked.field);
+    setInvalid(null);
     setBusy(true);
-    setError(null);
+    setProblem(null);
     setSaved(null);
-    const result = await put<Profile>("/v1/nutrition/profile", body);
+    const result = await put<Profile>("/v1/nutrition/profile", checked.body);
     setBusy(false);
-    if (!result.ok || !result.data) return setError(result.ok ? "Empty answer" : result.error);
-    setNote(result.data.warning);
-    setSaved(
-      result.data.bmr_kcal === null ? "Profile saved." : `Profile saved. Estimated basal rate today: ${kcal(result.data.bmr_kcal)}.`,
-    );
+    if (!result.ok || !result.data) return setProblem({ status: result.status });
+    setHasNote(Boolean(result.data.warning));
+    setBelowBmr(result.data.bmr_kcal);
+    setSaved(result.data.bmr_kcal === null ? t("saved") : t("savedWithBmr", { bmr: fmt.kcal(result.data.bmr_kcal) }));
     router.refresh();
   }
 
-  async function saveWeight(event: React.FormEvent) {
+  async function saveWeight(event: FormEvent) {
     event.preventDefault();
     const kg = Number(weight.replace(",", "."));
-    if (!Number.isFinite(kg) || kg <= 0 || kg >= 500) return setError("Body weight: more than 0, below 500 kg");
+    if (!Number.isFinite(kg) || kg <= 0 || kg >= WEIGHT_MAX_KG) return setProblem("weightError");
     setBusy(true);
-    setError(null);
-    const result = await put(`/v1/training/body-metrics/${date}`, { weight_kg: Math.round(kg * 100) / 100 });
+    setProblem(null);
+    const result = await put(`/v1/training/body-metrics/${date}`, { weight_kg: Math.round(kg * CENTS) / CENTS });
     setBusy(false);
-    if (!result.ok) return setError(result.error);
-    setSaved(`Body weight for ${date} saved.`);
+    if (!result.ok) return setProblem({ status: result.status });
+    setSaved(t("weightSaved", { date: dayText }));
     router.refresh();
   }
 
-  const set = (key: keyof typeof values) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setValues((v) => ({ ...v, [key]: e.target.value }));
-
   return (
-    <Card title="Profile and targets" labelledBy="profile-title">
-      <form onSubmit={(e) => void save(e)} className="space-y-3" aria-labelledby="profile-title">
-        <p className="text-xs text-muted">Used only for the basal-rate estimate (Mifflin–St Jeor). Targets are optional.</p>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <label className="block text-sm font-medium">
-            Sex (for the equation)
-            <select value={values.sex} onChange={set("sex")} className={`${inputClass} mt-1 min-h-11`}>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-            </select>
-          </label>
-          <label className="block text-sm font-medium">
-            Birth year
-            <input inputMode="numeric" value={values.birthYear} onChange={set("birthYear")} className={`${inputClass} mt-1 min-h-11`} />
-          </label>
-          <label className="block text-sm font-medium">
-            Height (cm)
-            <input inputMode="decimal" value={values.height} onChange={set("height")} className={`${inputClass} mt-1 min-h-11`} />
-          </label>
+    <Card aria-labelledby="profile-title">
+      <form onSubmit={(e) => void save(e)} className="flex flex-col gap-4" aria-labelledby="profile-title">
+        <div>
+          <h2 id="profile-title" className="text-lg font-bold tracking-tight">
+            {t("title")}
+          </h2>
+          <p className="mt-1 text-sm text-muted">{t("body")}</p>
         </div>
-        <label className="block text-sm font-medium">
-          Everyday activity (outside logged exercise)
-          <select value={values.baseline} onChange={set("baseline")} className={`${inputClass} mt-1 min-h-11`}>
-            {BASELINES.map((b) => (
-              <option key={b.value} value={b.value}>
-                {b.text}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block text-sm font-medium">
-            kcal target (optional)
-            <input inputMode="numeric" value={values.kcalTarget} onChange={set("kcalTarget")} className={`${inputClass} mt-1 min-h-11`} />
-          </label>
-          <label className="block text-sm font-medium">
-            Protein target in g (optional)
-            <input inputMode="numeric" value={values.proteinTarget} onChange={set("proteinTarget")} className={`${inputClass} mt-1 min-h-11`} />
-          </label>
-        </div>
-        <button type="submit" className={`${buttonClass} min-h-11`} disabled={busy}>
-          Save profile
-        </button>
+        <ProfileFields values={values} invalid={invalid} onChange={setValues} />
+        <Button type="submit" className="self-start" disabled={busy}>
+          {t("save")}
+        </Button>
       </form>
 
       <form onSubmit={(e) => void saveWeight(e)} className="mt-5 flex items-end gap-2 border-t border-border pt-4">
-        <label className="block flex-1 text-sm font-medium">
-          Body weight on {date} (kg)
-          <input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} className={`${inputClass} mt-1 min-h-11`} />
-        </label>
-        <button type="submit" className={`${secondaryButtonClass} min-h-11`} disabled={busy}>
-          Save weight
-        </button>
+        <Field label={t("weight", { date: dayText })} className="min-w-0 flex-1">
+          <Input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} />
+        </Field>
+        <Button type="submit" variant="secondary" disabled={busy}>
+          {t("saveWeight")}
+        </Button>
       </form>
 
-      {note ? (
-        <p role="note" className="mt-4 rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm" data-testid="profile-note">
-          <span className="font-medium">Note: </span>
-          {note}
+      {hasNote ? (
+        <p role="note" className="mt-4 flex gap-2 rounded-control border border-border bg-surface-2 p-3 text-sm" data-testid="profile-note">
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-accent-ink" />
+          <span>
+            <span className="font-semibold">{t("note")}: </span>
+            {t("belowBmr", { bmr: belowBmr === null ? "—" : fmt.kcal(belowBmr) })}
+          </span>
         </p>
       ) : null}
-      {error ? (
+      {problem ? (
         <div className="mt-4">
-          <ErrorState title="Not saved" message={error} />
+          <Failure
+            title={t("notSaved")}
+            message={typeof problem === "string" ? t(problem) : isBackendDown(problem.status) ? states("backendDown") : undefined}
+          />
         </div>
       ) : null}
-      <p role="status" className="mt-2 text-sm text-ok">
+      <p role="status" className="mt-2 text-sm font-medium text-ok">
         {saved}
       </p>
     </Card>

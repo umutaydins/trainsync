@@ -44,7 +44,7 @@ OPENERS = set(SAVAGE_MAX["tr"][Category.MAX_OPENER])
 
 @pytest.fixture
 def db() -> ChatLinksApi:
-    return ChatLinksApi().link(CHAT)
+    return ChatLinksApi().link(CHAT, timezone=ZONE.key)
 
 
 @pytest.fixture

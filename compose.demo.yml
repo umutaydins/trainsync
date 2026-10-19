@@ -29,7 +29,7 @@ x-demo-env: &demo-env
   STRAVA_WEBHOOK_VERIFY_TOKEN: demo-public-not-a-secret
   API_KEYS: ${DEMO_API_KEY:?set DEMO_API_KEY in .env.demo}
   OPENFOODFACTS_ENABLED: "false"
-  CHECKIN_TZ: ${DEMO_TZ:-Europe/Istanbul}
+  CHECKIN_TZ: ${DEMO_TZ:-UTC}
 
 x-demo-app: &demo-app
   image: trainsync-demo:${TRAINSYNC_TAG:-local}

@@ -1,8 +1,9 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { REFRESH_MS, SyncStatusView } from "@/features/sync/components/sync-status-view";
 import { jsonResponse } from "./support/env";
+import { renderWithIntl as render } from "./support/intl";
 import { syncStatus } from "./support/fixtures";
 
 describe("SyncStatusView", () => {
@@ -13,7 +14,7 @@ describe("SyncStatusView", () => {
     render(<SyncStatusView initial={syncStatus()} />);
     const backfill = screen.getByTestId("run-backfill");
     expect(backfill).toHaveAttribute("data-status", "succeeded");
-    expect(within(backfill).getByText("succeeded")).toHaveClass("text-ok");
+    expect(within(backfill).getByText("Succeeded")).toHaveClass("text-ok");
     expect(within(screen.getByTestId("run-incremental")).getByText("never ran")).toBeInTheDocument();
     expect(screen.getByText("Dead letters").nextElementSibling).toHaveTextContent("1");
     expect(screen.getByRole("progressbar", { name: "15 minutes" })).toHaveAttribute("aria-valuenow", "85");
@@ -41,7 +42,8 @@ describe("SyncStatusView", () => {
     vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ error: "trainsync API unavailable" }, 502)));
     render(<SyncStatusView initial={syncStatus()} />);
     await act(() => vi.advanceTimersByTimeAsync(REFRESH_MS));
-    expect(screen.getByRole("alert")).toHaveTextContent("trainsync API unavailable");
+    expect(screen.getByRole("alert")).toHaveTextContent("Refresh failed, showing the last known state");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("trainsync API unavailable");
     expect(screen.getByTestId("run-backfill")).toHaveAttribute("data-status", "succeeded");
   });
 
@@ -49,5 +51,11 @@ describe("SyncStatusView", () => {
     render(<SyncStatusView initial={syncStatus({ athletes: [], rate_limit: null })} />);
     expect(screen.getByText("No Strava account connected")).toBeInTheDocument();
     expect(screen.getByText("No usage yet")).toBeInTheDocument();
+  });
+
+  it("speaks Turkish", () => {
+    render(<SyncStatusView initial={syncStatus()} />, "tr");
+    expect(within(screen.getByTestId("run-backfill")).getByText("Başarılı")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "15 dakika" })).toBeInTheDocument();
   });
 });

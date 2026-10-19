@@ -22,13 +22,13 @@ from trainsync.modules.training.generator import (
 )
 from trainsync.modules.training.models import Equipment, MovementPattern, ProgramGoal
 from trainsync.modules.training.plates import plates_per_side
-from trainsync.modules.training.repository import ExerciseRepository
-from trainsync.modules.training.routes.programs import (
+from trainsync.modules.training.program_schemas import (
     PROGRAM_IN_EXAMPLE,
     PlannedExerciseIn,
     ProgramDayIn,
     ProgramIn,
 )
+from trainsync.modules.training.repository import ExerciseRepository
 from trainsync.modules.training.schemas import Kg
 
 router = APIRouter(prefix="/v1/training", tags=["training"])

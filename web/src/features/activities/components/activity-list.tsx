@@ -1,60 +1,61 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { ActivitiesEmpty, type EmptyReason } from "@/features/activities/components/activities-empty";
 import { ActivityTable } from "@/features/activities/components/activity-table";
-import { EmptyState, ErrorState, secondaryButtonClass } from "@/components/ui";
-import { formatCount } from "@/lib/format";
+import { LoadFailed } from "@/features/shell/components/load-failed";
+import { bffGet } from "@/lib/bff-get";
 import type { Activity, ActivityPage } from "@/lib/types";
 
 /** Keyset paging: "Load more" asks the BFF for the page after `next_cursor` and appends it. */
-export function ActivityList({ initial, query }: { initial: ActivityPage; query: Record<string, string> }) {
+export function ActivityList({
+  initial,
+  query,
+  emptyReason = "filtered",
+}: {
+  initial: ActivityPage;
+  query: Record<string, string>;
+  emptyReason?: EmptyReason;
+}) {
+  const t = useTranslations("activities.list");
+  const common = useTranslations("common");
   const [items, setItems] = useState<Activity[]>(initial.items);
   const [cursor, setCursor] = useState<string | null>(initial.next_cursor);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState<number | null>(null);
 
   async function loadMore() {
     if (!cursor || loading) return;
     setLoading(true);
-    setError(null);
-    try {
-      const search = new URLSearchParams({ ...query, cursor });
-      const response = await fetch(`/api/ts/v1/activities?${search}`, { cache: "no-store" });
-      const body: unknown = await response.json().catch(() => null);
-      if (!response.ok) {
-        const message = (body as { error?: string } | null)?.error;
-        throw new Error(message || `request failed (${response.status})`);
-      }
-      const page = body as ActivityPage;
-      setItems((current) => {
-        const seen = new Set(current.map((a) => a.id));
-        return [...current, ...page.items.filter((a) => !seen.has(a.id))];
-      });
-      setCursor(page.next_cursor);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "request failed");
-    } finally {
-      setLoading(false);
-    }
+    setFailed(null);
+    const result = await bffGet<ActivityPage>("/v1/activities", { ...query, cursor });
+    setLoading(false);
+    if (!result.ok || !result.data) return setFailed(result.status);
+    const page = result.data;
+    setItems((current) => {
+      const seen = new Set(current.map((a) => a.id));
+      return [...current, ...page.items.filter((a) => !seen.has(a.id))];
+    });
+    setCursor(page.next_cursor);
   }
 
-  if (items.length === 0) {
-    return <EmptyState title="No activities match these filters">Change the dates or the sport.</EmptyState>;
-  }
+  if (items.length === 0) return <ActivitiesEmpty reason={emptyReason} />;
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <ActivityTable items={items} />
-      {error ? <ErrorState title="Could not load more activities" message={error} /> : null}
+      {failed !== null ? <LoadFailed title={t("moreFailed")} status={failed} /> : null}
       <div className="flex items-center justify-between gap-3 text-sm text-muted">
-        <p aria-live="polite">Showing {formatCount(items.length)} {items.length === 1 ? "activity" : "activities"}</p>
+        <p aria-live="polite">{t("showing", { count: items.length })}</p>
         {cursor ? (
-          <button type="button" onClick={loadMore} disabled={loading} className={secondaryButtonClass}>
-            {loading ? "Loading…" : error ? "Retry" : "Load more"}
-          </button>
+          <Button variant="secondary" onClick={() => void loadMore()} disabled={loading}>
+            {loading ? common("states.loading") : failed !== null ? common("actions.retry") : common("actions.loadMore")}
+          </Button>
         ) : (
-          <p>End of list</p>
+          <p>{common("actions.endOfList")}</p>
         )}
       </div>
     </div>

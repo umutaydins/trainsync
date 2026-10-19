@@ -1,0 +1,187 @@
+/*
+ * Design tokens (ADR 0039): the only place colours, radii, shadows, type and motion are defined.
+ * Dark-first; `html.light` (or `system` with a light OS) switches to the light theme. Components
+ * use the Tailwind utilities generated from these (bg-surface, text-muted, rounded-card, ...).
+ */
+
+:root,
+html.dark {
+  --bg: #08090b;
+  --surface: #111317;
+  --surface-2: #1a1d23;
+  --surface-3: #23272f;
+  --border: #262a32;
+  --text: #f3f5f8;
+  --muted: #8e97a6;
+  /* The electric accent: volt on near-black. `accent-ink` is the accent as text on the base. */
+  --accent: #d6ff3a;
+  --accent-ink: #d6ff3a;
+  --accent-contrast: #08090b;
+  --accent-soft: rgb(214 255 58 / 0.14);
+  --ok: #49d68f;
+  --warn: #ffb547;
+  --bad: #ff6b5e;
+  --ok-soft: rgb(73 214 143 / 0.14);
+  --warn-soft: rgb(255 181 71 / 0.14);
+  --bad-soft: rgb(255 107 94 / 0.14);
+  --chart-1: #d6ff3a;
+  --chart-2: #3ad4ff;
+  --chart-3: #ff5fd2;
+  --chart-4: #ff9a3d;
+  --chart-5: #9b8cff;
+  --chart-grid: #23272f;
+  --overlay: rgb(0 0 0 / 0.6);
+  --shadow-color: 0 0% 0%;
+  color-scheme: dark;
+}
+
+html.light {
+  --bg: #f4f5f1;
+  --surface: #ffffff;
+  --surface-2: #eceee8;
+  --surface-3: #e1e4dc;
+  --border: #dcdfd6;
+  --text: #0d0f12;
+  --muted: #5d6470;
+  --accent: #c8f000;
+  --accent-ink: #4a6300;
+  --accent-contrast: #0d0f12;
+  --accent-soft: rgb(200 240 0 / 0.22);
+  --ok: #0b6638;
+  --warn: #7d4700;
+  --bad: #a3261c;
+  --ok-soft: rgb(11 102 56 / 0.12);
+  --warn-soft: rgb(125 71 0 / 0.12);
+  --bad-soft: rgb(163 38 28 / 0.12);
+  --chart-1: #6f9400;
+  --chart-2: #0a8fc2;
+  --chart-3: #c22b98;
+  --chart-4: #d26a0c;
+  --chart-5: #5b4bd6;
+  --chart-grid: #e1e4dc;
+  --overlay: rgb(13 15 18 / 0.45);
+  --shadow-color: 220 15% 20%;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  html.system {
+    --bg: #f4f5f1;
+    --surface: #ffffff;
+    --surface-2: #eceee8;
+    --surface-3: #e1e4dc;
+    --border: #dcdfd6;
+    --text: #0d0f12;
+    --muted: #5d6470;
+    --accent: #c8f000;
+    --accent-ink: #4a6300;
+    --accent-contrast: #0d0f12;
+    --accent-soft: rgb(200 240 0 / 0.22);
+    --ok: #0b6638;
+    --warn: #7d4700;
+    --bad: #a3261c;
+    --ok-soft: rgb(11 102 56 / 0.12);
+    --warn-soft: rgb(125 71 0 / 0.12);
+    --bad-soft: rgb(163 38 28 / 0.12);
+    --chart-1: #6f9400;
+    --chart-2: #0a8fc2;
+    --chart-3: #c22b98;
+    --chart-4: #d26a0c;
+    --chart-5: #5b4bd6;
+    --chart-grid: #e1e4dc;
+    --overlay: rgb(13 15 18 / 0.45);
+    --shadow-color: 220 15% 20%;
+    color-scheme: light;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad-soft: var(--bad-soft);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-grid: var(--chart-grid);
+  --color-overlay: var(--overlay);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Type scale: big confident numbers for stats, compact labels. */
+  --text-label: 0.75rem;
+  --text-label--line-height: 1rem;
+  --text-stat: 2rem;
+  --text-stat--line-height: 2.25rem;
+  --text-hero: 3.5rem;
+  --text-hero--line-height: 1;
+
+  --radius-control: 0.75rem;
+  --radius-card: 1.25rem;
+  --radius-sheet: 1.75rem;
+
+  --shadow-card: 0 1px 2px hsl(var(--shadow-color) / 0.12), 0 8px 24px -12px hsl(var(--shadow-color) / 0.25);
+  --shadow-float: 0 12px 40px -8px hsl(var(--shadow-color) / 0.45);
+
+  --spacing-touch: 2.75rem;
+  --spacing-tabbar: 4.5rem;
+}
+
+/*
+ * Domain colours that mean the same in both themes: competition plate colours (IWF) and one fixed
+ * colour per muscle, so week-to-week charts compare.
+ */
+:root {
+  --plate-red: #d32f2f;
+  --plate-red-edge: #8e1c1c;
+  --plate-blue: #1e5bd8;
+  --plate-blue-edge: #123a8c;
+  --plate-yellow: #f2c200;
+  --plate-yellow-edge: #9c7d00;
+  --plate-green: #2e8b3d;
+  --plate-green-edge: #1b5424;
+  --plate-white: #f5f5f5;
+  --plate-white-edge: #6b7280;
+  --plate-black: #1f1f1f;
+  --plate-black-edge: #000000;
+  --plate-silver: #b8bcc4;
+  --plate-silver-edge: #6b7280;
+  --plate-other: #9aa4b2;
+  --plate-other-edge: #5b6573;
+  --bar-sleeve: #9aa4b2;
+  --bar-shaft: #6b7280;
+  --muscle-chest: #3d7bff;
+  --muscle-back: #49d68f;
+  --muscle-shoulders: #ffb547;
+  --muscle-biceps: #9b8cff;
+  --muscle-triceps: #ff5fd2;
+  --muscle-forearms: #8e97a6;
+  --muscle-quads: #3ad4ff;
+  --muscle-hamstrings: #b4e83a;
+  --muscle-glutes: #ff8a3d;
+  --muscle-calves: #2fd1c1;
+  --muscle-core: #c77dff;
+}
+
+/* Motion durations (ms) for CSS; `lib/motion.ts` holds the same values for `motion`. */
+:root {
+  --duration-fast: 120ms;
+  --duration-base: 220ms;
+  --duration-slow: 420ms;
+}

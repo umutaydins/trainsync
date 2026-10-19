@@ -1,0 +1,200 @@
+{
+  "title": "İlerleme",
+  "loading": "İlerlemen yükleniyor",
+  "failed": "Bu bölüm yüklenemedi",
+  "vs": "önceki:",
+  "period": {
+    "label": "Dönem",
+    "short": { "week": "H", "month": "A", "3m": "3A", "6m": "6A", "year": "Y", "all": "Tümü", "custom": "Özel" },
+    "long": {
+      "week": "Bu hafta",
+      "month": "Bu ay",
+      "3m": "Son 3 ay",
+      "6m": "Son 6 ay",
+      "year": "Bu yıl",
+      "all": "Tüm zamanlar",
+      "custom": "Özel aralık"
+    },
+    "customTitle": "Özel aralık",
+    "customHint": "İlk ve son günü seç. Değişim, hemen öncesindeki aynı uzunluktaki dönemle karşılaştırılır.",
+    "close": "Kapat",
+    "from": "Başlangıç",
+    "to": "Bitiş",
+    "apply": "Bu aralığı göster",
+    "editRange": "Aralığı değiştir",
+    "errors": {
+      "missing": "İki günü de seç.",
+      "order": "İlk gün, son günden sonra olamaz."
+    }
+  },
+  "chart": { "showData": "Verileri göster" },
+  "volume": {
+    "title": "Hacim",
+    "metricLabel": "Hacim ölçüsü",
+    "metric": { "distance": "Mesafe", "tonnage": "Tonaj" },
+    "unit": { "distance": "km", "tonnage": "kg" },
+    "bucket": { "week": "{start} haftası", "month": "{start}" },
+    "empty": {
+      "distance": "Bu dönemde mesafe yok.",
+      "tonnage": "Bu dönemde ağırlık antrenmanı yok."
+    },
+    "summary": "{metric}: toplam {total} {unit}, {count} sütun.",
+    "columns": { "when": "Zaman" }
+  },
+  "weight": {
+    "title": "Kilo",
+    "empty": "Bu dönemde tartı kaydı yok.",
+    "summary": "Kilo: {count} tartım, {first} kg’dan {last} kg’a.",
+    "columns": { "day": "Gün", "weight": "Kilo (kg)", "average": "7 günlük ortalama (kg)" },
+    "tooltip": { "weight": "Tartım {value} kg", "average": "7 günlük ortalama {value} kg" },
+    "legend": { "weighIns": "Tartımlar", "average": "7 günlük ortalama" }
+  },
+  "kcal": {
+    "title": "Günlük enerji",
+    "empty": "Bu dönemde yemek kaydı yok.",
+    "summary": "{count} günde enerji kaydı var, kayıtlı gün başına ortalama {average} kcal.",
+    "summaryTarget": "{count} günde enerji kaydı var, kayıtlı gün başına ortalama {average} kcal; günlük hedef {target} kcal.",
+    "columns": { "day": "Gün", "kcal": "kcal" },
+    "notLogged": "Kayıt yok",
+    "value": "{value} kcal",
+    "target": "Hedef {value}"
+  },
+  "endurance": {
+    "title": "Dayanıklılık",
+    "empty": "Bu dönemde aktivite yok.",
+    "distance": "Mesafe",
+    "time": "Hareket süresi",
+    "elevation": "Tırmanış",
+    "count": "Aktivite",
+    "km": "km",
+    "hours": "sa",
+    "meters": "m",
+    "bpm": "atım/dk",
+    "pace": "Ort. tempo",
+    "speed": "Ort. hız",
+    "heartrate": "Ort. nabız",
+    "effort": { "perKm": "/km", "per100m": "/100 m", "kmh": "km/sa" },
+    "groups": { "run": "Koşu", "ride": "Bisiklet", "walk": "Yürüyüş", "swim": "Yüzme", "other": "Diğer" },
+    "group": "Spor",
+    "activities": "{count} aktivite",
+    "barsTitle": "Spora göre mesafe",
+    "barsSummary": "Spora göre mesafe: {groups}."
+  },
+  "strength": {
+    "title": "Kuvvet",
+    "empty": "Bu dönemde antrenman yok.",
+    "sessions": "Antrenman",
+    "tonnage": "Tonaj",
+    "kg": "kg",
+    "prs": "Rekor",
+    "sets": "Set",
+    "reps": "Tekrar",
+    "muscle": "Kas",
+    "setCount": "{count} set",
+    "musclesTitle": "Kasa göre set",
+    "musclesSummary": "Kasa göre set: {muscles}.",
+    "muscles": {
+      "chest": "Göğüs",
+      "back": "Sırt",
+      "shoulders": "Omuz",
+      "biceps": "Pazı",
+      "triceps": "Arka kol",
+      "forearms": "Ön kol",
+      "quads": "Ön bacak",
+      "hamstrings": "Arka bacak",
+      "glutes": "Kalça",
+      "calves": "Baldır",
+      "core": "Karın"
+    },
+    "adherence": "Programa uyum",
+    "adherenceLabel": "{program}: planlanan antrenmanların {value} kadarı yapıldı",
+    "adherenceSessions": "{planned} antrenmandan {done}",
+    "adherenceSets": "{planned} setten {done}"
+  },
+  "e1rm": {
+    "title": "Hareketler ve rekorlar",
+    "none": "Henüz hareket yok. Bir antrenman kaydet, rekorların burada görünsün.",
+    "pick": "Hareket",
+    "empty": "{lift} için henüz rekor yok.",
+    "summary": "{lift}: {count} rekor, en iyi tahmini 1RM {best} kg ({date}).",
+    "caption": "{lift} tahmini 1RM rekorları",
+    "columns": { "date": "Tarih", "e1rm": "e1RM (kg)", "previous": "Önceki (kg)" },
+    "first": "İlk rekor",
+    "tooltip": "e1RM {value} kg",
+    "beat": "{value} kg geçildi",
+    "best": "Dönemin en iyi e1RM’i",
+    "kg": "kg",
+    "sets": "Dönemdeki set"
+  },
+  "prs": {
+    "title": "Bu dönemde {count, plural, =0 {rekor yok} other {# rekor}}",
+    "empty": "Bu dönemde yeni rekor yok.",
+    "emptyAll": "Henüz rekor yok.",
+    "first": "ilk rekor",
+    "previous": "önceki {value} kg",
+    "kg": "kg"
+  },
+  "consistency": {
+    "title": "Süreklilik",
+    "activeDays": "Aktif gün",
+    "trainingStreak": "Antrenman serisi",
+    "weeks": "hafta",
+    "checkinStreak": "Check-in serisi",
+    "days": "gün",
+    "longest": "En uzun {value}",
+    "checkinRate": "Check-in oranı",
+    "sickDays": "{count} hasta gün"
+  },
+  "heatmap": {
+    "title": "Antrenman yılı",
+    "label": "{year} yılında günlük antrenman dakikaları",
+    "yearPicker": "Yıl",
+    "year": "{year} yılını göster",
+    "activeDays": "{count} gün antrenman",
+    "minutes": "{value} dk, {sessions} seans",
+    "rest": "antrenman yok",
+    "checkin": {
+      "done": "check-in tamam",
+      "partial": "check-in kısmen",
+      "skipped": "check-in atlandı",
+      "rest": "dinlenme günü",
+      "sick_or_injured": "hasta ya da sakat"
+    },
+    "less": "Az",
+    "more": "Çok"
+  },
+  "nutrition": {
+    "title": "Beslenme",
+    "empty": "Bu dönemde yemek kaydı yok.",
+    "avgKcal": "Ort. enerji",
+    "kcal": "kcal",
+    "target": "Hedef {value, number} kcal",
+    "noTarget": "Günlük hedef yok",
+    "protein": "Ort. protein",
+    "carbs": "Ort. karbonhidrat",
+    "fat": "Ort. yağ",
+    "grams": "g",
+    "sugarDays": "{limit, number} g şekerin üstündeki günler",
+    "loggingRate": "Kayıtlı günler"
+  },
+  "body": {
+    "title": "Vücut",
+    "empty": "Bu dönemde tartı kaydı yok.",
+    "last": "Kilo",
+    "kg": "kg",
+    "first": "Başlangıç {value, number} kg",
+    "change": "Değişim",
+    "average": "7 günlük ortalama",
+    "rate": "Haftalık",
+    "kgPerWeek": "kg/hf",
+    "bodyFat": "Yağ oranı",
+    "soon": "Yakında"
+  },
+  "fresh": {
+    "title": "Henüz burada bir şey yok",
+    "body": "Sayılacak bir şey olduğu anda ilerlemen dolmaya başlar. Şunlardan biriyle başla:",
+    "strava": "Strava’yı bağla",
+    "workout": "Antrenmana başla",
+    "food": "Yemek kaydet"
+  }
+}

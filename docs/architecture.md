@@ -47,10 +47,11 @@ periods with the ones before, in their own time zone (ADR 0038).
   (email + password), keeps the API session token sealed in an httpOnly AES-256-GCM cookie
   (`DASHBOARD_SESSION_SECRET`) and forwards allowlisted method + path combinations with it as
   `Authorization: Bearer` (reads, the account under `/v1/me`, owner-only `/v1/admin`, and
-  CSRF-checked JSON writes to training, nutrition and check-ins). It holds no API key (ADR 0011,
-  ADR 0034). Phase 6 pages:
-  `/training` (today, programs, the active-workout screen, history, progress) and `/nutrition`;
-  installable as a PWA without a service worker (ADR 0021).
+  CSRF-checked JSON writes to training, nutrition, check-ins and the account). It holds no API key
+  (ADR 0011, ADR 0034). Since P8.12–P8.17 a mobile-first app in Turkish and English (ADR 0039):
+  Today, Workout, Food, Progress and Me tabs, activities, sync, onboarding, legal pages and the
+  owner's admin; installable as a PWA with a shell-only service worker. Details in
+  [Web app](#web-app).
 - **fake_strava**: a small FastAPI app that mimics the endpoints we use, with configurable
   latency, error rate and rate-limit headers. Used for local dev, integration tests and load tests.
 
@@ -114,10 +115,72 @@ flowchart TB
 | `ops/` | backup CLI, retention, alert delivery | standard library only |
 
 Every module may import any module's `models.py` (tables are shared; `modules/models.py`
-imports them all for the metadata). Web (`web/src`): `app/` routes only, `features/<domain>/`
-(components, API calls, types), `lib/` (BFF client, generated API types, session, CSRF,
-config, formatting), `components/ui/`, `styles/`; ESLint keeps `lib/` and `components/ui/` from
-importing features or routes, and features from importing routes.
+imports them all for the metadata). The web app's layout and boundaries are in
+[Web app](#web-app).
+
+## Web app
+
+`web/` is a Next.js 16 app (App Router, React 19, server components first) and the only browser
+client (P8.12–P8.17, ADR 0039). It reads and writes only through the API, with the signed-in
+user's session token (ADR 0011, ADR 0034).
+
+### Folder map (`web/src`)
+
+| Folder | Holds |
+|---|---|
+| `app/` | routes only, each page a thin composition of a feature. Signed-in group `(app)/` (shell layout with sidebar and tab bar, `error.tsx`, `not-found.tsx`, a `template.tsx` for the CSS page entrance): `(today)/` → `/`, `training/` (start, `programs`, `workout/[id]`, `history`, `history/[id]`, `progress` (lifts), `checkins`), `nutrition`, `progress`, `me/` (hub, `profile`, `security`, `coach`, `connections`, `data`), `activities`, `activities/[id]`, `sync`, `onboarding`, `admin`. Public: `login`, `register`, `invite/[code]`, `forgot-password`, `reset-password` (`?token=` and `[token]`), `privacy`, `terms`, `offline`. Route handlers: `api/auth/{login,logout,register,registration,reset}`, `api/account` (+ `export`), `api/strava/connect`, `api/ts/[...path]` (the BFF), `api/health`, `api/backend-status`, `sw.js` (the service worker), `manifest.ts` |
+| `features/<domain>/` | components, loaders, API calls, hooks and types per domain: `activities`, `admin`, `auth`, `checkins`, `legal`, `nutrition`, `onboarding`, `progress`, `settings`, `shell` (sidebar, tab bar, nav, theme switch, link pending bar, service-worker registration, load-failed and last-synced states), `sync`, `today`, `training` |
+| `components/ui/` | shadcn-style primitives on Radix and vaul, copied into the repo, variants with `class-variance-authority`: `button`, `card`, `input`, `field`, `switch`, `segmented`, `tabs`, `dialog`, `sheet` (vaul drawer on phones, dialog on desktop), `confirm-sheet`, `dropdown-menu`, `badge`, `skeleton`, `stat`, `count-up`, `change` (▲▼), `progress-ring`, `toast`, `page-header`, `states` (empty / error) |
+| `i18n/` | `config.ts` (locales `en` / `tr`, the `lang` / `tz` cookie names, `Accept-Language` negotiation), `request.ts` (next-intl request config), `messages/{en,tr}/<namespace>.json` with the namespaces `common`, `nav`, `auth`, `onboarding`, `legal`, `settings`, `admin`, `progress`, `today`, `training`, `workout`, `checkins`, `nutrition`, `activities`, `sync` |
+| `styles/` | `tokens.css` (colour for dark and light, radius, spacing, type scale, shadows, motion durations as CSS variables, mapped into Tailwind v4 with `@theme inline`), `globals.css` |
+| `lib/` | BFF and server plumbing: `upstream.ts` (the one place that adds the Bearer token), `api.ts` (typed reads for server components), `bff-get.ts` / `mutate.ts` (client calls through the BFF), `session.ts` (sealed cookie), `csrf.ts`, `origins.ts`, `auth.ts`, `login-limit.ts`, `env.ts`, `preferences.ts` (the `lang` / `tz` cookies), `theme.ts`, `motion.ts`, `format.ts`, `time-zones.ts`, `sports.ts`, generated `api-types.ts` |
+| `proxy.ts` | the access gate: every non-public path needs a session cookie that opens; issues the CSRF cookie |
+
+### Boundaries
+
+ESLint (`web/eslint.config.mjs`, `make web-verify`) extends ADR 0033 to the web:
+`app → features → lib | components/ui | i18n`. `lib/` may not import `app`, `features` or
+`components`; `components/ui/` may not import `app` or `features`; `features/` may not import
+`app`; `i18n/` is a leaf (no `app`, `features`, `components` or `lib`). `styles/` holds only CSS.
+A design change is a token change: a test fails on any raw colour value outside the token files.
+
+### Language, time zone and theme
+
+- next-intl runs without locale routes. `i18n/request.ts` takes the locale from the `lang`
+  cookie, else the first supported language of `Accept-Language`, else `en`; the time zone from
+  the `tz` cookie, else `UTC`; and loads the 15 namespace files of that locale.
+- The BFF writes both cookies (path `/`, `SameSite=Lax`, one year, readable by the page):
+  right after sign-in and registration it reads `GET /v1/me/settings` (`lang`) and `GET /v1/me`
+  (`timezone`) with the new token, and every BFF answer of those two paths (also the `PATCH`
+  answers when the user changes them in Me or onboarding) refreshes them
+  (`lib/preferences.ts`). The next render is in the new language and zone; all dates and numbers
+  are formatted by next-intl in that language and zone (no fixed locale or zone left).
+- A test (`web/tests/i18n.test.ts`) fails when `en` and `tr` do not have the same keys.
+- The theme is a `theme` cookie (`system` default, `dark`, `light`) set by the theme switch; the
+  root layout puts it on `<html>` so the server renders the right theme without a flash.
+
+### Shell and PWA
+
+- Phones (< 768 px): a bottom tab bar with Today, Workout, Food, Progress, Me; desktop: a sidebar
+  that also lists Activities, Sync and, for the owner only, Admin (rendered only for the owner;
+  `/admin` is the not-found page for everyone else). Safe-area insets, 44 px touch targets.
+- The tab roots have no route-level `loading.tsx`, so their content is in the first HTML; a thin
+  pending bar on the nav links covers the time between a tap and the next page. Deeper pages keep
+  their skeletons.
+- Service worker (`/sw.js`, scope `/`, registered in production builds only): caches the shell
+  (`/offline`, the icon, the manifest) under a cache named after the build id, deletes older
+  caches on activation and shows `/offline` when a navigation fails. API calls and pages with
+  data are never cached.
+
+### Gate
+
+`make web-verify` (eslint with the boundaries, `tsc`, Vitest: BFF, gate, every primitive with
+role, keyboard and an axe render, pages, key parity, tokens; `next build` with canary secrets and
+the bundle secret scan) and `make web-e2e` (Playwright against the compose stack: accounts and
+onboarding, Strava and Today/Progress against the API, training and food, progress periods,
+settings, tenant isolation and Admin visibility, axe and no sideways scroll on every page in
+both themes). Lighthouse (mobile) on Today, Workout, Food and Progress: 91–98 performance, 100
+accessibility (P8.17, a manual run recorded in ADR 0039).
 
 ## Data model
 
@@ -385,7 +448,7 @@ The bot stays an API client (read and write, its service key acting as the linke
   (also `80x5,5,4` and `bw x12x3`, one parser in `modules/chat/parsing.py` shared with the check-in),
   `/done` (finish, summary with volume and records), `/eat <food> <grams>`, `/kcal`, `/weight 78.4`.
 - **Local day**: "today" is the linked user's day in their time zone (`users.timezone`; a new
-  account defaults to `CHECKIN_TZ`, `Europe/Istanbul`), not UTC:
+  account defaults to `CHECKIN_TZ`, UTC unless set), not the server's zone:
   `/log` adds to the open workout started on that day (or starts a free one), `/eat`, `/kcal` and
   `/weight` send that date explicitly. The meal is picked from the local hour.
 - **Idempotency**: client ids are `uuid5` of `tg:{chat}:{update_id}:{n}` (`/log` set n) and

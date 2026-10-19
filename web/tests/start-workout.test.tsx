@@ -1,9 +1,10 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StartWorkoutButton } from "@/features/training/components/start-workout";
 import type { MutationResult } from "@/lib/mutate";
 import type { WorkoutDetail } from "@/features/training/types";
+import { renderWithIntl } from "./support/intl";
 import { idSequence, workout } from "./support/training-fixtures";
 
 const push = vi.fn();
@@ -27,7 +28,7 @@ describe("start workout", () => {
   it("a double tap sends one PUT under one client id", async () => {
     let answer: (value: MutationResult<WorkoutDetail>) => void = () => undefined;
     const send = vi.fn<Send>(() => new Promise((resolve) => (answer = resolve)));
-    render(<StartWorkoutButton programDayId={11} label="Start Upper A" send={send} newId={idSequence()} />);
+    renderWithIntl(<StartWorkoutButton programDayId={11} label="Start Upper A" send={send} newId={idSequence()} />);
     const button = screen.getByRole("button", { name: "Start Upper A" });
 
     fireEvent.click(button);
@@ -45,11 +46,11 @@ describe("start workout", () => {
   it("a retry after a lost answer reuses the client id, so the API returns the same workout", async () => {
     const answers = [lost, { ...started, status: 200 }];
     const send = vi.fn<Send>(() => Promise.resolve(answers.shift()!));
-    render(<StartWorkoutButton label="Free workout" send={send} newId={idSequence()} />);
+    renderWithIntl(<StartWorkoutButton label="Free workout" send={send} newId={idSequence()} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Free workout" }));
     await flush();
-    expect(screen.getByRole("alert")).toHaveTextContent("Network error. Tap again to retry.");
+    expect(screen.getByRole("alert")).toHaveTextContent("No answer from the server. Tap again to retry.");
     expect(push).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Free workout" }));
@@ -60,10 +61,19 @@ describe("start workout", () => {
     expect(push).toHaveBeenCalledWith("/training/workout/77");
   });
 
+  it("a refusal says so in the user's language, without the API's text", async () => {
+    const send = vi.fn<Send>(() => Promise.resolve({ ok: false, status: 409, error: "conflict" }));
+    renderWithIntl(<StartWorkoutButton label="Başla" send={send} newId={idSequence()} />, "tr");
+    fireEvent.click(screen.getByRole("button", { name: "Başla" }));
+    await flush();
+    expect(screen.getByRole("alert")).toHaveTextContent("Antrenman başlatılamadı. Tekrar denemek için dokun.");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("conflict");
+  });
+
   it("each button keeps its own id", async () => {
     const send = vi.fn<Send>(() => Promise.resolve(started));
     const newId = idSequence();
-    render(
+    renderWithIntl(
       <>
         <StartWorkoutButton programDayId={11} label="Start A" send={send} newId={newId} />
         <StartWorkoutButton programDayId={12} label="Start B" send={send} newId={newId} />

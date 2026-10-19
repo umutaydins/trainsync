@@ -1,0 +1,116 @@
+{
+  "title": "Antrenman",
+  "loading": "Antrenman yükleniyor",
+  "loadFailed": "Bu antrenman yüklenemedi",
+  "empty": "Henüz hareket yok. Aşağıdan bir tane ekle.",
+  "addExercise": "Hareket ekle",
+  "finish": "Antrenmanı bitir",
+  "finishing": "Bitiriliyor…",
+  "finishFailed": "Antrenman bitirilemedi",
+  "pending": "{count} set hâlâ kaydedilmeyi bekliyor. Bağlantını kontrol edip tekrar dene.",
+  "offline": "Sunucu yanıt vermiyor. Setlerin bu telefonda duruyor; biraz sonra tekrar dene.",
+  "header": {
+    "time": "Süre",
+    "sets": "{count} set",
+    "queued": "{count} set gönderilmeyi bekliyor",
+    "screenOn": "Ekran açık kalıyor"
+  },
+  "exercise": {
+    "plan": "{sets} × {reps} · dinlenme {rest} sn",
+    "restOnly": "Dinlenme {rest} sn",
+    "suggested": "Önerilen",
+    "why": {
+      "start": "başlangıç ağırlığı",
+      "increase": "geçen sefer tüm tekrarlar tamam",
+      "hold": "geçen seferle aynı",
+      "deload": "iki kısa seanstan sonra biraz hafif"
+    },
+    "plates": "Plakalar",
+    "addSet": "Set ekle"
+  },
+  "set": {
+    "number": "{index}. set",
+    "last": "Geçen sefer {reps} × {weight}",
+    "lastNone": "Geçen sefer: yok",
+    "weight": "Ağırlık (kg)",
+    "reps": "Tekrar",
+    "kg": "kg",
+    "weightLabel": "Ağırlık (kg), {name} {index}. set",
+    "repsLabel": "Tekrar, {name} {index}. set",
+    "lessWeight": "Ağırlığı azalt, {name} {index}. set",
+    "moreWeight": "Ağırlığı artır, {name} {index}. set",
+    "fewerReps": "Tekrarı azalt, {name} {index}. set",
+    "moreReps": "Tekrarı artır, {name} {index}. set",
+    "log": "{name} {index}. seti kaydet",
+    "update": "{name} {index}. seti güncelle",
+    "done": "Set tamam",
+    "doneLabel": "Set tamam, {name} {index}. set",
+    "status": {
+      "saving": "Kaydediliyor…",
+      "saved": "Kaydedildi",
+      "queued": "Bu telefonda tutuldu, tekrar denenecek"
+    },
+    "errors": {
+      "reps": "Tekrar: 0 ile 100 arasında tam sayı.",
+      "weight": "Ağırlık: 0–500 kg, 0,25 kg adımlarla.",
+      "rejected": "Sunucu bu seti almadı. Sayıları kontrol edip tekrar dokun."
+    }
+  },
+  "rest": {
+    "title": "Dinlenme",
+    "label": "{exercise} · {index}. set",
+    "after": "{label} sonrası",
+    "over": "Dinlenme bitti",
+    "next": "Sırada: {label}",
+    "progress": "Geçen dinlenme",
+    "step": "{seconds} sn",
+    "less": "Dinlenmeyi {seconds} sn kısalt",
+    "more": "Dinlenmeyi {seconds} sn uzat",
+    "skip": "Geç",
+    "done": "Tamam",
+    "hide": "Sayacı küçült",
+    "show": "Dinlenme sayacını göster",
+    "notify": "Dinlenme bitince bildir"
+  },
+  "plates": {
+    "title": "{weight} için plakalar",
+    "loading": "Plakalar hesaplanıyor",
+    "failed": "Plakalar hesaplanamadı",
+    "eachSide": "Her tarafa",
+    "empty": "yok (boş bar)",
+    "barLabel": "{bar} bar, her tarafta {plates} kg",
+    "emptyBarLabel": "{bar} bar, plakasız",
+    "loaded": "Bar {bar} · toplam {loaded}",
+    "under": "{target} hedefinin {difference} altında",
+    "over": "{target} hedefinin {difference} üstünde",
+    "sideList": "Bir taraftaki plakalar",
+    "chip": "{weight} {color}",
+    "colors": {
+      "red": "kırmızı",
+      "blue": "mavi",
+      "yellow": "sarı",
+      "green": "yeşil",
+      "white": "beyaz",
+      "black": "siyah",
+      "silver": "gümüş",
+      "grey": "gri"
+    }
+  },
+  "summary": {
+    "done": "Antrenman tamam.",
+    "freeWorkout": "Serbest antrenman",
+    "duration": "Süre",
+    "inProgress": "devam ediyor",
+    "volume": "Hacim",
+    "sets": "Set",
+    "records": "Rekorlar ({count})",
+    "noRecords": "Bu sefer yeni rekor yok.",
+    "openHistory": "Geçmişte aç",
+    "back": "Antrenmana dön"
+  },
+  "sets": {
+    "title": "Setler",
+    "none": "Hiç set kaydedilmedi.",
+    "warmup": "ısınma"
+  }
+}

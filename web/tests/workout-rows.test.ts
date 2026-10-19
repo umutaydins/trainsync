@@ -38,7 +38,7 @@ describe("workout rows", () => {
     expect(rows[0]).toMatchObject({ status: "saved", reps: "9", weightKg: "80" });
     expect(rows[1]!.status).toBe("queued");
     const groups = groupRows(detail, rows, [], new Map([[BENCH.id, BENCH], [CURL.id, CURL]]));
-    expect(groups.map((g) => g.name)).toEqual(["Bench Press", "Dumbbell Curl", "Exercise 99"]);
+    expect(groups.map((g) => g.name)).toEqual(["Bench Press", "Dumbbell Curl", "#99"]);
     expect(loggedVolume(rows)).toBe(9 * 80 + 5 * 100);
   });
 
@@ -60,10 +60,10 @@ describe("workout rows", () => {
     expect(parseSet("8", "80")).toEqual({ ok: true, reps: 8, weightKg: 80 });
     expect(parseSet("8", "")).toEqual({ ok: true, reps: 8, weightKg: 0 });
     expect(parseSet("8", "2,25")).toEqual({ ok: true, reps: 8, weightKg: 2.25 });
-    expect(parseSet("", "80").ok).toBe(false);
+    expect(parseSet("", "80")).toEqual({ ok: false, error: "reps" });
     expect(parseSet("8.5", "80").ok).toBe(false);
     expect(parseSet("101", "80").ok).toBe(false);
-    expect(parseSet("8", "80.1").ok).toBe(false);
+    expect(parseSet("8", "80.1")).toEqual({ ok: false, error: "weight" });
     expect(parseSet("8", "501").ok).toBe(false);
   });
 });

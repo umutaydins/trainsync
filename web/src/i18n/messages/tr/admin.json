@@ -1,0 +1,51 @@
+{
+  "title": "Yönetim",
+  "subtitle": "Davetler ve hesaplar. Burada kimsenin antrenman verisini görmezsin.",
+  "loadFailed": "Yönetim sayfası yüklenemedi",
+  "copyFailed": "Kopyalanamadı. Bağlantıyı seçip elle kopyala.",
+  "invites": {
+    "title": "Davetler",
+    "body": "Bir davet bağlantısıyla tek bir kişi hesap açabilir. Bağlantı yalnızca bir kez gösterilir.",
+    "note": "Not (isteğe bağlı)",
+    "noteHint": "Kimin için olduğu; yalnızca sen görürsün.",
+    "create": "Davet oluştur",
+    "createFailed": "Davet oluşturulamadı. Tekrar dene.",
+    "createdTitle": "Davet oluşturuldu",
+    "createdBody": "Bağlantıyı şimdi kopyala: bir daha gösterilmez.",
+    "link": "Davet bağlantısı",
+    "empty": "Henüz davet yok",
+    "emptyBody": "Birini davet etmek için bir tane oluştur.",
+    "noNote": "Not yok",
+    "created": "Oluşturuldu: {date}",
+    "expires": "Son geçerlilik: {date}",
+    "usedOn": "Kullanıldı: {date}",
+    "revokedOn": "İptal edildi: {date}",
+    "status": {
+      "open": "Aktif",
+      "used": "Kullanıldı",
+      "expired": "Süresi doldu",
+      "revoked": "İptal edildi"
+    },
+    "revoke": "İptal et",
+    "revokeLabel": "{invite} davetini iptal et",
+    "revokeTitle": "Bu davet iptal edilsin mi?",
+    "revokeBody": "Bağlantı hemen geçersiz olur.",
+    "revoked": "Davet iptal edildi",
+    "revokeFailed": "Davet iptal edilemedi. Tekrar dene.",
+    "loadFailed": "Davetler yüklenemedi"
+  },
+  "users": {
+    "title": "Hesaplar",
+    "body": "Yalnızca hesap bilgileri. Şifresini unutan biri, sıfırlama bağlantısıyla yeni şifre belirleyebilir.",
+    "empty": "Hesap yok",
+    "owner": "Sahip",
+    "joined": "Katıldı: {date}",
+    "reset": "Sıfırlama bağlantısı",
+    "resetLabel": "{name} için şifre sıfırlama bağlantısı",
+    "resetFailed": "Sıfırlama bağlantısı oluşturulamadı. Tekrar dene.",
+    "linkTitle": "{name} için sıfırlama bağlantısı",
+    "linkBody": "{time} tarihine kadar, bir kez geçerli. Şimdi kopyala: bir daha gösterilmez.",
+    "link": "Sıfırlama bağlantısı",
+    "loadFailed": "Hesaplar yüklenemedi"
+  }
+}

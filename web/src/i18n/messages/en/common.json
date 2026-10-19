@@ -1,0 +1,60 @@
+{
+  "appName": "trainsync",
+  "actions": {
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "retry": "Try again",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "skip": "Skip",
+    "done": "Done",
+    "delete": "Delete",
+    "copy": "Copy",
+    "copied": "Copied",
+    "signOut": "Sign out",
+    "refresh": "Refresh",
+    "loadMore": "Load more",
+    "endOfList": "End of list",
+    "apply": "Apply",
+    "clear": "Clear"
+  },
+  "states": {
+    "loading": "Loading…",
+    "errorTitle": "Could not load this",
+    "emptyTitle": "Nothing here yet",
+    "notFoundTitle": "Page not found",
+    "notFoundBody": "It may have moved, or it belongs to someone else.",
+    "notFoundHome": "Back to Today",
+    "offlineTitle": "You are offline",
+    "offlineBody": "trainsync needs a connection for your data. Reconnect and try again.",
+    "backendDown": "The trainsync backend is not answering (the server may be asleep or offline). Your data is safe; try again in a few minutes.",
+    "backendDownTitle": "Backend unreachable"
+  },
+  "change": {
+    "up": "up {value}",
+    "down": "down {value}",
+    "same": "no change",
+    "vsPrevious": "vs previous period"
+  },
+  "theme": {
+    "label": "Theme",
+    "system": "System",
+    "dark": "Dark",
+    "light": "Light"
+  },
+  "units": {
+    "km": "{value} km",
+    "kg": "{value} kg",
+    "kcal": "{value} kcal",
+    "minutes": "{value} min",
+    "g": "{value} g",
+    "m": "{value} m",
+    "kmh": "{value} km/h",
+    "perKm": "{value} /km",
+    "per100m": "{value} /100 m",
+    "bpm": "{value} bpm"
+  },
+  "manifestDescription": "Training, food and progress, synced from Strava"
+}

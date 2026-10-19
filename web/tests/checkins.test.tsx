@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -9,7 +9,9 @@ import { CheckinDayEditor } from "@/features/checkins/components/day-editor";
 import { CheckinHeatmap } from "@/features/checkins/components/heatmap";
 import { CheckinTiles } from "@/features/checkins/components/tiles";
 import type { Checkin, CheckinStatus, CheckinSummary } from "@/features/checkins/checkins";
-import { dayLabel, formatAdherence, heatmapWeeks, plural } from "@/features/checkins/checkins";
+import { dayLabel, formatAdherence, heatmapWeeks, weekdayInitials } from "@/features/checkins/checkins";
+import { violations } from "./support/axe";
+import { renderWithIntl as render } from "./support/intl";
 
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
@@ -73,7 +75,7 @@ describe("check-in heatmap", () => {
   it("renders the hand-computed fixture: one cell per day, status by colour, glyph and label", () => {
     const { from, to, counts } = FULL_WEEKS;
     render(<CheckinHeatmap from={from} to={to} items={itemsIn(from, to)} selected="2026-10-12" />);
-    const table = screen.getByRole("table", { name: `Check-ins ${from} to ${to}` });
+    const table = screen.getByRole("table", { name: `Check-ins ${dayLabel("en", from)} to ${dayLabel("en", to)}` });
     const cells = within(table).getAllByRole("link");
     expect(cells).toHaveLength(21); // three full ISO weeks
     const byStatus: Record<string, number> = {};
@@ -82,13 +84,13 @@ describe("check-in heatmap", () => {
       byStatus[status] = (byStatus[status] ?? 0) + 1;
     }
     expect(byStatus).toEqual({ ...counts, none: 2 }); // 4 Oct and today (18 Oct) are empty
-    expect(screen.getByRole("link", { name: "Mon 5 Oct: Sick or injured" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Mon, Oct 5: Sick or injured" })).toHaveAttribute(
       "href",
       "?day=2026-10-05",
     );
-    expect(screen.getByRole("link", { name: "Sun 4 Oct: No check-in" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Fri 2 Oct: Partly" })).toHaveTextContent("½");
-    expect(screen.getByRole("link", { name: "Mon 12 Oct: Done" })).toHaveAttribute("aria-current", "date");
+    expect(screen.getByRole("link", { name: "Sun, Oct 4: No check-in" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Fri, Oct 2: Partly" })).toHaveTextContent("½");
+    expect(screen.getByRole("link", { name: "Mon, Oct 12: Done" })).toHaveAttribute("aria-current", "date");
     const legend = screen.getByRole("list", { name: "Legend" });
     expect(within(legend).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
       "✓Done",
@@ -113,20 +115,27 @@ describe("streak and adherence tiles", () => {
   it("show the fixture's numbers", () => {
     render(<CheckinTiles summary={summaryOf(FULL_WEEKS)} />);
     const tiles = screen.getByTestId("checkin-tiles");
-    expect(tiles).toHaveTextContent("Check-in streak13 dayslongest 16 days");
-    expect(tiles).toHaveTextContent("Adherence88%7 of 8 planned days");
+    expect(tiles).toHaveTextContent(/Check-in streak\s*13\s*days\s*longest 16 days/);
+    expect(tiles).toHaveTextContent(/Adherence\s*88%\s*7 of 8 planned days/);
   });
 
   it("say so when no program is active", () => {
     render(<CheckinTiles summary={{ ...summaryOf(FULL_WEEKS), adherence: null, planned_days: 0, current_streak: 1 }} />);
     expect(screen.getByTestId("checkin-tiles")).toHaveTextContent("Adherence—no active program");
-    expect(screen.getByTestId("checkin-tiles")).toHaveTextContent("1 day");
+    expect(screen.getByTestId("checkin-tiles")).toHaveTextContent(/streak\s*1\s*day(?!s)/);
   });
 
-  it("format helpers", () => {
-    expect(formatAdherence({ adherence: 0.625 })).toBe("63%");
-    expect(plural(1, "day")).toBe("1 day");
-    expect(dayLabel("2026-10-18")).toBe("Sun 18 Oct");
+  it("format helpers follow the language", () => {
+    expect(formatAdherence("en", { adherence: 0.625 })).toBe("63%");
+    expect(formatAdherence("tr", { adherence: 0.625 })).toBe("%63");
+    expect(dayLabel("en", "2026-10-18")).toBe("Sun, Oct 18");
+    expect(weekdayInitials("en")).toEqual(["M", "T", "W", "T", "F", "S", "S"]);
+  });
+
+  it("speak Turkish", () => {
+    render(<CheckinTiles summary={summaryOf(FULL_WEEKS)} />, "tr");
+    expect(screen.getByTestId("checkin-tiles")).toHaveTextContent("Kayıt serisi");
+    expect(screen.getByTestId("checkin-tiles")).toHaveTextContent("planlanan 8 günden 7");
   });
 });
 
@@ -135,7 +144,7 @@ describe("day editor", () => {
     const save = vi.fn().mockResolvedValue({ ok: true, status: 200, data: null });
     const existing = checkin("2026-10-14", "done", { workout_id: 42, energy_1_5: 4 });
     render(<CheckinDayEditor day="2026-10-14" checkin={existing} save={save} />);
-    expect(screen.getByRole("heading", { name: "Wed 14 Oct" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Wed, Oct 14" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Done" })).toBeChecked();
     await userEvent.click(screen.getByRole("radio", { name: "Partly" }));
     await userEvent.type(screen.getByLabelText("Sleep (h)"), "7,5");
@@ -166,5 +175,16 @@ describe("day editor", () => {
     await userEvent.clear(screen.getByLabelText("Scale (kg)"));
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Check the values.");
+  });
+});
+
+describe("check-ins accessibility", () => {
+  it("heatmap, tiles and editor have no axe violations", async () => {
+    const { from, to } = FULL_WEEKS;
+    expect(await violations(<CheckinHeatmap from={from} to={to} items={itemsIn(from, to)} selected="2026-10-12" />)).toEqual([]);
+    cleanup();
+    expect(await violations(<CheckinTiles summary={summaryOf(FULL_WEEKS)} />, "tr")).toEqual([]);
+    cleanup();
+    expect(await violations(<CheckinDayEditor day="2026-10-14" checkin={null} save={vi.fn()} />)).toEqual([]);
   });
 });

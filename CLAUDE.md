@@ -62,7 +62,9 @@ src/trainsync/
     demo/          #   read-only demo seed and reset
   ops/             # backup + retention + alerts, standard library only (backup image)
 web/src/           # Next.js: app/ (routes only), features/<domain>/, lib/ (BFF, generated
-                   # API types, session, config), components/ui/, styles/; ESLint boundaries
+                   # API types, session, preferences, config), components/ui/ (primitives),
+                   # i18n/ (next-intl; tr/en messages per feature), styles/ (design tokens);
+                   # ESLint boundaries
 fake_strava/       # standalone FastAPI app that imitates the Strava API (dev + tests + load tests)
 tests/{unit,integration}/<mirror of src/trainsync>/   tests/fault/ (end-to-end scenarios)
 config/            # messages.local.example.yaml (the real file is git-ignored)

@@ -1,91 +1,64 @@
 import { fileURLToPath } from "node:url";
 
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-import { formatCount, formatDuration, formatKm, formatMeters } from "@/lib/format";
-import type { StatsSummary, WeeklyStats } from "@/lib/types";
+import type { ProgressSummary } from "@/features/progress/types";
 
-const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
-const API_KEY = process.env.E2E_API_KEY ?? "dev-key-1";
-const EMAIL = process.env.E2E_EMAIL ?? "owner@example.com";
-const PASSWORD = process.env.E2E_PASSWORD ?? "dev-e2e-owner-password";
+import { API_KEY, DESKTOP, OWNER, apiGet, arrived, gotoReady, settled } from "./support";
 
 function screenshotPath(name: string): string {
   return fileURLToPath(new URL(`../../docs/img/${name}.png`, import.meta.url));
 }
 
-async function apiGet<T>(request: APIRequestContext, path: string, params: Record<string, string>): Promise<T> {
-  const response = await request.get(`${API_URL}${path}`, { params, headers: { "X-API-Key": API_KEY } });
-  expect(response.ok(), `${path} → ${response.status()}`).toBeTruthy();
-  return (await response.json()) as T;
-}
-
-async function tile(page: Page, label: string): Promise<string> {
-  const term = page.getByTestId("kpis").locator("dt", { hasText: label });
-  return (await term.locator("xpath=following-sibling::dd[1]").textContent()) ?? "";
-}
-
-test("log in, connect Strava, backfill, dashboard matches the API, activity, sync", async ({ page, request }) => {
-  await test.step("the dashboard needs a login", async () => {
-    await page.goto("/");
+test("log in, connect Strava, backfill, Today and Progress match the API, activity, sync", async ({ page, request }) => {
+  await test.step("Today needs a login", async () => {
+    await gotoReady(page, "/");
     await expect(page).toHaveURL(/\/login$/);
-    await page.getByLabel("Email").fill(EMAIL);
+    await page.getByLabel("Email").fill(OWNER.email);
     await page.getByLabel("Password").fill("wrong password");
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.locator("#login-error")).toHaveText("Wrong email or password.");
-    await page.getByLabel("Password").fill(PASSWORD);
+    await page.getByLabel("Password").fill(OWNER.password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await arrived(page, /\/$/);
+    await expect(page.getByTestId("today")).toBeVisible();
   });
 
   await test.step("connect Strava through the fake OAuth and land back on /sync", async () => {
-    await page.goto("/sync");
+    await gotoReady(page, "/sync");
     await page.getByRole("link", { name: "Connect Strava" }).click();
-    await expect(page).toHaveURL(/\/sync\?connected=1$/);
+    await arrived(page, /\/sync\?connected=1$/);
     await expect(page.getByText("Strava connected.")).toBeVisible();
   });
 
   await test.step("the backfill succeeds", async () => {
     await expect(async () => {
       await page.reload();
+      await settled(page);
       await expect(page.getByTestId("run-backfill")).toHaveAttribute("data-status", "succeeded", { timeout: 1000 });
     }).toPass({ timeout: 120_000, intervals: [2000] });
-    await expect(page.getByTestId("run-backfill").getByText("succeeded")).toBeVisible();
+    await expect(page.getByTestId("run-backfill").getByText("Succeeded")).toBeVisible();
   });
 
-  await test.step("dashboard KPIs equal /v1/stats/summary and the chart equals /v1/stats/weekly", async () => {
-    // The default range (last 12 weeks): fake_strava seeds the year before "now", so it has data.
-    await page.goto("/");
-    const kpis = page.getByTestId("kpis");
-    const range = {
-      from: (await kpis.getAttribute("data-from")) ?? "",
-      to: (await kpis.getAttribute("data-to")) ?? "",
-    };
-    expect(range.from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(range.to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  await test.step("Today greets the user; Progress equals /v1/stats/summary and follows the period", async () => {
+    await gotoReady(page, "/");
+    await expect(page.getByTestId("today")).toBeVisible();
+    await expect(page.getByTestId("today-activity")).toBeVisible();
 
-    const summary = await apiGet<StatsSummary>(request, "/v1/stats/summary", range);
-    expect(summary.totals.count).toBeGreaterThan(0);
-    expect(await tile(page, "Distance")).toBe(formatKm(summary.totals.distance_m, 1));
-    expect(await tile(page, "Moving time")).toBe(formatDuration(summary.totals.moving_time_s));
-    expect(await tile(page, "Elevation")).toBe(formatMeters(summary.totals.elevation_gain_m));
-    expect(await tile(page, "Activities")).toBe(formatCount(summary.totals.count));
+    // fake_strava seeds the year before "now", so all time has data.
+    await gotoReady(page, "/progress?period=all");
+    const summary = await apiGet<ProgressSummary>(request, "/v1/stats/summary", { period: "all" });
+    expect(summary.endurance.totals.count.value).toBeGreaterThan(0);
+    await expect(page.getByTestId("stat-activities")).toHaveAttribute("data-value", String(summary.endurance.totals.count.value));
+    await expect(page.getByTestId("volume-chart").locator(".recharts-bar-rectangle").first()).toBeVisible();
 
-    const weekly = await apiGet<WeeklyStats>(request, "/v1/stats/weekly", range);
-    const rows = page.getByTestId("weekly-table").locator("tbody tr");
-    await expect(rows).toHaveCount(weekly.weeks.length);
-    const shown = await rows.evaluateAll((trs) =>
-      trs.map((tr) => ({
-        week_start: tr.getAttribute("data-week"),
-        count: Number(tr.getAttribute("data-count")),
-        distance_m: Number(tr.getAttribute("data-distance")),
-      })),
-    );
-    expect(shown).toEqual(weekly.weeks.map((w) => ({ week_start: w.week_start, count: w.count, distance_m: w.distance_m })));
-    expect(weekly.weeks.reduce((sum, w) => sum + w.count, 0)).toBe(summary.totals.count);
+    await page.getByRole("radio", { name: "This week" }).click();
+    await expect(page).toHaveURL(/\/progress\?period=week$/);
+    const blocks = page.locator("[data-block]");
+    await expect(blocks.first()).toBeVisible();
+    for (const block of await blocks.all()) await expect(block).toHaveAttribute("data-period", "week");
 
-    await expect(page.getByTestId("weekly-chart").locator(".recharts-bar-rectangle").first()).toBeVisible();
+    await gotoReady(page, "/progress?period=all");
     await page.screenshot({ path: screenshotPath("dashboard"), fullPage: true });
     await page.emulateMedia({ colorScheme: "dark" });
     await page.waitForTimeout(400); // let colour transitions finish
@@ -95,11 +68,11 @@ test("log in, connect Strava, backfill, dashboard matches the API, activity, syn
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(400);
     await page.screenshot({ path: screenshotPath("dashboard-mobile"), fullPage: true });
-    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.setViewportSize(DESKTOP);
   });
 
   await test.step("activity list pages with Load more, then an activity opens", async () => {
-    await page.goto("/activities");
+    await gotoReady(page, "/activities");
     const rows = page.getByTestId("activity-table").locator("tbody tr");
     await expect(rows).toHaveCount(50);
     await expect(rows.first()).toBeVisible();
@@ -120,7 +93,7 @@ test("log in, connect Strava, backfill, dashboard matches the API, activity, syn
   });
 
   await test.step("the sync page shows the succeeded backfill", async () => {
-    await page.goto("/sync");
+    await gotoReady(page, "/sync");
     await expect(page.getByTestId("run-backfill")).toHaveAttribute("data-status", "succeeded");
     await expect(page.getByRole("progressbar", { name: "15 minutes" })).toBeVisible();
     await page.screenshot({ path: screenshotPath("sync"), fullPage: true });

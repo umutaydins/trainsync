@@ -21,6 +21,7 @@ from trainsync.modules.nutrition.sugar import counts_as_free_sugar
 
 API = "http://trainsync-api"
 LINKED_CHAT = 42
+OWNER_ZONE = "Europe/Istanbul"
 
 EXERCISES: list[dict[str, Any]] = [
     {
@@ -247,8 +248,11 @@ class FakeApi:
     next_workout_id: int = 100
     started: int = 0
     put_set_calls: int = 0
-    # Who the bot's chat belongs to (ADR 0036): the owner, with no settings of their own.
-    links: ChatLinksApi = field(default_factory=lambda: ChatLinksApi().link(LINKED_CHAT))
+    # Who the bot's chat belongs to (ADR 0036): the owner, with no settings of their own, in
+    # Istanbul (the server default zone is UTC; the meal and local-day tests need an offset).
+    links: ChatLinksApi = field(
+        default_factory=lambda: ChatLinksApi().link(LINKED_CHAT, timezone=OWNER_ZONE)
+    )
 
     # ---------------------------------------------------------------- builders
 

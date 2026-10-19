@@ -49,7 +49,9 @@ describe("account route handlers (P8.7)", () => {
   it("registers, then signs the new account in", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ id: 2, email: TEST_EMAIL }, 201))
-      .mockResolvedValueOnce(jsonResponse({ token: TEST_TOKEN, expires_at: "x", user: {} }));
+      .mockResolvedValueOnce(jsonResponse({ token: TEST_TOKEN, expires_at: "x", user: {} }))
+      .mockResolvedValueOnce(jsonResponse({ lang: "tr" }))
+      .mockResolvedValueOnce(jsonResponse({ timezone: "Europe/Istanbul" }));
     const body = {
       email: TEST_EMAIL,
       password: TEST_PASSWORD,
@@ -66,6 +68,9 @@ describe("account route handlers (P8.7)", () => {
     expect(created?.url).toBe("http://api.test:8000/v1/auth/register");
     expect(created?.body).toEqual({ email: TEST_EMAIL, password: TEST_PASSWORD, invite_code: "abc" });
     expect(signedIn?.url).toBe("http://api.test:8000/v1/auth/login");
+    // The new account's language and zone, for the first render (ADR 0039).
+    expect(response.cookies.get("lang")?.value).toBe("tr");
+    expect(response.cookies.get("tz")?.value).toBe("Europe/Istanbul");
   });
 
   it("passes the API's refusal on and refuses other origins", async () => {
@@ -112,6 +117,23 @@ describe("account route handlers (P8.7)", () => {
     expect(call?.auth).toBe(`Bearer ${TEST_TOKEN}`);
     const anonymous = await connect(new NextRequest(`${ORIGIN}/api/strava/connect`));
     expect(anonymous.headers.get("location")).toBe("/login");
+  });
+
+  it("returns Strava to an allowlisted page only", async () => {
+    fetchMock.mockImplementation(async () => jsonResponse({ url: "https://www.strava.com/oauth/authorize?x=1" }));
+    const at = (returnTo: string) =>
+      new NextRequest(`${ORIGIN}/api/strava/connect?return_to=${encodeURIComponent(returnTo)}`, {
+        headers: { cookie: sessionCookie() },
+      });
+    await connect(at("/onboarding"));
+    await connect(at("https://evil.example/x"));
+    await connect(at("/me/connections"));
+    const [onboarding, evil, settings] = calls();
+    expect(new URL(onboarding?.url ?? "").searchParams.get("return_to")).toBe("http://localhost:3000/onboarding");
+    expect(new URL(settings?.url ?? "").searchParams.get("return_to")).toBe("http://localhost:3000/me/connections");
+    expect(new URL(evil?.url ?? "").searchParams.get("return_to")).toBe("http://localhost:3000/sync");
+    fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "boom" }, 500));
+    expect((await connect(at("/onboarding"))).headers.get("location")).toBe("/onboarding");
   });
 
   it("deletes the account and ends the browser session", async () => {

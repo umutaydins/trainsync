@@ -1,17 +1,13 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TrainingTilesBlock, gymWeek } from "@/features/dashboard/components/training-tiles";
 import { HistoryList } from "@/features/training/components/history-list";
 import { PrBoard } from "@/features/training/components/pr-board";
 import { BodyWeightChart, ExerciseProgressChart, WeeklyMuscleChart, pivotWeeks } from "@/features/training/components/progress-charts";
 import { WorkoutSets } from "@/features/training/components/workout-sets";
-import { ApiError } from "@/lib/api";
-import { nutritionApi } from "@/features/nutrition/api";
-import { trainingApi } from "@/features/training/api";
 import type { CurrentRecord, ExerciseProgress, MuscleWeek, WorkoutSummary } from "@/features/training/types";
 import { jsonResponse } from "./support/env";
-import { daySummary } from "./support/nutrition-fixtures";
+import { renderWithIntl as render } from "./support/intl";
 import { BENCH, CURL, workout } from "./support/training-fixtures";
 
 const PROGRESS: ExerciseProgress = {
@@ -138,44 +134,5 @@ describe("workout history", () => {
     render(<WorkoutSets workout={detail} exercises={new Map([[BENCH.id, BENCH], [CURL.id, CURL]])} />);
     expect(screen.getByRole("region", { name: "Bench Press" })).toHaveTextContent("1,280 kg");
     expect(screen.getByRole("region", { name: "Dumbbell Curl" })).toHaveTextContent("12 × 12.5 kg");
-  });
-});
-
-describe("dashboard tiles", () => {
-  const w = (id: number, started: string, volume: number): WorkoutSummary => ({
-    id,
-    client_id: `00000000-0000-4000-8000-${String(id).padStart(12, "0")}`,
-    program_day_id: null,
-    program_day_name: null,
-    started_at: started,
-    ended_at: null,
-    notes: "",
-    set_count: 1,
-    exercise_count: 1,
-    volume_kg: volume,
-  });
-
-  it("count this ISO week's sessions and volume", () => {
-    const items = [w(3, "2026-10-18T17:00:00Z", 1000.5), w(2, "2026-10-12T06:00:00Z", 2000), w(1, "2026-10-11T23:59:00Z", 5000)];
-    expect(gymWeek(items, "2026-10-18")).toEqual({ sessions: 2, volumeKg: 3000.5 });
-  });
-
-  it("show the gym week and today's intake from the API", async () => {
-    vi.spyOn(trainingApi, "workouts").mockResolvedValue({ items: [w(3, "2026-10-18T17:00:00Z", 4120)], next_cursor: null });
-    vi.spyOn(nutritionApi, "summary").mockResolvedValue(daySummary());
-    render(await TrainingTilesBlock({ now: new Date("2026-10-18T20:00:00Z") }));
-    expect(nutritionApi.summary).toHaveBeenCalledWith("2026-10-18");
-    expect(screen.getByTestId("tile-gym")).toHaveTextContent("1 session");
-    expect(screen.getByTestId("tile-gym")).toHaveTextContent("4,120 kg lifted");
-    expect(screen.getByTestId("tile-intake")).toHaveTextContent("1,890 kcal");
-    expect(screen.getByTestId("tile-intake")).toHaveTextContent("6 entries · target 2,400 kcal");
-  });
-
-  it("degrade per tile when a call fails", async () => {
-    vi.spyOn(trainingApi, "workouts").mockRejectedValue(new ApiError(502, "down"));
-    vi.spyOn(nutritionApi, "summary").mockResolvedValue(daySummary());
-    render(await TrainingTilesBlock({ now: new Date("2026-10-18T20:00:00Z") }));
-    expect(screen.getByTestId("tile-gym")).toHaveTextContent("could not load workouts");
-    expect(screen.getByTestId("tile-intake")).toHaveTextContent("1,890 kcal");
   });
 });
