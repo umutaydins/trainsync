@@ -2,16 +2,8 @@ import "server-only";
 
 import { cache } from "react";
 
-import { ApiError } from "@/lib/api";
 import type { Checkin, CheckinList, CheckinSummary } from "@/features/checkins/checkins";
-import { toSearchParams } from "@/lib/types";
-import { upstreamGet } from "@/lib/upstream";
-
-async function getJson<T>(path: string, query: object = {}): Promise<T> {
-  const result = await upstreamGet(path, toSearchParams(query));
-  if (!result.ok) throw new ApiError(result.status, result.error);
-  return result.data as T;
-}
+import { ApiError, getJson } from "@/lib/api";
 
 /** Server-side reads of `/v1/checkins` (P6.9); writes go through the BFF from the browser. */
 export const checkinsApi = {

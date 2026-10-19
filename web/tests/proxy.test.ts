@@ -4,8 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { proxy } from "@/proxy";
 import { CSRF_COOKIE } from "@/lib/csrf-cookie";
-import { SESSION_COOKIE, createSessionToken } from "@/lib/session";
+import { SESSION_COOKIE, sealSession } from "@/lib/session";
 import { TEST_SECRET, stubServerEnv } from "./support/env";
+
+/** A sealed session cookie value that expires an hour after `issued`. */
+function sealed(issued: Date): string {
+  return sealSession({ token: "t", expiresAt: Math.floor(issued.getTime() / 1000) + 3600 }, TEST_SECRET);
+}
 
 function request(path: string, cookie?: string, extraCookie = ""): NextRequest {
   const parts = [cookie ? `${SESSION_COOKIE}=${cookie}` : "", extraCookie].filter(Boolean);
@@ -40,24 +45,35 @@ describe("access gate", () => {
   });
 
   it("rejects a forged or expired cookie", () => {
-    expect(proxy(request("/", "4102444800.forgedforgedforgedforgedforgedforgedforged1")).status).toBe(307);
-    const expired = createSessionToken(TEST_SECRET, new Date("2020-01-01T00:00:00Z"));
+    expect(proxy(request("/", "v2.forged.forgedforgedforgedforgedforged")).status).toBe(307);
+    const expired = sealed(new Date("2020-01-01T00:00:00Z"));
+    const otherSecret = sealSession({ token: "t", expiresAt: 4102444800 }, "x".repeat(40));
+    expect(proxy(request("/", otherSecret)).status).toBe(307);
     expect(proxy(request("/", expired)).status).toBe(307);
   });
 
-  it.each(["/login", "/api/auth/login", "/api/health"])("lets %s through", (path) => {
+  it.each([
+    "/login",
+    "/register",
+    "/reset-password",
+    "/api/auth/login",
+    "/api/auth/register",
+    "/api/auth/registration",
+    "/api/auth/reset",
+    "/api/health",
+  ])("lets %s through", (path) => {
     expect(proxy(request(path)).headers.get("x-middleware-next")).toBe("1");
   });
 
   it("lets a valid session through", () => {
-    const token = createSessionToken(TEST_SECRET, new Date());
+    const token = sealed(new Date());
     for (const path of ["/", "/sync", "/api/ts/v1/sync/status"]) {
       expect(proxy(request(path, token)).headers.get("x-middleware-next")).toBe("1");
     }
   });
 
   it("issues a CSRF cookie to a signed-in request that has none", () => {
-    const token = createSessionToken(TEST_SECRET, new Date());
+    const token = sealed(new Date());
     const response = proxy(request("/training", token));
     expect(response.headers.get("x-middleware-next")).toBe("1");
     const csrf = response.cookies.get(CSRF_COOKIE);
@@ -69,7 +85,7 @@ describe("access gate", () => {
   });
 
   it("keeps an existing CSRF cookie and replaces a malformed one", () => {
-    const token = createSessionToken(TEST_SECRET, new Date());
+    const token = sealed(new Date());
     const existing = `${CSRF_COOKIE}=${"k".repeat(43)}`;
     expect(proxy(request("/", token, existing)).cookies.get(CSRF_COOKIE)).toBeUndefined();
     const fixed = proxy(request("/", token, `${CSRF_COOKIE}=bad`)).cookies.get(CSRF_COOKIE);
@@ -78,7 +94,7 @@ describe("access gate", () => {
 
   it("marks the CSRF cookie secure in production", () => {
     vi.stubEnv("NODE_ENV", "production");
-    const token = createSessionToken(TEST_SECRET, new Date());
+    const token = sealed(new Date());
     expect(proxy(request("/", token)).cookies.get(CSRF_COOKIE)?.secure).toBe(true);
   });
 

@@ -1,60 +1,66 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { createCsrfToken, setCsrfCookie } from "@/lib/csrf";
-import { serverEnv } from "@/lib/env";
+import { startSession } from "@/lib/auth";
 import { clientIp, loginLimiter } from "@/lib/login-limit";
-import {
-  SESSION_COOKIE,
-  SESSION_MAX_AGE_S,
-  createSessionToken,
-  passwordMatches,
-  safeNextPath,
-  seeOther,
-} from "@/lib/session";
+import { safeNextPath, seeOther } from "@/lib/session";
+import { authRequest } from "@/lib/upstream";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Form or JSON body `{password, next?}`. 303 to `next` with a session cookie, or 401.
- * 429 with `Retry-After` after LOGIN_MAX_FAILURES failures from one address in LOGIN_WINDOW_MS,
- * even for the right password, so a blocked address cannot keep guessing.
+ * Form or JSON body `{email, password, next?}`, checked by the API (`POST /v1/auth/login`). 303 to
+ * `next` with the session cookie, or the API's 401 / 429. This BFF also limits failures per
+ * browser address (LOGIN_MAX_FAILURES in LOGIN_WINDOW_MS) in front of the API's own limits,
+ * because the API only sees the BFF's address.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const ip = clientIp(request.headers);
   const retryAfter = loginLimiter.retryAfterS(ip);
-  if (retryAfter !== null) {
-    return NextResponse.json(
-      { error: "too many failed attempts" },
-      { status: 429, headers: { "Retry-After": String(retryAfter) } },
-    );
-  }
-  const { password, next } = await readCredentials(request);
-  const env = serverEnv();
-  if (!passwordMatches(password, env.dashboardPassword)) {
-    loginLimiter.recordFailure(ip);
-    return NextResponse.json({ error: "wrong password" }, { status: 401 });
+  if (retryAfter !== null) return tooMany(String(retryAfter));
+  const { email, password, next } = await readCredentials(request);
+  const result = await authRequest(
+    "POST",
+    "/v1/auth/login",
+    JSON.stringify({ email, password }),
+    { "User-Agent": request.headers.get("user-agent") ?? "" },
+  );
+  if (!result.ok) {
+    if (result.status === 401) loginLimiter.recordFailure(ip);
+    if (result.status === 429) return tooMany(result.retryAfter ?? "900");
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
   loginLimiter.reset(ip);
+  const token = (result.data as { token?: unknown }).token;
+  if (typeof token !== "string") return NextResponse.json({ error: "sign-in failed" }, { status: 502 });
   const response = new NextResponse(null, seeOther(safeNextPath(next)));
-  response.cookies.set(SESSION_COOKIE, createSessionToken(env.sessionSecret, new Date()), {
-    httpOnly: true,
-    secure: env.cookieSecure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_MAX_AGE_S,
-  });
-  // A fresh CSRF token per session; proxy.ts re-issues it if the cookie goes missing.
-  setCsrfCookie(response, createCsrfToken(), env.cookieSecure);
+  startSession(response, token);
   return response;
 }
 
-async function readCredentials(request: NextRequest): Promise<{ password: string; next: string }> {
+function tooMany(retryAfter: string): NextResponse {
+  return NextResponse.json(
+    { error: "too many failed attempts" },
+    { status: 429, headers: { "Retry-After": retryAfter } },
+  );
+}
+
+async function readCredentials(
+  request: NextRequest,
+): Promise<{ email: string; password: string; next: string }> {
   const type = request.headers.get("content-type") ?? "";
   if (type.includes("application/json")) {
     const body: unknown = await request.json().catch(() => ({}));
     const record = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
-    return { password: String(record.password ?? ""), next: String(record.next ?? "/") };
+    return {
+      email: String(record.email ?? ""),
+      password: String(record.password ?? ""),
+      next: String(record.next ?? "/"),
+    };
   }
   const form = await request.formData().catch(() => new FormData());
-  return { password: String(form.get("password") ?? ""), next: String(form.get("next") ?? "/") };
+  return {
+    email: String(form.get("email") ?? ""),
+    password: String(form.get("password") ?? ""),
+    next: String(form.get("next") ?? "/"),
+  };
 }

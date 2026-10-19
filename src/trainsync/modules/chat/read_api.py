@@ -1,7 +1,8 @@
 """Client for trainsync's own API (`/v1`), used by the bot and the assistant.
 
 The bot never touches the database: it reads and writes through the same HTTP API as every other
-client, with an API key, and parses responses with the API's own response models. Writes are
+client, with its service key, and parses responses with the API's own response models. Inside
+`using_user()` (the chat's linked user, ADR 0036) every call carries `X-Acting-User`. Writes are
 idempotent `PUT`s keyed by client ids the bot derives from the Telegram update (ADR 0017), so a
 retried request or a redelivered update stores one row.
 """
@@ -15,10 +16,12 @@ import httpx
 from pydantic import BaseModel, SecretStr
 
 from trainsync.modules.activities.router import ActivityDetail, ActivityPage
-from trainsync.modules.chat.router import ChatSettingsIn, ChatSettingsOut
+from trainsync.modules.chat.router import ChatOwner, LinkIn
 from trainsync.modules.checkin.router import CheckinIn, CheckinOut, CheckinSummary
+from trainsync.modules.coach.mode import CURRENT_USER
 from trainsync.modules.nutrition.router import DaySummary, FoodList, FoodLookup, LogIn, LogOut
-from trainsync.modules.stats.router import StatsSummary, WeeklyStats
+from trainsync.modules.stats.periods import Period
+from trainsync.modules.stats.totals import ActivitySummary, StatsSummary, WeeklyStats
 from trainsync.modules.sync.router import SyncStatusOut
 from trainsync.modules.training.routes.exercises import ExerciseList
 from trainsync.modules.training.routes.next_day import NextDay
@@ -26,6 +29,11 @@ from trainsync.modules.training.routes.planning import PlatesOut
 from trainsync.modules.training.routes.progress import BodyMetricIn, BodyMetricOut
 from trainsync.modules.training.routes.workouts import SetIn, WorkoutDetail, WorkoutPage
 from trainsync.modules.training.schemas import SetOut
+from trainsync.modules.users.schemas import SettingsOut, SettingsPatch
+
+ACTING_USER_HEADER = "X-Acting-User"
+HTTP_BAD_REQUEST = 400
+HTTP_NOT_FOUND = 404
 
 
 class ReadApiError(Exception):
@@ -46,9 +54,15 @@ class ReadApi:
 
     # ---------------------------------------------------------------- activities and stats
 
-    async def summary(self, start: date, end: date, sport_type: str | None = None) -> StatsSummary:
+    async def summary(
+        self, start: date, end: date, sport_type: str | None = None
+    ) -> ActivitySummary:
         params = _params(start=start, end=end, sport_type=sport_type)
-        return await self._get("/v1/stats/summary", params, StatsSummary)
+        return await self._get("/v1/stats/summary", params, ActivitySummary)
+
+    async def progress(self, period: Period) -> StatsSummary:
+        """The progress summary of the acting user (P8.11)."""
+        return await self._get("/v1/stats/summary", {"period": period.value}, StatsSummary)
 
     async def weekly(self, start: date, end: date, sport_type: str | None = None) -> WeeklyStats:
         params = _params(start=start, end=end, sport_type=sport_type)
@@ -145,48 +159,74 @@ class ReadApi:
 
     # ---------------------------------------------------------------- transport
 
-    # ---------------------------------------------------------------- chat settings (P6.12)
+    # ---------------------------------------------------------------- chats and settings (P8.4)
 
-    async def chat_settings(self, chat_id: int) -> ChatSettingsOut:
-        return await self._get(f"/v1/chats/{chat_id}/settings", {}, ChatSettingsOut)
+    async def chat_owner(self, chat_id: int) -> ChatOwner | None:
+        """The linked user of a chat, or None when the chat is not linked."""
+        try:
+            return await self._get(f"/v1/telegram/chats/{chat_id}", {}, ChatOwner)
+        except ReadApiError as exc:
+            if exc.status == HTTP_NOT_FOUND:
+                return None
+            raise
 
-    async def put_chat_settings(self, chat_id: int, body: ChatSettingsIn) -> ChatSettingsOut:
-        path = f"/v1/chats/{chat_id}/settings"
-        body_json = body.model_dump(mode="json", exclude_none=True)
-        return await self._send("PUT", path, body_json, ChatSettingsOut)
+    async def link_chat(self, chat_id: int, code: str) -> ChatOwner | None:
+        """None when the code is unknown, used or expired."""
+        body = LinkIn(code=code).model_dump(mode="json")
+        try:
+            return await self._send("POST", f"/v1/telegram/chats/{chat_id}/link", body, ChatOwner)
+        except ReadApiError as exc:
+            if exc.status == HTTP_BAD_REQUEST:
+                return None
+            raise
+
+    async def unlink_chat(self, chat_id: int) -> None:
+        await self._request("DELETE", f"/v1/telegram/chats/{chat_id}")
+
+    async def patch_settings(self, body: SettingsPatch) -> SettingsOut:
+        changes = body.model_dump(mode="json", exclude_unset=True)
+        return await self._send("PATCH", "/v1/me/settings", changes, SettingsOut)
 
     async def _get[M: BaseModel](self, path: str, params: dict[str, Any], model: type[M]) -> M:
-        return await self._request("GET", path, model, params=params)
+        response = await self._request("GET", path, params=params)
+        return model.model_validate(response.json())
 
     async def _send[M: BaseModel](
         self, method: str, path: str, body: dict[str, Any], model: type[M]
     ) -> M:
-        return await self._request(method, path, model, body=body)
+        response = await self._request(method, path, body=body)
+        return model.model_validate(response.json())
 
-    async def _request[M: BaseModel](
+    def _headers(self) -> dict[str, str]:
+        headers = {"X-API-Key": self._api_key.get_secret_value()}
+        user = CURRENT_USER.get()
+        if user is not None:
+            headers[ACTING_USER_HEADER] = str(user)
+        return headers
+
+    async def _request(
         self,
         method: str,
         path: str,
-        model: type[M],
         *,
         params: dict[str, Any] | None = None,
         body: dict[str, Any] | None = None,
-    ) -> M:
+    ) -> httpx.Response:
         try:
             response = await self._http.request(
                 method,
                 f"{self._base_url}{path}",
                 params=params,
                 json=body,
-                headers={"X-API-Key": self._api_key.get_secret_value()},
+                headers=self._headers(),
             )
         except httpx.HTTPError as exc:
             raise ReadApiError(f"{method} {path}: {type(exc).__name__}") from None
-        if response.status_code not in (200, 201):
+        if response.status_code not in (200, 201, 204):
             raise ReadApiError(
                 f"{method} {path}: HTTP {response.status_code}", response.status_code
             )
-        return model.model_validate(response.json())
+        return response
 
 
 def _params(

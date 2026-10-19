@@ -117,9 +117,7 @@ public-check: ## From outside: TLS, allowlisted routes forwarded, the rest 404 (
 
 # Dummy secrets for the build: after `pnpm build`, check-bundle fails if any of them shows up in a
 # browser-served file (.next/static, public/).
-WEB_CANARY_ENV := TRAINSYNC_API_KEY=web-verify-canary-api-key-3f9a1c \
-	DASHBOARD_PASSWORD=web-verify-canary-password-8d2e \
-	DASHBOARD_SESSION_SECRET=web-verify-canary-session-secret-5b7c0e2a4d6f8a1c
+WEB_CANARY_ENV := DASHBOARD_SESSION_SECRET=web-verify-canary-session-secret-5b7c0e2a4d6f8a1c
 
 web-verify: ## Web: install (locked) + lint + typecheck + unit tests + build + no-secret-in-bundle check
 	cd web && pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test \

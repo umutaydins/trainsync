@@ -6,11 +6,12 @@ from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, HTTPException, Path, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from trainsync.core.deps import ClockDep, SessionmakerDep, require_api_key
+from trainsync.core.deps import ClockDep, SessionmakerDep
 from trainsync.core.errors import UNAUTHORIZED, error
+from trainsync.modules.auth.dependencies import CurrentUser
 from trainsync.modules.training.math import (
     PersonalRecord,
     PrKind,
@@ -38,9 +39,7 @@ from trainsync.modules.training.schemas import (
     entry,
 )
 
-router = APIRouter(
-    prefix="/v1/training", tags=["training"], dependencies=[Depends(require_api_key)]
-)
+router = APIRouter(prefix="/v1/training", tags=["training"])
 
 DEFAULT_WEEKS = 12
 BAD_RANGE = error("`to` before `from`", "`to` is before `from`")
@@ -189,6 +188,7 @@ def _by_workout(rows: list[tuple[Workout, WorkoutSet]]) -> list[tuple[Workout, l
     },
 )
 async def exercise_progress(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     exercise_id: Annotated[int, Path(examples=[20])],
     start: Annotated[date | None, Query(alias="from", examples=["2026-07-01"])] = None,
@@ -196,10 +196,10 @@ async def exercise_progress(
 ) -> ExerciseProgress:
     check_range(start, end)
     async with sessionmaker() as session:
-        exercise = await ExerciseRepository(session).get(exercise_id)
+        exercise = await ExerciseRepository(session, principal.user_id).get(exercise_id)
         if exercise is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "exercise not found")
-        rows = await WorkoutRepository(session).exercise_history(
+        rows = await WorkoutRepository(session, principal.user_id).exercise_history(
             [exercise_id], since=_day_start(start), before=_day_end(end)
         )
     return ExerciseProgress(
@@ -229,6 +229,7 @@ async def exercise_progress(
     responses={**UNAUTHORIZED, 400: BAD_RANGE},
 )
 async def weekly_volume(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     clock: ClockDep,
     start: Annotated[date | None, Query(alias="from", examples=["2026-09-01"])] = None,
@@ -238,10 +239,10 @@ async def weekly_volume(
     start = start or end - timedelta(weeks=DEFAULT_WEEKS)
     check_range(start, end)
     async with sessionmaker() as session:
-        rows = await WorkoutRepository(session).exercise_history(
+        rows = await WorkoutRepository(session, principal.user_id).exercise_history(
             None, since=_day_start(start), before=_day_end(end)
         )
-        exercises = await ExerciseRepository(session).by_ids(
+        exercises = await ExerciseRepository(session, principal.user_id).by_ids(
             sorted({s.exercise_id for _, s in rows})
         )
     weeks = weekly_muscle_volume(
@@ -282,17 +283,20 @@ def current_records(
     responses={**UNAUTHORIZED},
 )
 async def personal_records(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     exercise_id: Annotated[int | None, Query(description="Only this exercise")] = None,
 ) -> RecordList:
     async with sessionmaker() as session:
-        rows = await WorkoutRepository(session).exercise_history(
+        rows = await WorkoutRepository(session, principal.user_id).exercise_history(
             [exercise_id] if exercise_id is not None else None
         )
         names = {
             i: e.name
             for i, e in (
-                await ExerciseRepository(session).by_ids(sorted({s.exercise_id for _, s in rows}))
+                await ExerciseRepository(session, principal.user_id).by_ids(
+                    sorted({s.exercise_id for _, s in rows})
+                )
             ).items()
         }
     records = sorted(
@@ -319,12 +323,13 @@ async def personal_records(
     responses={**UNAUTHORIZED},
 )
 async def put_body_metric(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     day: Annotated[date, Path(examples=["2026-10-18"])],
     body: BodyMetricIn,
 ) -> BodyMetricOut:
     async with sessionmaker.begin() as session:
-        row = await BodyMetricRepository(session).put(day, body.weight_kg)
+        row = await BodyMetricRepository(session, principal.user_id).put(day, body.weight_kg)
         return BodyMetricOut(date=row.date, weight_kg=row.weight_kg)
 
 
@@ -336,11 +341,12 @@ async def put_body_metric(
     responses={**UNAUTHORIZED, 400: BAD_RANGE},
 )
 async def list_body_metrics(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     start: Annotated[date | None, Query(alias="from", examples=["2026-09-01"])] = None,
     end: Annotated[date | None, Query(alias="to", examples=["2026-10-31"])] = None,
 ) -> BodyMetricList:
     check_range(start, end)
     async with sessionmaker() as session:
-        rows = await BodyMetricRepository(session).between(start, end)
+        rows = await BodyMetricRepository(session, principal.user_id).between(start, end)
     return BodyMetricList(items=[BodyMetricOut(date=r.date, weight_kg=r.weight_kg) for r in rows])

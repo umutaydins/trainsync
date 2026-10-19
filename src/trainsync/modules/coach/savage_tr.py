@@ -17,8 +17,10 @@ from collections.abc import Mapping
 
 from trainsync.modules.coach.categories import Category
 from trainsync.modules.coach.punchlines import MAX_PUNCHLINES, PUNCHLINES
+from trainsync.modules.coach.savage_progress import TR_LINES, TR_MAX
 
 LINES: Mapping[Category, tuple[str, ...]] = {
+    **TR_LINES,
     Category.EXCUSE: (
         "Canın istemiyor mu? Amına koyayım, canının istemesini bekleyen hiçbir şey kaldırmadı.",
         '"Yarın" dediğin gün hiç gelmedi lan. Bugün kalkıyorsun.',
@@ -156,6 +158,7 @@ LINES: Mapping[Category, tuple[str, ...]] = {
 # Profanity `max` (ADR 0032): every category, at least as many lines as its roast pool, every
 # line swears; `max_opener` goes in front of every other savage message.
 MAX: Mapping[Category, tuple[str, ...]] = {
+    **TR_MAX,
     Category.EXCUSE: (
         "Amına koyayım, yine mi bahane? Kalk lan, ayakkabıyı giy.",
         "Canın istemiyor mu? Siktir et canını, çantanı al.",

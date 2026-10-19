@@ -22,7 +22,8 @@ PACK = MessagePack(
             "Koç burada. Komutlar var, bahane yok.\n"
             "/week: bu hafta ve geçen hafta\n"
             "/last: son aktivite\n"
-            "/stats [4w|12w|52w] [spor]: toplamlar ve en iyi hafta, ör. /stats 12w run\n"
+            "/stats [week|month|3m|6m|year|all]: önceki döneme göre ilerleme\n"
+            "/stats 12w run: toplamlar ve en iyi hafta (4w|12w|52w, her spor)\n"
             "/status: senkron durumu\n"
             "/today: bugünkü planlı antrenman\n"
             "/log bench 80x5x3: set kaydet (80x5,5,4 ya da bw x12x3 de olur)\n"
@@ -35,7 +36,10 @@ PACK = MessagePack(
         ),
         Key.NO_ASSISTANT: ("Sohbet yok, sadece komut.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("/{command} diye bir şey yok lan. Gerçek komutlar: /help",),
-        Key.USAGE_STATS: ("Yanlış. Kullanım: /stats [4w|12w|52w] [spor], ör. /stats 12w run",),
+        Key.USAGE_STATS: (
+            "Yanlış. Kullanım: /stats [week|month|3m|6m|year|all] ya da /stats "
+            "[4w|12w|52w] [spor], ör. /stats month",
+        ),
         Key.API_DOWN: (
             "trainsync API'ye ulaşamıyorum. Bu sefer suç sende değil. Bir dakika sonra dene.",
             "API çöktü ulan. Sen o arada koş. Bir dakika sonra dene.",
@@ -81,6 +85,24 @@ PACK = MessagePack(
         Key.STATS_NONE: ("Bu aralıkta hiçbir şey yok lan.",),
         Key.STATS_BEST_WEEK: ("En iyi hafta: {day} · {distance} · {time}. Geç onu.",),
         Key.STATS_LONGEST: NEUTRAL.texts[Key.STATS_LONGEST],
+        Key.PROGRESS_TITLE: NEUTRAL.texts[Key.PROGRESS_TITLE],
+        Key.PERIOD_WEEK: NEUTRAL.texts[Key.PERIOD_WEEK],
+        Key.PERIOD_MONTH: NEUTRAL.texts[Key.PERIOD_MONTH],
+        Key.PERIOD_3M: NEUTRAL.texts[Key.PERIOD_3M],
+        Key.PERIOD_6M: NEUTRAL.texts[Key.PERIOD_6M],
+        Key.PERIOD_YEAR: NEUTRAL.texts[Key.PERIOD_YEAR],
+        Key.PERIOD_ALL: NEUTRAL.texts[Key.PERIOD_ALL],
+        Key.DIGEST_WEEK: NEUTRAL.texts[Key.DIGEST_WEEK],
+        Key.DIGEST_MONTH: NEUTRAL.texts[Key.DIGEST_MONTH],
+        Key.PROGRESS_ENDURANCE: NEUTRAL.texts[Key.PROGRESS_ENDURANCE],
+        Key.PROGRESS_STRENGTH: NEUTRAL.texts[Key.PROGRESS_STRENGTH],
+        Key.PROGRESS_PRS: NEUTRAL.texts[Key.PROGRESS_PRS],
+        Key.PROGRESS_CONSISTENCY: NEUTRAL.texts[Key.PROGRESS_CONSISTENCY],
+        Key.PROGRESS_NONE: NEUTRAL.texts[Key.PROGRESS_NONE],
+        Key.PROGRESS_RECOVERY: NEUTRAL.texts[Key.PROGRESS_RECOVERY],
+        Key.PROGRESS_UP: ("Öncekinden fazla iş (+%{percent}). İşte bu. Devam lan.",),
+        Key.PROGRESS_DOWN: ("Öncekinden %{percent} az. Toparla, bugünden başla.",),
+        Key.PROGRESS_FLAT: ("Yerinde sayıyorsun. Fena değil ama biraz daha zorla.",),
         Key.TOTALS: NEUTRAL.texts[Key.TOTALS],
         Key.ACTIVITY_ONE: NEUTRAL.texts[Key.ACTIVITY_ONE],
         Key.ACTIVITY_MANY: NEUTRAL.texts[Key.ACTIVITY_MANY],

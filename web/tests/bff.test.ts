@@ -4,12 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DELETE, GET, PATCH, POST, PUT } from "@/app/api/ts/[...path]/route";
 import { BACKEND_UNREACHABLE } from "@/lib/upstream";
-import { TEST_API_KEY, jsonResponse, stubServerEnv } from "./support/env";
+import { TEST_TOKEN, jsonResponse, sessionCookie, stubServerEnv } from "./support/env";
 
 const fetchMock = vi.fn<typeof fetch>();
 
 function call(path: string, query = "") {
-  const request = new NextRequest(`http://localhost:3000/api/ts/${path}${query}`);
+  const request = new NextRequest(`http://localhost:3000/api/ts/${path}${query}`, {
+    headers: { cookie: sessionCookie() },
+  });
   return GET(request, { params: Promise.resolve({ path: path.split("/") }) });
 }
 
@@ -37,7 +39,7 @@ describe("BFF /api/ts/[...path]", () => {
       "http://api.test:8000/v1/activities?sport_type=Run&limit=5&cursor=abc",
     );
     expect(init?.method).toBe("GET");
-    expect(new Headers(init?.headers).get("x-api-key")).toBe(TEST_API_KEY);
+    expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${TEST_TOKEN}`);
   });
 
   it.each([
@@ -74,7 +76,10 @@ describe("BFF /api/ts/[...path]", () => {
     ["DELETE", DELETE],
   ])("rejects %s on read-only paths with 405", async (method, handler) => {
     const path = "v1/sync/status";
-    const request = new NextRequest(`http://localhost:3000/api/ts/${path}`, { method });
+    const request = new NextRequest(`http://localhost:3000/api/ts/${path}`, {
+      method,
+      headers: { cookie: sessionCookie() },
+    });
     const response = await handler(request, { params: Promise.resolve({ path: path.split("/") }) });
     expect(response.status).toBe(405);
     expect(response.headers.get("allow")).toBe("GET");
@@ -94,12 +99,17 @@ describe("BFF /api/ts/[...path]", () => {
     expect(await (await call("v1/activities", "?limit=900")).json()).toEqual({
       error: "invalid request parameters",
     });
-    fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "invalid or missing API key" }, 401));
+    fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "the session is invalid or has expired" }, 401));
     const unauthorized = await call("v1/sync/status");
     expect(unauthorized.status).toBe(401);
-    expect(await unauthorized.json()).toEqual({
-      error: "the web app is not authorized for the trainsync API",
-    });
+    expect(await unauthorized.json()).toEqual({ error: "not signed in" });
+  });
+
+  it("never calls the API without a session", async () => {
+    const request = new NextRequest("http://localhost:3000/api/ts/v1/activities");
+    const response = await GET(request, { params: Promise.resolve({ path: ["v1", "activities"] }) });
+    expect(response.status).toBe(401);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("returns 502 when the API is unreachable", async () => {
@@ -112,7 +122,7 @@ describe("BFF /api/ts/[...path]", () => {
   it("never echoes the API key in responses", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }));
     fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "boom" }, 500));
-    fetchMock.mockRejectedValueOnce(new Error(`connect failed with ${TEST_API_KEY}`));
+    fetchMock.mockRejectedValueOnce(new Error(`connect failed with ${TEST_TOKEN}`));
     const responses = [
       await call("v1/activities"),
       await call("v1/activities"),
@@ -123,7 +133,7 @@ describe("BFF /api/ts/[...path]", () => {
       }),
     ];
     for (const response of responses) {
-      expect(await text(response)).not.toContain(TEST_API_KEY);
+      expect(await text(response)).not.toContain(TEST_TOKEN);
     }
   });
 });

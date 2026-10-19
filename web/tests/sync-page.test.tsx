@@ -12,17 +12,14 @@ async function renderPage(params: Record<string, string> = {}) {
 
 describe("/sync page", () => {
   beforeEach(() => {
-    stubServerEnv({ TRAINSYNC_PUBLIC_API_URL: "https://api.example", WEB_PUBLIC_URL: "https://dash.example" });
+    stubServerEnv({ WEB_PUBLIC_URL: "https://dash.example" });
     vi.spyOn(api, "syncStatus").mockResolvedValue(syncStatus());
   });
 
-  it("links Connect Strava to the API login with this page as return_to", async () => {
+  it("links Connect Strava to the BFF, which asks the API as the signed-in user", async () => {
     await renderPage();
-    const href = screen.getByRole("link", { name: "Connect Strava" }).getAttribute("href") ?? "";
-    const url = new URL(href);
-    expect(`${url.origin}${url.pathname}`).toBe("https://api.example/auth/strava/login");
-    expect(url.searchParams.get("return_to")).toBe("https://dash.example/sync");
-    expect(href).not.toContain("test-api-key");
+    const href = screen.getByRole("link", { name: "Connect Strava" }).getAttribute("href");
+    expect(href).toBe("/api/strava/connect");
   });
 
   it("confirms a fresh connection", async () => {

@@ -13,8 +13,12 @@ def error(description: str, detail: str) -> dict[str, Any]:
 
 
 UNAUTHORIZED: Responses = {
-    401: error("Missing or invalid `X-API-Key`", "missing or invalid API key")
+    401: error(
+        "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`",
+        "sign in or send a valid API key",
+    )
 }
+FORBIDDEN_OWNER: Responses = {403: error("Owner only", "owner only")}
 
 VALIDATION_ERROR_EXAMPLE: dict[str, Any] = {
     "detail": [

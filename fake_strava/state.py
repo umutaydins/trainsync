@@ -114,6 +114,8 @@ class FakeStravaState:
         self.codes: dict[str, AuthCode] = {}
         self.access_tokens: dict[str, AccessToken] = {}
         self.refresh_tokens: dict[str, int] = {}
+        # Athletes that deauthorized the app through `POST /oauth/deauthorize`, in order.
+        self.deauthorized: list[int] = []
         self.overall = RateLimitCounter()
         self.read = RateLimitCounter()
         self.stats: Counter[tuple[str, int]] = Counter()

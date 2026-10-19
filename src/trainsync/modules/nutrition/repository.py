@@ -1,4 +1,9 @@
-"""Nutrition tables: foods (with the Open Food Facts cache), food logs, profile (Phase 6)."""
+"""Nutrition tables: foods (with the Open Food Facts cache), food logs, profile (Phase 6).
+
+Bound to one user (ADR 0035): the user sees the shared catalogue (`user_id` null: the Open Food
+Facts cache and what the owner curates) plus their own manual foods; favourites, logs and the
+profile are theirs alone.
+"""
 
 import uuid
 from collections.abc import Sequence
@@ -6,14 +11,31 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, case, delete, func, literal_column, or_, select, update
+from sqlalchemy import (
+    Boolean,
+    ColumnElement,
+    case,
+    delete,
+    exists,
+    func,
+    literal_column,
+    or_,
+    select,
+)
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from trainsync.integrations.openfoodfacts.client import OffProduct
 from trainsync.modules.activities.models import Activity
 from trainsync.modules.activities.reads import ActivityFilter
-from trainsync.modules.nutrition.models import Food, FoodLog, FoodSource, Meal, NutritionProfile
+from trainsync.modules.nutrition.models import (
+    Food,
+    FoodFavorite,
+    FoodLog,
+    FoodSource,
+    Meal,
+    NutritionProfile,
+)
 from trainsync.modules.nutrition.sugar import food_group_from_categories
 
 MEAL_ORDER = case({m.value: i for i, m in enumerate(Meal)}, value=FoodLog.meal)
@@ -28,6 +50,14 @@ class LogValues:
 
 
 @dataclass(frozen=True, slots=True)
+class FoodView:
+    """A food as one user sees it: with their favourite flag."""
+
+    food: Food
+    favorite: bool
+
+
+@dataclass(frozen=True, slots=True)
 class ProfileValues:
     sex: str
     birth_year: int
@@ -38,22 +68,53 @@ class ProfileValues:
 
 
 class NutritionRepository:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, user_id: int) -> None:
         self._session = session
+        self._user_id = user_id
 
     # ------------------------------------------------------------ foods
 
+    def _visible(self) -> ColumnElement[bool]:
+        return or_(Food.user_id.is_(None), Food.user_id == self._user_id)
+
+    def _is_favorite(self) -> ColumnElement[bool]:
+        return exists().where(
+            FoodFavorite.user_id == self._user_id, FoodFavorite.food_id == Food.id
+        )
+
     async def food(self, food_id: int) -> Food | None:
-        return await self._session.get(Food, food_id)
+        return await self._session.scalar(select(Food).where(Food.id == food_id, self._visible()))
 
     async def food_by_barcode(self, barcode: str) -> Food | None:
-        return await self._session.scalar(select(Food).where(Food.barcode == barcode))
+        """The user's own food with this barcode first, else the shared one."""
+        return await self._session.scalar(
+            select(Food)
+            .where(Food.barcode == barcode, self._visible())
+            .order_by(Food.user_id.nulls_last())
+            .limit(1)
+        )
+
+    async def views(self, foods: Sequence[Food]) -> list[FoodView]:
+        ids = [f.id for f in foods]
+        favorites = set(
+            await self._session.scalars(
+                select(FoodFavorite.food_id).where(
+                    FoodFavorite.user_id == self._user_id, FoodFavorite.food_id.in_(ids)
+                )
+            )
+        )
+        return [FoodView(f, f.id in favorites) for f in foods]
 
     async def search_foods(
         self, q: str | None = None, *, favorites_only: bool = False, limit: int = 50
-    ) -> list[Food]:
+    ) -> list[FoodView]:
         """Case-insensitive substring of name or brand; favorites first, then by name."""
-        stmt = select(Food).order_by(Food.favorite.desc(), func.lower(Food.name), Food.id)
+        favorite = self._is_favorite()
+        stmt = (
+            select(Food, favorite.label("favorite"))
+            .where(self._visible())
+            .order_by(favorite.desc(), func.lower(Food.name), Food.id)
+        )
         if q and q.strip():
             needle = q.strip().lower()
             stmt = stmt.where(
@@ -64,24 +125,43 @@ class NutritionRepository:
                 )
             )
         if favorites_only:
-            stmt = stmt.where(Food.favorite)
-        return list(await self._session.scalars(stmt.limit(limit)))
+            stmt = stmt.where(favorite)
+        rows = await self._session.execute(stmt.limit(limit))
+        return [FoodView(food, bool(fav)) for food, fav in rows.tuples()]
 
-    async def add_food(self, food: Food) -> Food:
+    async def add_food(self, food: Food, *, favorite: bool = False) -> FoodView:
+        """A manual food of this user (private to them)."""
+        food.user_id = self._user_id
         self._session.add(food)
         await self._session.flush()
         await self._session.refresh(food)
-        return food
+        if favorite:
+            await self._session.execute(
+                insert(FoodFavorite).values(user_id=self._user_id, food_id=food.id)
+            )
+        return FoodView(food, favorite)
 
-    async def set_favorite(self, food_id: int, favorite: bool) -> Food | None:
-        await self._session.execute(
-            update(Food).where(Food.id == food_id).values(favorite=favorite)
-        )
-        return await self._fresh(food_id)
+    async def set_favorite(self, food_id: int, favorite: bool) -> FoodView | None:
+        food = await self.food(food_id)
+        if food is None:
+            return None
+        if favorite:
+            await self._session.execute(
+                insert(FoodFavorite)
+                .values(user_id=self._user_id, food_id=food_id)
+                .on_conflict_do_nothing()
+            )
+        else:
+            await self._session.execute(
+                delete(FoodFavorite).where(
+                    FoodFavorite.user_id == self._user_id, FoodFavorite.food_id == food_id
+                )
+            )
+        return FoodView(food, favorite)
 
     async def cache_products(self, products: Sequence[OffProduct]) -> list[Food]:
-        """Upsert Open Food Facts products by barcode. A row the user edited (now `manual`)
-        keeps its values; `favorite` is never touched. Returns the stored rows."""
+        """Upsert Open Food Facts products into the shared catalogue by barcode. A shared row
+        the owner edited (now `manual`) keeps its values. Returns the stored rows."""
         unique = {p.barcode: p for p in products}
         if not unique:
             return []
@@ -115,20 +195,18 @@ class NutritionRepository:
         )
         stmt = stmt.on_conflict_do_update(
             index_elements=[Food.barcode],
+            index_where=Food.user_id.is_(None),
             set_={name: stmt.excluded[name] for name in fields},
             where=Food.source == FoodSource.OPENFOODFACTS.value,
         )
         await self._session.execute(stmt)
         stored = await self._session.scalars(
-            select(Food).where(Food.barcode.in_(unique)).execution_options(populate_existing=True)
+            select(Food)
+            .where(Food.barcode.in_(unique), Food.user_id.is_(None))
+            .execution_options(populate_existing=True)
         )
         by_barcode = {f.barcode: f for f in stored}
         return [by_barcode[b] for b in unique if b in by_barcode]
-
-    async def _fresh(self, food_id: int) -> Food | None:
-        return await self._session.scalar(
-            select(Food).where(Food.id == food_id).execution_options(populate_existing=True)
-        )
 
     # ------------------------------------------------------------ food log
 
@@ -149,9 +227,9 @@ class NutritionRepository:
             "nova_group": food.nova_group,
             "food_group": food.food_group,
         }
-        values_stmt = insert(FoodLog).values(client_id=client_id, **fields)
+        values_stmt = insert(FoodLog).values(user_id=self._user_id, client_id=client_id, **fields)
         stmt = values_stmt.on_conflict_do_update(
-            index_elements=[FoodLog.client_id],
+            index_elements=[FoodLog.user_id, FoodLog.client_id],
             set_={name: values_stmt.excluded[name] for name in fields},
         ).returning(FoodLog.id, literal_column("xmax = 0", Boolean()).label("created"))
         row = (await self._session.execute(stmt)).one()
@@ -164,7 +242,9 @@ class NutritionRepository:
 
     async def delete_log(self, client_id: uuid.UUID) -> bool:
         result = await self._session.execute(
-            delete(FoodLog).where(FoodLog.client_id == client_id).returning(FoodLog.id)
+            delete(FoodLog)
+            .where(FoodLog.user_id == self._user_id, FoodLog.client_id == client_id)
+            .returning(FoodLog.id)
         )
         return result.scalar_one_or_none() is not None
 
@@ -174,7 +254,7 @@ class NutritionRepository:
         stmt = (
             select(FoodLog, Food)
             .join(Food, Food.id == FoodLog.food_id)
-            .where(FoodLog.date >= start, FoodLog.date <= end)
+            .where(FoodLog.user_id == self._user_id, FoodLog.date >= start, FoodLog.date <= end)
             .order_by(FoodLog.date, MEAL_ORDER, FoodLog.created_at, FoodLog.id)
         )
         result = await self._session.execute(stmt)
@@ -183,7 +263,7 @@ class NutritionRepository:
     # ------------------------------------------------------------ profile
 
     async def profile(self) -> NutritionProfile | None:
-        return await self._session.get(NutritionProfile, 1)
+        return await self._session.get(NutritionProfile, self._user_id)
 
     async def put_profile(self, values: ProfileValues, now: datetime) -> NutritionProfile:
         fields = {
@@ -195,14 +275,14 @@ class NutritionRepository:
             "protein_target_g": values.protein_target_g,
             "updated_at": now,
         }
-        stmt = insert(NutritionProfile).values(id=1, **fields)
+        stmt = insert(NutritionProfile).values(user_id=self._user_id, **fields)
         stmt = stmt.on_conflict_do_update(
-            index_elements=[NutritionProfile.id], set_={k: stmt.excluded[k] for k in fields}
+            index_elements=[NutritionProfile.user_id], set_={k: stmt.excluded[k] for k in fields}
         )
         await self._session.execute(stmt)
         stored = await self._session.scalar(
             select(NutritionProfile)
-            .where(NutritionProfile.id == 1)
+            .where(NutritionProfile.user_id == self._user_id)
             .execution_options(populate_existing=True)
         )
         if stored is None:  # pragma: no cover - just upserted
@@ -215,7 +295,7 @@ class NutritionRepository:
         """Non-deleted activities matching the filter, oldest first."""
         stmt = (
             select(Activity)
-            .where(*activity_filter.conditions())
+            .where(Activity.user_id == self._user_id, *activity_filter.conditions())
             .order_by(Activity.start_date, Activity.id)
         )
         return list(await self._session.scalars(stmt))

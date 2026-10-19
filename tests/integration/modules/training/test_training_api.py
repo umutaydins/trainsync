@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from tests.support.accounts import OWNER_ID
 from trainsync.core.settings import Settings
 from trainsync.entrypoints.api.app import create_app
 from trainsync.modules.training.math import SetEntry, best_e1rm, e1rm, volume, weekly_muscle_volume
@@ -41,7 +42,7 @@ async def api(integration_settings: Settings) -> AsyncIterator[httpx.AsyncClient
 
 async def slug_ids(sessionmaker: async_sessionmaker[AsyncSession], *slugs: str) -> list[int]:
     async with sessionmaker() as session:
-        repo = ExerciseRepository(session)
+        repo = ExerciseRepository(session, OWNER_ID)
         found = [await repo.by_slug(slug) for slug in slugs]
     return [e.id for e in found if e is not None]
 

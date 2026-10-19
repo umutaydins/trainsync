@@ -9,15 +9,16 @@ import json
 from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, HTTPException, Path, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from trainsync.core.deps import SessionmakerDep, require_api_key
+from trainsync.core.deps import SessionmakerDep
 from trainsync.core.errors import UNAUTHORIZED, error
 from trainsync.modules.activities.models import Activity
 from trainsync.modules.activities.reads import ActivityFilter, Keyset, ReadRepository
+from trainsync.modules.auth.dependencies import CurrentUser
 
-router = APIRouter(prefix="/v1", tags=["activities"], dependencies=[Depends(require_api_key)])
+router = APIRouter(prefix="/v1", tags=["activities"])
 
 ACTIVITY_EXAMPLE: dict[str, Any] = {
     "id": 10000000123,
@@ -142,6 +143,7 @@ def as_utc(value: datetime | None) -> datetime | None:
     responses={**UNAUTHORIZED, 400: error("Invalid cursor", "invalid cursor")},
 )
 async def list_activities(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     start_from: Annotated[
         datetime | None,
@@ -165,7 +167,7 @@ async def list_activities(
 ) -> ActivityPage:
     after = decode_cursor(cursor) if cursor else None
     async with sessionmaker() as session:
-        reads = ReadRepository(session)
+        reads = ReadRepository(session, principal.user_id)
         athlete_ids = await reads.active_athlete_ids(athlete_id)
         activity_filter = ActivityFilter(
             athlete_ids, as_utc(start_from), as_utc(start_to), sport_type
@@ -191,6 +193,7 @@ async def list_activities(
     responses={**UNAUTHORIZED, 404: error("Unknown or deleted activity", "activity not found")},
 )
 async def get_activity(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     strava_activity_id: Annotated[
         int, Path(description="Strava activity id", examples=[10000000123])
@@ -198,7 +201,7 @@ async def get_activity(
     include: Annotated[Literal["raw"] | None, Query(description="`raw` adds Strava's JSON")] = None,
 ) -> ActivityDetail:
     async with sessionmaker() as session:
-        reads = ReadRepository(session)
+        reads = ReadRepository(session, principal.user_id)
         row = await reads.activity(strava_activity_id, await reads.active_athlete_ids())
         if row is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "activity not found")

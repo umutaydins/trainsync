@@ -30,6 +30,12 @@ echo "e2e: installing web dependencies and the Playwright browser"
 echo "e2e: starting stack"
 compose up -d --build --wait --wait-timeout 300
 
+echo "e2e: owner account"
+# The compose dev defaults: OWNER_EMAIL=owner@example.com; the tests sign in with this password.
+export E2E_EMAIL=owner@example.com E2E_PASSWORD=dev-e2e-owner-password
+printf '%s\n' "$E2E_PASSWORD" \
+  | compose exec -T api python -m trainsync.entrypoints.cli owner set-password --stdin >/dev/null
+
 echo "e2e: running Playwright"
 (cd web && pnpm exec playwright test)
 echo "e2e: OK"

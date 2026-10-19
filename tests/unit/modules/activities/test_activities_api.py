@@ -10,6 +10,9 @@ from trainsync.core import deps
 from trainsync.entrypoints.api.app import create_app
 from trainsync.modules.activities.reads import Keyset
 from trainsync.modules.activities.router import decode_cursor, encode_cursor
+from trainsync.modules.auth.dependencies import current_principal
+from trainsync.modules.auth.models import UserRole
+from trainsync.modules.auth.service import Principal
 
 
 class MustNotBeUsed:
@@ -17,9 +20,11 @@ class MustNotBeUsed:
         raise AssertionError(f"unexpected use: {name}")
 
 
-def _app() -> FastAPI:
+def _app(*, signed_in: bool = False) -> FastAPI:
     app = create_app(make_settings(api_keys="key-one, key-two"))
     app.dependency_overrides[deps.get_sessionmaker] = MustNotBeUsed
+    if signed_in:  # whoever the key names; these tests never reach the database
+        app.dependency_overrides[current_principal] = lambda: Principal(1, UserRole.OWNER, "UTC")
     return app
 
 
@@ -36,7 +41,7 @@ async def test_missing_or_wrong_key_is_401(headers: dict[str, str]) -> None:
     async with _client(_app()) as client:
         response = await client.get("/v1/activities", headers=headers)
     assert response.status_code == 401
-    assert response.headers["www-authenticate"] == "ApiKey"
+    assert response.headers["www-authenticate"] == "Bearer"
 
 
 @pytest.mark.parametrize(
@@ -53,7 +58,7 @@ async def test_missing_or_wrong_key_is_401(headers: dict[str, str]) -> None:
     ids=["junk", "not-json", "missing-field", "string-id", "naive-date"],
 )
 async def test_invalid_cursor_is_400(cursor: str) -> None:
-    async with _client(_app()) as client:
+    async with _client(_app(signed_in=True)) as client:
         response = await client.get(
             "/v1/activities", params={"cursor": cursor}, headers={"X-API-Key": "key-two"}
         )
@@ -63,7 +68,7 @@ async def test_invalid_cursor_is_400(cursor: str) -> None:
 
 @pytest.mark.parametrize("limit", [0, 201])
 async def test_limit_out_of_range_is_422(limit: int) -> None:
-    async with _client(_app()) as client:
+    async with _client(_app(signed_in=True)) as client:
         response = await client.get(
             "/v1/activities", params={"limit": limit}, headers={"X-API-Key": "key-one"}
         )

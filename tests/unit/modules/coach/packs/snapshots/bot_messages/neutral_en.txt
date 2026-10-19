@@ -2,7 +2,8 @@
 trainsync bot
 /week: this week vs last week
 /last: latest activity
-/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run
+/stats [week|month|3m|6m|year|all]: progress vs the period before
+/stats 12w run: totals and best week (4w|12w|52w, any sport)
 /status: sync health
 /today: today's planned workout
 /log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)
@@ -22,7 +23,8 @@ I only understand commands for now.
 trainsync bot
 /week: this week vs last week
 /last: latest activity
-/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run
+/stats [week|month|3m|6m|year|all]: progress vs the period before
+/stats 12w run: totals and best week (4w|12w|52w, any sport)
 /status: sync health
 /today: today's planned workout
 /log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)
@@ -40,7 +42,7 @@ trainsync bot
 Unknown command /foo. Everything I can do: /help
 
 ## usage
-Usage: /stats [4w|12w|52w] [sport], e.g. /stats 12w run
+Usage: /stats [week|month|3m|6m|year|all] or /stats [4w|12w|52w] [sport], e.g. /stats month
 
 ## api down
 Sorry, I can't reach the trainsync API right now. Try again in a minute.

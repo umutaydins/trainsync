@@ -9,11 +9,12 @@ keeps that day current, with its id, so a client can continue it.
 from datetime import time
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from trainsync.core.deps import SessionmakerDep, SettingsDep, require_api_key
+from trainsync.core.deps import SessionmakerDep, SettingsDep
 from trainsync.core.errors import UNAUTHORIZED, error
+from trainsync.modules.auth.dependencies import CurrentUser
 from trainsync.modules.training.models import Workout
 from trainsync.modules.training.repository import ProgramRepository, WorkoutRepository
 from trainsync.modules.training.routes.workouts import (
@@ -23,9 +24,7 @@ from trainsync.modules.training.routes.workouts import (
     progression_rules,
 )
 
-router = APIRouter(
-    prefix="/v1/training", tags=["training"], dependencies=[Depends(require_api_key)]
-)
+router = APIRouter(prefix="/v1/training", tags=["training"])
 
 NEXT_DAY_EXAMPLE: dict[str, Any] = {
     "program_id": 3,
@@ -74,15 +73,19 @@ class NextDay(BaseModel):
     response_model=NextDay,
     responses={**UNAUTHORIZED, 404: error("No active program", "no active program")},
 )
-async def next_day(sessionmaker: SessionmakerDep, settings: SettingsDep) -> NextDay:
+async def next_day(
+    principal: CurrentUser, sessionmaker: SessionmakerDep, settings: SettingsDep
+) -> NextDay:
     async with sessionmaker() as session:
-        programs = ProgramRepository(session)
+        programs = ProgramRepository(session, principal.user_id)
         program = await programs.active()
         tree = await programs.tree(program.id) if program is not None else None
         if tree is None or not tree.days:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "no active program")
         days = [day for day, _ in tree.days]
-        latest = await WorkoutRepository(session).latest_for_days([d.id for d in days])
+        latest = await WorkoutRepository(session, principal.user_id).latest_for_days(
+            [d.id for d in days]
+        )
         open_workout: Workout | None = None
         index = 0
         if latest is not None:
@@ -94,7 +97,9 @@ async def next_day(sessionmaker: SessionmakerDep, settings: SettingsDep) -> Next
         day = days[index]
         # Not added to the session: only used to look up the plan and its history.
         workout = open_workout or Workout(program_day_id=day.id)
-        planned = await planned_exercises(session, workout, progression_rules(settings))
+        planned = await planned_exercises(
+            session, principal.user_id, workout, progression_rules(settings)
+        )
         return NextDay(
             program_id=tree.program.id,
             program_name=tree.program.name,

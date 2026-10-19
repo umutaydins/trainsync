@@ -6,7 +6,7 @@ import json
 import random
 from collections.abc import AsyncIterator
 from dataclasses import replace
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -20,6 +20,9 @@ from pydantic import SecretStr
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from tests.conftest import make_settings
+from tests.support.accounts import OWNER_ID
+from tests.support.linked import link_chat, outcome_of
 from tests.support.messages import NEUTRAL_EN as MSG
 from tests.support.state import MemoryStateStore
 from tests.support.telegram import (
@@ -36,8 +39,8 @@ from trainsync.entrypoints.api.app import create_app
 from trainsync.entrypoints.bot.dispatcher import Commands, Dispatcher
 from trainsync.integrations.telegram.client import TelegramApi, Update
 from trainsync.modules.chat.checkin import CheckinFlow, prompt
+from trainsync.modules.chat.links import ChatLinks
 from trainsync.modules.chat.read_api import ReadApi
-from trainsync.modules.chat.repository import ChatSettingsRepository
 from trainsync.modules.chat.training import TrainingCommands
 from trainsync.modules.checkin.models import DailyCheckin
 from trainsync.modules.coach.categories import Category
@@ -124,7 +127,7 @@ async def test_put_is_idempotent_and_writes_the_body_metric(
     assert first.json()["sleep_hours"] == 7.5
     async with sessionmaker() as session:
         assert await session.scalar(select(func.count()).select_from(DailyCheckin)) == 1
-        metric = await BodyMetricRepository(session).latest()
+        metric = await BodyMetricRepository(session, OWNER_ID).latest()
     assert metric is not None
     assert (metric.date, float(metric.weight_kg)) == (date(2026, 10, 18), 78.4)
 
@@ -135,7 +138,7 @@ async def test_put_is_idempotent_and_writes_the_body_metric(
     got = (await api.get("/v1/checkins/2026-10-18")).json()
     assert got["status"] == "partial"
     async with sessionmaker() as session:
-        assert await BodyMetricRepository(session).latest() is not None
+        assert await BodyMetricRepository(session, OWNER_ID).latest() is not None
 
 
 async def test_put_validation(api: httpx.AsyncClient) -> None:
@@ -201,6 +204,10 @@ async def test_summary_without_a_program_and_bad_ranges(api: httpx.AsyncClient) 
 # ---------------------------------------------------------------- scheduler
 
 
+async def tick(deps: CheckinDeps) -> str:
+    return outcome_of(await run_checkin(deps))
+
+
 @pytest.fixture
 async def scheduler(
     sessionmaker: async_sessionmaker[AsyncSession], clock: Clock
@@ -209,15 +216,13 @@ async def scheduler(
         with respx.mock(assert_all_called=False) as mock:
             send = mock.post(f"{BOT_URL}/sendMessage").mock(return_value=ok({}))
             telegram = TelegramApi(http, SecretStr(BOT_TOKEN), base_url=TELEGRAM)
+            await link_chat(sessionmaker, CHAT, timezone=ZONE.key)
             deps = CheckinDeps(
                 sessionmaker=sessionmaker,
                 telegram=telegram,
-                chat_id=CHAT,
                 clock=clock,
                 msg=MSG,
-                zone=ZONE,
-                at=time(21, 0),
-                reminder_minutes=90,
+                settings=make_settings(checkin_time="21:00", checkin_reminder_minutes=90),
             )
             yield deps, send
 
@@ -227,16 +232,16 @@ async def test_prompt_once_then_one_reminder(
 ) -> None:
     deps, send = scheduler
     clock.now = datetime(2026, 10, 18, 17, 55, tzinfo=UTC)  # 20:55 local
-    assert await run_checkin(deps) == "nothing"
+    assert await tick(deps) == "nothing"
     clock.now = datetime(2026, 10, 18, 18, 0, tzinfo=UTC)
-    assert await run_checkin(deps) == "sent_prompt"
-    assert await run_checkin(deps) == "nothing"  # a second tick, or a restarted worker
+    assert await tick(deps) == "sent_prompt"
+    assert await tick(deps) == "nothing"  # a second tick, or a restarted worker
     clock.now = datetime(2026, 10, 18, 19, 25, tzinfo=UTC)
-    assert await run_checkin(deps) == "nothing"
+    assert await tick(deps) == "nothing"
     clock.now = datetime(2026, 10, 18, 19, 30, tzinfo=UTC)
-    assert await run_checkin(deps) == "sent_reminder"
+    assert await tick(deps) == "sent_reminder"
     clock.now = datetime(2026, 10, 18, 20, 55, tzinfo=UTC)
-    assert await run_checkin(deps) == "nothing"
+    assert await tick(deps) == "nothing"
     [prompt_msg, reminder_msg] = sent_messages(send)
     assert prompt_msg["text"] == "Daily check-in: did you train today?"
     assert prompt_msg["reply_markup"]["inline_keyboard"][0][0]["callback_data"] == (
@@ -245,7 +250,7 @@ async def test_prompt_once_then_one_reminder(
     assert reminder_msg["text"].startswith("Reminder:")
     # The next local day starts over.
     clock.now = datetime(2026, 10, 19, 18, 0, tzinfo=UTC)
-    assert await run_checkin(deps) == "sent_prompt"
+    assert await tick(deps) == "sent_prompt"
 
 
 async def test_no_prompt_or_reminder_once_answered(
@@ -254,10 +259,10 @@ async def test_no_prompt_or_reminder_once_answered(
     deps, send = scheduler
     await api.put("/v1/checkins/2026-10-18", json={"status": "rest"})
     clock.now = datetime(2026, 10, 18, 18, 0, tzinfo=UTC)
-    assert await run_checkin(deps) == "nothing"
+    assert await tick(deps) == "nothing"
     await api.put("/v1/checkins/2026-10-19", json={"status": "rest"})
     clock.now = datetime(2026, 10, 19, 18, 0, tzinfo=UTC)
-    assert await run_checkin(deps) == "nothing"
+    assert await tick(deps) == "nothing"
     assert send.call_count == 0
 
 
@@ -266,10 +271,10 @@ async def test_answer_after_the_prompt_stops_the_reminder(
 ) -> None:
     deps, send = scheduler
     clock.now = datetime(2026, 10, 18, 18, 0, tzinfo=UTC)
-    assert await run_checkin(deps) == "sent_prompt"
+    assert await tick(deps) == "sent_prompt"
     await api.put("/v1/checkins/2026-10-18", json={"status": "done"})
     clock.now = datetime(2026, 10, 18, 20, 0, tzinfo=UTC)
-    assert await run_checkin(deps) == "nothing"
+    assert await tick(deps) == "nothing"
     assert send.call_count == 1
 
 
@@ -279,21 +284,21 @@ async def test_failed_send_is_retried_on_the_next_tick(
     deps, send = scheduler
     clock.now = datetime(2026, 10, 18, 18, 0, tzinfo=UTC)
     send.mock(side_effect=[error(400, "chat not found"), ok({})])
-    assert await run_checkin(deps) == "failed"
+    assert await tick(deps) == "failed"
     clock.now += timedelta(minutes=5)
-    assert await run_checkin(deps) == "sent_prompt"
+    assert await tick(deps) == "sent_prompt"
     send.mock(side_effect=httpx.ReadTimeout("lost"))
     clock.now = datetime(2026, 10, 18, 19, 35, tzinfo=UTC)
-    assert await run_checkin(deps) == "unknown"  # may have arrived: keep the claim
+    assert await tick(deps) == "unknown"  # may have arrived: keep the claim
     clock.now += timedelta(minutes=5)
-    assert await run_checkin(deps) == "nothing"
+    assert await tick(deps) == "nothing"
 
 
 async def test_disabled_without_telegram(
     sessionmaker: async_sessionmaker[AsyncSession], clock: Clock
 ) -> None:
-    deps = CheckinDeps(sessionmaker, None, None, clock, MSG, ZONE, time(21, 0), 90)
-    assert await run_checkin(deps) == "disabled"
+    deps = CheckinDeps(sessionmaker, None, clock, MSG, make_settings())
+    assert await run_checkin(deps) == {}
 
 
 # ---------------------------------------------------------------- conversation over the real API
@@ -316,10 +321,11 @@ async def test_duplicate_deliveries_store_one_check_in_and_one_set_each(
         bot_api = ReadApi(api_http, "http://api", SecretStr(KEY))
         telegram = TelegramApi(telegram_http, SecretStr(BOT_TOKEN), base_url=TELEGRAM)
         clock = lambda: NOW  # noqa: E731
+        await link_chat(sessionmaker, CHAT, timezone=ZONE.key)
         dispatcher = Dispatcher(
             telegram,
             Commands(bot_api, clock, MSG),
-            {CHAT},
+            ChatLinks(bot_api, clock, ttl_s=0),
             MSG,
             features=[
                 CheckinFlow(bot_api, store, clock, ZONE, MSG),
@@ -380,10 +386,9 @@ async def test_in_max_the_prompt_swears_read_at_send_time(
         packs=packs,
     )
     deps = replace(deps, voice=voice)
-    async with sessionmaker.begin() as session:
-        await ChatSettingsRepository(session).set(CHAT, clock(), lang="en", profanity="max")
+    await link_chat(sessionmaker, CHAT, lang="en", profanity="max")
     clock.now = datetime(2026, 10, 18, 18, 0, tzinfo=UTC)
-    assert await run_checkin(deps) == "sent_prompt"
+    assert await tick(deps) == "sent_prompt"
     opener, rest = sent_messages(send)[-1]["text"].split("\n", 1)
     assert opener in packs["en"].max[Category.MAX_OPENER]
     assert rest.startswith(prompt(MSG, date(2026, 10, 18)).text.split("\n")[0])

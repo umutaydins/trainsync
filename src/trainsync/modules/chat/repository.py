@@ -1,73 +1,84 @@
-"""`chat_settings` rows: per-chat bot settings, the language (ADR 0031) and the profanity level
-(ADR 0032). A null column means "the default" (`BOT_LANG`, `BOT_PROFANITY`)."""
+"""Linked chats and one-time link codes (ADR 0036)."""
 
-from dataclasses import dataclass
+import secrets
 from datetime import datetime
 
-from sqlalchemy import select
+from redis.asyncio import Redis
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from trainsync.core.settings import BotLang, BotProfanity
-from trainsync.modules.chat.models import ChatSetting
+from trainsync.modules.chat.models import TelegramChat
+
+# Unambiguous: no 0/O, 1/I/L.
+CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
+CODE_LENGTH = 8
+CODE_KEY = "telegram:link"
 
 
-@dataclass(frozen=True, slots=True)
-class ChatPrefs:
-    lang: BotLang | None = None
-    profanity: BotProfanity | None = None
-
-
-def _lang(value: str | None) -> BotLang | None:
-    return "tr" if value == "tr" else "en" if value == "en" else None
-
-
-def _profanity(value: str | None) -> BotProfanity | None:
-    return "max" if value == "max" else "roast" if value == "roast" else None
-
-
-class ChatSettingsRepository:
+class TelegramChatRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get(self, chat_id: int) -> ChatPrefs:
-        """The stored choices; an empty `ChatPrefs` when the chat never chose anything."""
-        row = (
-            await self._session.execute(
-                select(ChatSetting.lang, ChatSetting.profanity).where(
-                    ChatSetting.chat_id == chat_id
-                )
-            )
-        ).first()
-        if row is None:
-            return ChatPrefs()
-        return ChatPrefs(_lang(row.lang), _profanity(row.profanity))
+    async def by_chat(self, chat_id: int) -> TelegramChat | None:
+        return await self._session.get(TelegramChat, chat_id)
 
-    async def lang(self, chat_id: int) -> BotLang | None:
-        """The stored language, or None (the caller falls back to `BOT_LANG`)."""
-        return (await self.get(chat_id)).lang
-
-    async def set(
-        self,
-        chat_id: int,
-        now: datetime,
-        *,
-        lang: BotLang | None = None,
-        profanity: BotProfanity | None = None,
-    ) -> ChatPrefs:
-        """Store the given choices; a None argument keeps what is stored. Returns the row."""
-        values: dict[str, object] = {"updated_at": now}
-        if lang is not None:
-            values["lang"] = lang
-        if profanity is not None:
-            values["profanity"] = profanity
-        stmt = insert(ChatSetting).values(chat_id=chat_id, **values)
-        stmt = stmt.on_conflict_do_update(
-            index_elements=[ChatSetting.chat_id],
-            set_={key: stmt.excluded[key] for key in values},
+    async def by_user(self, user_id: int) -> TelegramChat | None:
+        return await self._session.scalar(
+            select(TelegramChat).where(TelegramChat.user_id == user_id)
         )
-        await self._session.execute(stmt)
-        return await self.get(chat_id)
 
-    async def set_lang(self, chat_id: int, lang: BotLang, now: datetime) -> None:
-        await self.set(chat_id, now, lang=lang)
+    async def link(self, chat_id: int, user_id: int, now: datetime) -> None:
+        """Bind the chat to the user; the user's previous chat (if any) is unlinked."""
+        await self._session.execute(
+            delete(TelegramChat).where(
+                TelegramChat.user_id == user_id, TelegramChat.chat_id != chat_id
+            )
+        )
+        stmt = insert(TelegramChat).values(chat_id=chat_id, user_id=user_id, linked_at=now)
+        await self._session.execute(
+            stmt.on_conflict_do_update(
+                index_elements=[TelegramChat.chat_id],
+                set_={"user_id": stmt.excluded.user_id, "linked_at": now},
+            )
+        )
+
+    async def unlink_chat(self, chat_id: int) -> bool:
+        result = await self._session.execute(
+            delete(TelegramChat)
+            .where(TelegramChat.chat_id == chat_id)
+            .returning(TelegramChat.chat_id)
+        )
+        return result.first() is not None
+
+    async def unlink_user(self, user_id: int) -> bool:
+        result = await self._session.execute(
+            delete(TelegramChat)
+            .where(TelegramChat.user_id == user_id)
+            .returning(TelegramChat.chat_id)
+        )
+        return result.first() is not None
+
+    async def linked(self) -> list[TelegramChat]:
+        rows = await self._session.scalars(select(TelegramChat).order_by(TelegramChat.user_id))
+        return list(rows)
+
+
+class LinkCodes:
+    """`/link CODE` codes in Redis: one per issue, deleted on use, expiring on their own."""
+
+    def __init__(self, redis: Redis, ttl_s: int) -> None:
+        self._redis = redis
+        self._ttl_s = ttl_s
+
+    async def issue(self, user_id: int) -> str:
+        code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))
+        await self._redis.set(f"{CODE_KEY}:{code}", str(user_id), ex=self._ttl_s)
+        return code
+
+    async def redeem(self, code: str) -> int | None:
+        """The user the code was issued for, once; None when unknown, used or expired."""
+        value = await self._redis.getdel(f"{CODE_KEY}:{code.strip().upper()}")
+        if value is None:
+            return None
+        return int(value.decode() if isinstance(value, bytes) else value)

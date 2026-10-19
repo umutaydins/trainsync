@@ -36,6 +36,9 @@ class NeutralKey(StrEnum):
     KCAL_INTAKE_TARGET = "kcal.intake_target"
     KCAL_MACROS = "kcal.macros"
     KCAL_MACROS_INCOMPLETE = "kcal.macros_incomplete"
+    # The food line of a progress summary (P8.11): a period's daily average.
+    KCAL_AVERAGE = "kcal.average"
+    KCAL_AVERAGE_TARGET = "kcal.average_target"
 
     SCALE_USAGE = "scale.usage"
     SCALE_SAVED = "scale.saved"
@@ -53,6 +56,13 @@ class NeutralKey(StrEnum):
     # ADR 0032: the calm reply to distress; the one concrete move after a food roast, and the
     # day's target, unchanged.
     SAFETY_DISTRESS = "safety.distress"
+    # Linking a chat to an account (P8.4, ADR 0036): tone-free, an unlinked chat has no tone.
+    LINK_HINT = "link.hint"
+    LINK_DONE = "link.done"
+    LINK_INVALID = "link.invalid"
+    LINK_USAGE = "link.usage"
+    LINK_ALREADY = "link.already"
+    UNLINKED = "link.unlinked"
     FOOD_MOVE_SWEET = "food.move.sweet"
     FOOD_MOVE_FAST_FOOD = "food.move.fast_food"
     FOOD_MOVE_FRIED = "food.move.fried"
@@ -87,6 +97,8 @@ NEUTRAL_FIELDS: Mapping[NeutralKey, frozenset[str]] = {
     NeutralKey.KCAL_INTAKE_TARGET: _fields("intake", "target", "remaining", "entries"),
     NeutralKey.KCAL_MACROS: _fields("protein", "carbs", "fat_g"),
     NeutralKey.KCAL_MACROS_INCOMPLETE: _fields(),
+    NeutralKey.KCAL_AVERAGE: _fields("kcal"),
+    NeutralKey.KCAL_AVERAGE_TARGET: _fields("kcal", "target"),
     NeutralKey.SCALE_USAGE: _fields("command"),
     NeutralKey.SCALE_SAVED: _fields("day", "value"),
     NeutralKey.CHECKIN_ASK_SCALE: _fields(),
@@ -98,6 +110,12 @@ NEUTRAL_FIELDS: Mapping[NeutralKey, frozenset[str]] = {
     NeutralKey.CHECKIN_SUMMARY_ENERGY: _fields("energy"),
     NeutralKey.SAFETY_PAIN: _fields(),
     NeutralKey.SAFETY_DISTRESS: _fields("emergency"),
+    NeutralKey.LINK_HINT: _fields("url"),
+    NeutralKey.LINK_DONE: _fields("name"),
+    NeutralKey.LINK_INVALID: _fields(),
+    NeutralKey.LINK_USAGE: _fields(),
+    NeutralKey.LINK_ALREADY: _fields(),
+    NeutralKey.UNLINKED: _fields(),
     NeutralKey.FOOD_MOVE_SWEET: _fields(),
     NeutralKey.FOOD_MOVE_FAST_FOOD: _fields(),
     NeutralKey.FOOD_MOVE_FRIED: _fields(),
@@ -132,6 +150,8 @@ _EN: Mapping[NeutralKey, str] = {
     NeutralKey.KCAL_INTAKE_TARGET: "{intake} of {target} · {remaining} left · {entries} entries",
     NeutralKey.KCAL_MACROS: "Protein {protein} · carbs {carbs} · F {fat_g}",
     NeutralKey.KCAL_MACROS_INCOMPLETE: "Some foods have unknown macros; they are left out.",
+    NeutralKey.KCAL_AVERAGE: "🍽️ {kcal} kcal a day",
+    NeutralKey.KCAL_AVERAGE_TARGET: "🍽️ {kcal} kcal a day (target {target})",
     NeutralKey.SCALE_USAGE: "Usage: {command} 78.4",
     NeutralKey.SCALE_SAVED: "Saved for {day}: {value}.",
     NeutralKey.CHECKIN_ASK_SCALE: "Scale reading today? Reply like 78.4, or tap Skip.",
@@ -150,6 +170,15 @@ _EN: Mapping[NeutralKey, str] = {
         "meal when you can, and log it only if that helps. If this keeps coming back or you do "
         "not feel safe, talk to someone you trust or a professional today (emergency: {emergency})."
     ),
+    NeutralKey.LINK_HINT: (
+        "This chat is not linked to a trainsync account. Sign in at {url}, open Settings, "
+        "Telegram, and send me the /link command shown there."
+    ),
+    NeutralKey.LINK_DONE: "Linked, {name}. Send /help to see what I can do.",
+    NeutralKey.LINK_INVALID: "That code is invalid or expired. Get a new one in the dashboard.",
+    NeutralKey.LINK_USAGE: "Send /link and the code from the dashboard, e.g. /link K7Q2M9XD.",
+    NeutralKey.LINK_ALREADY: "This chat is already linked. Send /unlink first to link another.",
+    NeutralKey.UNLINKED: "Unlinked. This chat gets no more of your data or reminders.",
     NeutralKey.FOOD_MOVE_SWEET: (
         "One move: half the portion, or swap it for fruit with yogurt. Log it with /eat now."
     ),
@@ -200,6 +229,8 @@ _TR: Mapping[NeutralKey, str] = {
     NeutralKey.KCAL_INTAKE_TARGET: "{intake} / {target} · {remaining} kaldı · {entries} kayıt",
     NeutralKey.KCAL_MACROS: "Protein {protein} · karbonhidrat {carbs} · yağ {fat_g}",
     NeutralKey.KCAL_MACROS_INCOMPLETE: "Bazı yiyeceklerin makroları bilinmiyor; toplama girmedi.",
+    NeutralKey.KCAL_AVERAGE: "🍽️ günde {kcal} kcal",
+    NeutralKey.KCAL_AVERAGE_TARGET: "🍽️ günde {kcal} kcal (hedef {target})",
     NeutralKey.SCALE_USAGE: "Kullanım: {command} 78.4",
     NeutralKey.SCALE_SAVED: "{day} için kaydedildi: {value}.",
     NeutralKey.CHECKIN_ASK_SCALE: "Bugünkü tartı? 78.4 gibi yaz ya da Geç'e dokun.",
@@ -218,6 +249,17 @@ _TR: Mapping[NeutralKey, str] = {
         "bulunca normal bir öğün ye, kaydetmek iyi geliyorsa kaydet. Bu tekrar ediyorsa ya da "
         "kendini güvende hissetmiyorsan bugün güvendiğin biriyle ya da bir uzmanla konuş "
         "(acil durumda {emergency})."
+    ),
+    NeutralKey.LINK_HINT: (
+        "Bu sohbet bir trainsync hesabına bağlı değil. {url} adresinde giriş yap, Ayarlar → "
+        "Telegram'ı aç ve orada gösterilen /link komutunu bana gönder."
+    ),
+    NeutralKey.LINK_DONE: "Bağlandı, {name}. Neler yapabildiğimi görmek için /help yaz.",
+    NeutralKey.LINK_INVALID: "Bu kod geçersiz ya da süresi dolmuş. Panelden yeni bir kod al.",
+    NeutralKey.LINK_USAGE: "/link ve panelden aldığın kodu gönder, örneğin /link K7Q2M9XD.",
+    NeutralKey.LINK_ALREADY: "Bu sohbet zaten bağlı. Başka bir hesap için önce /unlink gönder.",
+    NeutralKey.UNLINKED: (
+        "Bağlantı kaldırıldı. Bu sohbete artık verilerin ve hatırlatmaların gelmez."
     ),
     NeutralKey.FOOD_MOVE_SWEET: (
         "Tek hamle: porsiyonu yarıya indir ya da yoğurtlu meyveyle değiştir. Şimdi /eat ile kaydet."

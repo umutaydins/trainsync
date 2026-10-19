@@ -1,8 +1,8 @@
 """`notify_new_activity`: one message per new activity, at most once (ADR 0012).
 
 Enqueued by webhook processing after an `activity create` event was upserted (job id
-`notify:{strava_activity_id}`). Backfill and incremental sync never enqueue it: they import
-history, which is not news.
+`notify:{strava_activity_id}`). It goes to the linked chat of the activity's user (ADR 0036).
+Backfill and incremental sync never enqueue it: they import history, which is not news.
 
 Idempotency: claim the `(new_activity, id)` row in `notifications` (insert, `ON CONFLICT DO
 NOTHING`), commit, then send. A definite failure releases the claim and arq retries the job with
@@ -17,6 +17,7 @@ from typing import Any
 import httpx
 from arq import Retry
 from arq.worker import func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from trainsync.core.clock import Clock, Sleep
@@ -31,14 +32,15 @@ from trainsync.integrations.notifier import (
 )
 from trainsync.integrations.telegram.client import TelegramApi
 from trainsync.integrations.telegram.notifier import TelegramNotifier
+from trainsync.modules.activities.models import Activity
 from trainsync.modules.activities.reads import ReadRepository
 from trainsync.modules.activities.router import ActivityOut
 from trainsync.modules.chat.formatting import format_new_activity
-from trainsync.modules.coach.mode import using_profanity
-from trainsync.modules.coach.packs import Messages, using_lang
+from trainsync.modules.coach.context import using_context
+from trainsync.modules.coach.packs import Messages
 from trainsync.modules.coach.voice import CoachVoice
 from trainsync.modules.notifications.models import NotificationKind
-from trainsync.modules.notifications.preferences import stored_prefs
+from trainsync.modules.notifications.recipients import recipient
 from trainsync.modules.notifications.repository import NotificationRepository
 from trainsync.modules.sync.context import job_log_context
 
@@ -53,10 +55,9 @@ RETRY_BASE = timedelta(seconds=10)
 class NotifyDeps:
     sessionmaker: async_sessionmaker[AsyncSession]
     notifier: Notifier
-    chat_ref: str | None
-    dashboard_url: str
+    settings: Settings
     clock: Clock
-    msg: Messages  # BOT_TONE / BOT_LANG wording (ADR 0016)
+    msg: Messages  # every tone and language; the user's are chosen per send (ADR 0036)
     # Max profanity in savage (ADR 0032): the notification gets an opener too. None: never.
     voice: CoachVoice | None = None
 
@@ -64,9 +65,10 @@ class NotifyDeps:
 def build_notifier(
     settings: Settings, http: httpx.AsyncClient, sleep: Sleep
 ) -> tuple[Notifier, str | None]:
-    """Telegram when a token and a target chat are configured, else the NullNotifier."""
+    """Telegram when a bot token is set, else the NullNotifier; and the owner's operations chat
+    for stack alerts (`TELEGRAM_NOTIFY_CHAT_ID`, else the first bootstrap chat)."""
     chat_id = settings.notify_chat_id()
-    if not settings.bot_enabled or chat_id is None:
+    if not settings.bot_enabled:
         return NullNotifier(), None
     api = TelegramApi(
         http,
@@ -75,7 +77,7 @@ def build_notifier(
         sleep=sleep,
         max_attempts=2,  # one quick in-process retry; arq retries with backoff after that
     )
-    return TelegramNotifier(api), str(chat_id)
+    return TelegramNotifier(api), str(chat_id) if chat_id is not None else None
 
 
 def retry_delay(job_try: int) -> timedelta:
@@ -86,29 +88,35 @@ def retry_delay(job_try: int) -> timedelta:
 async def send_new_activity(deps: NotifyDeps, strava_activity_id: int) -> str:
     """Outcome: sent / duplicate / skipped (gone) / disabled / unknown. Raises
     `NotifyFailedError` after releasing the claim."""
-    if deps.chat_ref is None:
-        return _count(deps, "disabled")
     async with deps.sessionmaker() as session:
-        reads = ReadRepository(session)
-        row = await reads.activity(strava_activity_id, await reads.active_athlete_ids())
+        user_id = await session.scalar(
+            select(Activity.user_id).where(Activity.strava_activity_id == strava_activity_id)
+        )
+    if user_id is None:
+        return _count(deps, "skipped")  # unknown: deleted before we got here
+    who = await recipient(deps.sessionmaker, deps.settings, user_id)
+    if who is None:
+        return _count(deps, "disabled")  # the user linked no chat
+    with using_context(who.context()):
+        async with deps.sessionmaker() as session:
+            reads = ReadRepository(session, who.user_id)
+            row = await reads.activity(strava_activity_id, await reads.active_athlete_ids())
         if row is None:
             return _count(deps, "skipped")  # deleted, or the athlete left, before we got here
         activity = ActivityOut.from_row(row, include_raw=False)
-        prefs = await stored_prefs(deps.sessionmaker, deps.chat_ref)
-        with using_lang(prefs.lang), using_profanity(prefs.profanity):
-            text = format_new_activity(activity, deps.dashboard_url, deps.msg)
-            if deps.voice is not None:
-                text = await deps.voice.decorate(text)
+        text = format_new_activity(activity, deps.settings.dashboard_public_url, deps.msg)
+        if deps.voice is not None:
+            text = await deps.voice.decorate(text)
 
     kind = NotificationKind.NEW_ACTIVITY
     async with deps.sessionmaker.begin() as session:
-        claimed = await NotificationRepository(session).claim(
+        claimed = await NotificationRepository(session, who.user_id).claim(
             kind, strava_activity_id, deps.clock()
         )
     if not claimed:
         return _count(deps, "duplicate")
     try:
-        await deps.notifier.send(deps.chat_ref, text)
+        await deps.notifier.send(str(who.chat_id), text)
     except DeliveryUnknownError as exc:
         log.warning("notification_delivery_unknown", activity_id=strava_activity_id, error=str(exc))
         return _count(deps, "unknown")
@@ -116,7 +124,7 @@ async def send_new_activity(deps: NotifyDeps, strava_activity_id: int) -> str:
         # Definitely not delivered (or a bug): release, so a retry can claim it again.
         # Cancellation is not caught: the claim stays, like an unknown outcome.
         async with deps.sessionmaker.begin() as session:
-            await NotificationRepository(session).release(kind, strava_activity_id)
+            await NotificationRepository(session, who.user_id).release(kind, strava_activity_id)
         _count(deps, "failed")
         raise
     log.info("notification_sent", activity_id=strava_activity_id, channel=deps.notifier.channel)

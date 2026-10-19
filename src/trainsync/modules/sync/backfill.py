@@ -7,8 +7,13 @@ committed page; re-fetching that one page is harmless because upserts are idempo
 
 The next cursor is `oldest start_date on the page + 1 s`, so activities sharing the boundary
 second are fetched again rather than skipped.
+
+Fair sync (ADR 0037): after `BACKFILL_PAGES_PER_JOB` pages the run pauses and the job re-queues
+itself shortly after, behind whatever other athletes' jobs were queued meanwhile; one long
+history never holds the worker while someone else's sync waits.
 """
 
+from datetime import timedelta
 from typing import Any
 
 from arq.worker import func
@@ -24,6 +29,7 @@ from trainsync.modules.sync.common import (
     SyncOutcome,
     counted,
     ensure_budget,
+    pause,
     retry_after,
     run_guarded,
 )
@@ -32,6 +38,9 @@ from trainsync.modules.sync.models import SyncKind, SyncStatus
 from trainsync.modules.sync.repository import SyncRunRepository, is_live
 
 log = get_logger(__name__)
+
+# How long a yielding backfill waits before its next slice (other jobs run first).
+YIELD_DEFER = timedelta(seconds=1)
 
 __all__ = ["STALE_AFTER", "backfill", "backfill_job", "next_cursor", "run_backfill"]
 
@@ -45,7 +54,10 @@ async def run_backfill(deps: SyncDeps, athlete_id: int, *, per_page: int = PER_P
 
     async def pages() -> SyncOutcome:
         cursor = before
+        done_pages = 0
         while True:
+            if deps.backfill_pages_per_job and done_pages >= deps.backfill_pages_per_job:
+                return await pause(runs, "backfill", athlete_id, deps.clock() + YIELD_DEFER)
             await ensure_budget(deps.budget, "low")
             page = await deps.strava.list_activities(
                 athlete_id, before=cursor, per_page=per_page, priority="low"
@@ -54,6 +66,7 @@ async def run_backfill(deps: SyncDeps, athlete_id: int, *, per_page: int = PER_P
                 break
             next_before, done = next_cursor(page, cursor, per_page)
             await runs.store_page(athlete_id, page, {"before": next_before})
+            done_pages += 1
             if done:
                 break
             cursor = next_before

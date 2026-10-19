@@ -19,8 +19,13 @@ x-trainsync-env: &trainsync-env
   # DEV-ONLY Fernet key: base64 of "dev-only-fernet-key-not-for-use!". Generate your own for real use.
   TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-ZGV2LW9ubHktZmVybmV0LWtleS1ub3QtZm9yLXVzZSE=}
   STATE_SIGNING_KEY: ${STATE_SIGNING_KEY:-dev-only-state-signing-key}
-  # DEV-ONLY key; TRAINSYNC_API_KEY (web) must be one of these.
+  # DEV-ONLY keys for machine and owner tooling; the bot's is also a service key (ADR 0036).
   API_KEYS: ${API_KEYS:-dev-key-1}
+  SERVICE_API_KEYS: ${SERVICE_API_KEYS:-dev-bot-key}
+  # The owner account (scripts/owner.py set-password); example.com: a placeholder, never real.
+  OWNER_EMAIL: ${OWNER_EMAIL:-owner@example.com}
+  REGISTRATION_MODE: ${REGISTRATION_MODE:-invite}
+  TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
 
 x-trainsync-image: &trainsync-image
   build: .
@@ -121,6 +126,9 @@ services:
       CHECKIN_TIME: ${CHECKIN_TIME:-21:00}
       CHECKIN_TZ: ${CHECKIN_TZ:-Europe/Istanbul}
       CHECKIN_REMINDER_MINUTES: ${CHECKIN_REMINDER_MINUTES:-90}
+      # Weekly / monthly progress digests (P8.11); empty = on with a bot token.
+      STATS_DIGEST_ENABLED: ${STATS_DIGEST_ENABLED:-}
+      STATS_DIGEST_TIME: ${STATS_DIGEST_TIME:-09:00}
     ports: ["9100:9100"]  # worker /metrics (WORKER_METRICS_PORT)
     volumes: ["./config:/app/config:ro"]  # own coach lines (optional, P6.11)
     depends_on:
@@ -166,10 +174,7 @@ services:
     image: trainsync-web:dev
     environment:
       TRAINSYNC_API_URL: http://api:8000
-      TRAINSYNC_API_KEY: ${TRAINSYNC_API_KEY:-dev-key-1}
-      TRAINSYNC_PUBLIC_API_URL: http://localhost:8000
       WEB_PUBLIC_URL: http://localhost:3000
-      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-dev-only-dashboard-password}
       DASHBOARD_SESSION_SECRET: ${DASHBOARD_SESSION_SECRET:-dev-only-dashboard-session-secret-not-for-real-use}
     ports: ["3000:3000"]
     depends_on:

@@ -18,13 +18,15 @@ from pydantic import SecretStr
 
 from tests.conftest import make_settings
 from tests.support.bot_api import API, FakeApi, install
-from tests.support.chat_settings import ChatSettingsApi
+from tests.support.chat_links import ChatLinksApi
 from tests.support.state import MemoryStateStore
 from tests.support.swears import swears
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, message_update, ok, sent_messages
+from trainsync.core.clock import utc_now
 from trainsync.entrypoints.bot.dispatcher import Commands, Dispatcher
 from trainsync.integrations.telegram.client import TelegramApi, Update
-from trainsync.modules.chat.language import ChatSettingsStore, LanguageFeature
+from trainsync.modules.chat.language import LanguageFeature
+from trainsync.modules.chat.links import ChatLinks
 from trainsync.modules.chat.nutrition import NutritionCommands
 from trainsync.modules.chat.profanity import SwearFeature
 from trainsync.modules.chat.read_api import ReadApi
@@ -41,12 +43,12 @@ OPENERS = set(SAVAGE_MAX["tr"][Category.MAX_OPENER])
 
 
 @pytest.fixture
-def db() -> ChatSettingsApi:
-    return ChatSettingsApi()
+def db() -> ChatLinksApi:
+    return ChatLinksApi().link(CHAT)
 
 
 @pytest.fixture
-def router(db: ChatSettingsApi) -> Iterator[respx.MockRouter]:
+def router(db: ChatLinksApi) -> Iterator[respx.MockRouter]:
     with respx.mock(assert_all_called=False) as router:
         db.install(router, API)
         router.post(f"{BOT_URL}/sendMessage", name="send").mock(return_value=ok({}))
@@ -56,8 +58,8 @@ def router(db: ChatSettingsApi) -> Iterator[respx.MockRouter]:
 
 
 @pytest.fixture
-def fake(router: respx.MockRouter) -> FakeApi:
-    return install(router, lambda: NOW)
+def fake(router: respx.MockRouter, db: ChatLinksApi) -> FakeApi:
+    return install(router, lambda: NOW, links=db)
 
 
 @pytest.fixture
@@ -91,7 +93,7 @@ class Bot:
             profanity=config.bot_profanity,
         )
         api = ReadApi(http, API, SecretStr("bot-key"))
-        store = ChatSettingsStore(api)
+        store = ChatLinks(api, utc_now, ttl_s=60)
         clock = lambda: NOW  # noqa: E731
         nutrition = NutritionCommands(
             api, MemoryStateStore(), clock, ZONE, self.msg, voice=self.voice, sugar_limit_g=50
@@ -99,14 +101,13 @@ class Bot:
         self.dispatcher = Dispatcher(
             TelegramApi(http, SecretStr(BOT_TOKEN), base_url=TELEGRAM),
             Commands(api, clock, self.msg),
-            {CHAT},
+            store,
             self.msg,
             features=[
                 LanguageFeature(store, self.msg, self.voice),
                 SwearFeature(store, self.msg, self.voice),
                 nutrition,
             ],
-            chat_settings=store,
             voice=self.voice,
         )
         self._update = 0
@@ -160,7 +161,7 @@ async def test_swear_shows_two_buttons(http: httpx.AsyncClient, router: respx.Mo
 
 
 async def test_a_button_switches_and_confirms_at_the_new_level(
-    http: httpx.AsyncClient, router: respx.MockRouter, db: ChatSettingsApi
+    http: httpx.AsyncClient, router: respx.MockRouter, db: ChatLinksApi
 ) -> None:
     bot = Bot(http, router)
     to_max = await bot.press("swear:max")
@@ -199,12 +200,12 @@ async def test_max_applies_to_confirmations_and_roast_keeps_them_clean(
 
 
 async def test_the_level_survives_a_restart_and_defaults_to_bot_profanity(
-    http: httpx.AsyncClient, router: respx.MockRouter, fake: FakeApi, db: ChatSettingsApi
+    http: httpx.AsyncClient, router: respx.MockRouter, fake: FakeApi, db: ChatLinksApi
 ) -> None:
     await Bot(http, router).say("/swear max")
     restarted = Bot(http, router)  # a new process: empty cache, same database
     assert split_opener(await restarted.say("/eat oats 50"))[0] is not None
-    db.rows.clear()
+    db.users.clear()
     default_max = Bot(http, router, bot_profanity="max")
     assert split_opener(await default_max.say("/eat oats 50"))[0] is not None
     default_roast = Bot(http, router)

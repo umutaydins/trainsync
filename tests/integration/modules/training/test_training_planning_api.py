@@ -12,6 +12,7 @@ from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from tests.support.accounts import OWNER_ID
 from trainsync.core.settings import Settings
 from trainsync.entrypoints.api.app import create_app
 from trainsync.modules.training.repository import ExerciseRepository
@@ -97,7 +98,7 @@ async def test_starting_a_workout_suggests_the_next_weights(
 ) -> None:
     slugs = ("bench-press", "back-squat", "barbell-row", "overhead-press")
     async with sessionmaker() as session:
-        repo = ExerciseRepository(session)
+        repo = ExerciseRepository(session, OWNER_ID)
         ids = {slug: e.id for slug in slugs if (e := await repo.by_slug(slug)) is not None}
 
     def planned(slug: str, **extra: Any) -> dict[str, Any]:

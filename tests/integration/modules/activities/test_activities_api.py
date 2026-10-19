@@ -1,3 +1,4 @@
+import re
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -128,28 +129,30 @@ async def test_filters_combine(
     assert sorted(item["id"] for item in items) == [i for i in range(1, 101) if expected(i)]
 
 
-async def test_excludes_soft_deleted_and_inactive_athletes_and_filters_by_athlete(
+async def test_excludes_soft_deleted_other_users_and_inactive_athletes(
     api: httpx.AsyncClient, sessionmaker: async_sessionmaker[AsyncSession]
 ) -> None:
-    one = await create_athlete(sessionmaker, 1001)
-    two = await create_athlete(sessionmaker, 1002)
-    gone = await create_athlete(sessionmaker, 1003)
-    await _seed(sessionmaker, one, range(1, 6))
-    await _seed(sessionmaker, two, range(6, 9))
-    await _seed(sessionmaker, gone, range(9, 11))
+    mine = await create_athlete(sessionmaker, 1001)  # the owner's (the API key acts as them)
+    theirs = await create_athlete(sessionmaker, 1002)  # another user's (ADR 0035)
+    await _seed(sessionmaker, mine, range(1, 6))
+    await _seed(sessionmaker, theirs, range(6, 9))
     async with sessionmaker.begin() as session:
         await ActivityRepository(session).soft_delete(3)
-        await session.execute(update(Athlete).where(Athlete.id == gone).values(active=False))
 
-    assert sorted(i["id"] for i in await _all_pages(api)) == [1, 2, 4, 5, 6, 7, 8]
-    assert sorted(i["id"] for i in await _all_pages(api, athlete_id=two)) == [6, 7, 8]
-    assert await _all_pages(api, athlete_id=gone) == []
+    assert sorted(i["id"] for i in await _all_pages(api)) == [1, 2, 4, 5]
+    assert sorted(i["id"] for i in await _all_pages(api, athlete_id=mine)) == [1, 2, 4, 5]
+    assert await _all_pages(api, athlete_id=theirs) == []
+    assert (await api.get("/v1/activities/6", headers=KEY)).status_code == 404
 
     body = (
         await api.get("/v1/activities", params={"include": "raw", "limit": 1}, headers=KEY)
     ).json()
     assert body["items"][0]["raw"]["id"] == body["items"][0]["id"]
     assert body["last_synced_at"] is not None
+
+    async with sessionmaker.begin() as session:
+        await session.execute(update(Athlete).where(Athlete.id == mine).values(active=False))
+    assert await _all_pages(api) == []
 
 
 async def test_valid_key_is_200_and_wrong_key_is_401(api: httpx.AsyncClient) -> None:
@@ -207,16 +210,23 @@ async def test_page_query_uses_athlete_start_date_index(engine: AsyncEngine) -> 
     async with engine.begin() as conn:
         await conn.execute(
             text(
-                "INSERT INTO athletes (strava_athlete_id)"
-                " SELECT 5000 + g FROM generate_series(1, 20) g"
+                "INSERT INTO users (email, password_hash, display_name, timezone)"
+                " SELECT 'u' || g || '@example.com', '!', 'u', 'UTC' FROM generate_series(1, 20) g"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO athletes (user_id, strava_athlete_id)"
+                " SELECT u.id, 5000 + g FROM generate_series(1, 20) g"
+                " JOIN users u ON u.email = 'u' || g || '@example.com'"
             )
         )
         await conn.execute(
             text(
                 """
-                INSERT INTO activities (strava_activity_id, athlete_id, name, sport_type,
+                INSERT INTO activities (user_id, strava_activity_id, athlete_id, name, sport_type,
                     start_date, distance_m, moving_time_s, elapsed_time_s, elevation_gain_m, raw)
-                SELECT g, a.id, 'a', (ARRAY['Run','Ride','Swim'])[1 + g % 3],
+                SELECT a.user_id, g, a.id, 'a', (ARRAY['Run','Ride','Swim'])[1 + g % 3],
                     timestamptz '2020-01-01' + g * interval '37 minutes', 1000, 300, 320, 5, '{}'
                 FROM generate_series(1, 60000) g
                 JOIN athletes a ON a.strava_athlete_id = 5000 + 1 + g % 20
@@ -224,13 +234,16 @@ async def test_page_query_uses_athlete_start_date_index(engine: AsyncEngine) -> 
             )
         )
         await conn.execute(text("ANALYZE activities"))
-        athlete_id = await conn.scalar(text("SELECT min(id) FROM athletes"))
+        athlete_id, user_id = (
+            await conn.execute(text("SELECT id, user_id FROM athletes ORDER BY id LIMIT 1"))
+        ).one()
 
         for after in (None, Keyset(datetime(2022, 1, 1, tzinfo=UTC), 30000)):
-            stmt = activity_page_query(ActivityFilter([athlete_id]), after, 50)
+            stmt = activity_page_query(user_id, ActivityFilter([athlete_id]), after, 50)
             sql = str(
                 stmt.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})
             )
             plan = "\n".join((await conn.execute(text(f"EXPLAIN {sql}"))).scalars().all())
-            assert "ix_activities_athlete_start_date" in plan, plan
+            # Either (owner, start_date DESC) index serves the page in order (ADR 0009, 0035).
+            assert re.search(r"ix_activities_(athlete|user)_start_date", plan), plan
             assert "Seq Scan" not in plan, plan

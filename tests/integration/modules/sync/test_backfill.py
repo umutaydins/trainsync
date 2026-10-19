@@ -85,6 +85,29 @@ async def test_backfill_stores_everything_once(
     assert await _count(sessionmaker) == 1000
 
 
+async def test_a_long_backfill_yields_after_its_page_budget_and_resumes(
+    sessionmaker: async_sessionmaker[AsyncSession], strava: ActivitySource
+) -> None:
+    """P8.3, ADR 0037: after BACKFILL_PAGES_PER_JOB pages the run pauses (the job re-queues
+    itself behind other athletes' jobs) and the next run continues from the cursor."""
+    athlete_id = await create_athlete(sessionmaker)
+    sliced = SyncDeps(sessionmaker, strava, UnlimitedBudget(), lambda: NOW, 2)
+    first = await run_backfill(sliced, athlete_id, per_page=200)
+    assert first.status == "paused"
+    assert 200 < await _count(sessionmaker) <= 400  # two pages (boundary second re-fetched)
+    assert first.resume_at is not None
+    assert first.resume_at - NOW < timedelta(seconds=5)  # soon: a yield, not a rate limit
+    statuses = [first.status]
+    while statuses[-1] == "paused":
+        statuses.append((await run_backfill(sliced, athlete_id, per_page=200)).status)
+    # Three slices of two pages each, then the rest: ~6 pages of 200 for 1000 activities.
+    assert statuses[-1] == "succeeded"
+    assert 3 <= len(statuses) <= 4
+    assert await _count(sessionmaker) == 1000
+    (run,) = await _runs(sessionmaker)
+    assert (run.status, run.upserted) == ("succeeded", 1000)
+
+
 @dataclass
 class CrashAfter:
     """Forwards to the real client; the call after `pages` hangs (the worker 'dies' there)."""

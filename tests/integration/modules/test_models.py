@@ -5,6 +5,8 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from tests.support.accounts import OWNER_ID
+from tests.support.factories import owner_of
 from trainsync.modules.activities.models import Activity
 from trainsync.modules.strava.models import Athlete, OAuthToken
 from trainsync.modules.sync.models import SyncKind, SyncRun, SyncStatus, WebhookEvent
@@ -16,6 +18,7 @@ NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 def _activity(athlete_id: int, strava_activity_id: int) -> Activity:
     return Activity(
+        user_id=owner_of(athlete_id),
         strava_activity_id=strava_activity_id,
         athlete_id=athlete_id,
         name="Morning Run",
@@ -30,7 +33,7 @@ def _activity(athlete_id: int, strava_activity_id: int) -> Activity:
 
 
 async def _athlete(session: AsyncSession, strava_athlete_id: int = 1) -> Athlete:
-    athlete = Athlete(strava_athlete_id=strava_athlete_id)
+    athlete = Athlete(user_id=OWNER_ID, strava_athlete_id=strava_athlete_id)
     session.add(athlete)
     await session.flush()
     return athlete
@@ -53,6 +56,7 @@ async def test_deleting_athlete_cascades(db_session: AsyncSession) -> None:
     db_session.add_all(
         [
             OAuthToken(
+                user_id=OWNER_ID,
                 athlete_id=athlete.id,
                 access_token_enc=b"a",
                 refresh_token_enc=b"r",
@@ -61,7 +65,12 @@ async def test_deleting_athlete_cascades(db_session: AsyncSession) -> None:
             ),
             _activity(athlete.id, 100),
             _activity(athlete.id, 101),
-            SyncRun(athlete_id=athlete.id, kind=SyncKind.BACKFILL, status=SyncStatus.RUNNING),
+            SyncRun(
+                user_id=OWNER_ID,
+                athlete_id=athlete.id,
+                kind=SyncKind.BACKFILL,
+                status=SyncStatus.RUNNING,
+            ),
         ]
     )
     await db_session.commit()
@@ -83,7 +92,7 @@ async def test_unique_constraints(db_session: AsyncSession, duplicate: str) -> N
 
     def rows() -> list[object]:
         if duplicate == "athlete":
-            return [Athlete(strava_athlete_id=1)]
+            return [Athlete(user_id=OWNER_ID, strava_athlete_id=1)]
         if duplicate == "activity":
             return [_activity(athlete.id, 7), _activity(athlete.id, 7)]
         return [WebhookEvent(dedup_key="k", payload={}), WebhookEvent(dedup_key="k", payload={})]
@@ -99,8 +108,12 @@ async def test_unique_constraints(db_session: AsyncSession, duplicate: str) -> N
 @pytest.mark.parametrize(
     "row",
     [
-        lambda athlete_id: SyncRun(athlete_id=athlete_id, kind="bogus", status="running"),
-        lambda athlete_id: SyncRun(athlete_id=athlete_id, kind="backfill", status="bogus"),
+        lambda athlete_id: SyncRun(
+            user_id=OWNER_ID, athlete_id=athlete_id, kind="bogus", status="running"
+        ),
+        lambda athlete_id: SyncRun(
+            user_id=OWNER_ID, athlete_id=athlete_id, kind="backfill", status="bogus"
+        ),
         lambda _: WebhookEvent(dedup_key="k", payload={}, status="bogus"),
     ],
     ids=["sync_kind", "sync_status", "webhook_status"],

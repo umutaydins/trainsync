@@ -21,6 +21,7 @@ from tests.fault.helpers import drain_webhooks, metric
 from tests.support import fake_webhooks
 from tests.support.factories import create_athlete
 from tests.support.fake_webhooks import activity_event
+from tests.support.linked import link_chat
 from tests.support.notify import (
     CHAT_ID,
     notification_rows,
@@ -49,6 +50,7 @@ async def test_telegram_down_then_back_sends_exactly_one_message(
     integration_settings: Settings,
 ) -> None:
     await create_athlete(sessionmaker, fake_strava.default_athlete_id)
+    await link_chat(sessionmaker, CHAT_ID)  # the owner's chat gets the message (ADR 0036)
     new = fake_strava.apply_change(
         "create", athlete_id=None, activity_id=None, fields={"name": "Tempo Run"}
     )

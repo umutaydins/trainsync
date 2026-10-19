@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from trainsync.modules.strava.repository import athlete_user_id
 from trainsync.modules.sync.models import SyncKind, SyncRun, SyncStatus
 
 _OPEN = (SyncStatus.RUNNING, SyncStatus.PAUSED)
@@ -38,6 +39,7 @@ class SyncRunRepository:
         self, athlete_id: int, kind: SyncKind, cursor: dict[str, Any], now: datetime
     ) -> SyncRun:
         run = SyncRun(
+            user_id=await athlete_user_id(self._session, athlete_id),
             athlete_id=athlete_id,
             kind=kind,
             status=SyncStatus.RUNNING,

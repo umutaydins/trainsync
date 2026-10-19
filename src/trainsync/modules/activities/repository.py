@@ -10,8 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from trainsync.integrations.strava.models import StravaActivity
 from trainsync.modules.activities.models import Activity
+from trainsync.modules.strava.repository import athlete_user_id
 
 _DATA_COLUMNS = (
+    "user_id",
     "athlete_id",
     "name",
     "sport_type",
@@ -25,9 +27,10 @@ _DATA_COLUMNS = (
 )
 
 
-def to_row(athlete_id: int, activity: StravaActivity) -> dict[str, Any]:
+def to_row(user_id: int, athlete_id: int, activity: StravaActivity) -> dict[str, Any]:
     return {
         "strava_activity_id": activity.id,
+        "user_id": user_id,
         "athlete_id": athlete_id,
         "name": activity.name,
         "sport_type": activity.sport_type,
@@ -55,7 +58,10 @@ class ActivityRepository:
         unique = {a.id: a for a in activities}
         if not unique:
             return 0
-        insert_stmt = insert(Activity).values([to_row(athlete_id, a) for a in unique.values()])
+        user_id = await athlete_user_id(self._session, athlete_id)
+        insert_stmt = insert(Activity).values(
+            [to_row(user_id, athlete_id, a) for a in unique.values()]
+        )
         excluded = insert_stmt.excluded
         stmt = insert_stmt.on_conflict_do_update(
             index_elements=[Activity.strava_activity_id],

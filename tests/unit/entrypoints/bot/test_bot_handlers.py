@@ -14,6 +14,7 @@ from prometheus_client import REGISTRY
 from pydantic import SecretStr
 
 from tests.conftest import make_settings
+from tests.support.chat_links import ChatLinksApi, chat_links
 from tests.support.messages import NEUTRAL_EN as MSG
 from tests.support.telegram import (
     BOT_TOKEN,
@@ -37,8 +38,11 @@ from trainsync.entrypoints.bot.dispatcher import (
 )
 from trainsync.entrypoints.bot.polling import Poller
 from trainsync.integrations.telegram.client import TelegramApi, Update
+from trainsync.modules.chat.assistant import Asker
 from trainsync.modules.chat.read_api import ReadApi
-from trainsync.modules.coach.packs import Key
+from trainsync.modules.coach.packs import Key, NeutralKey
+from trainsync.modules.stats.examples import PROGRESS_EXAMPLE
+from trainsync.modules.stats.totals import SUMMARY_EXAMPLE
 
 FIXTURE: dict[str, Any] = json.loads(
     (Path(__file__).parents[3] / "fixtures" / "bot_api_responses.json").read_text(encoding="utf-8")
@@ -46,11 +50,15 @@ FIXTURE: dict[str, Any] = json.loads(
 NOW = datetime.fromisoformat(FIXTURE["now"])  # Thursday 2026-10-15
 API = "http://trainsync-api"
 ALLOWED, STRANGER = 42, 99
+DASHBOARD = "https://dash.example"
 
 
 def metric(command: str, outcome: str) -> float:
     labels = {"command": command, "outcome": outcome}
     return REGISTRY.get_sample_value("bot_updates_total", labels) or 0.0
+
+
+STATS_EXAMPLE = {**SUMMARY_EXAMPLE, **PROGRESS_EXAMPLE}
 
 
 @pytest.fixture
@@ -72,7 +80,10 @@ def telegram(http: httpx.AsyncClient, sleep: SleepRecorder) -> TelegramApi:
 @pytest.fixture
 def dispatcher(http: httpx.AsyncClient, telegram: TelegramApi) -> Dispatcher:
     read_api = ReadApi(http, API, SecretStr("bot-key"))
-    return Dispatcher(telegram, Commands(read_api, lambda: NOW, MSG), {ALLOWED}, MSG)
+    links = chat_links(http, API, lambda: NOW)
+    return Dispatcher(
+        telegram, Commands(read_api, lambda: NOW, MSG), links, MSG, dashboard_url=DASHBOARD
+    )
 
 
 @pytest.fixture
@@ -86,6 +97,9 @@ def fake_api() -> respx.MockRouter:
         }
 
         def summary(request: httpx.Request) -> httpx.Response:
+            if "period" in request.url.params:  # /stats week|month|... (P8.11)
+                progress = {**STATS_EXAMPLE, "period": request.url.params["period"]}
+                return httpx.Response(200, json=progress)
             return httpx.Response(200, json=summaries[request.url.params["from"]])
 
         router.get(f"{API}/v1/stats/summary", name="summary").mock(side_effect=summary)
@@ -105,6 +119,7 @@ def fake_api() -> respx.MockRouter:
         router.get(f"{API}/v1/sync/status", name="status").mock(
             return_value=httpx.Response(200, json=FIXTURE["sync_status_healthy"])
         )
+        ChatLinksApi().link(ALLOWED).install(router, API)
         yield router
 
 
@@ -117,17 +132,23 @@ def update(chat_id: int, text: str, update_id: int = 1) -> Update:
     return Update.model_validate(message_update(update_id, chat_id, text))
 
 
-async def test_allowlisted_chat_gets_the_reply_others_get_nothing(
+async def test_a_linked_chat_gets_the_reply_others_only_the_link_hint(
     dispatcher: Dispatcher, fake_api: respx.MockRouter, send: respx.Route
 ) -> None:
+    """ADR 0036: an unknown chat runs nothing and is pointed to the dashboard."""
     denied_before = metric("week", "denied")
     ok_before = metric("week", "ok")
 
     await dispatcher.handle(update(STRANGER, "/week"))
-    assert send.call_count == 0
+    [hint] = sent_messages(send)
+    assert (hint["chat_id"], hint["text"]) == (
+        STRANGER,
+        MSG.neutral(NeutralKey.LINK_HINT, url=DASHBOARD),
+    )
     assert fake_api["summary"].call_count == 0  # not even the API is asked
     assert metric("week", "denied") - denied_before == 1
 
+    send.reset()
     await dispatcher.handle(update(ALLOWED, "/week"))
     [message] = sent_messages(send)
     assert message["chat_id"] == ALLOWED
@@ -137,10 +158,11 @@ async def test_allowlisted_chat_gets_the_reply_others_get_nothing(
     froms = [c.request.url.params["from"] for c in fake_api["summary"].calls]
     tos = [c.request.url.params["to"] for c in fake_api["summary"].calls]
     assert (froms, tos) == (["2026-10-12", "2026-10-05"], ["2026-10-15", "2026-10-11"])
-    assert fake_api["summary"].calls.last.request.headers["X-API-Key"] == "bot-key"
+    last = fake_api["summary"].calls.last.request
+    assert (last.headers["X-API-Key"], last.headers["X-Acting-User"]) == ("bot-key", "1")
 
 
-async def test_poller_replies_to_allowlisted_updates_only_and_advances_offset(
+async def test_poller_replies_to_linked_chats_and_advances_offset(
     telegram: TelegramApi, dispatcher: Dispatcher, fake_api: respx.MockRouter, send: respx.Route
 ) -> None:
     get_updates = fake_api.get(f"{BOT_URL}/getUpdates").mock(
@@ -151,8 +173,8 @@ async def test_poller_replies_to_allowlisted_updates_only_and_advances_offset(
     )
     poller = Poller(telegram, dispatcher, poll_timeout=0)
     assert await poller.poll_once() == 0.0
-    assert [m["chat_id"] for m in sent_messages(send)] == [ALLOWED]
-    assert sent_messages(send)[0]["text"].startswith("✅ synced 20 min ago")
+    assert [m["chat_id"] for m in sent_messages(send)] == [STRANGER, ALLOWED]
+    assert sent_messages(send)[1]["text"].startswith("✅ synced 20 min ago")
     assert poller.offset == 9
     await poller.poll_once()
     assert get_updates.calls.last.request.url.params["offset"] == "9"
@@ -219,18 +241,23 @@ async def test_updates_without_text_are_ignored(dispatcher: Dispatcher, send: re
 async def test_plain_text_goes_to_the_text_handler(
     telegram: TelegramApi, http: httpx.AsyncClient, send: respx.Route
 ) -> None:
-    seen: list[tuple[int, str]] = []
+    seen: list[tuple[int, str, Asker]] = []
 
-    async def assistant(chat_id: int, text: str) -> str:
-        seen.append((chat_id, text))
+    async def assistant(chat_id: int, text: str, asker: Asker) -> str:
+        seen.append((chat_id, text, asker))
         return "42 km"
 
     read_api = ReadApi(http, API, SecretStr("k"))
     dispatcher = Dispatcher(
-        telegram, Commands(read_api, lambda: NOW, MSG), {ALLOWED}, MSG, assistant
+        telegram,
+        Commands(read_api, lambda: NOW, MSG),
+        chat_links(http, API, lambda: NOW),
+        MSG,
+        assistant,
     )
     await dispatcher.handle(update(ALLOWED, "how far did I run?"))
-    assert seen == [(ALLOWED, "how far did I run?")]
+    zone = make_settings().checkin_tz  # the owner never chose a time zone
+    assert seen == [(ALLOWED, "how far did I run?", Asker(1, zone, unlimited=True))]
     assert sent_messages(send)[0]["text"] == "42 km"
 
 
@@ -336,9 +363,84 @@ async def test_main_with_token_polls_and_replies() -> None:
         return ok({})
 
     send = respx.post(f"{BOT_URL}/sendMessage").mock(side_effect=reply)
-    # The chat chose Turkish (P6.12); help stays English in every language.
-    respx.get(f"{API}/v1/chats/{ALLOWED}/settings").mock(
-        return_value=httpx.Response(200, json={"chat_id": ALLOWED, "lang": "tr"})
-    )
+    # The chat's user chose Turkish (P6.12); help stays English in every language.
+    ChatLinksApi().link(ALLOWED, lang="tr").install(respx.mock, API)
     await asyncio.wait_for(bot_main.run(settings, stop, sleep=SleepRecorder()), timeout=5)
     assert sent_messages(send)[0]["text"] == MSG.help()
+
+
+async def test_link_and_unlink_from_the_chat(
+    http: httpx.AsyncClient, telegram: TelegramApi
+) -> None:
+    """P8.4, ADR 0036: `/link CODE` binds an unknown chat once; `/unlink` ends it."""
+    with respx.mock(assert_all_called=False) as router:
+        links = ChatLinksApi()
+        links.codes["K7Q2M9XD"] = 5
+        links.names[5] = "Ayşe"
+        links.install(router, API)
+        replies = router.post(f"{BOT_URL}/sendMessage").mock(return_value=ok({}))
+        read_api = ReadApi(http, API, SecretStr("bot-key"))
+        bot = Dispatcher(
+            telegram,
+            Commands(read_api, lambda: NOW, MSG),
+            chat_links(http, API, lambda: NOW),
+            MSG,
+            dashboard_url=DASHBOARD,
+        )
+        texts: list[str] = []
+        for n, text in enumerate(
+            ["/link", "/link WRONG234", "/link k7q2m9xd", "/link K7Q2M9XD", "/unlink", "/week"]
+        ):
+            await bot.handle(update(STRANGER, text, n + 1))
+            texts.append(sent_messages(replies)[-1]["text"])
+    neutral = MSG.neutral
+    assert texts == [
+        neutral(NeutralKey.LINK_USAGE),
+        neutral(NeutralKey.LINK_INVALID),
+        neutral(NeutralKey.LINK_DONE, name="Ayşe"),
+        neutral(NeutralKey.LINK_ALREADY),
+        neutral(NeutralKey.UNLINKED),
+        neutral(NeutralKey.LINK_HINT, url=DASHBOARD),
+    ]
+    assert links.chats == {}
+
+
+async def test_the_dashboard_deep_link_links_the_chat(
+    http: httpx.AsyncClient, telegram: TelegramApi
+) -> None:
+    """`t.me/<bot>?start=CODE` makes Telegram send `/start CODE`; a bare `/start` gets the hint."""
+    with respx.mock(assert_all_called=False) as router:
+        links = ChatLinksApi()
+        links.codes["K7Q2M9XD"] = 5
+        links.names[5] = "Ayşe"
+        links.install(router, API)
+        replies = router.post(f"{BOT_URL}/sendMessage").mock(return_value=ok({}))
+        read_api = ReadApi(http, API, SecretStr("bot-key"))
+        bot = Dispatcher(
+            telegram,
+            Commands(read_api, lambda: NOW, MSG),
+            chat_links(http, API, lambda: NOW),
+            MSG,
+            dashboard_url=DASHBOARD,
+        )
+        texts: list[str] = []
+        for n, text in enumerate(["/start", "/start K7Q2M9XD"]):
+            await bot.handle(update(STRANGER, text, n + 1))
+            texts.append(sent_messages(replies)[-1]["text"])
+    assert texts == [
+        MSG.neutral(NeutralKey.LINK_HINT, url=DASHBOARD),
+        MSG.neutral(NeutralKey.LINK_DONE, name="Ayşe"),
+    ]
+    assert links.chats == {STRANGER: 5}
+
+
+@pytest.mark.parametrize(("args", "title"), [("", "This week"), (" month", "This month")])
+async def test_stats_with_a_period_sends_the_progress_summary(
+    dispatcher: Dispatcher, fake_api: respx.MockRouter, send: respx.Route, args: str, title: str
+) -> None:
+    """P8.11: `/stats [week|month|3m|6m|year|all]`; the older `/stats 12w run` still works."""
+    await dispatcher.handle(update(ALLOWED, f"/stats{args}"))
+    text = sent_messages(send)[-1]["text"]
+    assert text.startswith(title)
+    assert "km" in text
+    assert fake_api["summary"].calls.last.request.url.params["period"] == title.split()[-1].lower()

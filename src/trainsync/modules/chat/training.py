@@ -40,6 +40,7 @@ from trainsync.modules.chat.parsing import (
     parse_number,
 )
 from trainsync.modules.chat.read_api import ReadApi
+from trainsync.modules.coach.context import current_zone
 from trainsync.modules.coach.packs import Key, Messages, NeutralKey
 from trainsync.modules.training.models import Equipment
 from trainsync.modules.training.routes.workouts import (
@@ -144,8 +145,13 @@ class TrainingCommands:
         self._api = api
         self._store = store
         self._clock = clock
-        self._zone = zone
+        self._default_zone = zone
         self._msg = msg
+
+    @property
+    def _zone(self) -> ZoneInfo:
+        """The user's time zone in this update (ADR 0036), else the configured one."""
+        return current_zone(self._default_zone)
 
     async def command(self, incoming: Incoming, command: str, args: list[str]) -> Reply:
         if command == "today":

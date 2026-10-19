@@ -3,6 +3,10 @@
 Commands are deterministic: each one maps to fixed API calls and a formatting function.
 Training, nutrition and check-in commands live in their own `Feature`s (P6.8, P6.9). Plain text
 that no feature claims goes to the optional assistant (P5.7).
+
+Only linked chats are served (ADR 0036): an unknown chat gets the link hint and nothing else,
+`/link CODE` binds it, `/unlink` unbinds it. A linked chat's update runs in its user's voice and
+every API call acts as that user.
 """
 
 from collections.abc import Awaitable, Callable, Sequence
@@ -19,19 +23,22 @@ from trainsync.integrations.telegram.client import (
     Update,
 )
 from trainsync.modules.activities.reads import week_start
-from trainsync.modules.chat import formatting
+from trainsync.modules.auth.models import UserRole
+from trainsync.modules.chat import formatting, progress
+from trainsync.modules.chat.assistant import Asker
 from trainsync.modules.chat.common import Feature, Incoming, Press, PressResult, Reply
-from trainsync.modules.chat.language import ChatSettingsStore
+from trainsync.modules.chat.links import ChatLinks, user_context
 from trainsync.modules.chat.read_api import ReadApi, ReadApiError
-from trainsync.modules.chat.repository import ChatPrefs
+from trainsync.modules.chat.router import ChatOwner
 from trainsync.modules.coach.categories import Category
-from trainsync.modules.coach.mode import using_profanity
-from trainsync.modules.coach.packs import Key, Messages, using_lang
+from trainsync.modules.coach.context import using_context
+from trainsync.modules.coach.packs import Key, Messages, NeutralKey
 from trainsync.modules.coach.voice import CoachVoice
 
 log = get_logger(__name__)
 
 COMMANDS = frozenset({"start", "help", "week", "last", "stats", "status"})
+LINK_COMMANDS = frozenset({"link", "unlink"})
 PERIODS = {"4w": 4, "12w": 12, "52w": 52}
 DEFAULT_PERIOD = "4w"
 _SPORT_ALIASES = {
@@ -45,8 +52,8 @@ _SPORT_ALIASES = {
     "walk": "Walk",
     "hike": "Hike",
 }
-# (chat_id, text) → reply; the assistant plugs in here (P5.7).
-TextHandler = Callable[[int, str], Awaitable[str]]
+# (chat_id, text, who asks) → reply; the assistant plugs in here (P5.7).
+TextHandler = Callable[[int, str, Asker], Awaitable[str]]
 
 
 class UsageError(Exception):
@@ -91,10 +98,13 @@ def period_range(today: date, weeks: int) -> tuple[date, date]:
 
 
 class Commands:
-    def __init__(self, api: ReadApi, clock: Clock, msg: Messages) -> None:
+    def __init__(
+        self, api: ReadApi, clock: Clock, msg: Messages, voice: CoachVoice | None = None
+    ) -> None:
         self._api = api
         self._clock = clock
         self._msg = msg
+        self._voice = voice  # the progress verdict in savage (P8.11)
 
     async def run(self, command: str, args: list[str]) -> str:
         if command == "week":
@@ -120,6 +130,9 @@ class Commands:
         return formatting.format_last(latest, page.last_synced_at, self._clock(), self._msg)
 
     async def stats(self, args: list[str]) -> str:
+        """`/stats [week|month|3m|6m|year|all]`: progress (P8.11); `/stats 12w run`: totals."""
+        if not args or (len(args) == 1 and args[0].lower() in progress.BOT_PERIODS):
+            return await self.progress(args[0].lower() if args else progress.DEFAULT_BOT_PERIOD)
         period, sport = parse_stats_args(args)
         now = self._clock()
         start, end = period_range(now.date(), PERIODS[period])
@@ -127,12 +140,17 @@ class Commands:
         weekly = await self._api.weekly(start, end, sport)
         return formatting.format_stats(summary, weekly.weeks, period, now, self._msg)
 
+    async def progress(self, choice: str) -> str:
+        period, title = progress.BOT_PERIODS[choice]
+        summary = await self._api.progress(period)
+        return await progress.progress_message(summary, title, self._msg, self._voice)
+
     async def status(self) -> str:
         return formatting.format_status(await self._api.sync_status(), self._clock(), self._msg)
 
 
 class Dispatcher:
-    """One update in, at most one reply out. Chats outside the allowlist get nothing.
+    """One update in, at most one reply out. Unlinked chats get the link hint only.
 
     `features` (training, nutrition, check-in) add commands, take plain-text answers to their own
     questions (a pending numbered choice, a check-in step) and handle button presses. Plain text
@@ -143,38 +161,85 @@ class Dispatcher:
         self,
         telegram: TelegramApi,
         commands: Commands,
-        allowed_chat_ids: set[int],
+        links: ChatLinks,
         msg: Messages,
         text_handler: TextHandler | None = None,
         *,
         features: Sequence[Feature] = (),
-        chat_settings: ChatSettingsStore | None = None,
         voice: CoachVoice | None = None,
+        dashboard_url: str = "",
     ) -> None:
         self._telegram = telegram
         self._commands = commands
         self._msg = msg
-        self._allowed = allowed_chat_ids
+        self._links = links
         self._text_handler = text_handler
         self._features = tuple(features)
-        self._chat_settings = chat_settings
+        self._dashboard_url = dashboard_url
         # Savage replies to unknown commands and max-profanity openers (ADR 0032).
         self._voice = voice
-        self._known = COMMANDS.union(*(f.commands for f in self._features))
+        self._known = COMMANDS.union(LINK_COMMANDS, *(f.commands for f in self._features))
 
     async def handle(self, update: Update) -> None:
-        """Everything for this update is rendered in the chat's language (ADR 0031) and at its
-        profanity level (ADR 0032)."""
-        prefs = await self._prefs(_chat_of(update))
-        with using_lang(prefs.lang), using_profanity(prefs.profanity):
-            await self._handle(update)
+        """A linked chat's update runs in its user's voice (tone, language, intensity,
+        profanity; ADR 0036) and acts as that user."""
+        chat_id = _chat_of(update)
+        try:
+            owner = await self._links.owner(chat_id) if chat_id is not None else None
+        except ReadApiError as exc:
+            log.warning("bot_read_api_failed", chat_id=chat_id, error=str(exc))
+            if chat_id is not None and update.message is not None:
+                await self._send(chat_id, Reply(self._msg(Key.API_DOWN)), "api", "error")
+            BOT_UPDATES.labels("none", "error").inc()
+            return
+        if owner is None:
+            await self._handle_unlinked(update)
+            return
+        with using_context(user_context(owner)):
+            await self._handle(update, owner)
 
-    async def _prefs(self, chat_id: int | None) -> ChatPrefs:
-        if self._chat_settings is None or chat_id is None or chat_id not in self._allowed:
-            return ChatPrefs()
-        return await self._chat_settings.prefs(chat_id)
+    async def _handle_unlinked(self, update: Update) -> None:
+        """The link hint, or `/link CODE` (also `/start CODE`: what the dashboard's t.me deep
+        link sends); nothing else runs for an unknown chat."""
+        message = update.message
+        if message is None or not message.text:
+            label = "button" if update.callback_query is not None else "none"
+            BOT_UPDATES.labels(label, "denied").inc()
+            return
+        chat_id = message.chat.id
+        command, args = parse_command(message.text)
+        neutral = self._msg.neutral
+        if command == "start" and len(args) == 1:
+            command = "link"
+        if command != "link":
+            await self._send(
+                chat_id,
+                Reply(neutral(NeutralKey.LINK_HINT, url=self._dashboard_url), plain=True),
+                "unlinked",
+                "denied",
+            )
+            log.info("bot_chat_unlinked", chat_id=chat_id)
+            BOT_UPDATES.labels(self._label(command), "denied").inc()
+            return
+        if len(args) != 1:
+            text, outcome = neutral(NeutralKey.LINK_USAGE), "usage"
+        else:
+            try:
+                owner = await self._links.link(chat_id, args[0])
+            except ReadApiError as exc:
+                log.warning("bot_read_api_failed", chat_id=chat_id, error=str(exc))
+                owner = None
+            if owner is None:
+                text, outcome = neutral(NeutralKey.LINK_INVALID), "invalid"
+            else:
+                with using_context(user_context(owner)):
+                    text = neutral(NeutralKey.LINK_DONE, name=owner.display_name)
+                outcome = "linked"
+        outcome = await self._send(chat_id, Reply(text, plain=True), "link", outcome)
+        log.info("bot_update", chat_id=chat_id, command="link", outcome=outcome)
+        BOT_UPDATES.labels("link", outcome).inc()
 
-    async def _handle(self, update: Update) -> None:
+    async def _handle(self, update: Update, owner: ChatOwner) -> None:
         if update.callback_query is not None:
             await self._handle_press(update.update_id, update.callback_query)
             return
@@ -185,12 +250,8 @@ class Dispatcher:
         chat_id = message.chat.id
         command, args = parse_command(message.text)
         label = self._label(command)
-        if chat_id not in self._allowed:
-            log.info("bot_chat_denied", chat_id=chat_id, command=label)
-            BOT_UPDATES.labels(label, "denied").inc()
-            return
         incoming = Incoming(chat_id, update.update_id, message.text)
-        reply, outcome = await self._reply(incoming, command, args)
+        reply, outcome = await self._reply(incoming, command, args, owner)
         outcome = await self._send(chat_id, reply, label, outcome)
         log.info("bot_update", chat_id=chat_id, command=label, outcome=outcome)
         BOT_UPDATES.labels(label, outcome).inc()
@@ -201,8 +262,7 @@ class Dispatcher:
         text = reply.text
         if self._voice is not None and not reply.plain:
             # The settings as stored now: a /lang or /swear switch in this update already counts.
-            prefs = await self._prefs(chat_id)
-            with using_lang(prefs.lang), using_profanity(prefs.profanity):
+            with using_context(await self._links.prefs(chat_id)):
                 text = await self._voice.decorate(text)
         try:
             await self._telegram.send_message(chat_id, text, reply.keyboard)
@@ -212,9 +272,14 @@ class Dispatcher:
         return outcome
 
     async def _reply(
-        self, incoming: Incoming, command: str | None, args: list[str]
+        self, incoming: Incoming, command: str | None, args: list[str], owner: ChatOwner
     ) -> tuple[Reply, str]:
         msg = self._msg
+        if command == "link":
+            return Reply(msg.neutral(NeutralKey.LINK_ALREADY)), "ok"
+        if command == "unlink":
+            await self._links.unlink(incoming.chat_id)
+            return Reply(msg.neutral(NeutralKey.UNLINKED), plain=True), "unlinked"
         try:
             if command is None:
                 for feature in self._features:
@@ -223,7 +288,8 @@ class Dispatcher:
                         return claimed, "ok"
                 if self._text_handler is None:
                     return Reply(msg(Key.NO_ASSISTANT, help=msg.help())), "ok"
-                answer = await self._text_handler(incoming.chat_id, incoming.text)
+                asker = Asker(owner.user_id, owner.settings.timezone, owner.role is UserRole.OWNER)
+                answer = await self._text_handler(incoming.chat_id, incoming.text, asker)
                 return Reply(answer, plain=True), "ok"
             for feature in self._features:
                 if command in feature.commands:
@@ -246,11 +312,10 @@ class Dispatcher:
 
     async def _handle_press(self, update_id: int, query: CallbackQuery) -> None:
         message = query.message
-        chat_id = message.chat.id if message is not None else None
-        if chat_id is None or chat_id not in self._allowed:
-            log.info("bot_chat_denied", chat_id=chat_id, command="button")
-            BOT_UPDATES.labels("button", "denied").inc()
+        if message is None:
+            BOT_UPDATES.labels("button", "ignored").inc()
             return
+        chat_id = message.chat.id
         press = Press(chat_id, update_id, query.data or "", message.message_id if message else None)
         result, outcome = await self._press_result(press)
         try:

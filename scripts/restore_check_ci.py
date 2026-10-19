@@ -10,6 +10,7 @@ keypair is generated inside the image for this run and deleted afterwards.
 5. The loop: with the slot already passed today it backs up, runs the weekly restore check
    (today is the check day), and stops cleanly on `docker stop`.
 6. Retention runs inside the image's Python.
+7. A pre-Phase-8 backup restores and migrates to head (scripts/restore_upgrade.py).
 
     uv run python scripts/restore_check_ci.py [--keep]
 """
@@ -36,29 +37,35 @@ PG_ENV = ["-e", "PGHOST=" + PG, "-e", "PGUSER=trainsync", "-e", "PGDATABASE=trai
 PG_ENV += ["-e", "PGPASSWORD=" + PG_PASSWORD]
 
 SEED = """
-INSERT INTO athletes (strava_athlete_id) VALUES (1001);
-INSERT INTO activities (strava_activity_id, athlete_id, name, sport_type, start_date, distance_m,
-                        moving_time_s, elapsed_time_s, elevation_gain_m, raw)
-SELECT 5000 + g, (SELECT id FROM athletes), 'Run ' || g, 'Run', now() - g * interval '1 day',
-       5000 + g, 1500, 1600, 20, jsonb_build_object('id', 5000 + g)
+INSERT INTO users (email, password_hash, display_name, role, timezone)
+VALUES ('owner@restorecheck.invalid', 'not-a-hash', 'Owner', 'owner', 'UTC');
+CREATE TEMP TABLE owner AS SELECT id FROM users;
+INSERT INTO athletes (user_id, strava_athlete_id) VALUES ((SELECT id FROM owner), 1001);
+INSERT INTO activities (user_id, strava_activity_id, athlete_id, name, sport_type, start_date,
+                        distance_m, moving_time_s, elapsed_time_s, elevation_gain_m, raw)
+SELECT (SELECT id FROM owner), 5000 + g, (SELECT id FROM athletes), 'Run ' || g, 'Run',
+       now() - g * interval '1 day', 5000 + g, 1500, 1600, 20, jsonb_build_object('id', 5000 + g)
 FROM generate_series(1, 120) AS g;
-INSERT INTO workouts (client_id, started_at, notes)
-SELECT gen_random_uuid(), now() - g * interval '2 days', 'session ' || g
+INSERT INTO workouts (user_id, client_id, started_at, notes)
+SELECT (SELECT id FROM owner), gen_random_uuid(), now() - g * interval '2 days', 'session ' || g
 FROM generate_series(1, 12) AS g;
-INSERT INTO workout_sets (client_id, workout_id, exercise_id, set_index, reps, weight_kg,
-                          completed_at)
-SELECT gen_random_uuid(), w.id, (SELECT min(id) FROM exercises), s, 5, 60 + s, w.started_at
+INSERT INTO workout_sets (user_id, client_id, workout_id, exercise_id, set_index, reps,
+                          weight_kg, completed_at)
+SELECT w.user_id, gen_random_uuid(), w.id, (SELECT min(id) FROM exercises), s, 5, 60 + s,
+       w.started_at
 FROM workouts AS w, generate_series(1, 4) AS s;
-INSERT INTO foods (name, kcal_100g) VALUES ('Oats', 380);
-INSERT INTO food_logs (client_id, date, meal, food_id, grams, kcal_100g)
-SELECT gen_random_uuid(), current_date - g, 'breakfast', (SELECT id FROM foods), 80, 380
+INSERT INTO foods (user_id, name, kcal_100g) VALUES ((SELECT id FROM owner), 'Oats', 380);
+INSERT INTO food_logs (user_id, client_id, date, meal, food_id, grams, kcal_100g)
+SELECT (SELECT id FROM owner), gen_random_uuid(), current_date - g, 'breakfast',
+       (SELECT id FROM foods), 80, 380
 FROM generate_series(1, 15) AS g;
-INSERT INTO body_metrics (date, weight_kg)
-SELECT current_date - g, 80 - g * 0.1 FROM generate_series(1, 20) AS g;
-INSERT INTO daily_checkins (date, status)
-SELECT current_date - g, 'done' FROM generate_series(1, 9) AS g;
+INSERT INTO body_metrics (user_id, date, weight_kg)
+SELECT (SELECT id FROM owner), current_date - g, 80 - g * 0.1 FROM generate_series(1, 20) AS g;
+INSERT INTO daily_checkins (user_id, date, status)
+SELECT (SELECT id FROM owner), current_date - g, 'done' FROM generate_series(1, 9) AS g;
 """
 EXPECTED = {
+    "users": 1,
     "athletes": 1,
     "activities": 120,
     "workouts": 12,
@@ -297,6 +304,9 @@ def main() -> int:
         check_bad_backups(work, dump, identity)
         check_loop(work, recipient, identity)
         check_retention(work)
+        from restore_upgrade import check_pre_phase_upgrade  # imports this module back
+
+        check_pre_phase_upgrade(work, recipient, identity)
     finally:
         if not args.keep:
             cleanup()

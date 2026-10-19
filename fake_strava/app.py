@@ -206,6 +206,19 @@ def _add_oauth_routes(app: FastAPI) -> None:
                 400, _error("Bad Request", "AuthorizationCode", exc.field_name, "invalid")
             ) from exc
 
+    @app.post("/oauth/deauthorize")
+    async def deauthorize(request: Request, state: StateDep) -> dict[str, Any]:
+        """Like Strava: revokes every token of the athlete the access token belongs to."""
+        form = await _read_form(request)
+        athlete_id = state.authenticate(form.get("access_token", ""))
+        if athlete_id is None:
+            raise StravaHTTPError(
+                401, _error("Authorization Error", "Athlete", "access_token", "invalid")
+            )
+        state.revoke(athlete_id)
+        state.deauthorized.append(athlete_id)
+        return {"access_token": form.get("access_token", "")}
+
 
 def _add_api_routes(app: FastAPI) -> None:
     @app.get(f"{API_PREFIX}/athlete")

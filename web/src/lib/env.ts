@@ -7,13 +7,9 @@ import { cookieSecureFromEnv } from "@/lib/session";
 export interface ServerEnv {
   /** Base URL the server uses to reach the trainsync API (inside compose: http://api:8000). */
   apiUrl: string;
-  /** Sent as `X-API-Key`; never leaves the server. */
-  apiKey: string;
-  dashboardPassword: string;
+  /** Seals the session cookie that carries the user's API token (ADR 0034). */
   sessionSecret: string;
   cookieSecure: boolean;
-  /** Browser-facing base URL of the trainsync API (for the Connect Strava link). */
-  publicApiUrl: string;
   /**
    * Browser-facing base URL of this web app: the OAuth `return_to`, and the only origin allowed to
    * send mutations through the BFF (CSRF check, ADR 0011).
@@ -45,13 +41,8 @@ export function serverEnv(): ServerEnv {
   const publicWebUrl = withoutTrailingSlash(process.env.WEB_PUBLIC_URL || "http://localhost:3000");
   return {
     apiUrl: withoutTrailingSlash(process.env.TRAINSYNC_API_URL || "http://localhost:8000"),
-    apiKey: required("TRAINSYNC_API_KEY"),
-    dashboardPassword: required("DASHBOARD_PASSWORD"),
     sessionSecret,
     cookieSecure: cookieSecureFromEnv(),
-    publicApiUrl: withoutTrailingSlash(
-      process.env.TRAINSYNC_PUBLIC_API_URL || "http://localhost:8000",
-    ),
     publicWebUrl,
     allowedOrigins: allowedOrigins(publicWebUrl, process.env),
   };

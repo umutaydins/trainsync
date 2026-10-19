@@ -64,6 +64,6 @@ Food Facts, and must not drift from the real code (it is the same image).
   the README.
 - A GET route that writes would not be caught by the method rule; it must be added to
   `WRITE_PATH_PREFIXES` (today only the OAuth callback does this).
-- Phase 8 extends `seed.py` with body measurements and proposals; the source test keeps it
+- Phase 9 extends `seed.py` with body measurements and proposals; the source test keeps it
   synthetic.
 - The demo stack costs ~1.2 GB of memory limits on the Mac next to production.

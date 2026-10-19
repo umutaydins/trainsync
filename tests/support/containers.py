@@ -25,6 +25,8 @@ from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
 from tests.conftest import make_settings
+from tests.support.accounts import OWNER_EMAIL
+from trainsync.core.security import UNUSABLE_HASH
 from trainsync.core.settings import Settings
 from trainsync.modules.models import Base
 
@@ -54,19 +56,30 @@ def redis_url() -> Iterator[str]:
         yield f"redis://{host}:{port}/0"
 
 
-SEEDED = frozenset({"exercises"})
+# The exercise library (migration 0005) stays; `users` is emptied with DELETE, because a
+# TRUNCATE ... CASCADE of it would also truncate `exercises` (custom ones reference a user).
+KEPT = frozenset({"exercises", "users"})
 
 
 async def _reset_state(pg_url: str, redis_url: str) -> None:
     engine = create_async_engine(pg_url, poolclass=NullPool)
     try:
-        # The seeded exercise library (migration 0005) stays; custom exercises go.
         tables = ", ".join(
-            table.name for table in Base.metadata.sorted_tables if table.name not in SEEDED
+            table.name for table in Base.metadata.sorted_tables if table.name not in KEPT
         )
         async with engine.begin() as conn:
             await conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
             await conn.execute(text("DELETE FROM exercises WHERE is_custom"))
+            await conn.execute(text("DELETE FROM users"))
+            await conn.execute(text("ALTER SEQUENCE users_id_seq RESTART"))
+            # The owner every API-key request acts as (ADR 0034); id 1 after the restart.
+            await conn.execute(
+                text(
+                    "INSERT INTO users (email, password_hash, display_name, role, timezone)"
+                    " VALUES (:email, :hash, 'Owner', 'owner', 'UTC')"
+                ),
+                {"email": OWNER_EMAIL, "hash": UNUSABLE_HASH},
+            )
     finally:
         await engine.dispose()
     redis = Redis.from_url(redis_url)
@@ -88,7 +101,8 @@ def clean_state(pg_url: str, redis_url: str) -> None:
 
 @pytest.fixture
 def integration_settings(pg_url: str, redis_url: str) -> Settings:
-    return make_settings(database_url=pg_url, redis_url=redis_url)
+    # The test key is also a service key, so the bot's chat lookups work against the real API.
+    return make_settings(database_url=pg_url, redis_url=redis_url, service_api_keys="test-api-key")
 
 
 @pytest.fixture

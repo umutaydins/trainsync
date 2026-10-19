@@ -17,7 +17,8 @@ is green.
 | 5 — Web dashboard and Telegram bot | P5.1 – P5.8 |
 | 6 — Strength training, programs and nutrition | P6.1 – P6.10 |
 | 7 — Deploy (Mac backend + Vercel web) | P7.1 – P7.10 |
-| 8 — Body composition, Apple Health and adaptive programs | P8.1 – P8.10 |
+| 8 — Multi-user | P8.1 – P8.9 |
+| 9 — Body composition, Apple Health and adaptive programs | P9.1 – P9.10 |
 
 Dependency graph:
 
@@ -48,11 +49,17 @@ flowchart LR
     P7.3 --> P7.6 & P7.7 & P7.8
     P7.3 & P7.6 --> P7.9
     P7.5 & P7.7 & P7.8 & P7.9 --> P7.10
-    P7.10 --> P8.1 --> P8.2 --> P8.3
-    P7.10 --> P8.4
-    P8.1 & P8.4 --> P8.5
-    P8.1 & P8.5 --> P8.6
-    P8.5 & P8.6 --> P8.7 & P8.9
-    P8.3 & P8.6 --> P8.8
-    P8.7 & P8.8 & P8.9 --> P8.10
+    P7.10 --> P8.1 --> P8.2 --> P8.3 & P8.4
+    P8.1 --> P8.7
+    P8.4 --> P8.5
+    P8.3 --> P8.6
+    P8.6 & P8.7 --> P8.8
+    P8.3 & P8.5 & P8.6 & P8.8 --> P8.9
+    P8.9 --> P9.1 --> P9.2 --> P9.3
+    P8.9 --> P9.4
+    P9.1 & P9.4 --> P9.5
+    P9.1 & P9.5 --> P9.6
+    P9.5 & P9.6 --> P9.7 & P9.9
+    P9.3 & P9.6 --> P9.8
+    P9.7 & P9.8 & P9.9 --> P9.10
 ```

@@ -8,7 +8,8 @@ import type { WorkoutDetail, WorkoutPage } from "@/features/training/types";
 
 const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
 const API_KEY = process.env.E2E_API_KEY ?? "dev-key-1";
-const PASSWORD = process.env.E2E_PASSWORD ?? "dev-only-dashboard-password";
+const EMAIL = process.env.E2E_EMAIL ?? "owner@example.com";
+const PASSWORD = process.env.E2E_PASSWORD ?? "dev-e2e-owner-password";
 const PHONE = { width: 375, height: 812 };
 const AXE = createRequire(import.meta.url).resolve("axe-core/axe.min.js");
 
@@ -24,6 +25,7 @@ async function apiGet<T>(request: APIRequestContext, path: string, params: Recor
 
 async function login(page: Page) {
   await page.goto("/login");
+  await page.getByLabel("Email").fill(EMAIL);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/$/);

@@ -56,6 +56,7 @@ from trainsync.modules.chat.training import plan_text, record_lines, suggested_l
 from trainsync.modules.checkin.models import CheckinStatus
 from trainsync.modules.checkin.router import CheckinIn
 from trainsync.modules.coach.categories import Category
+from trainsync.modules.coach.context import current_zone
 from trainsync.modules.coach.guardrails import (
     Trigger,
     excuse_kind,
@@ -186,12 +187,17 @@ class CheckinFlow:
         self._api = api
         self._store = store
         self._clock = clock
-        self._zone = zone
+        self._default_zone = zone
         self._msg = msg
         # Savage roasts for a skip (P6.11, ADR 0030); None = the tone packs only.
         self._voice = voice
 
     # ---------------------------------------------------------------- Feature
+
+    @property
+    def _zone(self) -> ZoneInfo:
+        """The user's time zone in this update (ADR 0036), else the configured one."""
+        return current_zone(self._default_zone)
 
     async def command(self, incoming: Incoming, command: str, args: list[str]) -> Reply:
         return await self._start(incoming.chat_id, incoming.update_id)

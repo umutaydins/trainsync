@@ -81,13 +81,15 @@ def estimate_bmr(profile: NutritionProfile | None, weight: BodyMetric | None, da
     return Bmr(bmr, weight, None)
 
 
-async def latest_weight(session: AsyncSession, day: date) -> BodyMetric | None:
-    return await BodyMetricRepository(session).latest(on_or_before=day)
+async def latest_weight(session: AsyncSession, user_id: int, day: date) -> BodyMetric | None:
+    return await BodyMetricRepository(session, user_id).latest(on_or_before=day)
 
 
-async def energy_days(session: AsyncSession, start: date, end: date) -> list[DayEnergy]:
+async def energy_days(
+    session: AsyncSession, user_id: int, start: date, end: date
+) -> list[DayEnergy]:
     """One `DayEnergy` per UTC day in `start`..`end` (inclusive), zero-filled."""
-    repo = NutritionRepository(session)
+    repo = NutritionRepository(session, user_id)
     profile = await repo.profile()
 
     entries: dict[date, list[IntakeEntry]] = defaultdict(list)
@@ -106,7 +108,7 @@ async def energy_days(session: AsyncSession, start: date, end: date) -> list[Day
             )
         )
 
-    athlete_ids = await ReadRepository(session).active_athlete_ids()
+    athlete_ids = await ReadRepository(session, user_id).active_athlete_ids()
     activity_filter = ActivityFilter(
         athlete_ids, utc_midnight(start), utc_midnight(end + timedelta(days=1))
     )
@@ -115,7 +117,7 @@ async def energy_days(session: AsyncSession, start: date, end: date) -> list[Day
         energy = activity_kcal(activity.sport_type, activity.raw)
         activities[activity.start_date.astimezone(UTC).date()].append((activity, energy))
 
-    metrics = BodyMetricRepository(session)
+    metrics = BodyMetricRepository(session, user_id)
     weights = {m.date: m for m in await metrics.between(start, end)}
     weight = await metrics.latest(on_or_before=start)
 

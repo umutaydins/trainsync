@@ -3,12 +3,13 @@
 from datetime import datetime, time
 from typing import Annotated, Any, Self
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
+from fastapi import APIRouter, HTTPException, Path, Response, status
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from trainsync.core.deps import SessionmakerDep, require_api_key
+from trainsync.core.deps import SessionmakerDep
 from trainsync.core.errors import UNAUTHORIZED, error
+from trainsync.modules.auth.dependencies import CurrentUser
 from trainsync.modules.training.models import (
     Exercise,
     Program,
@@ -20,9 +21,7 @@ from trainsync.modules.training.models import Progression as ProgressionKind
 from trainsync.modules.training.repository import ExerciseRepository, ProgramRepository, ProgramTree
 from trainsync.modules.training.schemas import EXERCISE_EXAMPLE, ExerciseOut, Kg, WeightIn
 
-router = APIRouter(
-    prefix="/v1/training", tags=["training"], dependencies=[Depends(require_api_key)]
-)
+router = APIRouter(prefix="/v1/training", tags=["training"])
 
 NOT_FOUND = error("Unknown program", "program not found")
 UNKNOWN_EXERCISE = error("A planned exercise does not exist", "unknown exercise ids: [999]")
@@ -200,16 +199,16 @@ class ProgramList(BaseModel):
     items: list[ProgramSummary]
 
 
-async def load_program(session: AsyncSession, program_id: int) -> ProgramOut:
-    tree = await ProgramRepository(session).tree(program_id)
+async def load_program(session: AsyncSession, user_id: int, program_id: int) -> ProgramOut:
+    tree = await ProgramRepository(session, user_id).tree(program_id)
     if tree is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "program not found")
-    return await program_out(session, tree)
+    return await program_out(session, user_id, tree)
 
 
-async def program_out(session: AsyncSession, tree: ProgramTree) -> ProgramOut:
+async def program_out(session: AsyncSession, user_id: int, tree: ProgramTree) -> ProgramOut:
     ids = sorted({e.exercise_id for _, planned in tree.days for e in planned})
-    exercises = await ExerciseRepository(session).by_ids(ids)
+    exercises = await ExerciseRepository(session, user_id).by_ids(ids)
     await session.flush()
     await session.refresh(tree.program)  # `activate` updates in bulk
     summary = ProgramSummary.from_row(tree.program)
@@ -232,10 +231,10 @@ async def program_out(session: AsyncSession, tree: ProgramTree) -> ProgramOut:
 
 
 async def _rows(
-    session: AsyncSession, body: ProgramIn
+    session: AsyncSession, user_id: int, body: ProgramIn
 ) -> list[tuple[ProgramDay, list[ProgramExercise]]]:
     wanted = {e.exercise_id for day in body.days for e in day.exercises}
-    known = await ExerciseRepository(session).by_ids(sorted(wanted))
+    known = await ExerciseRepository(session, user_id).by_ids(sorted(wanted))
     missing = sorted(wanted - known.keys())
     if missing:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"unknown exercise ids: {missing}")
@@ -268,9 +267,9 @@ async def _rows(
     response_model=ProgramList,
     responses={**UNAUTHORIZED},
 )
-async def list_programs(sessionmaker: SessionmakerDep) -> ProgramList:
+async def list_programs(principal: CurrentUser, sessionmaker: SessionmakerDep) -> ProgramList:
     async with sessionmaker() as session:
-        rows = await ProgramRepository(session).all()
+        rows = await ProgramRepository(session, principal.user_id).all()
     return ProgramList(items=[ProgramSummary.from_row(r) for r in rows])
 
 
@@ -286,14 +285,16 @@ async def list_programs(sessionmaker: SessionmakerDep) -> ProgramList:
     response_model=ProgramOut,
     responses={**UNAUTHORIZED, 400: UNKNOWN_EXERCISE},
 )
-async def create_program(sessionmaker: SessionmakerDep, body: ProgramIn) -> ProgramOut:
+async def create_program(
+    principal: CurrentUser, sessionmaker: SessionmakerDep, body: ProgramIn
+) -> ProgramOut:
     async with sessionmaker.begin() as session:
-        days = await _rows(session, body)
-        program = await ProgramRepository(session).add(
+        days = await _rows(session, principal.user_id, body)
+        program = await ProgramRepository(session, principal.user_id).add(
             Program(name=body.name, goal=body.goal, days_per_week=len(days), weeks=body.weeks),
             days,
         )
-        return await load_program(session, program.id)
+        return await load_program(session, principal.user_id, program.id)
 
 
 @router.get(
@@ -303,12 +304,12 @@ async def create_program(sessionmaker: SessionmakerDep, body: ProgramIn) -> Prog
     response_model=ProgramOut,
     responses={**UNAUTHORIZED, 404: error("No active program", "no active program")},
 )
-async def get_active_program(sessionmaker: SessionmakerDep) -> ProgramOut:
+async def get_active_program(principal: CurrentUser, sessionmaker: SessionmakerDep) -> ProgramOut:
     async with sessionmaker() as session:
-        program = await ProgramRepository(session).active()
+        program = await ProgramRepository(session, principal.user_id).active()
         if program is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "no active program")
-        return await load_program(session, program.id)
+        return await load_program(session, principal.user_id, program.id)
 
 
 @router.get(
@@ -319,10 +320,12 @@ async def get_active_program(sessionmaker: SessionmakerDep) -> ProgramOut:
     responses={**UNAUTHORIZED, 404: NOT_FOUND},
 )
 async def get_program(
-    sessionmaker: SessionmakerDep, program_id: Annotated[int, Path(examples=[3])]
+    principal: CurrentUser,
+    sessionmaker: SessionmakerDep,
+    program_id: Annotated[int, Path(examples=[3])],
 ) -> ProgramOut:
     async with sessionmaker() as session:
-        return await load_program(session, program_id)
+        return await load_program(session, principal.user_id, program_id)
 
 
 @router.put(
@@ -336,20 +339,21 @@ async def get_program(
     responses={**UNAUTHORIZED, 400: UNKNOWN_EXERCISE, 404: NOT_FOUND},
 )
 async def replace_program(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     program_id: Annotated[int, Path(examples=[3])],
     body: ProgramIn,
 ) -> ProgramOut:
     async with sessionmaker.begin() as session:
-        repo = ProgramRepository(session)
+        repo = ProgramRepository(session, principal.user_id)
         program = await repo.get(program_id)
         if program is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "program not found")
-        days = await _rows(session, body)
+        days = await _rows(session, principal.user_id, body)
         program.name, program.goal, program.weeks = body.name, body.goal, body.weeks
         program.days_per_week = len(days)
         await repo.replace_days(program_id, days)
-        return await load_program(session, program_id)
+        return await load_program(session, principal.user_id, program_id)
 
 
 @router.delete(
@@ -361,10 +365,12 @@ async def replace_program(
     responses={**UNAUTHORIZED, 404: NOT_FOUND},
 )
 async def delete_program(
-    sessionmaker: SessionmakerDep, program_id: Annotated[int, Path(examples=[3])]
+    principal: CurrentUser,
+    sessionmaker: SessionmakerDep,
+    program_id: Annotated[int, Path(examples=[3])],
 ) -> Response:
     async with sessionmaker.begin() as session:
-        if not await ProgramRepository(session).delete(program_id):
+        if not await ProgramRepository(session, principal.user_id).delete(program_id):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "program not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -377,11 +383,13 @@ async def delete_program(
     responses={**UNAUTHORIZED, 404: NOT_FOUND},
 )
 async def activate_program(
-    sessionmaker: SessionmakerDep, program_id: Annotated[int, Path(examples=[3])]
+    principal: CurrentUser,
+    sessionmaker: SessionmakerDep,
+    program_id: Annotated[int, Path(examples=[3])],
 ) -> ProgramOut:
     async with sessionmaker.begin() as session:
-        repo = ProgramRepository(session)
+        repo = ProgramRepository(session, principal.user_id)
         if await repo.get(program_id) is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "program not found")
         await repo.activate(program_id)
-        return await load_program(session, program_id)
+        return await load_program(session, principal.user_id, program_id)

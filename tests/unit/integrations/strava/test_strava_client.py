@@ -176,6 +176,7 @@ NON_STRAVA_HTTP_CLIENTS = {
     "modules/notifications/tasks.py",
     "modules/notifications/checkin.py",
     "modules/notifications/coach.py",
+    "modules/notifications/digest.py",
     "integrations/openfoodfacts/client.py",
 }
 

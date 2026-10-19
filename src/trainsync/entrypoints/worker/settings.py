@@ -34,6 +34,11 @@ from trainsync.modules.notifications.coach import (
     build_coach_deps,
     coach_cron,
 )
+from trainsync.modules.notifications.digest import (
+    DIGEST_CTX_KEY,
+    build_digest_deps,
+    digest_cron,
+)
 from trainsync.modules.notifications.tasks import (
     NOTIFY_CTX_KEY,
     NotifyDeps,
@@ -44,9 +49,11 @@ from trainsync.modules.strava.token_repository import SqlTokenStore
 from trainsync.modules.strava.tokens import RedisRefreshLock, TokenManager
 from trainsync.modules.sync.backfill import backfill_job
 from trainsync.modules.sync.context import CTX_KEY, WorkerContext
+from trainsync.modules.sync.disconnect import strava_disconnect_job
 from trainsync.modules.sync.incremental import incremental_cron, incremental_job
 from trainsync.modules.sync.webhook_retry import retry_webhooks_cron
 from trainsync.modules.sync.webhooks import process_webhook_event_job
+from trainsync.modules.users.lifecycle import purge_user_job
 
 log = get_logger(__name__)
 
@@ -105,12 +112,13 @@ async def startup(ctx: dict[str, Any]) -> None:
     notifier, chat_ref = build_notifier(settings, http, sleep)
     msg = messages_for(settings)
     voice = build_voice(settings, redis, msg)
-    ctx[NOTIFY_CTX_KEY] = NotifyDeps(
-        sessionmaker, notifier, chat_ref, settings.dashboard_public_url, clock, msg, voice
-    )
+    ctx[NOTIFY_CTX_KEY] = NotifyDeps(sessionmaker, notifier, settings, clock, msg, voice)
     ctx[ALERTS_CTX_KEY] = build_alert_deps(settings, sessionmaker, redis, notifier, chat_ref, clock)
     ctx[CHECKIN_CTX_KEY] = build_checkin_deps(
         settings, sessionmaker, http, clock, sleep, msg, voice
+    )
+    ctx[DIGEST_CTX_KEY] = build_digest_deps(
+        settings, sessionmaker, http, redis, clock, sleep, msg, voice
     )
     ctx[COACH_CTX_KEY] = build_coach_deps(
         settings, sessionmaker, http, redis, clock, sleep, messages_for(settings)
@@ -119,8 +127,9 @@ async def startup(ctx: dict[str, Any]) -> None:
         "worker_startup",
         env=settings.env,
         notifier=notifier.channel,
-        checkin=settings.checkin_active,
-        coach=settings.coach_active,
+        checkin=settings.bot_enabled and settings.checkin_enabled is not False,
+        coach=settings.bot_enabled and settings.coach_messages_enabled is not False,
+        digests=settings.bot_enabled and settings.stats_digest_enabled is not False,
         intensity=settings.bot_intensity,
         profanity=settings.bot_profanity,
         alerts=chat_ref is not None,
@@ -147,6 +156,8 @@ class WorkerSettings:
         incremental_job,
         process_webhook_event_job,
         notify_new_activity_job,
+        strava_disconnect_job,
+        purge_user_job,
         *COACH_JOBS,
     ]
     cron_jobs: ClassVar[list[Any]] = [
@@ -155,6 +166,7 @@ class WorkerSettings:
         checkin_cron,
         alerts_cron,
         coach_cron,
+        digest_cron,
     ]
     on_startup = startup
     on_shutdown = shutdown

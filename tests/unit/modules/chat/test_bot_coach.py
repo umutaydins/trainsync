@@ -16,6 +16,7 @@ import respx
 from pydantic import SecretStr
 
 from tests.support.bot_api import API, FakeApi, install, planned
+from tests.support.chat_links import chat_links
 from tests.support.state import MemoryStateStore
 from tests.support.swears import swears
 from tests.support.telegram import (
@@ -77,7 +78,7 @@ class Assistant:
     def __init__(self) -> None:
         self.questions: list[str] = []
 
-    async def __call__(self, chat_id: int, text: str) -> str:
+    async def __call__(self, chat_id: int, text: str, asker: object) -> str:
         self.questions.append(text)
         return "assistant answer"
 
@@ -123,7 +124,7 @@ def make(
     return Dispatcher(
         telegram,
         Commands(api, clock, msg),
-        {CHAT},
+        chat_links(http, API, clock),
         msg,
         assistant,
         features=[

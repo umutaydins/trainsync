@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from trainsync.core.clock import Clock
-from trainsync.core.deps import ClockDep, SessionmakerDep, require_api_key
+from trainsync.core.deps import ClockDep, SessionmakerDep
 from trainsync.core.errors import UNAUTHORIZED, Responses, error
 from trainsync.integrations.openfoodfacts.client import (
     OffProduct,
@@ -24,6 +24,7 @@ from trainsync.integrations.openfoodfacts.client import (
     OpenFoodFactsUnavailableError,
 )
 from trainsync.modules.activities.reads import week_start
+from trainsync.modules.auth.dependencies import CurrentUser
 from trainsync.modules.nutrition.energy import KcalSource, per_grams, target_warning, tenth
 from trainsync.modules.nutrition.models import (
     ActivityBaseline,
@@ -35,13 +36,16 @@ from trainsync.modules.nutrition.models import (
     NutritionProfile,
     Sex,
 )
-from trainsync.modules.nutrition.repository import LogValues, NutritionRepository, ProfileValues
+from trainsync.modules.nutrition.repository import (
+    FoodView,
+    LogValues,
+    NutritionRepository,
+    ProfileValues,
+)
 from trainsync.modules.nutrition.summary import DayEnergy, EstimateGap, energy_days, estimate_bmr
 from trainsync.modules.nutrition.summary import latest_weight as latest_body_weight
 
-router = APIRouter(
-    prefix="/v1/nutrition", tags=["nutrition"], dependencies=[Depends(require_api_key)]
-)
+router = APIRouter(prefix="/v1/nutrition", tags=["nutrition"])
 
 MAX_RANGE_DAYS = 92
 BARCODE_PATTERN = r"^\d{8,14}$"
@@ -126,7 +130,11 @@ class FoodOut(BaseModel):
     favorite: bool
 
     @classmethod
-    def from_row(cls, row: Food) -> "FoodOut":
+    def from_view(cls, view: FoodView) -> "FoodOut":
+        return cls.from_row(view.food, favorite=view.favorite)
+
+    @classmethod
+    def from_row(cls, row: Food, *, favorite: bool = False) -> "FoodOut":
         return cls(
             id=row.id,
             name=row.name,
@@ -140,7 +148,7 @@ class FoodOut(BaseModel):
             nova_group=row.nova_group,
             food_group=FoodGroup(row.food_group) if row.food_group else None,
             source=FoodSource(row.source),
-            favorite=row.favorite,
+            favorite=favorite,
         )
 
 
@@ -216,16 +224,17 @@ FOOD_NOT_FOUND: Responses = {404: error("Unknown food", "food not found")}
     responses={**UNAUTHORIZED},
 )
 async def search_foods(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     q: Annotated[str | None, Query(max_length=100, examples=["oats"])] = None,
     favorites: Annotated[bool, Query(description="Only favorites")] = False,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> FoodList:
     async with sessionmaker() as session:
-        rows = await NutritionRepository(session).search_foods(
+        rows = await NutritionRepository(session, principal.user_id).search_foods(
             q, favorites_only=favorites, limit=limit
         )
-    return FoodList(items=[FoodOut.from_row(r) for r in rows])
+    return FoodList(items=[FoodOut.from_view(r) for r in rows])
 
 
 @router.get(
@@ -242,6 +251,7 @@ async def search_foods(
     responses={**UNAUTHORIZED, 400: error("Neither or both of barcode and q", "pass barcode or q")},
 )
 async def lookup_food(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     openfoodfacts: OpenFoodFactsDep,
     barcode: Annotated[
@@ -253,17 +263,22 @@ async def lookup_food(
     if (barcode is None) == (q is None):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "pass barcode or q")
     if barcode is not None:
-        return await _lookup_barcode(sessionmaker, openfoodfacts, barcode)
-    return await _lookup_query(sessionmaker, openfoodfacts, q or "", limit)
+        return await _lookup_barcode(sessionmaker, principal.user_id, openfoodfacts, barcode)
+    return await _lookup_query(sessionmaker, principal.user_id, openfoodfacts, q or "", limit)
 
 
 async def _lookup_barcode(
-    sessionmaker: SessionmakerDep, openfoodfacts: OpenFoodFactsClient, barcode: str
+    sessionmaker: SessionmakerDep,
+    user_id: int,
+    openfoodfacts: OpenFoodFactsClient,
+    barcode: str,
 ) -> FoodLookup:
     async with sessionmaker() as session:
-        local = await NutritionRepository(session).food_by_barcode(barcode)
-    if local is not None:
-        return FoodLookup(items=[FoodOut.from_row(local)], remote="cached")
+        repo = NutritionRepository(session, user_id)
+        local = await repo.food_by_barcode(barcode)
+        views = await repo.views([local]) if local is not None else []
+    if views:
+        return FoodLookup(items=[FoodOut.from_view(v) for v in views], remote="cached")
     if not openfoodfacts.enabled:
         return FoodLookup(items=[], remote="disabled")
     try:
@@ -272,12 +287,16 @@ async def _lookup_barcode(
         return FoodLookup(items=[], remote="unavailable")
     if product is None:
         return FoodLookup(items=[], remote="not_found")
-    rows = await _cache(sessionmaker, [product])
-    return FoodLookup(items=[FoodOut.from_row(r) for r in rows], remote="ok")
+    rows = await _cache(sessionmaker, user_id, [product])
+    return FoodLookup(items=[FoodOut.from_view(r) for r in rows], remote="ok")
 
 
 async def _lookup_query(
-    sessionmaker: SessionmakerDep, openfoodfacts: OpenFoodFactsClient, q: str, limit: int
+    sessionmaker: SessionmakerDep,
+    user_id: int,
+    openfoodfacts: OpenFoodFactsClient,
+    q: str,
+    limit: int,
 ) -> FoodLookup:
     remote: RemoteStatus = "disabled"
     products: list[OffProduct] = []
@@ -288,19 +307,22 @@ async def _lookup_query(
             remote = "ok"
         except OpenFoodFactsUnavailableError:
             remote = "unavailable"
-    cached = await _cache(sessionmaker, products)
+    cached = await _cache(sessionmaker, user_id, products)
     async with sessionmaker() as session:
-        local = await NutritionRepository(session).search_foods(q, limit=limit)
-    seen = {f.id for f in local}
-    merged = [*local, *(f for f in cached if f.id not in seen)][:limit]
-    return FoodLookup(items=[FoodOut.from_row(r) for r in merged], remote=remote)
+        local = await NutritionRepository(session, user_id).search_foods(q, limit=limit)
+    seen = {v.food.id for v in local}
+    merged = [*local, *(v for v in cached if v.food.id not in seen)][:limit]
+    return FoodLookup(items=[FoodOut.from_view(v) for v in merged], remote=remote)
 
 
-async def _cache(sessionmaker: SessionmakerDep, products: list[OffProduct]) -> list[Food]:
+async def _cache(
+    sessionmaker: SessionmakerDep, user_id: int, products: list[OffProduct]
+) -> list[FoodView]:
     if not products:
         return []
     async with sessionmaker.begin() as session:
-        return await NutritionRepository(session).cache_products(products)
+        repo = NutritionRepository(session, user_id)
+        return await repo.views(await repo.cache_products(products))
 
 
 @router.post(
@@ -311,7 +333,9 @@ async def _cache(sessionmaker: SessionmakerDep, products: list[OffProduct]) -> l
     status_code=status.HTTP_201_CREATED,
     responses={**UNAUTHORIZED, 409: error("Barcode already stored", "barcode already exists")},
 )
-async def create_food(sessionmaker: SessionmakerDep, body: FoodIn) -> FoodOut:
+async def create_food(
+    principal: CurrentUser, sessionmaker: SessionmakerDep, body: FoodIn
+) -> FoodOut:
     food = Food(
         name=body.name.strip(),
         brand=body.brand,
@@ -324,32 +348,36 @@ async def create_food(sessionmaker: SessionmakerDep, body: FoodIn) -> FoodOut:
         nova_group=body.nova_group,
         food_group=body.food_group,
         source=FoodSource.MANUAL.value,
-        favorite=body.favorite,
     )
     try:
         async with sessionmaker.begin() as session:
-            await NutritionRepository(session).add_food(food)
+            view = await NutritionRepository(session, principal.user_id).add_food(
+                food, favorite=body.favorite
+            )
     except IntegrityError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, "barcode already exists") from exc
-    return FoodOut.from_row(food)
+    return FoodOut.from_view(view)
 
 
 @router.patch(
     "/foods/{food_id}",
     summary="Update a food",
     description=(
-        "Changes only the fields sent. Editing a cached Open Food Facts food turns it into a "
-        "`manual` one, so a later lookup never overwrites the edit. Logged entries use the "
-        "food's current values."
+        "Changes only the fields sent. Your own foods are yours to edit; shared ones (the Open "
+        "Food Facts cache) only the owner may correct. Editing a cached Open Food Facts food "
+        "turns it into a `manual` one, so a later lookup never overwrites the edit. Logged "
+        "entries keep the values they were logged with."
     ),
     response_model=FoodOut,
     responses={
         **UNAUTHORIZED,
         **FOOD_NOT_FOUND,
         400: error("A required field set to null", "name cannot be null"),
+        403: error("A shared food, and you are not the owner", "shared foods are owner-curated"),
     },
 )
 async def update_food(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     food_id: Annotated[int, Path(examples=[7])],
     body: FoodPatch,
@@ -359,16 +387,20 @@ async def update_food(
         if required in changes and changes[required] is None:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{required} cannot be null")
     async with sessionmaker.begin() as session:
-        food = await NutritionRepository(session).food(food_id)
+        repo = NutritionRepository(session, principal.user_id)
+        food = await repo.food(food_id)
         if food is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "food not found")
+        if food.user_id is None and not principal.is_owner:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "shared foods are owner-curated")
         for field, value in changes.items():
             setattr(food, field, _patch_value(field, value))
         if changes:
             food.source = FoodSource.MANUAL.value
             await session.flush()
             await session.refresh(food)
-    return FoodOut.from_row(food)
+        [view] = await repo.views([food])
+    return FoodOut.from_view(view)
 
 
 @router.put(
@@ -379,9 +411,11 @@ async def update_food(
     responses={**UNAUTHORIZED, **FOOD_NOT_FOUND},
 )
 async def favorite_food(
-    sessionmaker: SessionmakerDep, food_id: Annotated[int, Path(examples=[7])]
+    principal: CurrentUser,
+    sessionmaker: SessionmakerDep,
+    food_id: Annotated[int, Path(examples=[7])],
 ) -> FoodOut:
-    return await _set_favorite(sessionmaker, food_id, favorite=True)
+    return await _set_favorite(sessionmaker, principal.user_id, food_id, favorite=True)
 
 
 @router.delete(
@@ -392,17 +426,21 @@ async def favorite_food(
     responses={**UNAUTHORIZED, **FOOD_NOT_FOUND},
 )
 async def unfavorite_food(
-    sessionmaker: SessionmakerDep, food_id: Annotated[int, Path(examples=[7])]
+    principal: CurrentUser,
+    sessionmaker: SessionmakerDep,
+    food_id: Annotated[int, Path(examples=[7])],
 ) -> FoodOut:
-    return await _set_favorite(sessionmaker, food_id, favorite=False)
+    return await _set_favorite(sessionmaker, principal.user_id, food_id, favorite=False)
 
 
-async def _set_favorite(sessionmaker: SessionmakerDep, food_id: int, *, favorite: bool) -> FoodOut:
+async def _set_favorite(
+    sessionmaker: SessionmakerDep, user_id: int, food_id: int, *, favorite: bool
+) -> FoodOut:
     async with sessionmaker.begin() as session:
-        food = await NutritionRepository(session).set_favorite(food_id, favorite)
-    if food is None:
+        view = await NutritionRepository(session, user_id).set_favorite(food_id, favorite)
+    if view is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "food not found")
-    return FoodOut.from_row(food)
+    return FoodOut.from_view(view)
 
 
 def _dec(value: float | None) -> Decimal | None:
@@ -519,13 +557,14 @@ LOG_NOT_FOUND: Responses = {404: error("Unknown client id", "log entry not found
     responses={**UNAUTHORIZED},
 )
 async def day_log(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     clock: ClockDep,
     day: Annotated[date | None, Query(alias="date", examples=["2026-10-14"])] = None,
 ) -> DayLog:
     day = day or _today(clock)
     async with sessionmaker() as session:
-        rows = await NutritionRepository(session).log_entries(day, day)
+        rows = await NutritionRepository(session, principal.user_id).log_entries(day, day)
     return DayLog(date=day, entries=[LogOut.from_rows(log, food) for log, food in rows])
 
 
@@ -547,13 +586,14 @@ async def day_log(
     },
 )
 async def put_log(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     response: Response,
     client_id: Annotated[uuid.UUID, Path(examples=["0b6f1f9e-4c1e-4a8e-9a43-2f1d8f0c6a11"])],
     body: LogIn,
 ) -> LogOut:
     async with sessionmaker.begin() as session:
-        repo = NutritionRepository(session)
+        repo = NutritionRepository(session, principal.user_id)
         food = await repo.food(body.food_id)
         if food is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "food not found")
@@ -571,11 +611,12 @@ async def put_log(
     responses={**UNAUTHORIZED, **LOG_NOT_FOUND},
 )
 async def delete_log(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     client_id: Annotated[uuid.UUID, Path(examples=["0b6f1f9e-4c1e-4a8e-9a43-2f1d8f0c6a11"])],
 ) -> Response:
     async with sessionmaker.begin() as session:
-        deleted = await NutritionRepository(session).delete_log(client_id)
+        deleted = await NutritionRepository(session, principal.user_id).delete_log(client_id)
     if not deleted:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "log entry not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -645,12 +686,14 @@ class ProfileOut(BaseModel):
     response_model=ProfileOut,
     responses={**UNAUTHORIZED, 404: error("No profile yet", "profile not set")},
 )
-async def get_profile(sessionmaker: SessionmakerDep, clock: ClockDep) -> ProfileOut:
+async def get_profile(
+    principal: CurrentUser, sessionmaker: SessionmakerDep, clock: ClockDep
+) -> ProfileOut:
     async with sessionmaker() as session:
-        profile = await NutritionRepository(session).profile()
+        profile = await NutritionRepository(session, principal.user_id).profile()
         if profile is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "profile not set")
-        return await _profile_out(session, profile, _today(clock))
+        return await _profile_out(session, principal.user_id, profile, _today(clock))
 
 
 @router.put(
@@ -664,7 +707,7 @@ async def get_profile(sessionmaker: SessionmakerDep, clock: ClockDep) -> Profile
     responses={**UNAUTHORIZED},
 )
 async def put_profile(
-    sessionmaker: SessionmakerDep, clock: ClockDep, body: ProfileIn
+    principal: CurrentUser, sessionmaker: SessionmakerDep, clock: ClockDep, body: ProfileIn
 ) -> ProfileOut:
     values = ProfileValues(
         sex=body.sex.value,
@@ -675,12 +718,14 @@ async def put_profile(
         protein_target_g=body.protein_target_g,
     )
     async with sessionmaker.begin() as session:
-        profile = await NutritionRepository(session).put_profile(values, clock())
-        return await _profile_out(session, profile, _today(clock))
+        profile = await NutritionRepository(session, principal.user_id).put_profile(values, clock())
+        return await _profile_out(session, principal.user_id, profile, _today(clock))
 
 
-async def _profile_out(session: AsyncSession, profile: NutritionProfile, today: date) -> ProfileOut:
-    weight = await latest_body_weight(session, today)
+async def _profile_out(
+    session: AsyncSession, user_id: int, profile: NutritionProfile, today: date
+) -> ProfileOut:
+    weight = await latest_body_weight(session, user_id, today)
     bmr = estimate_bmr(profile, weight, today)
     return ProfileOut(
         sex=Sex(profile.sex),
@@ -898,13 +943,14 @@ ESTIMATE_NOTE = (
     responses={**UNAUTHORIZED},
 )
 async def day_summary(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     clock: ClockDep,
     day: Annotated[date | None, Query(alias="date", examples=["2026-10-14"])] = None,
 ) -> DaySummary:
     day = day or _today(clock)
     async with sessionmaker() as session:
-        (energy,) = await energy_days(session, day, day)
+        (energy,) = await energy_days(session, principal.user_id, day, day)
     return DaySummary.from_energy(energy)
 
 
@@ -923,6 +969,7 @@ async def day_summary(
     },
 )
 async def range_summary(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     clock: ClockDep,
     start: Annotated[date | None, Query(alias="from", examples=["2026-10-12"])] = None,
@@ -930,7 +977,7 @@ async def range_summary(
 ) -> RangeSummary:
     start, end = _resolve_range(start, end, clock)
     async with sessionmaker() as session:
-        energy = await energy_days(session, start, end)
+        energy = await energy_days(session, principal.user_id, start, end)
     days = [DaySummary.from_energy(d) for d in energy]
     return RangeSummary.model_validate(
         {"from": start, "to": end, "days": days, "totals": _totals(energy)}

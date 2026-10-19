@@ -3,19 +3,18 @@
 import re
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, HTTPException, Path, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import IntegrityError
 
-from trainsync.core.deps import SessionmakerDep, require_api_key
+from trainsync.core.deps import SessionmakerDep
 from trainsync.core.errors import UNAUTHORIZED, error
+from trainsync.modules.auth.dependencies import CurrentUser
 from trainsync.modules.training.models import Equipment, Exercise, MovementPattern, Muscle
 from trainsync.modules.training.repository import ExerciseRepository
 from trainsync.modules.training.schemas import EXERCISE_EXAMPLE, ExerciseOut
 
-router = APIRouter(
-    prefix="/v1/training", tags=["training"], dependencies=[Depends(require_api_key)]
-)
+router = APIRouter(prefix="/v1/training", tags=["training"])
 
 NOT_FOUND = error("Unknown exercise", "exercise not found")
 
@@ -72,13 +71,14 @@ def slugify(name: str) -> str:
     responses={**UNAUTHORIZED},
 )
 async def list_exercises(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     q: Annotated[str | None, Query(max_length=80, examples=["press"])] = None,
     muscle: Annotated[Muscle | None, Query()] = None,
     equipment: Annotated[list[Equipment] | None, Query()] = None,
 ) -> ExerciseList:
     async with sessionmaker() as session:
-        rows = await ExerciseRepository(session).search(
+        rows = await ExerciseRepository(session, principal.user_id).search(
             q=q, muscle=muscle, equipment=equipment, limit=500
         )
     return ExerciseList(items=[ExerciseOut.from_row(r) for r in rows])
@@ -92,11 +92,13 @@ async def list_exercises(
     response_model=ExerciseOut,
     responses={**UNAUTHORIZED, 409: error("Slug taken", "exercise `landmine-press` exists")},
 )
-async def create_exercise(sessionmaker: SessionmakerDep, body: ExerciseCreate) -> ExerciseOut:
+async def create_exercise(
+    principal: CurrentUser, sessionmaker: SessionmakerDep, body: ExerciseCreate
+) -> ExerciseOut:
     slug = slugify(body.name)
     try:
         async with sessionmaker.begin() as session:
-            row = await ExerciseRepository(session).add(
+            row = await ExerciseRepository(session, principal.user_id).add(
                 Exercise(
                     slug=slug,
                     name=body.name,
@@ -125,12 +127,13 @@ async def create_exercise(sessionmaker: SessionmakerDep, body: ExerciseCreate) -
     },
 )
 async def update_exercise(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     exercise_id: Annotated[int, Path(examples=[73])],
     body: ExerciseUpdate,
 ) -> ExerciseOut:
     async with sessionmaker.begin() as session:
-        row = await ExerciseRepository(session).get(exercise_id)
+        row = await ExerciseRepository(session, principal.user_id).get(exercise_id)
         if row is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "exercise not found")
         if not row.is_custom:

@@ -25,6 +25,7 @@ DEV_ONLY_SECRETS = (
     "TOKEN_ENCRYPTION_KEY",
     "STATE_SIGNING_KEY",
     "API_KEYS",
+    "SERVICE_API_KEYS",
 )
 
 
@@ -45,6 +46,7 @@ BotLang = Literal["en", "tr"]
 BotIntensity = Literal["normal", "savage"]
 # Where savage swears (ADR 0032): only in the roast lines, or in every savage message.
 BotProfanity = Literal["roast", "max"]
+RegistrationMode = Literal["invite", "open", "closed"]
 # The emergency number in the distress reply (ADR 0032); 112 works across the EU and Türkiye.
 DEFAULT_EMERGENCY_NUMBER = "112"
 
@@ -115,6 +117,7 @@ class Settings(BaseSettings):
             ],
             "STATE_SIGNING_KEY": [self.state_signing_key],
             "API_KEYS": self.api_keys,
+            "SERVICE_API_KEYS": self.service_api_keys,
         }
         return [
             name
@@ -138,6 +141,50 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [part.strip() for part in value.split(",") if part.strip()]
         return value
+
+    # ---------------------------------------------------------------- accounts (P8.1, ADR 0034)
+    # invite: an unused owner invite is needed; open: anyone may register; closed: nobody.
+    registration_mode: RegistrationMode = "invite"
+    # The owner account the single-user data migrates to (required when data exists).
+    owner_email: str = ""
+    session_ttl_days: int = Field(default=30, ge=1, le=365)
+    session_max_age_days: int = Field(default=90, ge=1, le=730)
+    # A session's expiry slides forward on use, written at most this often.
+    session_touch_interval_s: int = Field(default=3600, ge=0, le=86400)
+    invite_ttl_days: int = Field(default=7, ge=1, le=90)
+    reset_ttl_minutes: int = Field(default=60, ge=5, le=1440)
+    # Failed logins for one email inside the window lock it for the window (right password too).
+    login_max_failures: int = Field(default=5, ge=1, le=100)
+    login_lockout_minutes: int = Field(default=15, ge=1, le=1440)
+    login_max_failures_per_ip: int = Field(default=20, ge=1, le=10000)
+    register_max_per_hour: int = Field(default=5, ge=1, le=1000)
+    # API keys that may act as any user with `X-Acting-User` (the bot's; ADR 0036). Every other
+    # key of API_KEYS acts as the owner.
+    service_api_keys: Annotated[list[SecretStr], NoDecode] = Field(default_factory=list)
+
+    @field_validator("service_api_keys", mode="before")
+    @classmethod
+    def _split_service_keys(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [part.strip() for part in value.split(",") if part.strip()]
+        return value
+
+    @field_validator("owner_email")
+    @classmethod
+    def _normal_owner_email(cls, value: str) -> str:
+        return value.strip().lower()
+
+    # ---------------------------------------------------------------- Telegram per user (P8.4)
+    # `/link CODE`: the one-time code from the dashboard lives this long.
+    telegram_link_code_ttl_minutes: int = Field(default=10, ge=1, le=60)
+    # The bot's username (without @) for the dashboard's t.me deep link; empty = no link.
+    telegram_bot_username: str = ""
+    # The bot caches who a chat belongs to (and their settings) for this long.
+    bot_chat_cache_s: int = Field(default=60, ge=0, le=3600)
+    # Assistant questions per user per local day (the owner pays for the key; exempt).
+    assistant_daily_limit: int = Field(default=50, ge=0, le=10000)
+    # Fair sync (ADR 0037): a backfill job stops after this many pages and re-queues itself.
+    backfill_pages_per_job: int = Field(default=10, ge=1, le=1000)
 
     # ---------------------------------------------------------------- bot + notifications (P5.5+)
     # All optional: the API and the worker start without them.
@@ -183,7 +230,15 @@ class Settings(BaseSettings):
         return bool(self.anthropic_api_key.get_secret_value())
 
     def bot_read_api_key(self) -> SecretStr:
-        return self.bot_api_key if self.bot_api_key.get_secret_value() else self.api_keys[0]
+        """BOT_API_KEY, else the first service key (ADR 0036), else the first of API_KEYS."""
+        if self.bot_api_key.get_secret_value():
+            return self.bot_api_key
+        return self.service_api_keys[0] if self.service_api_keys else self.api_keys[0]
+
+    @property
+    def all_api_keys(self) -> list[SecretStr]:
+        """Every key the API accepts: the tooling keys and the service keys."""
+        return [*self.api_keys, *self.service_api_keys]
 
     def notify_chat_id(self) -> int | None:
         if self.telegram_notify_chat_id is not None:
@@ -280,7 +335,18 @@ class Settings(BaseSettings):
     # Named in the calm reply to distress talk (ADR 0032): digits, optionally a leading +.
     emergency_number: str = Field(default=DEFAULT_EMERGENCY_NUMBER, pattern=r"^\+?[0-9]{2,15}$")
 
-    @field_validator("coach_messages_enabled", mode="before")
+    # ---- Progress statistics (P8.10, P8.11, ADR 0038)
+    # Windows at least this long are cached in Redis, keyed by the user's data version.
+    stats_cache_min_days: int = Field(default=180, ge=1, le=100000)
+    stats_cache_ttl_s: int = Field(default=86400, ge=60, le=30 * 86400)
+    # e1RM trend and PRs use sets of at most this many reps (Epley drifts above ~10).
+    stats_e1rm_max_reps: int = Field(default=10, ge=1, le=30)
+    # Weekly (Monday) and monthly (1st) digests; empty = on when TELEGRAM_BOT_TOKEN is set.
+    stats_digest_enabled: bool | None = None
+    # Local time of the digests (each user's zone; quiet hours postpone them).
+    stats_digest_time: time = time(9, 0)
+
+    @field_validator("coach_messages_enabled", "stats_digest_enabled", mode="before")
     @classmethod
     def _empty_coach_bool_as_none(cls, value: object) -> object:
         return None if value == "" else value

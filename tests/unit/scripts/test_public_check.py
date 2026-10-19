@@ -47,6 +47,7 @@ def gateway() -> Iterator[respx.MockRouter]:
         router.get("/webhooks/strava").respond(403)
         router.get("/auth/strava/login").respond(302, headers={"Location": "https://strava"})
         router.get("/v1/sync/status").respond(401)
+        router.get("/v1/auth/registration").respond(200, json={"mode": "invite"})
         router.route(name="fallback").respond(404)
         yield router
 

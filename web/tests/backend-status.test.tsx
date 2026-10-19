@@ -30,7 +30,7 @@ describe("backend reachability (P7.6)", () => {
 
   it("a data call to an offline backend gets the friendly message", async () => {
     vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockRejectedValue(new TypeError("fetch failed")));
-    const result = await upstreamGet("/v1/sync/status", new URLSearchParams());
+    const result = await upstreamGet("/v1/sync/status", new URLSearchParams(), "a-session-token");
     expect(result).toEqual({ ok: false, status: 502, error: BACKEND_UNREACHABLE });
   });
 

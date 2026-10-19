@@ -13,8 +13,10 @@ from collections.abc import Mapping
 
 from trainsync.modules.coach.categories import Category
 from trainsync.modules.coach.punchlines import MAX_PUNCHLINES, PUNCHLINES
+from trainsync.modules.coach.savage_progress import EN_LINES, EN_MAX
 
 LINES: Mapping[Category, tuple[str, ...]] = {
+    **EN_LINES,
     Category.EXCUSE: (
         "You don't feel like it? Fuck your feelings, they never lifted a single plate.",
         '"Tomorrow" is a goddamn fairy tale. Today is the only day on the schedule.',
@@ -153,6 +155,7 @@ LINES: Mapping[Category, tuple[str, ...]] = {
 # Profanity `max` (ADR 0032): every category, at least as many lines as its roast pool, every
 # line swears; `max_opener` goes in front of every other savage message.
 MAX: Mapping[Category, tuple[str, ...]] = {
+    **EN_MAX,
     Category.EXCUSE: (
         "Another excuse? Fuck that. Shoes on, now.",
         "You don't feel like it? Nobody gives a shit. Go.",

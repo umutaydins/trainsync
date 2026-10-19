@@ -1,4 +1,4 @@
-"""`daily_checkins`: one row per local day, upserted by date (P6.9, ADR 0020)."""
+"""`daily_checkins`: one row per user and local day, upserted by date (P6.9, ADR 0020, 0035)."""
 
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -22,11 +22,16 @@ class CheckinValues:
 
 
 class CheckinRepository:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, user_id: int) -> None:
         self._session = session
+        self._user_id = user_id
 
     async def get(self, day: date) -> DailyCheckin | None:
-        return await self._session.scalar(select(DailyCheckin).where(DailyCheckin.date == day))
+        return await self._session.scalar(
+            select(DailyCheckin).where(
+                DailyCheckin.user_id == self._user_id, DailyCheckin.date == day
+            )
+        )
 
     async def put(
         self, day: date, values: CheckinValues, now: datetime
@@ -41,9 +46,11 @@ class CheckinRepository:
             "body_weight_kg": values.body_weight_kg,
             "updated_at": now,
         }
-        values_stmt = insert(DailyCheckin).values(date=day, created_at=now, **fields)
+        values_stmt = insert(DailyCheckin).values(
+            user_id=self._user_id, date=day, created_at=now, **fields
+        )
         stmt = values_stmt.on_conflict_do_update(
-            index_elements=[DailyCheckin.date],
+            index_elements=[DailyCheckin.user_id, DailyCheckin.date],
             set_={name: values_stmt.excluded[name] for name in fields},
         ).returning(DailyCheckin.id, literal_column("xmax = 0", Boolean()).label("created"))
         row = (await self._session.execute(stmt)).one()
@@ -59,12 +66,18 @@ class CheckinRepository:
     async def between(self, start: date, end: date) -> list[DailyCheckin]:
         stmt = (
             select(DailyCheckin)
-            .where(DailyCheckin.date >= start, DailyCheckin.date <= end)
+            .where(
+                DailyCheckin.user_id == self._user_id,
+                DailyCheckin.date >= start,
+                DailyCheckin.date <= end,
+            )
             .order_by(DailyCheckin.date)
         )
         return list(await self._session.scalars(stmt))
 
     async def statuses(self, until: date) -> dict[date, CheckinStatus]:
         """Every status up to `until`, for streaks (one short row per day ever checked in)."""
-        stmt = select(DailyCheckin.date, DailyCheckin.status).where(DailyCheckin.date <= until)
+        stmt = select(DailyCheckin.date, DailyCheckin.status).where(
+            DailyCheckin.user_id == self._user_id, DailyCheckin.date <= until
+        )
         return {day: CheckinStatus(status) for day, status in await self._session.execute(stmt)}

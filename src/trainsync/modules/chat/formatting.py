@@ -10,7 +10,7 @@ from enum import StrEnum
 
 from trainsync.modules.activities.router import ActivityOut
 from trainsync.modules.coach.packs import Key, Messages
-from trainsync.modules.stats.router import StatsSummary, TotalsOut, Week
+from trainsync.modules.stats.totals import ActivitySummary, TotalsOut, Week
 from trainsync.modules.sync.router import SyncStatusOut
 
 # Data older than this gets an explicit "as of" warning.
@@ -114,7 +114,7 @@ def _with_freshness(
     return "\n".join([*lines, note] if note else lines)
 
 
-def _by_sport(summary: StatsSummary) -> list[str]:
+def _by_sport(summary: ActivitySummary) -> list[str]:
     return [
         f"{sport_emoji(s.sport_type)} {s.sport_type}: {s.count} · {km(s.distance_m)} · "
         f"{duration(s.moving_time_s)}"
@@ -154,7 +154,7 @@ def week_verdict(this_week: TotalsOut, last_week: TotalsOut) -> tuple[Verdict, i
 
 
 def format_week(
-    this_week: StatsSummary, last_week: StatsSummary, now: datetime, msg: Messages
+    this_week: ActivitySummary, last_week: ActivitySummary, now: datetime, msg: Messages
 ) -> str:
     lines = [msg(Key.WEEK_THIS, range=day_range(this_week.start, this_week.end, msg))]
     if this_week.totals.count:
@@ -222,7 +222,7 @@ def best_week(weeks: list[Week]) -> Week | None:
 
 
 def format_stats(
-    summary: StatsSummary, weeks: list[Week], label: str, now: datetime, msg: Messages
+    summary: ActivitySummary, weeks: list[Week], label: str, now: datetime, msg: Messages
 ) -> str:
     sport = f" · {summary.sport_type}" if summary.sport_type else ""
     title = msg(

@@ -155,6 +155,14 @@ class StravaClient:
             {"grant_type": "refresh_token", "refresh_token": refresh_token}
         )
 
+    async def deauthorize(self, athlete_id: int) -> None:
+        """Revoke this app's access for the athlete at Strava (disconnect, account deletion)."""
+        if self._tokens is None:
+            raise RuntimeError("StravaClient has no token provider for API calls")
+        token = await self._tokens.access_token(athlete_id)
+        url = f"{self._settings.strava_oauth_base_url}/deauthorize"
+        await self._send("POST", "/oauth/deauthorize", url, data={"access_token": token})
+
     async def _token_request(self, fields: dict[str, str]) -> TokenResponse:
         data = {
             "client_id": self._settings.strava_client_id,

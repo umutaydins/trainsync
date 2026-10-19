@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import BigInteger, Float, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from trainsync.core.orm import Base, utc_timestamp
+from trainsync.core.orm import Base, owner_id, utc_timestamp
 
 
 class Activity(Base):
@@ -14,9 +14,11 @@ class Activity(Base):
     __table_args__ = (
         Index("ix_activities_athlete_start_date", "athlete_id", text("start_date DESC")),
         Index("ix_activities_athlete_sport_start_date", "athlete_id", "sport_type", "start_date"),
+        Index("ix_activities_user_start_date", "user_id", text("start_date DESC")),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = owner_id()
     strava_activity_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     athlete_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("athletes.id", ondelete="CASCADE")

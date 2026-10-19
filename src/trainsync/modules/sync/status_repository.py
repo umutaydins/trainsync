@@ -1,4 +1,5 @@
-"""Sync health reads: the newest run per athlete and kind, and the webhook queue's state."""
+"""Sync health reads: a user's newest runs, and the application-wide webhook queue and
+freshness (one Strava application serves every user, so those are shared facts)."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -7,7 +8,9 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from trainsync.modules.sync.models import SyncRun, WebhookEvent
+from trainsync.modules.activities.models import Activity
+from trainsync.modules.strava.models import Athlete
+from trainsync.modules.sync.models import SyncRun, SyncStatus, WebhookEvent
 from trainsync.modules.sync.webhook_repository import MAX_ATTEMPTS
 
 
@@ -22,8 +25,9 @@ class WebhookSummary:
 
 
 class SyncStatusRepository:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, user_id: int) -> None:
         self._session = session
+        self._user_id = user_id
 
     async def latest_runs(self, athlete_ids: Sequence[int]) -> dict[tuple[int, str], SyncRun]:
         """The newest run per (athlete, kind)."""
@@ -31,13 +35,14 @@ class SyncStatusRepository:
             return {}
         newest = (
             select(func.max(SyncRun.id))
-            .where(SyncRun.athlete_id.in_(athlete_ids))
+            .where(SyncRun.user_id == self._user_id, SyncRun.athlete_id.in_(athlete_ids))
             .group_by(SyncRun.athlete_id, SyncRun.kind)
         )
         runs = await self._session.scalars(select(SyncRun).where(SyncRun.id.in_(newest)))
         return {(run.athlete_id, run.kind): run for run in runs}
 
     async def webhook_summary(self) -> WebhookSummary:
+        """Application-wide: webhook events are not tied to a user until processed."""
         received, processed = (
             await self._session.execute(
                 select(func.max(WebhookEvent.received_at), func.max(WebhookEvent.processed_at))
@@ -60,3 +65,21 @@ class SyncStatusRepository:
             failed=counts.get("failed", 0) - (dead or 0),
             dead_letters=dead or 0,
         )
+
+
+async def system_freshness(session: AsyncSession) -> tuple[bool, datetime | None]:
+    """For the owner's stack alerts (ADR 0027): is any athlete connected, and the newest
+    successful sync or activity write across every user."""
+    active = await session.scalar(select(func.count()).select_from(Athlete).where(Athlete.active))
+    run_done = await session.scalar(
+        select(func.max(SyncRun.finished_at))
+        .join(Athlete, Athlete.id == SyncRun.athlete_id)
+        .where(Athlete.active, SyncRun.status == SyncStatus.SUCCEEDED)
+    )
+    written = await session.scalar(
+        select(func.max(Activity.synced_at))
+        .join(Athlete, Athlete.id == Activity.athlete_id)
+        .where(Athlete.active)
+    )
+    present = [v for v in (run_done, written) if v is not None]
+    return bool(active), max(present) if present else None

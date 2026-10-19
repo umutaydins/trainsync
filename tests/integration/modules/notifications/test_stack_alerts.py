@@ -8,7 +8,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.conftest import make_settings
-from tests.support.factories import create_athlete
+from tests.support.factories import create_athlete, owner_of
 from trainsync.integrations.notifier import NullNotifier
 from trainsync.integrations.strava.breaker import BreakerState
 from trainsync.integrations.strava.breaker_status import RedisBreakerPublisher
@@ -50,6 +50,7 @@ async def test_facts_from_the_database_redis_and_the_backup_folder(
     async with sessionmaker.begin() as session:
         session.add(
             SyncRun(
+                user_id=owner_of(athlete),
                 athlete_id=athlete,
                 kind=SyncKind.INCREMENTAL,
                 status=SyncStatus.SUCCEEDED,

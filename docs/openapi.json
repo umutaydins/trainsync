@@ -323,6 +323,131 @@
         "title": "ActivityPage",
         "type": "object"
       },
+      "AdherenceOut": {
+        "properties": {
+          "done_sessions": {
+            "title": "Done Sessions",
+            "type": "integer"
+          },
+          "done_sets": {
+            "title": "Done Sets",
+            "type": "integer"
+          },
+          "planned_sessions": {
+            "title": "Planned Sessions",
+            "type": "integer"
+          },
+          "planned_sets": {
+            "title": "Planned Sets",
+            "type": "integer"
+          },
+          "program_id": {
+            "title": "Program Id",
+            "type": "integer"
+          },
+          "program_name": {
+            "title": "Program Name",
+            "type": "string"
+          },
+          "session_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Ratio"
+          },
+          "set_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Set Ratio"
+          }
+        },
+        "required": [
+          "program_id",
+          "program_name",
+          "planned_sessions",
+          "done_sessions",
+          "planned_sets",
+          "done_sets",
+          "session_ratio",
+          "set_ratio"
+        ],
+        "title": "AdherenceOut",
+        "type": "object"
+      },
+      "AdminUserList": {
+        "examples": [
+          {
+            "items": [
+              {
+                "created_at": "2026-10-19T08:00:00Z",
+                "display_name": "Runner",
+                "email": "runner@example.com",
+                "id": 2,
+                "role": "user"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminUserOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "AdminUserList",
+        "type": "object"
+      },
+      "AdminUserOut": {
+        "description": "Account facts only: the owner never sees a user's training data.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "role",
+          "created_at"
+        ],
+        "title": "AdminUserOut",
+        "type": "object"
+      },
       "AthleteSync": {
         "properties": {
           "athlete_id": {
@@ -361,6 +486,25 @@
           "incremental"
         ],
         "title": "AthleteSync",
+        "type": "object"
+      },
+      "AuthorizeUrl": {
+        "examples": [
+          {
+            "url": "https://www.strava.com/oauth/authorize?client_id=1234&…"
+          }
+        ],
+        "properties": {
+          "url": {
+            "description": "Send the browser here; valid for a few minutes",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "AuthorizeUrl",
         "type": "object"
       },
       "BestSet": {
@@ -472,6 +616,73 @@
         "title": "BodyMetricOut",
         "type": "object"
       },
+      "BodyOut": {
+        "properties": {
+          "body_fat_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Phase 9; always null for now",
+            "title": "Body Fat Pct"
+          },
+          "change_kg": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "first_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Kg"
+          },
+          "last_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Kg"
+          },
+          "moving_average_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "7-day moving average on the last day",
+            "title": "Moving Average Kg"
+          },
+          "rate_kg_per_week": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Least-squares slope of the period's weights"
+          }
+        },
+        "required": [
+          "first_kg",
+          "last_kg",
+          "change_kg",
+          "moving_average_kg",
+          "rate_kg_per_week",
+          "body_fat_pct"
+        ],
+        "title": "BodyOut",
+        "type": "object"
+      },
       "BreakerProcess": {
         "properties": {
           "changed_at": {
@@ -517,6 +728,15 @@
         "title": "BreakerState",
         "type": "string"
       },
+      "Bucket": {
+        "enum": [
+          "day",
+          "week",
+          "month"
+        ],
+        "title": "Bucket",
+        "type": "string"
+      },
       "ChallengeResponse": {
         "examples": [
           {
@@ -535,57 +755,94 @@
         "title": "ChallengeResponse",
         "type": "object"
       },
-      "ChatSettingsIn": {
-        "description": "Either field or both; a field left out keeps its stored value.",
-        "examples": [
-          {
-            "lang": "en"
-          },
-          {
-            "profanity": "max"
-          }
-        ],
+      "Change": {
+        "description": "A number of the period, the same number of the previous period and the difference.",
         "properties": {
-          "lang": {
+          "change": {
             "anyOf": [
               {
-                "enum": [
-                  "en",
-                  "tr"
-                ],
-                "type": "string"
+                "type": "number"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Lang"
+            "description": "value - previous",
+            "title": "Change"
           },
-          "profanity": {
+          "change_pct": {
             "anyOf": [
               {
-                "enum": [
-                  "roast",
-                  "max"
-                ],
-                "type": "string"
+                "type": "number"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Profanity"
+            "description": "change / previous x 100; null if previous is 0",
+            "title": "Change Pct"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null for `all` (no previous period)",
+            "title": "Previous"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
           }
         },
-        "title": "ChatSettingsIn",
+        "required": [
+          "value",
+          "previous",
+          "change",
+          "change_pct"
+        ],
+        "title": "Change",
         "type": "object"
       },
-      "ChatSettingsOut": {
+      "ChatOwner": {
+        "description": "Who a linked chat belongs to and how the bot should speak to them.",
         "examples": [
           {
             "chat_id": 123456789,
-            "lang": "tr",
-            "profanity": "max"
+            "display_name": "Runner",
+            "role": "user",
+            "settings": {
+              "checkin_enabled": true,
+              "checkin_reminder_minutes": 90,
+              "checkin_time": "21:00:00",
+              "country": "DE",
+              "custom": [
+                "tone",
+                "country"
+              ],
+              "emergency_number": "112",
+              "intensity": "normal",
+              "lang": "en",
+              "profanity": "roast",
+              "quiet_hours": "23:00-07:00",
+              "stats_digest_enabled": true,
+              "sugar_limit_g": 50.0,
+              "timezone": "Europe/Berlin",
+              "tone": "hardcore",
+              "workout_reminder_time": "18:00:00"
+            },
+            "user_id": 2
           }
         ],
         "properties": {
@@ -593,44 +850,29 @@
             "title": "Chat Id",
             "type": "integer"
           },
-          "lang": {
-            "anyOf": [
-              {
-                "enum": [
-                  "en",
-                  "tr"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "null: never chosen, the bot uses BOT_LANG",
-            "title": "Lang"
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
           },
-          "profanity": {
-            "anyOf": [
-              {
-                "enum": [
-                  "roast",
-                  "max"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "null: never chosen, the bot uses BOT_PROFANITY",
-            "title": "Profanity"
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/SettingsOut"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "integer"
           }
         },
         "required": [
           "chat_id",
-          "lang"
+          "user_id",
+          "display_name",
+          "role",
+          "settings"
         ],
-        "title": "ChatSettingsOut",
+        "title": "ChatOwner",
         "type": "object"
       },
       "CheckinIn": {
@@ -1063,6 +1305,51 @@
         "title": "ConnectedResponse",
         "type": "object"
       },
+      "ConsistencyOut": {
+        "properties": {
+          "active_days": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Local days with an activity or a workout"
+          },
+          "checkin_rate": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Days with a check-in / days of the period"
+          },
+          "checkin_streak_days": {
+            "title": "Checkin Streak Days",
+            "type": "integer"
+          },
+          "longest_checkin_streak_days": {
+            "title": "Longest Checkin Streak Days",
+            "type": "integer"
+          },
+          "longest_training_streak_weeks": {
+            "title": "Longest Training Streak Weeks",
+            "type": "integer"
+          },
+          "sick_days": {
+            "description": "Check-ins `sick_or_injured` in the period",
+            "title": "Sick Days",
+            "type": "integer"
+          },
+          "training_streak_weeks": {
+            "description": "ISO weeks in a row with training, to today",
+            "title": "Training Streak Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "active_days",
+          "training_streak_weeks",
+          "longest_training_streak_weeks",
+          "checkin_streak_days",
+          "longest_checkin_streak_days",
+          "checkin_rate",
+          "sick_days"
+        ],
+        "title": "ConsistencyOut",
+        "type": "object"
+      },
       "CurrentRecord": {
         "description": "The standing record; `previous` is the one it beat.",
         "examples": [
@@ -1452,6 +1739,147 @@
         "title": "DaySummary",
         "type": "object"
       },
+      "DeleteAccountIn": {
+        "examples": [
+          {
+            "password": "correct horse"
+          }
+        ],
+        "properties": {
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "DeleteAccountIn",
+        "type": "object"
+      },
+      "EffortOut": {
+        "properties": {
+          "activity_id": {
+            "title": "Activity Id",
+            "type": "integer"
+          },
+          "average_speed_mps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Speed Mps"
+          },
+          "distance_m": {
+            "title": "Distance M",
+            "type": "number"
+          },
+          "group": {
+            "$ref": "#/components/schemas/SportGroup"
+          },
+          "moving_time_s": {
+            "title": "Moving Time S",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "start_date": {
+            "format": "date-time",
+            "title": "Start Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group",
+          "activity_id",
+          "name",
+          "start_date",
+          "distance_m",
+          "moving_time_s",
+          "average_speed_mps"
+        ],
+        "title": "EffortOut",
+        "type": "object"
+      },
+      "EnduranceOut": {
+        "properties": {
+          "by_group": {
+            "items": {
+              "$ref": "#/components/schemas/SportGroupOut"
+            },
+            "title": "By Group",
+            "type": "array"
+          },
+          "fastest": {
+            "description": "Highest average speed per sport group (run/walk ≥ 1 km, ride ≥ 5 km, swim ≥ 100 m)",
+            "items": {
+              "$ref": "#/components/schemas/EffortOut"
+            },
+            "title": "Fastest",
+            "type": "array"
+          },
+          "longest": {
+            "description": "Greatest distance per sport group",
+            "items": {
+              "$ref": "#/components/schemas/EffortOut"
+            },
+            "title": "Longest",
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/EnduranceTotalsOut"
+          }
+        },
+        "required": [
+          "totals",
+          "by_group",
+          "longest",
+          "fastest"
+        ],
+        "title": "EnduranceOut",
+        "type": "object"
+      },
+      "EnduranceTotalsOut": {
+        "properties": {
+          "average_heartrate": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Weighted by moving time; activities with HR"
+          },
+          "average_speed_mps": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "distance_m": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "elevation_gain_m": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "moving_time_s": {
+            "$ref": "#/components/schemas/Change"
+          }
+        },
+        "required": [
+          "count",
+          "distance_m",
+          "moving_time_s",
+          "elevation_gain_m",
+          "average_speed_mps",
+          "average_heartrate"
+        ],
+        "title": "EnduranceTotalsOut",
+        "type": "object"
+      },
       "Equipment": {
         "enum": [
           "barbell",
@@ -1681,6 +2109,49 @@
           "sessions"
         ],
         "title": "ExerciseProgress",
+        "type": "object"
+      },
+      "ExerciseProgressOut": {
+        "properties": {
+          "best_e1rm_kg": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Epley, working sets of at most 10 reps"
+          },
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "muscle": {
+            "title": "Muscle",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reps": {
+            "title": "Reps",
+            "type": "integer"
+          },
+          "sets": {
+            "title": "Sets",
+            "type": "integer"
+          },
+          "tonnage_kg": {
+            "title": "Tonnage Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "name",
+          "muscle",
+          "sets",
+          "reps",
+          "tonnage_kg",
+          "best_e1rm_kg"
+        ],
+        "title": "ExerciseProgressOut",
         "type": "object"
       },
       "ExerciseUpdate": {
@@ -2379,6 +2850,315 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HeatmapDayOut": {
+        "properties": {
+          "checkin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckinStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          },
+          "value": {
+            "description": "Training minutes (activities' moving time + workouts)",
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "day",
+          "value",
+          "sessions",
+          "checkin"
+        ],
+        "title": "HeatmapDayOut",
+        "type": "object"
+      },
+      "HeatmapOut": {
+        "examples": [
+          {
+            "days": [
+              {
+                "day": "2026-01-01",
+                "sessions": 0,
+                "value": 0.0
+              },
+              {
+                "checkin": "done",
+                "day": "2026-01-02",
+                "sessions": 1,
+                "value": 64.5
+              }
+            ],
+            "max_value": 182.0,
+            "timezone": "Europe/Berlin",
+            "year": 2026
+          }
+        ],
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/HeatmapDayOut"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "max_value": {
+            "title": "Max Value",
+            "type": "number"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "timezone",
+          "max_value",
+          "days"
+        ],
+        "title": "HeatmapOut",
+        "type": "object"
+      },
+      "InviteCreated": {
+        "examples": [
+          {
+            "code": "Xr2…",
+            "created_at": "2026-10-19T08:00:00Z",
+            "expires_at": "2026-10-26T08:00:00Z",
+            "id": 3,
+            "note": "for my training partner",
+            "status": "open",
+            "url": "https://dashboard.example/register?invite=Xr2…"
+          }
+        ],
+        "properties": {
+          "code": {
+            "description": "Shown only once",
+            "title": "Code",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "used",
+              "revoked",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Used At"
+          }
+        },
+        "required": [
+          "id",
+          "note",
+          "created_at",
+          "expires_at",
+          "used_at",
+          "revoked_at",
+          "status",
+          "code",
+          "url"
+        ],
+        "title": "InviteCreated",
+        "type": "object"
+      },
+      "InviteIn": {
+        "examples": [
+          {
+            "note": "for my training partner"
+          }
+        ],
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "InviteIn",
+        "type": "object"
+      },
+      "InviteList": {
+        "examples": [
+          {
+            "items": [
+              {
+                "created_at": "2026-10-19T08:00:00Z",
+                "expires_at": "2026-10-26T08:00:00Z",
+                "id": 3,
+                "note": "for my training partner",
+                "status": "open"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InviteOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "InviteList",
+        "type": "object"
+      },
+      "InviteOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "used",
+              "revoked",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Used At"
+          }
+        },
+        "required": [
+          "id",
+          "note",
+          "created_at",
+          "expires_at",
+          "used_at",
+          "revoked_at",
+          "status"
+        ],
+        "title": "InviteOut",
+        "type": "object"
+      },
       "KcalSource": {
         "enum": [
           "calories",
@@ -2413,6 +3193,106 @@
           "sets"
         ],
         "title": "LastPerformance",
+        "type": "object"
+      },
+      "LinkCode": {
+        "examples": [
+          {
+            "bot_url": "https://t.me/trainsync_bot?start=K7Q2M9XD",
+            "code": "K7Q2M9XD",
+            "command": "/link K7Q2M9XD",
+            "expires_at": "2026-10-19T08:10:00Z"
+          }
+        ],
+        "properties": {
+          "bot_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opens the bot with the code; null without a username",
+            "title": "Bot Url"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "command": {
+            "description": "What to send the bot",
+            "title": "Command",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "expires_at",
+          "command",
+          "bot_url"
+        ],
+        "title": "LinkCode",
+        "type": "object"
+      },
+      "LinkIn": {
+        "examples": [
+          {
+            "code": "K7Q2M9XD"
+          }
+        ],
+        "properties": {
+          "code": {
+            "maxLength": 16,
+            "minLength": 4,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "LinkIn",
+        "type": "object"
+      },
+      "LinkStatus": {
+        "examples": [
+          {
+            "linked": true,
+            "linked_at": "2026-10-19T08:00:00Z"
+          },
+          {
+            "linked": false
+          }
+        ],
+        "properties": {
+          "linked": {
+            "title": "Linked",
+            "type": "boolean"
+          },
+          "linked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked At"
+          }
+        },
+        "required": [
+          "linked"
+        ],
+        "title": "LinkStatus",
         "type": "object"
       },
       "LogIn": {
@@ -2623,6 +3503,123 @@
         "title": "LogOut",
         "type": "object"
       },
+      "LoginIn": {
+        "examples": [
+          {
+            "email": "runner@example.com",
+            "password": "correct horse battery"
+          }
+        ],
+        "properties": {
+          "email": {
+            "maxLength": 320,
+            "minLength": 1,
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginIn",
+        "type": "object"
+      },
+      "MeOut": {
+        "examples": [
+          {
+            "created_at": "2026-10-19T08:00:00Z",
+            "display_name": "Runner",
+            "email": "runner@example.com",
+            "id": 2,
+            "role": "user",
+            "timezone": "Europe/Berlin"
+          }
+        ],
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "role",
+          "timezone",
+          "created_at"
+        ],
+        "title": "MeOut",
+        "type": "object"
+      },
+      "MePatch": {
+        "examples": [
+          {
+            "display_name": "Runner",
+            "timezone": "Europe/Berlin"
+          }
+        ],
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "examples": [
+                  "Europe/Berlin"
+                ],
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          }
+        },
+        "title": "MePatch",
+        "type": "object"
+      },
       "Meal": {
         "enum": [
           "breakfast",
@@ -2631,6 +3628,26 @@
           "snack"
         ],
         "title": "Meal",
+        "type": "string"
+      },
+      "Metric": {
+        "enum": [
+          "distance_m",
+          "moving_time_s",
+          "elevation_gain_m",
+          "activities",
+          "sessions",
+          "sets",
+          "reps",
+          "tonnage_kg",
+          "kcal",
+          "protein_g",
+          "carbs_g",
+          "fat_g",
+          "weight_kg",
+          "active_minutes"
+        ],
+        "title": "Metric",
         "type": "string"
       },
       "MovementPattern": {
@@ -2672,6 +3689,29 @@
         ],
         "title": "Muscle",
         "type": "string"
+      },
+      "MuscleProgressOut": {
+        "properties": {
+          "muscle": {
+            "title": "Muscle",
+            "type": "string"
+          },
+          "sets": {
+            "title": "Sets",
+            "type": "integer"
+          },
+          "tonnage_kg": {
+            "title": "Tonnage Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "muscle",
+          "sets",
+          "tonnage_kg"
+        ],
+        "title": "MuscleProgressOut",
+        "type": "object"
       },
       "MuscleWeek": {
         "properties": {
@@ -2838,6 +3878,89 @@
         "title": "NextDay",
         "type": "object"
       },
+      "NutritionOut": {
+        "properties": {
+          "avg_carbs_g": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "avg_fat_g": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "avg_kcal": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Mean over the logged days"
+          },
+          "avg_protein_g": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "days_over_sugar_limit": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "kcal_target": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kcal Target"
+          },
+          "logged_days": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "logging_rate": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Days with a food log / days of the period"
+          },
+          "sugar_limit_g": {
+            "title": "Sugar Limit G",
+            "type": "number"
+          }
+        },
+        "required": [
+          "logged_days",
+          "logging_rate",
+          "avg_kcal",
+          "kcal_target",
+          "avg_protein_g",
+          "avg_carbs_g",
+          "avg_fat_g",
+          "days_over_sugar_limit",
+          "sugar_limit_g"
+        ],
+        "title": "NutritionOut",
+        "type": "object"
+      },
+      "PasswordChangeIn": {
+        "examples": [
+          {
+            "current_password": "correct horse battery",
+            "new_password": "a brand new password"
+          }
+        ],
+        "properties": {
+          "current_password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "PasswordChangeIn",
+        "type": "object"
+      },
       "PerformedSet": {
         "properties": {
           "reps": {
@@ -2866,6 +3989,22 @@
         ],
         "title": "PerformedSet",
         "type": "object"
+      },
+      "Period": {
+        "enum": [
+          "week",
+          "last_week",
+          "month",
+          "last_month",
+          "3m",
+          "6m",
+          "year",
+          "12m",
+          "all",
+          "custom"
+        ],
+        "title": "Period",
+        "type": "string"
       },
       "PlannedExercise": {
         "description": "A program-day exercise with what was lifted last time.",
@@ -3260,6 +4399,45 @@
         "title": "PlatesOut",
         "type": "object"
       },
+      "PointOut": {
+        "properties": {
+          "moving_average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "weight_kg, bucket=day: the 7-day moving average",
+            "title": "Moving Average"
+          },
+          "start": {
+            "description": "First day of the bucket (may be before the window)",
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "start",
+          "value"
+        ],
+        "title": "PointOut",
+        "type": "object"
+      },
       "PrKind": {
         "enum": [
           "weight_for_reps",
@@ -3268,6 +4446,53 @@
         ],
         "title": "PrKind",
         "type": "string"
+      },
+      "PrOut": {
+        "properties": {
+          "achieved_at": {
+            "format": "date-time",
+            "title": "Achieved At",
+            "type": "string"
+          },
+          "e1rm_kg": {
+            "title": "E1Rm Kg",
+            "type": "number"
+          },
+          "exercise_id": {
+            "title": "Exercise Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "previous_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The record it beat; null for the first",
+            "title": "Previous Kg"
+          },
+          "workout_id": {
+            "title": "Workout Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "exercise_id",
+          "name",
+          "workout_id",
+          "achieved_at",
+          "e1rm_kg",
+          "previous_kg"
+        ],
+        "title": "PrOut",
+        "type": "object"
       },
       "PreviewDay": {
         "properties": {
@@ -4108,6 +5333,57 @@
         "title": "Progression",
         "type": "string"
       },
+      "PrsOut": {
+        "examples": [
+          {
+            "count": 1,
+            "period": "all",
+            "records": [
+              {
+                "achieved_at": "2026-10-16T17:40:02Z",
+                "e1rm_kg": 101.67,
+                "exercise_id": 1,
+                "name": "Bench Press",
+                "previous_kg": 100.0,
+                "workout_id": 418
+              }
+            ],
+            "window": {
+              "days": 962,
+              "from": "2024-03-02",
+              "to": "2026-10-19"
+            }
+          }
+        ],
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "period": {
+            "$ref": "#/components/schemas/Period"
+          },
+          "records": {
+            "description": "Newest first",
+            "items": {
+              "$ref": "#/components/schemas/PrOut"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "window": {
+            "$ref": "#/components/schemas/WindowOut"
+          }
+        },
+        "required": [
+          "period",
+          "window",
+          "count",
+          "records"
+        ],
+        "title": "PrsOut",
+        "type": "object"
+      },
       "RangeSummary": {
         "examples": [
           {
@@ -4389,6 +5665,155 @@
         "title": "RecordOut",
         "type": "object"
       },
+      "RegisterIn": {
+        "examples": [
+          {
+            "display_name": "Runner",
+            "email": "runner@example.com",
+            "invite_code": "Xr2…",
+            "password": "correct horse battery",
+            "timezone": "Europe/Berlin"
+          }
+        ],
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "invite_code": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Required unless REGISTRATION_MODE=open",
+            "title": "Invite Code"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "examples": [
+                  "Europe/Berlin"
+                ],
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "IANA zone; default CHECKIN_TZ",
+            "title": "Timezone"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "RegisterIn",
+        "type": "object"
+      },
+      "RegistrationOut": {
+        "examples": [
+          {
+            "mode": "invite"
+          }
+        ],
+        "properties": {
+          "mode": {
+            "enum": [
+              "invite",
+              "open",
+              "closed"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "RegistrationOut",
+        "type": "object"
+      },
+      "ResetIn": {
+        "examples": [
+          {
+            "password": "a brand new password",
+            "token": "Zt4…"
+          }
+        ],
+        "properties": {
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "password"
+        ],
+        "title": "ResetIn",
+        "type": "object"
+      },
+      "ResetLinkOut": {
+        "examples": [
+          {
+            "expires_at": "2026-10-19T09:00:00Z",
+            "url": "https://dashboard.example/reset-password?token=Zt4…"
+          }
+        ],
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expires_at"
+        ],
+        "title": "ResetLinkOut",
+        "type": "object"
+      },
       "Role": {
         "enum": [
           "compound",
@@ -4462,6 +5887,166 @@
         "title": "RunOut",
         "type": "object"
       },
+      "SeriesOut": {
+        "examples": [
+          {
+            "bucket": "day",
+            "metric": "kcal",
+            "period": "week",
+            "points": [
+              {
+                "start": "2026-10-19",
+                "value": 2310.5
+              }
+            ],
+            "target": 2500.0,
+            "timezone": "Europe/Berlin",
+            "window": {
+              "days": 1,
+              "from": "2026-10-19",
+              "to": "2026-10-19"
+            }
+          }
+        ],
+        "properties": {
+          "bucket": {
+            "$ref": "#/components/schemas/Bucket"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/Metric"
+          },
+          "period": {
+            "$ref": "#/components/schemas/Period"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/PointOut"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "sport": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SportGroup"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "kcal: the daily target; null for other metrics",
+            "title": "Target"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "window": {
+            "$ref": "#/components/schemas/WindowOut"
+          }
+        },
+        "required": [
+          "metric",
+          "period",
+          "bucket",
+          "timezone",
+          "window",
+          "sport",
+          "target",
+          "points"
+        ],
+        "title": "SeriesOut",
+        "type": "object"
+      },
+      "SessionList": {
+        "examples": [
+          {
+            "items": [
+              {
+                "created_at": "2026-10-19T08:00:00Z",
+                "current": true,
+                "expires_at": "2026-11-18T09:30:00Z",
+                "id": 12,
+                "last_seen_at": "2026-10-19T09:30:00Z",
+                "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X)"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SessionOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SessionList",
+        "type": "object"
+      },
+      "SessionOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current": {
+            "description": "The session this request was made with",
+            "title": "Current",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "user_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Agent"
+          }
+        },
+        "required": [
+          "id",
+          "user_agent",
+          "created_at",
+          "last_seen_at",
+          "expires_at",
+          "current"
+        ],
+        "title": "SessionOut",
+        "type": "object"
+      },
       "SessionProgress": {
         "properties": {
           "best_set": {
@@ -4514,6 +6099,44 @@
           "working_sets"
         ],
         "title": "SessionProgress",
+        "type": "object"
+      },
+      "SessionTokenOut": {
+        "examples": [
+          {
+            "expires_at": "2026-11-18T08:00:00Z",
+            "token": "q9c…",
+            "user": {
+              "created_at": "2026-10-19T08:00:00Z",
+              "display_name": "Runner",
+              "email": "runner@example.com",
+              "id": 2,
+              "role": "user",
+              "timezone": "Europe/Berlin"
+            }
+          }
+        ],
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "token": {
+            "description": "Send as `Authorization: Bearer <token>`; shown only once",
+            "title": "Token",
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/MeOut"
+          }
+        },
+        "required": [
+          "token",
+          "expires_at",
+          "user"
+        ],
+        "title": "SessionTokenOut",
         "type": "object"
       },
       "SetIn": {
@@ -4707,6 +6330,318 @@
         "title": "SetOut",
         "type": "object"
       },
+      "SettingsOut": {
+        "description": "Effective values; `custom` names the ones the user set (the rest follow the defaults).",
+        "examples": [
+          {
+            "checkin_enabled": true,
+            "checkin_reminder_minutes": 90,
+            "checkin_time": "21:00:00",
+            "country": "DE",
+            "custom": [
+              "tone",
+              "country"
+            ],
+            "emergency_number": "112",
+            "intensity": "normal",
+            "lang": "en",
+            "profanity": "roast",
+            "quiet_hours": "23:00-07:00",
+            "stats_digest_enabled": true,
+            "sugar_limit_g": 50.0,
+            "timezone": "Europe/Berlin",
+            "tone": "hardcore",
+            "workout_reminder_time": "18:00:00"
+          }
+        ],
+        "properties": {
+          "checkin_enabled": {
+            "title": "Checkin Enabled",
+            "type": "boolean"
+          },
+          "checkin_reminder_minutes": {
+            "title": "Checkin Reminder Minutes",
+            "type": "integer"
+          },
+          "checkin_time": {
+            "format": "time",
+            "title": "Checkin Time",
+            "type": "string"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "custom": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Custom",
+            "type": "array"
+          },
+          "emergency_number": {
+            "description": "From the country; EMERGENCY_NUMBER otherwise",
+            "title": "Emergency Number",
+            "type": "string"
+          },
+          "intensity": {
+            "enum": [
+              "normal",
+              "savage"
+            ],
+            "title": "Intensity",
+            "type": "string"
+          },
+          "lang": {
+            "enum": [
+              "en",
+              "tr"
+            ],
+            "title": "Lang",
+            "type": "string"
+          },
+          "profanity": {
+            "enum": [
+              "roast",
+              "max"
+            ],
+            "title": "Profanity",
+            "type": "string"
+          },
+          "quiet_hours": {
+            "title": "Quiet Hours",
+            "type": "string"
+          },
+          "stats_digest_enabled": {
+            "description": "Weekly (Monday) and monthly (1st) digests",
+            "title": "Stats Digest Enabled",
+            "type": "boolean"
+          },
+          "sugar_limit_g": {
+            "title": "Sugar Limit G",
+            "type": "number"
+          },
+          "timezone": {
+            "description": "Change it with PATCH /v1/me",
+            "title": "Timezone",
+            "type": "string"
+          },
+          "tone": {
+            "enum": [
+              "neutral",
+              "hardcore"
+            ],
+            "title": "Tone",
+            "type": "string"
+          },
+          "workout_reminder_time": {
+            "format": "time",
+            "title": "Workout Reminder Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tone",
+          "intensity",
+          "profanity",
+          "lang",
+          "checkin_enabled",
+          "stats_digest_enabled",
+          "checkin_time",
+          "checkin_reminder_minutes",
+          "quiet_hours",
+          "workout_reminder_time",
+          "sugar_limit_g",
+          "country",
+          "emergency_number",
+          "timezone",
+          "custom"
+        ],
+        "title": "SettingsOut",
+        "type": "object"
+      },
+      "SettingsPatch": {
+        "description": "Only the fields sent change; `null` returns a field to the default.",
+        "examples": [
+          {
+            "lang": "tr",
+            "profanity": "max"
+          },
+          {}
+        ],
+        "properties": {
+          "checkin_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkin Enabled"
+          },
+          "checkin_reminder_minutes": {
+            "anyOf": [
+              {
+                "maximum": 720.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkin Reminder Minutes"
+          },
+          "checkin_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkin Time"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "examples": [
+                  "DE"
+                ],
+                "pattern": "^[A-Z]{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "intensity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "normal",
+                  "savage"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intensity"
+          },
+          "lang": {
+            "anyOf": [
+              {
+                "enum": [
+                  "en",
+                  "tr"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lang"
+          },
+          "profanity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "roast",
+                  "max"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profanity"
+          },
+          "quiet_hours": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "22:30-06:30"
+            ],
+            "title": "Quiet Hours"
+          },
+          "stats_digest_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stats Digest Enabled"
+          },
+          "sugar_limit_g": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 1000.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sugar Limit G"
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "enum": [
+                  "neutral",
+                  "hardcore"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tone"
+          },
+          "workout_reminder_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workout Reminder Time"
+          }
+        },
+        "title": "SettingsPatch",
+        "type": "object"
+      },
       "Sex": {
         "description": "Only what the Mifflin-St Jeor equation distinguishes.",
         "enum": [
@@ -4715,6 +6650,54 @@
         ],
         "title": "Sex",
         "type": "string"
+      },
+      "SportGroup": {
+        "enum": [
+          "run",
+          "ride",
+          "walk",
+          "swim",
+          "other"
+        ],
+        "title": "SportGroup",
+        "type": "string"
+      },
+      "SportGroupOut": {
+        "properties": {
+          "average_heartrate": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Weighted by moving time; activities with HR"
+          },
+          "average_speed_mps": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "distance_m": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "elevation_gain_m": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "group": {
+            "$ref": "#/components/schemas/SportGroup"
+          },
+          "moving_time_s": {
+            "$ref": "#/components/schemas/Change"
+          }
+        },
+        "required": [
+          "count",
+          "distance_m",
+          "moving_time_s",
+          "elevation_gain_m",
+          "average_speed_mps",
+          "average_heartrate",
+          "group"
+        ],
+        "title": "SportGroupOut",
+        "type": "object"
       },
       "SportTotalsOut": {
         "properties": {
@@ -4750,8 +6733,26 @@
         "type": "object"
       },
       "StatsSummary": {
+        "description": "`/v1/stats/summary`: the activity fields and the progress blocks (ADR 0038).",
         "examples": [
           {
+            "body": {
+              "change_kg": {
+                "change": -0.5,
+                "change_pct": 166.7,
+                "previous": -0.3,
+                "value": -0.8
+              },
+              "first_kg": 81.4,
+              "last_kg": 80.6,
+              "moving_average_kg": 80.8,
+              "rate_kg_per_week": {
+                "change": -0.19,
+                "change_pct": 158.3,
+                "previous": -0.12,
+                "value": -0.31
+              }
+            },
             "by_sport": [
               {
                 "count": 4,
@@ -4775,6 +6776,128 @@
                 "sport_type": "Swim"
               }
             ],
+            "consistency": {
+              "active_days": {
+                "change": 2,
+                "change_pct": 16.7,
+                "previous": 12,
+                "value": 14
+              },
+              "checkin_rate": {
+                "change": 0.1,
+                "change_pct": 12.7,
+                "previous": 0.79,
+                "value": 0.89
+              },
+              "checkin_streak_days": 6,
+              "longest_checkin_streak_days": 41,
+              "longest_training_streak_weeks": 15,
+              "sick_days": 0,
+              "training_streak_weeks": 9
+            },
+            "endurance": {
+              "by_group": [
+                {
+                  "average_heartrate": {
+                    "change": -2.8,
+                    "change_pct": -1.9,
+                    "previous": 151.0,
+                    "value": 148.2
+                  },
+                  "average_speed_mps": {
+                    "change": 0.18,
+                    "change_pct": 6.1,
+                    "previous": 2.95,
+                    "value": 3.13
+                  },
+                  "count": {
+                    "change": 2,
+                    "change_pct": 28.6,
+                    "previous": 7,
+                    "value": 9
+                  },
+                  "distance_m": {
+                    "change": 12960.0,
+                    "change_pct": 17.6,
+                    "previous": 73440,
+                    "value": 86400.0
+                  },
+                  "elevation_gain_m": {
+                    "change": -112.0,
+                    "change_pct": -16.7,
+                    "previous": 672,
+                    "value": 560.0
+                  },
+                  "group": "run",
+                  "moving_time_s": {
+                    "change": 2760,
+                    "change_pct": 11.1,
+                    "previous": 24840,
+                    "value": 27600
+                  }
+                }
+              ],
+              "fastest": [
+                {
+                  "activity_id": 805,
+                  "average_speed_mps": 3.11,
+                  "distance_m": 5020.0,
+                  "group": "run",
+                  "moving_time_s": 6840,
+                  "name": "Tempo 5k",
+                  "start_date": "2026-10-12T07:02:11Z"
+                }
+              ],
+              "longest": [
+                {
+                  "activity_id": 812,
+                  "average_speed_mps": 3.11,
+                  "distance_m": 21300.0,
+                  "group": "run",
+                  "moving_time_s": 6840,
+                  "name": "Long run",
+                  "start_date": "2026-10-12T07:02:11Z"
+                }
+              ],
+              "totals": {
+                "average_heartrate": {
+                  "change": -2.8,
+                  "change_pct": -1.9,
+                  "previous": 151.0,
+                  "value": 148.2
+                },
+                "average_speed_mps": {
+                  "change": 0.2,
+                  "change_pct": 6.8,
+                  "previous": 2.95,
+                  "value": 3.15
+                },
+                "count": {
+                  "change": 2,
+                  "change_pct": 22.2,
+                  "previous": 9,
+                  "value": 11
+                },
+                "distance_m": {
+                  "change": 14760.0,
+                  "change_pct": 17.6,
+                  "previous": 83640,
+                  "value": 98400.0
+                },
+                "elevation_gain_m": {
+                  "change": -128.0,
+                  "change_pct": -16.7,
+                  "previous": 768,
+                  "value": 640.0
+                },
+                "moving_time_s": {
+                  "change": 3120,
+                  "change_pct": 11.1,
+                  "previous": 28080,
+                  "value": 31200
+                }
+              }
+            },
             "from": "2026-09-07",
             "last_synced_at": "2026-10-18T09:30:02Z",
             "longest": {
@@ -4790,16 +6913,142 @@
               "start_date": "2026-10-01T06:30:00Z",
               "synced_at": "2026-10-01T07:02:11Z"
             },
+            "nutrition": {
+              "avg_carbs_g": {
+                "change": -31.0,
+                "change_pct": -10.3,
+                "previous": 301.0,
+                "value": 270.0
+              },
+              "avg_fat_g": {
+                "change": -5.0,
+                "change_pct": -5.8,
+                "previous": 86.0,
+                "value": 81.0
+              },
+              "avg_kcal": {
+                "change": -130.0,
+                "change_pct": -5.0,
+                "previous": 2610.0,
+                "value": 2480.0
+              },
+              "avg_protein_g": {
+                "change": 13.0,
+                "change_pct": 9.4,
+                "previous": 139.0,
+                "value": 152.0
+              },
+              "days_over_sugar_limit": {
+                "change": -3,
+                "change_pct": -60.0,
+                "previous": 5,
+                "value": 2
+              },
+              "kcal_target": 2500,
+              "logged_days": {
+                "change": 2,
+                "change_pct": 13.3,
+                "previous": 15,
+                "value": 17
+              },
+              "logging_rate": {
+                "change": 0.1,
+                "change_pct": 12.7,
+                "previous": 0.79,
+                "value": 0.89
+              },
+              "sugar_limit_g": 50.0
+            },
+            "period": "month",
+            "previous": {
+              "days": 19,
+              "from": "2026-09-01",
+              "to": "2026-09-19"
+            },
+            "strength": {
+              "adherence": {
+                "done_sessions": 6,
+                "done_sets": 102,
+                "planned_sessions": 8,
+                "planned_sets": 136,
+                "program_id": 3,
+                "program_name": "Upper/Lower 4-day",
+                "session_ratio": 0.75,
+                "set_ratio": 0.75
+              },
+              "by_exercise": [
+                {
+                  "best_e1rm_kg": {
+                    "change": 3.67,
+                    "change_pct": 3.7,
+                    "previous": 98.0,
+                    "value": 101.67
+                  },
+                  "exercise_id": 1,
+                  "muscle": "chest",
+                  "name": "Bench Press",
+                  "reps": 90,
+                  "sets": 15,
+                  "tonnage_kg": 7650.0
+                }
+              ],
+              "by_muscle": [
+                {
+                  "muscle": "chest",
+                  "sets": 24,
+                  "tonnage_kg": 11400.0
+                }
+              ],
+              "pr_count": {
+                "change": 2,
+                "change_pct": 200.0,
+                "previous": 1,
+                "value": 3
+              },
+              "reps": {
+                "change": 54,
+                "change_pct": 7.8,
+                "previous": 690,
+                "value": 744
+              },
+              "sessions": {
+                "change": 1,
+                "change_pct": 20.0,
+                "previous": 5,
+                "value": 6
+              },
+              "sets": {
+                "change": 14,
+                "change_pct": 15.9,
+                "previous": 88,
+                "value": 102
+              },
+              "tonnage_kg": {
+                "change": 3450.0,
+                "change_pct": 9.1,
+                "previous": 37800.0,
+                "value": 41250.0
+              }
+            },
+            "timezone": "Europe/Berlin",
             "to": "2026-10-04",
             "totals": {
               "count": 18,
               "distance_m": 352295.0,
               "elevation_gain_m": 2493.0,
               "moving_time_s": 74600
+            },
+            "window": {
+              "days": 19,
+              "from": "2026-10-01",
+              "to": "2026-10-19"
             }
           }
         ],
         "properties": {
+          "body": {
+            "$ref": "#/components/schemas/BodyOut"
+          },
           "by_sport": {
             "description": "The same totals per sport type, A to Z",
             "items": {
@@ -4807,6 +7056,12 @@
             },
             "title": "By Sport",
             "type": "array"
+          },
+          "consistency": {
+            "$ref": "#/components/schemas/ConsistencyOut"
+          },
+          "endurance": {
+            "$ref": "#/components/schemas/EnduranceOut"
           },
           "from": {
             "format": "date",
@@ -4836,6 +7091,22 @@
             ],
             "description": "Greatest distance in the range (newest wins a tie); null if none"
           },
+          "nutrition": {
+            "$ref": "#/components/schemas/NutritionOut"
+          },
+          "period": {
+            "$ref": "#/components/schemas/Period"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WindowOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "sport_type": {
             "anyOf": [
               {
@@ -4847,6 +7118,13 @@
             ],
             "title": "Sport Type"
           },
+          "strength": {
+            "$ref": "#/components/schemas/StrengthOut"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
           "to": {
             "format": "date",
             "title": "To",
@@ -4854,9 +7132,21 @@
           },
           "totals": {
             "$ref": "#/components/schemas/TotalsOut"
+          },
+          "window": {
+            "$ref": "#/components/schemas/WindowOut"
           }
         },
         "required": [
+          "period",
+          "timezone",
+          "window",
+          "previous",
+          "endurance",
+          "strength",
+          "consistency",
+          "nutrition",
+          "body",
           "from",
           "to",
           "sport_type",
@@ -4866,6 +7156,120 @@
           "last_synced_at"
         ],
         "title": "StatsSummary",
+        "type": "object"
+      },
+      "StravaConnection": {
+        "examples": [
+          {
+            "athlete_id": 1,
+            "connected": true,
+            "connected_at": "2026-10-19T08:00:00Z",
+            "strava_athlete_id": 134815
+          }
+        ],
+        "properties": {
+          "athlete_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Athlete Id"
+          },
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "connected_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connected At"
+          },
+          "strava_athlete_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strava Athlete Id"
+          }
+        },
+        "required": [
+          "connected"
+        ],
+        "title": "StravaConnection",
+        "type": "object"
+      },
+      "StrengthOut": {
+        "properties": {
+          "adherence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdherenceOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Active program; null without one"
+          },
+          "by_exercise": {
+            "items": {
+              "$ref": "#/components/schemas/ExerciseProgressOut"
+            },
+            "title": "By Exercise",
+            "type": "array"
+          },
+          "by_muscle": {
+            "items": {
+              "$ref": "#/components/schemas/MuscleProgressOut"
+            },
+            "title": "By Muscle",
+            "type": "array"
+          },
+          "pr_count": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Workouts that set a new e1RM record for a lift"
+          },
+          "reps": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "sessions": {
+            "$ref": "#/components/schemas/Change"
+          },
+          "sets": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Working sets (warm-ups excluded)"
+          },
+          "tonnage_kg": {
+            "$ref": "#/components/schemas/Change",
+            "description": "Sum of weight x reps of the working sets"
+          }
+        },
+        "required": [
+          "sessions",
+          "sets",
+          "reps",
+          "tonnage_kg",
+          "pr_count",
+          "by_muscle",
+          "by_exercise",
+          "adherence"
+        ],
+        "title": "StrengthOut",
         "type": "object"
       },
       "SuggestionOut": {
@@ -5035,6 +7439,14 @@
         ],
         "title": "TotalsOut",
         "type": "object"
+      },
+      "UserRole": {
+        "enum": [
+          "owner",
+          "user"
+        ],
+        "title": "UserRole",
+        "type": "string"
       },
       "ValidationError": {
         "properties": {
@@ -5305,6 +7717,31 @@
           "items"
         ],
         "title": "WeeklyVolume",
+        "type": "object"
+      },
+      "WindowOut": {
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "from": {
+            "format": "date",
+            "title": "From",
+            "type": "string"
+          },
+          "to": {
+            "format": "date",
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "days"
+        ],
+        "title": "WindowOut",
         "type": "object"
       },
       "WorkoutDetail": {
@@ -5733,10 +8170,15 @@
     },
     "securitySchemes": {
       "APIKeyHeader": {
-        "description": "One of the keys configured in `API_KEYS`.",
+        "description": "One of the keys configured in `API_KEYS` (machine and owner tooling).",
         "in": "header",
         "name": "X-API-Key",
         "type": "apiKey"
+      },
+      "HTTPBearer": {
+        "description": "A session token from `POST /v1/auth/login`.",
+        "scheme": "bearer",
+        "type": "http"
       }
     }
   },
@@ -5828,6 +8270,16 @@
             },
             "description": "Bad state, denied access, missing scope or bad code"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "this Strava account is connected to another user"
+                }
+              }
+            },
+            "description": "The Strava account belongs to another user, or yours is still connected"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5876,6 +8328,16 @@
           "302": {
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5887,6 +8349,14 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
         "summary": "Start the Strava OAuth flow",
         "tags": [
           "auth"
@@ -6118,11 +8588,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6136,6 +8606,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -6200,11 +8673,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -6229,6 +8702,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -6238,32 +8714,15 @@
         ]
       }
     },
-    "/v1/chats/{chat_id}/settings": {
+    "/v1/admin/invites": {
       "get": {
-        "description": "The language (`/lang`) and profanity level (`/swear`) the chat chose, or null.",
-        "operationId": "get_chat_settings_v1_chats__chat_id__settings_get",
-        "parameters": [
-          {
-            "description": "Telegram chat id",
-            "in": "path",
-            "name": "chat_id",
-            "required": true,
-            "schema": {
-              "description": "Telegram chat id",
-              "examples": [
-                123456789
-              ],
-              "title": "Chat Id",
-              "type": "integer"
-            }
-          }
-        ],
+        "operationId": "list_invites_v1_admin_invites_get",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChatSettingsOut"
+                  "$ref": "#/components/schemas/InviteList"
                 }
               }
             },
@@ -6273,11 +8732,21 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "owner only"
+                }
+              }
+            },
+            "description": "Owner only"
           },
           "422": {
             "content": {
@@ -6292,30 +8761,317 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
-        "summary": "Settings of a chat",
+        "summary": "List invites",
         "tags": [
-          "chats"
+          "admin"
         ]
       },
-      "put": {
-        "description": "Idempotent: the same body twice stores one row. A field left out keeps its stored value; at least one is required.",
-        "operationId": "put_chat_settings_v1_chats__chat_id__settings_put",
+      "post": {
+        "description": "The code is shown once; the link opens the dashboard's register page.",
+        "operationId": "create_invite_v1_admin_invites_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "owner only"
+                }
+              }
+            },
+            "description": "Owner only"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Create an invite",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/invites/{invite_id}": {
+      "delete": {
+        "operationId": "revoke_invite_v1_admin_invites__invite_id__delete",
         "parameters": [
           {
-            "description": "Telegram chat id",
             "in": "path",
-            "name": "chat_id",
+            "name": "invite_id",
             "required": true,
             "schema": {
-              "description": "Telegram chat id",
-              "examples": [
-                123456789
-              ],
-              "title": "Chat Id",
+              "title": "Invite Id",
               "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "owner only"
+                }
+              }
+            },
+            "description": "Owner only"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "invite not found"
+                }
+              }
+            },
+            "description": "No open invite with this id"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Revoke an unused invite",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/users": {
+      "get": {
+        "operationId": "list_users_v1_admin_users_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "owner only"
+                }
+              }
+            },
+            "description": "Owner only"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List accounts",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/users/{user_id}/reset-link": {
+      "post": {
+        "operationId": "create_reset_link_v1_admin_users__user_id__reset_link_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetLinkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "owner only"
+                }
+              }
+            },
+            "description": "Owner only"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "no such user"
+                }
+              }
+            },
+            "description": "No such account"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Generate a one-time password reset link",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "description": "Returns a session token for `Authorization: Bearer`. After `LOGIN_MAX_FAILURES` failures for one email the email is locked for `LOGIN_LOCKOUT_MINUTES`, right password or not.",
+        "operationId": "login_v1_auth_login_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "user-agent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User-Agent"
             }
           }
         ],
@@ -6323,7 +9079,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ChatSettingsIn"
+                "$ref": "#/components/schemas/LoginIn"
               }
             }
           },
@@ -6334,7 +9090,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChatSettingsOut"
+                  "$ref": "#/components/schemas/SessionTokenOut"
                 }
               }
             },
@@ -6344,11 +9100,55 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "invalid email or password"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Wrong email or password"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "too many failed sign-ins; try again later"
+                }
+              }
+            },
+            "description": "Too many attempts; see `Retry-After`"
+          }
+        },
+        "summary": "Sign in",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "logout_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6363,12 +9163,163 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
-        "summary": "Store the settings of a chat",
+        "summary": "Sign out (revoke this session)",
         "tags": [
-          "chats"
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "operationId": "register_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "an invite code is required"
+                }
+              }
+            },
+            "description": "Invite missing, used or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "registration is closed"
+                }
+              }
+            },
+            "description": "REGISTRATION_MODE=closed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "an account with this email already exists"
+                }
+              }
+            },
+            "description": "Email already registered"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "too many failed sign-ins; try again later"
+                }
+              }
+            },
+            "description": "Too many attempts; see `Retry-After`"
+          }
+        },
+        "summary": "Create an account",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/registration": {
+      "get": {
+        "description": "`invite` (an invite code is needed), `open` or `closed`. No auth.",
+        "operationId": "registration_v1_auth_registration_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "How accounts are created",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/reset": {
+      "post": {
+        "description": "The token comes from a link the owner generated. Every session of the user ends.",
+        "operationId": "reset_v1_auth_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "the reset link is invalid, used or expired"
+                }
+              }
+            },
+            "description": "Unknown, used or expired token"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a new password with a reset link's token",
+        "tags": [
+          "auth"
         ]
       }
     },
@@ -6443,11 +9394,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6461,6 +9412,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -6542,11 +9496,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6560,6 +9514,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -6603,11 +9560,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -6631,6 +9588,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -6703,11 +9663,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6722,12 +9682,849 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
         "summary": "Save a day's check-in (idempotent)",
         "tags": [
           "training"
+        ]
+      }
+    },
+    "/v1/me": {
+      "delete": {
+        "description": "Needs the password. Signs out everywhere and unlinks Telegram at once; a background job then revokes Strava and deletes every row of the account. The owner account cannot be deleted here.",
+        "operationId": "delete_me_v1_me_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "the password is wrong"
+                }
+              }
+            },
+            "description": "Wrong password"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "the owner account cannot be deleted"
+                }
+              }
+            },
+            "description": "The owner account"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Delete my account",
+        "tags": [
+          "me"
+        ]
+      },
+      "get": {
+        "operationId": "me_v1_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Who am I",
+        "tags": [
+          "me"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_me_v1_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "unknown time zone 'Mars/Base'"
+                }
+              }
+            },
+            "description": "Unknown time zone"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Change the display name or time zone",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/export": {
+      "get": {
+        "description": "Every row you own as one JSON document (KVKK / GDPR). Secrets are left out.",
+        "operationId": "export_v1_me_export_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account": {
+                    "display_name": "Runner",
+                    "email": "runner@example.com",
+                    "id": 2
+                  },
+                  "exported_at": "2026-10-19T08:00:00+00:00",
+                  "tables": {
+                    "workouts": [
+                      {
+                        "id": 42,
+                        "started_at": "2026-10-18T17:00:00+00:00"
+                      }
+                    ]
+                  },
+                  "version": 1
+                },
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Export all my data",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/password": {
+      "post": {
+        "description": "Needs the current password. Every other session of the account ends.",
+        "operationId": "change_password_v1_me_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "the current password is wrong"
+                }
+              }
+            },
+            "description": "Current password wrong"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "password must be at least 10 characters"
+                }
+              }
+            },
+            "description": "New password too short or long"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Change the password",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/sessions": {
+      "get": {
+        "operationId": "sessions_v1_me_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "My signed-in sessions",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/sessions/{session_id}": {
+      "delete": {
+        "operationId": "revoke_session_v1_me_sessions__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "session not found"
+                }
+              }
+            },
+            "description": "No such session of yours"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Sign out one session",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/settings": {
+      "get": {
+        "operationId": "get_settings_v1_me_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "My settings",
+        "tags": [
+          "me"
+        ]
+      },
+      "patch": {
+        "description": "Only the fields sent change; `null` returns a field to the default.",
+        "operationId": "patch_settings_v1_me_settings_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Change my settings",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/strava": {
+      "delete": {
+        "description": "Stops syncing at once; the worker then revokes the app at Strava and deletes the athlete's tokens and activities.",
+        "operationId": "disconnect_v1_me_strava_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "strava is not connected"
+                }
+              }
+            },
+            "description": "No Strava account connected"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Disconnect Strava",
+        "tags": [
+          "me"
+        ]
+      },
+      "get": {
+        "operationId": "connection_v1_me_strava_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StravaConnection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "My Strava connection",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/strava/authorize-url": {
+      "post": {
+        "description": "The Strava authorize URL with a signed state naming you; the web BFF sends the browser there. `return_to` must match `OAUTH_RETURN_TO_ALLOWLIST` exactly, else it is ignored.",
+        "operationId": "create_authorize_url_v1_me_strava_authorize_url_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "return_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "http://localhost:3000/sync"
+              ],
+              "title": "Return To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeUrl"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Start connecting Strava",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/telegram": {
+      "delete": {
+        "operationId": "unlink_me_v1_me_telegram_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "telegram is not linked"
+                }
+              }
+            },
+            "description": "No chat linked"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Unlink my Telegram chat",
+        "tags": [
+          "me"
+        ]
+      },
+      "get": {
+        "operationId": "link_status_v1_me_telegram_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "My Telegram link",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/telegram/code": {
+      "post": {
+        "description": "Send `/link CODE` to the bot within `TELEGRAM_LINK_CODE_TTL_MINUTES`.",
+        "operationId": "link_code_v1_me_telegram_code_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkCode"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "A one-time code for /link",
+        "tags": [
+          "me"
         ]
       }
     },
@@ -6796,11 +10593,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6814,6 +10611,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -6851,11 +10651,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "409": {
             "content": {
@@ -6879,6 +10679,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -6973,11 +10776,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6992,6 +10795,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -7003,7 +10809,7 @@
     },
     "/v1/nutrition/foods/{food_id}": {
       "patch": {
-        "description": "Changes only the fields sent. Editing a cached Open Food Facts food turns it into a `manual` one, so a later lookup never overwrites the edit. Logged entries use the food's current values.",
+        "description": "Changes only the fields sent. Your own foods are yours to edit; shared ones (the Open Food Facts cache) only the owner may correct. Editing a cached Open Food Facts food turns it into a `manual` one, so a later lookup never overwrites the edit. Logged entries keep the values they were logged with.",
         "operationId": "update_food_v1_nutrition_foods__food_id__patch",
         "parameters": [
           {
@@ -7054,11 +10860,21 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "shared foods are owner-curated"
+                }
+              }
+            },
+            "description": "A shared food, and you are not the owner"
           },
           "404": {
             "content": {
@@ -7082,6 +10898,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -7125,11 +10944,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -7153,6 +10972,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -7194,11 +11016,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -7222,6 +11044,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -7273,11 +11098,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -7291,6 +11116,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -7327,11 +11155,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -7355,6 +11183,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -7417,11 +11248,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -7445,6 +11276,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -7474,11 +11308,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -7489,9 +11323,22 @@
               }
             },
             "description": "No profile yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -7529,11 +11376,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -7547,6 +11394,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -7598,11 +11448,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -7616,6 +11466,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -7697,11 +11550,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -7716,6 +11569,9 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
@@ -7725,11 +11581,388 @@
         ]
       }
     },
+    "/v1/stats/heatmap": {
+      "get": {
+        "description": "One entry per local day of `year` (default: this year): training minutes (activities' moving time plus workout durations), sessions and the check-in status.",
+        "operationId": "heatmap_v1_stats_heatmap_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                2026
+              ],
+              "title": "Year"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeatmapOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "year out of range"
+                }
+              }
+            },
+            "description": "Year out of range"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Training calendar of a year",
+        "tags": [
+          "stats"
+        ]
+      }
+    },
+    "/v1/stats/prs": {
+      "get": {
+        "description": "Workouts that set a new e1RM record for a lift (Epley over working sets of at most `STATS_E1RM_MAX_REPS` reps, strictly above every earlier workout), newest first. Default period: `all`.",
+        "operationId": "prs_v1_stats_prs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Period",
+              "default": "all"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-01"
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-30"
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exercise_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exercise Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "`to` is before `from`"
+                }
+              }
+            },
+            "description": "`to` before `from`, or `custom` without both"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Personal records",
+        "tags": [
+          "stats"
+        ]
+      }
+    },
+    "/v1/stats/series": {
+      "get": {
+        "description": "One point per bucket of the period: the sum of the bucket (zero-filled), or for `weight_kg` the mean (null without a weigh-in; with `bucket=day` also the 7-day moving average). `kcal` comes with the daily target. Default bucket: day up to 31 days, week up to 183 days, month beyond. `sport` limits the endurance metrics to a sport group.",
+        "operationId": "series_v1_stats_series_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "metric",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Metric"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Period",
+              "default": "month"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-01"
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-09-30"
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bucket",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Bucket"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bucket"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sport",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SportGroup"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sport"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "`to` is before `from`"
+                }
+              }
+            },
+            "description": "`to` before `from`, or `custom` without both"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "One metric over time",
+        "tags": [
+          "stats"
+        ]
+      }
+    },
     "/v1/stats/summary": {
       "get": {
-        "description": "Count, distance, moving time and elevation for activities whose start date falls in `from`..`to` (both inclusive, UTC days), the same totals per sport type (sorted by sport type), and the longest activity: the one with the greatest distance, the newest on a tie. An empty range gives zeros, an empty `by_sport` and a null `longest`. Defaults to the last 12 weeks. Soft-deleted activities are excluded.",
+        "description": "Totals, totals per sport type and the longest activity (the fields this endpoint always had), and the progress blocks: endurance per sport group, strength, consistency, nutrition and body, each number with its change against the previous period of the same length (none for `all`). Periods are local days in your time zone (ADR 0038). An empty period gives zeros and null averages. Soft-deleted activities are excluded.",
         "operationId": "summary_v1_stats_summary_get",
         "parameters": [
+          {
+            "description": "Omitted: `custom` when `from`/`to` are given, else the last 12 weeks",
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Period"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Omitted: `custom` when `from`/`to` are given, else the last 12 weeks",
+              "title": "Period"
+            }
+          },
           {
             "in": "query",
             "name": "from",
@@ -7827,17 +12060,17 @@
                 }
               }
             },
-            "description": "`to` before `from`"
+            "description": "`to` before `from`, or `custom` without both"
           },
           "401": {
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -7852,10 +12085,13 @@
         },
         "security": [
           {
+            "HTTPBearer": []
+          },
+          {
             "APIKeyHeader": []
           }
         ],
-        "summary": "Totals for a date range",
+        "summary": "Progress for a period",
         "tags": [
           "stats"
         ]
@@ -7863,7 +12099,7 @@
     },
     "/v1/stats/weekly": {
       "get": {
-        "description": "Count, distance, moving time and elevation per ISO week (Monday start, UTC) for activities whose start date falls in `from`..`to` (both inclusive). Weeks without activities are returned with zeros. Defaults to the last 12 weeks. Soft-deleted activities are excluded.",
+        "description": "Count, distance, moving time and elevation per ISO week (Monday start, in your time zone) for activities whose start falls in `from`..`to` (local days, both inclusive). Weeks without activities are returned with zeros. Defaults to the last 12 weeks. Soft-deleted activities are excluded.",
         "operationId": "weekly_v1_stats_weekly_get",
         "parameters": [
           {
@@ -7969,11 +12205,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -7987,6 +12223,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8036,11 +12275,89 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Sync status",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/v1/telegram/chats/{chat_id}": {
+      "delete": {
+        "operationId": "unlink_chat_v1_telegram_chats__chat_id__delete",
+        "parameters": [
+          {
+            "description": "Telegram chat id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "description": "Telegram chat id",
+              "examples": [
+                123456789
+              ],
+              "title": "Chat Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "service key required"
+                }
+              }
+            },
+            "description": "Not a service key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "chat not linked"
+                }
+              }
+            },
+            "description": "The chat is not linked"
           },
           "422": {
             "content": {
@@ -8058,9 +12375,182 @@
             "APIKeyHeader": []
           }
         ],
-        "summary": "Sync status",
+        "summary": "Unlink a chat (/unlink)",
         "tags": [
-          "sync"
+          "chats"
+        ]
+      },
+      "get": {
+        "operationId": "chat_owner_v1_telegram_chats__chat_id__get",
+        "parameters": [
+          {
+            "description": "Telegram chat id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "description": "Telegram chat id",
+              "examples": [
+                123456789
+              ],
+              "title": "Chat Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatOwner"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "service key required"
+                }
+              }
+            },
+            "description": "Not a service key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "chat not linked"
+                }
+              }
+            },
+            "description": "The chat is not linked"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Who a chat belongs to",
+        "tags": [
+          "chats"
+        ]
+      }
+    },
+    "/v1/telegram/chats/{chat_id}/link": {
+      "post": {
+        "description": "Binds the chat to the code's user; their previous chat is unlinked.",
+        "operationId": "link_chat_v1_telegram_chats__chat_id__link_post",
+        "parameters": [
+          {
+            "description": "Telegram chat id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "description": "Telegram chat id",
+              "examples": [
+                123456789
+              ],
+              "title": "Chat Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatOwner"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "invalid or expired code"
+                }
+              }
+            },
+            "description": "Unknown, used or expired code"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "service key required"
+                }
+              }
+            },
+            "description": "Not a service key"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Redeem a /link code",
+        "tags": [
+          "chats"
         ]
       }
     },
@@ -8135,11 +12625,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8153,6 +12643,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8207,11 +12700,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8225,6 +12718,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8311,11 +12807,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8329,6 +12825,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8366,11 +12865,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "409": {
             "content": {
@@ -8394,6 +12893,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8447,11 +12949,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -8485,6 +12987,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8578,11 +13083,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -8606,6 +13111,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8660,11 +13168,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8678,6 +13186,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8707,14 +13218,27 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8762,11 +13286,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8780,6 +13304,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8809,11 +13336,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -8824,9 +13351,22 @@
               }
             },
             "description": "No active program"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8856,11 +13396,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -8871,9 +13411,22 @@
               }
             },
             "description": "No active program"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8923,11 +13476,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8941,6 +13494,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -8977,11 +13533,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9005,6 +13561,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9046,11 +13605,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9074,6 +13633,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9135,11 +13697,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9163,6 +13725,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9206,11 +13771,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9234,6 +13799,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9283,11 +13851,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -9301,6 +13869,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9382,11 +13953,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -9400,6 +13971,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9471,11 +14045,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -9489,6 +14063,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9582,11 +14159,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -9600,6 +14177,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9636,11 +14216,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9664,6 +14244,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9705,11 +14288,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9733,6 +14316,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9813,11 +14399,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9841,6 +14427,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -9890,11 +14479,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9918,6 +14507,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }
@@ -10002,11 +14594,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -10040,6 +14632,9 @@
           }
         },
         "security": [
+          {
+            "HTTPBearer": []
+          },
           {
             "APIKeyHeader": []
           }

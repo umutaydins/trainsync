@@ -26,6 +26,7 @@
 		Strict-Transport-Security "max-age=31536000"
 		Content-Security-Policy "frame-ancestors 'none'"
 	}
+	request_header -X-Acting-User
 	log {
 		output stdout
 		format filter {
@@ -53,6 +54,23 @@
 			zone auth {
 				key {client_ip}
 				events 20
+				window 1m
+			}
+		}
+		request_body {
+			max_size 16KB
+		}
+		reverse_proxy api:8000
+	}
+
+	@account {
+		path /v1/auth/*
+	}
+	handle @account {
+		rate_limit {
+			zone account {
+				key {client_ip}
+				events 30
 				window 1m
 			}
 		}

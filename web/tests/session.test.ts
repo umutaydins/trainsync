@@ -1,47 +1,44 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import {
-  SESSION_MAX_AGE_S,
-  createSessionToken,
-  passwordMatches,
-  safeNextPath,
-  verifySessionToken,
-} from "@/lib/session";
+import { SESSION_MAX_AGE_S, openSession, safeNextPath, sealSession } from "@/lib/session";
 
 const SECRET = "s".repeat(40);
 const NOW = new Date("2026-10-18T12:00:00Z");
+const EXPIRES = Math.floor(NOW.getTime() / 1000) + 3600;
 
-describe("session token", () => {
-  it("verifies a fresh token", () => {
-    expect(verifySessionToken(createSessionToken(SECRET, NOW), SECRET, NOW)).toBe(true);
+describe("sealed session cookie (ADR 0034)", () => {
+  it("opens to the token it sealed, and only until it expires", () => {
+    const value = sealSession({ token: "api-token", expiresAt: EXPIRES }, SECRET);
+    expect(openSession(value, SECRET, NOW)).toEqual({ token: "api-token", expiresAt: EXPIRES });
+    expect(openSession(value, SECRET, new Date((EXPIRES + 1) * 1000))).toBeNull();
+    expect(value).not.toContain("api-token");
   });
 
-  it("expires after 7 days", () => {
-    const token = createSessionToken(SECRET, NOW);
-    const justBefore = new Date(NOW.getTime() + (SESSION_MAX_AGE_S - 1) * 1000);
-    const after = new Date(NOW.getTime() + SESSION_MAX_AGE_S * 1000);
-    expect(verifySessionToken(token, SECRET, justBefore)).toBe(true);
-    expect(verifySessionToken(token, SECRET, after)).toBe(false);
+  it("is different every time (random IV) and never outlives the API session cap", () => {
+    const a = sealSession({ token: "t", expiresAt: EXPIRES }, SECRET);
+    const b = sealSession({ token: "t", expiresAt: EXPIRES }, SECRET);
+    expect(a).not.toBe(b);
+    expect(SESSION_MAX_AGE_S).toBe(90 * 24 * 60 * 60);
   });
 
-  it("rejects another secret, a tampered expiry and garbage", () => {
-    const token = createSessionToken(SECRET, NOW);
-    const [expiresAt, signature] = token.split(".");
-    expect(verifySessionToken(token, "x".repeat(40), NOW)).toBe(false);
-    expect(verifySessionToken(`${Number(expiresAt) + 999}.${signature}`, SECRET, NOW)).toBe(false);
-    for (const bad of [undefined, "", "abc", `${expiresAt}.`, `.${signature}`, `${token}x`]) {
-      expect(verifySessionToken(bad, SECRET, NOW)).toBe(false);
+  it("refuses another secret, any tampering and garbage", () => {
+    const value = sealSession({ token: "t", expiresAt: EXPIRES }, SECRET);
+    expect(openSession(value, "x".repeat(40), NOW)).toBeNull();
+    const [version, iv, sealed] = value.split(".");
+    const flipped = `${sealed?.startsWith("A") ? "B" : "A"}${sealed?.slice(1)}`;
+    for (const bad of [
+      undefined,
+      "",
+      "garbage",
+      `v1.${iv}.${sealed}`,
+      `${version}.${iv}.${flipped}`,
+      `${version}.${iv}`,
+      `${value}.extra`,
+    ]) {
+      expect(openSession(bad, SECRET, NOW)).toBeNull();
     }
-  });
-});
-
-describe("passwordMatches", () => {
-  it("matches only the exact password", () => {
-    expect(passwordMatches("hunter2", "hunter2")).toBe(true);
-    expect(passwordMatches("hunter3", "hunter2")).toBe(false);
-    expect(passwordMatches("", "hunter2")).toBe(false);
-    expect(passwordMatches("hunter2 but much longer", "hunter2")).toBe(false);
+    expect(openSession(value, "", NOW)).toBeNull();
   });
 });
 

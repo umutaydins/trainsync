@@ -16,9 +16,11 @@ from typing import Any
 import httpx
 import respx
 
+from tests.support.chat_links import ChatLinksApi
 from trainsync.modules.nutrition.sugar import counts_as_free_sugar
 
 API = "http://trainsync-api"
+LINKED_CHAT = 42
 
 EXERCISES: list[dict[str, Any]] = [
     {
@@ -245,6 +247,8 @@ class FakeApi:
     next_workout_id: int = 100
     started: int = 0
     put_set_calls: int = 0
+    # Who the bot's chat belongs to (ADR 0036): the owner, with no settings of their own.
+    links: ChatLinksApi = field(default_factory=lambda: ChatLinksApi().link(LINKED_CHAT))
 
     # ---------------------------------------------------------------- builders
 
@@ -307,9 +311,14 @@ def _json(request: httpx.Request) -> dict[str, Any]:
     return body
 
 
-def install(router: respx.MockRouter, clock: Any) -> FakeApi:
-    """Mock every endpoint the bot calls on `router`; `clock()` is "now" for started workouts."""
+def install(router: respx.MockRouter, clock: Any, links: ChatLinksApi | None = None) -> FakeApi:
+    """Mock every endpoint the bot calls on `router`; `clock()` is "now" for started workouts.
+    `links`: chat links the caller already installed on the router (else the default one)."""
     api = FakeApi(router)
+    if links is None:
+        api.links.install(router, API)
+    else:
+        api.links = links
 
     def exercises(request: httpx.Request) -> httpx.Response:
         q = request.url.params.get("q", "").lower()

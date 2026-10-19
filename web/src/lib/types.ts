@@ -7,7 +7,12 @@ export type ActivityPage = Schemas["ActivityPage"];
 export type ActivityDetail = Schemas["ActivityDetail"];
 export type WeeklyStats = Schemas["WeeklyStats"];
 export type Week = Schemas["Week"];
-export type StatsSummary = Schemas["StatsSummary"];
+/** The activity fields of `/v1/stats/summary` the current pages read (the progress blocks of
+ * P8.10 are typed where they are shown). */
+export type StatsSummary = Pick<
+  Schemas["StatsSummary"],
+  "from" | "to" | "sport_type" | "totals" | "by_sport" | "longest" | "last_synced_at"
+>;
 export type SportTotals = Schemas["SportTotalsOut"];
 export type SyncStatus = Schemas["SyncStatusOut"];
 export type SyncRun = Schemas["RunOut"];

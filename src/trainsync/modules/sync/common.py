@@ -113,10 +113,10 @@ async def run_guarded(
     try:
         return await body()
     except (RateLimited, CircuitOpen, BudgetDeferralError) as exc:
-        return await _pause(runs, kind, athlete_id, deferral_time(exc))
+        return await pause(runs, kind, athlete_id, deferral_time(exc))
     except StravaUnavailable:
         # A transient outage, not a broken job; repeated ones open the breaker.
-        return await _pause(runs, kind, athlete_id, runs.deps.clock() + UNAVAILABLE_DEFER)
+        return await pause(runs, kind, athlete_id, runs.deps.clock() + UNAVAILABLE_DEFER)
     except StravaAuthError as exc:
         await runs.finish(SyncStatus.FAILED, error=short_error(exc))
         log.warning(f"{kind}_auth_failed", athlete_id=athlete_id)
@@ -133,7 +133,7 @@ async def run_guarded(
         raise
 
 
-async def _pause(runs: RunWriter, kind: str, athlete_id: int, resume_at: datetime) -> SyncOutcome:
+async def pause(runs: RunWriter, kind: str, athlete_id: int, resume_at: datetime) -> SyncOutcome:
     await runs.finish(SyncStatus.PAUSED)
     log.info(f"{kind}_paused", athlete_id=athlete_id, resume_at=resume_at)
     return SyncOutcome("paused", runs.run_id, resume_at)

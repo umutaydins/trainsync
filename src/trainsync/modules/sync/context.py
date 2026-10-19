@@ -41,6 +41,8 @@ class SyncDeps:
     strava: ActivitySource
     budget: Budget
     clock: Clock
+    # Fair sync (ADR 0037): a backfill yields after this many pages; None = never yields.
+    backfill_pages_per_job: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,7 +59,13 @@ class WorkerContext:
     exit_stack: AsyncExitStack
 
     def sync_deps(self) -> SyncDeps:
-        return SyncDeps(self.sessionmaker, self.strava, self.budget, self.clock)
+        return SyncDeps(
+            self.sessionmaker,
+            self.strava,
+            self.budget,
+            self.clock,
+            self.settings.backfill_pages_per_job,
+        )
 
 
 @contextmanager

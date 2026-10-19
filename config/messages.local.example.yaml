@@ -36,6 +36,10 @@ tr:
     - "Tamam, küfür fırçada kalsın."
   unknown_command:
     - "Öyle bir komut yok."
+  progress_up:
+    - "Geçen dönemden iyi. Devam."
+  progress_down:
+    - "Geçen dönemden az. Toparla."
   max:
     excuse:
       - "Bundan sonra her mesajda küfür var lan."

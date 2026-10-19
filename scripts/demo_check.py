@@ -4,8 +4,9 @@
    containers, the demo worker, Postgres/Redis/fake_strava private on an internal network, only
    the gateway published and only on 127.0.0.1; a missing DEMO_API_KEY stops compose.
 2. The stack starts (its own check project and port, never the running demo), seeds itself, and
-   through the gateway: reads return the seeded data, every kind of write is 403 with the demo
-   message, /metrics is 404. The in-stack reset command runs again cleanly.
+   through the gateway: reads return the seeded data, the published demo account signs in (the
+   web's way in), every other kind of write is 403 with the demo message, /metrics is 404. The
+   in-stack reset command runs again cleanly.
 3. Tear down with volumes.
 
     uv run python scripts/demo_check.py [--keep]
@@ -20,6 +21,8 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+from trainsync.entrypoints.demo.store import DEMO_EMAIL, DEMO_PASSWORD
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = "trainsync-democheck"
@@ -60,9 +63,15 @@ def compose(
 
 
 def request(
-    path: str, method: str = "GET", body: bytes | None = None, key: bool = True
+    path: str,
+    method: str = "GET",
+    body: bytes | None = None,
+    key: bool = True,
+    token: str | None = None,
 ) -> tuple[int, dict[str, str], bytes]:
     headers = {"X-API-Key": API_KEY} if key else {}
+    if token is not None:
+        headers["Authorization"] = f"Bearer {token}"
     if body is not None:
         headers["Content-Type"] = "application/json"
     req = urllib.request.Request(BASE + path, method=method, data=body, headers=headers)  # noqa: S310
@@ -142,6 +151,24 @@ def check_reads() -> None:
     print(f"  reads: {activities} activities, {workouts} workouts")
 
 
+def check_demo_login() -> None:
+    """The web dashboard signs in to the published demo account (ADR 0034); sign-up stays shut."""
+    login = json.dumps({"email": DEMO_EMAIL, "password": DEMO_PASSWORD}).encode()
+    status, _, body = request("/v1/auth/login", "POST", login, key=False)
+    if status != 200:
+        fail(f"the demo account cannot sign in: {status} {body[:300]!r}")
+    token = json.loads(body)["token"]
+    status, _, body = request("/v1/activities", key=False, token=token)
+    if status != 200 or not json.loads(body)["items"]:
+        fail(f"the demo session reads no activities: {status} {body[:300]!r}")
+    register = json.dumps({"email": "x@example.com", "password": "p" * 12}).encode()
+    if request("/v1/auth/register", "POST", register, key=False)[0] != 403:
+        fail("sign-up must be refused by the demo")
+    if request("/v1/auth/logout", "POST", b"{}", key=False, token=token)[0] >= 400:
+        fail("the demo session cannot sign out")
+    print(f"  login: {DEMO_EMAIL} signs in and reads; sign-up is refused")
+
+
 def check_writes() -> None:
     writes = [
         ("PUT", "/v1/nutrition/profile", b"{}"),
@@ -191,6 +218,7 @@ def main() -> int:
         compose("up", "-d", "--build")
         wait_ready()
         check_reads()
+        check_demo_login()
         check_writes()
         check_reset()
     finally:

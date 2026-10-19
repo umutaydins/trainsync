@@ -7,7 +7,6 @@ from enum import StrEnum
 
 from sqlalchemy import (
     BigInteger,
-    Boolean,
     CheckConstraint,
     Date,
     ForeignKey,
@@ -17,12 +16,13 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from trainsync.core.orm import Base, check_in, utc_timestamp
+from trainsync.core.orm import Base, check_in, owner_id, utc_timestamp
 
 
 class FoodSource(StrEnum):
@@ -84,12 +84,23 @@ class Food(Base):
             name="sugar_nova",
         ),
         CheckConstraint(check_in("food_group", FoodGroup), name="food_group"),
+        # A shared barcode (the Open Food Facts cache) is unique; so is one per user's foods.
+        Index(
+            "uq_foods_shared_barcode",
+            "barcode",
+            unique=True,
+            postgresql_where=text("user_id IS NULL"),
+        ),
+        UniqueConstraint("user_id", "barcode", name="uq_foods_user_barcode"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    # Null = the shared catalogue (Open Food Facts cache, curated by the owner); a manual food
+    # belongs to the user who created it and only they see it (ADR 0035).
+    user_id: Mapped[int | None] = owner_id(nullable=True)
     name: Mapped[str] = mapped_column(Text)
     brand: Mapped[str | None] = mapped_column(Text)
-    barcode: Mapped[str | None] = mapped_column(String(14), unique=True)
+    barcode: Mapped[str | None] = mapped_column(String(14))
     kcal_100g: Mapped[Decimal] = mapped_column(Numeric(6, 1))
     protein_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
     carbs_100g: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
@@ -99,7 +110,20 @@ class Food(Base):
     nova_group: Mapped[int | None] = mapped_column(SmallInteger)
     food_group: Mapped[str | None] = mapped_column(String(16))
     source: Mapped[str] = mapped_column(String(16), server_default=text("'manual'"))
-    favorite: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    created_at: Mapped[datetime] = utc_timestamp(default_now=True)
+
+
+class FoodFavorite(Base):
+    """A food a user starred: favourites are per user, the food may be shared."""
+
+    __tablename__ = "food_favorites"
+
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    food_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("foods.id", ondelete="CASCADE"), primary_key=True
+    )
     created_at: Mapped[datetime] = utc_timestamp(default_now=True)
 
 
@@ -114,11 +138,13 @@ class FoodLog(Base):
     __table_args__ = (
         CheckConstraint(check_in("meal", Meal), name="meal"),
         CheckConstraint("grams > 0 AND grams <= 5000", name="grams"),
-        Index("ix_food_logs_date", "date", "meal"),
+        Index("ix_food_logs_date", "user_id", "date", "meal"),
+        UniqueConstraint("user_id", "client_id", name="uq_food_logs_user_client_id"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True)
+    user_id: Mapped[int] = owner_id()
+    client_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
     date: Mapped[date] = mapped_column(Date)
     meal: Mapped[str] = mapped_column(String(16))
     food_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("foods.id"))
@@ -134,12 +160,11 @@ class FoodLog(Base):
 
 
 class NutritionProfile(Base):
-    """The single profile row (`id` is always 1). Body weight is not here: it comes from
-    `body_metrics`, the latest entry on or before the day being estimated."""
+    """One profile per user. Body weight is not here: it comes from `body_metrics`, the latest
+    entry on or before the day being estimated."""
 
     __tablename__ = "nutrition_profile"
     __table_args__ = (
-        CheckConstraint("id = 1", name="single_row"),
         CheckConstraint(check_in("sex", Sex), name="sex"),
         CheckConstraint(check_in("activity_baseline", ActivityBaseline), name="activity_baseline"),
         CheckConstraint("birth_year BETWEEN 1900 AND 2100", name="birth_year"),
@@ -150,8 +175,8 @@ class NutritionProfile(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=False, server_default=text("1")
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     sex: Mapped[str] = mapped_column(String(8))
     birth_year: Mapped[int] = mapped_column(Integer)

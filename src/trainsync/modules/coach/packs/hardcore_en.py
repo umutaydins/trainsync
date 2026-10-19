@@ -19,7 +19,8 @@ PACK = MessagePack(
             "Coach here. Commands, no excuses.\n"
             "/week: this week vs last week\n"
             "/last: latest activity\n"
-            "/stats [4w|12w|52w] [sport]: totals and best week, e.g. /stats 12w run\n"
+            "/stats [week|month|3m|6m|year|all]: progress vs the period before\n"
+            "/stats 12w run: totals and best week (4w|12w|52w, any sport)\n"
             "/status: sync health\n"
             "/today: today's planned workout\n"
             "/log bench 80x5x3: log sets (also 80x5,5,4 or bw x12x3)\n"
@@ -32,7 +33,10 @@ PACK = MessagePack(
         ),
         Key.NO_ASSISTANT: ("I don't do small talk. Commands only.\n\n{help}",),
         Key.UNKNOWN_COMMAND: ("/{command}? Not a thing. The real ones: /help",),
-        Key.USAGE_STATS: ("Wrong. Usage: /stats [4w|12w|52w] [sport], e.g. /stats 12w run",),
+        Key.USAGE_STATS: (
+            "Wrong. Usage: /stats [week|month|3m|6m|year|all] or /stats [4w|12w|52w] "
+            "[sport], e.g. /stats month",
+        ),
         Key.API_DOWN: (
             "Can't reach the trainsync API. Not your fault, for once. Try again in a minute.",
             "The API is down. Go run while it sorts itself out. Try again in a minute.",
@@ -78,6 +82,24 @@ PACK = MessagePack(
         Key.STATS_NONE: ("Nothing in this range. Crap.",),
         Key.STATS_BEST_WEEK: ("Best week: {day} · {distance} · {time}. Beat it.",),
         Key.STATS_LONGEST: ("Longest: {name} · {distance} ({day})",),
+        Key.PROGRESS_TITLE: NEUTRAL.texts[Key.PROGRESS_TITLE],
+        Key.PERIOD_WEEK: NEUTRAL.texts[Key.PERIOD_WEEK],
+        Key.PERIOD_MONTH: NEUTRAL.texts[Key.PERIOD_MONTH],
+        Key.PERIOD_3M: NEUTRAL.texts[Key.PERIOD_3M],
+        Key.PERIOD_6M: NEUTRAL.texts[Key.PERIOD_6M],
+        Key.PERIOD_YEAR: NEUTRAL.texts[Key.PERIOD_YEAR],
+        Key.PERIOD_ALL: NEUTRAL.texts[Key.PERIOD_ALL],
+        Key.DIGEST_WEEK: NEUTRAL.texts[Key.DIGEST_WEEK],
+        Key.DIGEST_MONTH: NEUTRAL.texts[Key.DIGEST_MONTH],
+        Key.PROGRESS_ENDURANCE: NEUTRAL.texts[Key.PROGRESS_ENDURANCE],
+        Key.PROGRESS_STRENGTH: NEUTRAL.texts[Key.PROGRESS_STRENGTH],
+        Key.PROGRESS_PRS: NEUTRAL.texts[Key.PROGRESS_PRS],
+        Key.PROGRESS_CONSISTENCY: NEUTRAL.texts[Key.PROGRESS_CONSISTENCY],
+        Key.PROGRESS_NONE: NEUTRAL.texts[Key.PROGRESS_NONE],
+        Key.PROGRESS_RECOVERY: NEUTRAL.texts[Key.PROGRESS_RECOVERY],
+        Key.PROGRESS_UP: ("More work than before (+{percent}%). That's the way. Keep it up.",),
+        Key.PROGRESS_DOWN: ("Down {percent}% from before. Pick it back up, starting today.",),
+        Key.PROGRESS_FLAT: ("Steady. Steady is fine, but push a little harder.",),
         Key.TOTALS: NEUTRAL.texts[Key.TOTALS],
         Key.ACTIVITY_ONE: NEUTRAL.texts[Key.ACTIVITY_ONE],
         Key.ACTIVITY_MANY: NEUTRAL.texts[Key.ACTIVITY_MANY],

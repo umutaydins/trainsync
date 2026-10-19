@@ -5,7 +5,7 @@ import "server-only";
  * labelled, so they are found by their `dev-` prefix rather than by a copy of the values. A
  * production server still using one logs a warning at startup (instrumentation.ts).
  */
-export const DEV_ONLY_WEB_SECRETS = ["TRAINSYNC_API_KEY", "DASHBOARD_PASSWORD", "DASHBOARD_SESSION_SECRET"] as const;
+export const DEV_ONLY_WEB_SECRETS = ["DASHBOARD_SESSION_SECRET"] as const;
 
 const DEV_ONLY_PREFIX = "dev-";
 

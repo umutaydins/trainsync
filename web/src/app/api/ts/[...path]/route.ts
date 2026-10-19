@@ -2,7 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { checkCsrf } from "@/lib/csrf";
 import { CSRF_COOKIE } from "@/lib/csrf-cookie";
+import { endSession, tokenFromCookie } from "@/lib/auth";
 import { serverEnv } from "@/lib/env";
+import { SESSION_COOKIE } from "@/lib/session";
 import {
   MAX_BODY_BYTES,
   allowedMethods,
@@ -18,8 +20,9 @@ const NO_STORE = { "Cache-Control": "no-store" };
 type Context = { params: Promise<{ path: string[] }> };
 
 /**
- * BFF: the browser calls /api/ts/v1/..., this handler adds the API key server-side and forwards
- * allowlisted method + path combinations only (lib/upstream.ts, ADR 0011). Mutations also need
+ * BFF: the browser calls /api/ts/v1/..., this handler opens the session cookie, calls the API as
+ * that user (`Authorization: Bearer`) and forwards allowlisted method + path combinations only
+ * (lib/upstream.ts, ADR 0011, 0034). A session the API refuses ends the browser session too. Mutations also need
  * a same-origin `Origin`/`Referer`, the CSRF double-submit token, a JSON body of at most
  * MAX_BODY_BYTES. Upstream errors become `{error}` (plus `detail` for mutations) with the
  * upstream status; upstream headers are never passed on.
@@ -33,7 +36,10 @@ async function handle(method: Method, request: NextRequest, { params }: Context)
     return error(405, "method not allowed", { Allow: allowed.join(", ") });
   }
   const search = request.nextUrl.searchParams;
-  if (method === "GET") return reply(await upstreamRequest("GET", target, search, null), false);
+  const token = tokenFromCookie(request.cookies.get(SESSION_COOKIE)?.value);
+  if (method === "GET") {
+    return reply(await upstreamRequest("GET", target, search, null, token), false);
+  }
 
   const failure = checkCsrf(
     request.headers,
@@ -45,7 +51,7 @@ async function handle(method: Method, request: NextRequest, { params }: Context)
 
   const body = await readJsonBody(request, method);
   if (!body.ok) return error(body.status, body.error);
-  return reply(await upstreamRequest(method, target, search, body.text), true);
+  return reply(await upstreamRequest(method, target, search, body.text, token), true);
 }
 
 type Body = { ok: true; text: string | null } | { ok: false; status: number; error: string };
@@ -107,7 +113,9 @@ function reply(result: UpstreamResult, isMutation: boolean): NextResponse {
       isMutation && result.detail !== undefined
         ? { error: result.error, detail: result.detail }
         : { error: result.error };
-    return NextResponse.json(body, { status: result.status, headers: NO_STORE });
+    const response = NextResponse.json(body, { status: result.status, headers: NO_STORE });
+    if (result.status === 401) endSession(response);
+    return response;
   }
   if (result.status === 204 || result.status === 205 || result.status === 304) {
     return new NextResponse(null, { status: result.status, headers: NO_STORE });

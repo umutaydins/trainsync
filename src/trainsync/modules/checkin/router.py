@@ -9,12 +9,13 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
+from fastapi import APIRouter, HTTPException, Path, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from trainsync.core.deps import ClockDep, SessionmakerDep, SettingsDep, require_api_key
+from trainsync.core.deps import ClockDep, SessionmakerDep, SettingsDep
 from trainsync.core.errors import UNAUTHORIZED, error
 from trainsync.core.localtime import local_today
+from trainsync.modules.auth.dependencies import CurrentUser
 from trainsync.modules.checkin.models import CheckinStatus, DailyCheckin
 from trainsync.modules.checkin.repository import CheckinRepository, CheckinValues
 from trainsync.modules.checkin.streaks import adherence, current_streak, longest_streak
@@ -25,9 +26,7 @@ from trainsync.modules.training.repository import (
 )
 from trainsync.modules.training.schemas import Kg
 
-router = APIRouter(
-    prefix="/v1/checkins", tags=["training"], dependencies=[Depends(require_api_key)]
-)
+router = APIRouter(prefix="/v1/checkins", tags=["training"])
 
 MAX_RANGE_DAYS = 400
 BAD_RANGE = error("`to` before `from`, or too long", "`to` is before `from`")
@@ -171,6 +170,7 @@ def _range(
     responses={**UNAUTHORIZED, 400: BAD_RANGE},
 )
 async def list_checkins(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     settings: SettingsDep,
     clock: ClockDep,
@@ -179,7 +179,7 @@ async def list_checkins(
 ) -> CheckinList:
     start, end = _range(start, end, local_today(clock, settings.checkin_zone), 84)
     async with sessionmaker() as session:
-        rows = await CheckinRepository(session).between(start, end)
+        rows = await CheckinRepository(session, principal.user_id).between(start, end)
     items = [CheckinOut.from_row(r) for r in rows]
     return CheckinList.model_validate({"from": start, "to": end, "items": items})
 
@@ -199,6 +199,7 @@ async def list_checkins(
     responses={**UNAUTHORIZED, 400: BAD_RANGE},
 )
 async def checkin_summary(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     settings: SettingsDep,
     clock: ClockDep,
@@ -210,8 +211,8 @@ async def checkin_summary(
     start = start or end - timedelta(days=end.weekday() + 21)
     start, end = _range(start, end, today, 28)
     async with sessionmaker() as session:
-        statuses = await CheckinRepository(session).statuses(end)
-        program = await ProgramRepository(session).active()
+        statuses = await CheckinRepository(session, principal.user_id).statuses(end)
+        program = await ProgramRepository(session, principal.user_id).active()
     days_per_week = program.days_per_week if program is not None else None
     result = adherence(statuses, start, end, days_per_week)
     counts = {s: 0 for s in CheckinStatus}
@@ -243,10 +244,12 @@ async def checkin_summary(
     responses={**UNAUTHORIZED, 404: NOT_FOUND},
 )
 async def get_checkin(
-    sessionmaker: SessionmakerDep, day: Annotated[date, Path(examples=["2026-10-18"])]
+    principal: CurrentUser,
+    sessionmaker: SessionmakerDep,
+    day: Annotated[date, Path(examples=["2026-10-18"])],
 ) -> CheckinOut:
     async with sessionmaker() as session:
-        row = await CheckinRepository(session).get(day)
+        row = await CheckinRepository(session, principal.user_id).get(day)
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no check-in for this date")
     return CheckinOut.from_row(row)
@@ -268,6 +271,7 @@ async def get_checkin(
     },
 )
 async def put_checkin(
+    principal: CurrentUser,
     sessionmaker: SessionmakerDep,
     clock: ClockDep,
     response: Response,
@@ -277,7 +281,7 @@ async def put_checkin(
     async with sessionmaker.begin() as session:
         if (
             body.workout_id is not None
-            and await WorkoutRepository(session).get(body.workout_id) is None
+            and await WorkoutRepository(session, principal.user_id).get(body.workout_id) is None
         ):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "workout not found")
         values = CheckinValues(
@@ -288,9 +292,9 @@ async def put_checkin(
             energy_1_5=body.energy_1_5,
             body_weight_kg=body.body_weight_kg,
         )
-        row, created = await CheckinRepository(session).put(day, values, clock())
+        row, created = await CheckinRepository(session, principal.user_id).put(day, values, clock())
         if body.body_weight_kg is not None:
-            await BodyMetricRepository(session).put(day, body.body_weight_kg)
+            await BodyMetricRepository(session, principal.user_id).put(day, body.body_weight_kg)
         out = CheckinOut.from_row(row)
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return out

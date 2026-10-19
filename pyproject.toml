@@ -8,9 +8,12 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "alembic>=1.20.0",
     "anthropic>=1.15.0",
+    "anyio>=4",
+    "argon2-cffi>=23.1",
     "arq>=0.28.0",
     "asyncpg>=0.32.0",
     "cryptography>=50.0.2",
+    "email-validator>=2.2",
     "fastapi>=0.143.3",
     "httpx>=0.28.1",
     "prometheus-client>=0.26.0",
@@ -104,6 +107,7 @@ modules = [
     "trainsync.entrypoints.bot",
     "trainsync.entrypoints.worker",
     "trainsync.entrypoints.demo",
+    "trainsync.entrypoints.cli",
 ]
 
 [[tool.importlinter.contracts]]
@@ -112,10 +116,14 @@ type = "layers"
 layers = [
     "trainsync.modules.notifications",
     "trainsync.modules.chat",
-    "trainsync.modules.coach | trainsync.modules.checkin | trainsync.modules.nutrition | trainsync.modules.stats | trainsync.modules.sync",
+    # Statistics read check-ins, nutrition rules and each user's settings (ADR 0038).
+    "trainsync.modules.stats",
+    "trainsync.modules.admin | trainsync.modules.users",
+    "trainsync.modules.coach | trainsync.modules.checkin | trainsync.modules.nutrition | trainsync.modules.sync",
     "trainsync.modules.training",
     "trainsync.modules.activities",
     "trainsync.modules.strava",
+    "trainsync.modules.auth",
 ]
 ignore_imports = ["trainsync.modules.** -> trainsync.modules.*.models"]
 
@@ -134,6 +142,9 @@ forbidden_modules = [
 [tool.coverage.run]
 branch = true
 source = ["trainsync"]
+# SQLAlchemy's asyncio layer runs on greenlets: without this, lines after an `await` on the
+# database are not traced.
+concurrency = ["thread", "greenlet"]
 
 [tool.coverage.report]
 fail_under = 85

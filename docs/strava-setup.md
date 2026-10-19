@@ -20,11 +20,29 @@ a row in [operations.md → Owner checks](operations.md#owner-checks) where its 
 5. `scripts/mac-prod.sh up` so the containers pick up the new values (a `restart` would not).
 
 Strava's API agreement allows a personal application to read your own data; the app starts in
-the default "single player" mode (only the owner can connect), which is all trainsync needs.
+the default "single player" mode (only the owner can connect).
+
+### Athlete capacity (more than one user, Phase 8)
+One Strava application serves every trainsync account (ADR 0037). A new application's **athlete
+capacity** is 1: only the owner can connect until Strava raises it. Before other users connect,
+request a capacity increase from Strava through its developer program (see Strava's API
+documentation for the current form; describe trainsync as an invite-only personal training log).
+Until then a second user's
+"Connect Strava" fails at Strava, not in trainsync. The rate limit (100 requests / 15 min,
+1,000 / day by default) is per application and shared by all athletes; backfills yield after
+`BACKFILL_PAGES_PER_JOB` pages so one long history never starves the others.
+
+Each account connects its own athlete, and an athlete belongs to one account: connecting a
+Strava athlete that is already linked to another trainsync account answers **409** (`this Strava
+account is connected to another user`; the dashboard gets it as `connect_error` on `/sync`) and
+writes nothing. Disconnect first (`DELETE /v1/me/strava`, or delete that account), then connect
+again.
 
 ## 2. Connect the account and backfill
-1. Open `$PUBLIC_API_BASE_URL/auth/strava/login` in the browser, or the dashboard's
-   Sync → "Connect Strava" (P7.6). Approve `read,activity:read_all`.
+1. Sign in to the dashboard as the owner and open Sync → "Connect Strava" (P7.6, the BFF asks
+   `POST /v1/me/strava/authorize-url` for a URL whose signed state names you). Approve
+   `read,activity:read_all`. `/auth/strava/login` needs a signed-in caller too (a Bearer session
+   token, or `X-API-Key`, which acts as the owner); opened in a plain browser tab it answers 401.
 2. The callback stores the encrypted tokens and queues the backfill. Watch it:
    ```
    curl -s -H "X-API-Key: <one of API_KEYS>" "$PUBLIC_API_BASE_URL/v1/sync/status" | python -m json.tool

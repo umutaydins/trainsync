@@ -19,7 +19,7 @@ from trainsync.entrypoints.bot.dispatcher import Commands, week_ranges
 from trainsync.modules.activities.repository import ActivityRepository
 from trainsync.modules.chat import formatting
 from trainsync.modules.chat.read_api import ReadApi
-from trainsync.modules.stats.router import StatsSummary
+from trainsync.modules.stats.totals import ActivitySummary
 
 NOW = datetime(2026, 10, 15, 18, 0, tzinfo=UTC)  # Thursday
 KEY = "test-api-key"
@@ -71,7 +71,7 @@ async def _seed(sessionmaker: async_sessionmaker[AsyncSession]) -> None:
         await repo.soft_delete(7)
 
 
-async def _summary(api_app: FastAPI, start: date, end: date) -> StatsSummary:
+async def _summary(api_app: FastAPI, start: date, end: date) -> ActivitySummary:
     transport = httpx.ASGITransport(app=api_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://api") as client:
         response = await client.get(
@@ -80,7 +80,7 @@ async def _summary(api_app: FastAPI, start: date, end: date) -> StatsSummary:
             headers={"X-API-Key": KEY},
         )
     assert response.status_code == 200, response.text
-    return StatsSummary.model_validate(response.json())
+    return ActivitySummary.model_validate(response.json())
 
 
 async def test_week_numbers_equal_stats_summary(

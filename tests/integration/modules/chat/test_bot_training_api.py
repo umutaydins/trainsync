@@ -18,6 +18,8 @@ from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from tests.support.accounts import OWNER_ID
+from tests.support.linked import link_chat
 from tests.support.messages import NEUTRAL_EN as MSG
 from tests.support.state import MemoryStateStore
 from tests.support.telegram import BOT_TOKEN, BOT_URL, TELEGRAM, message_update, ok, sent_messages
@@ -26,6 +28,7 @@ from trainsync.entrypoints.api.app import create_app
 from trainsync.entrypoints.bot.dispatcher import Commands, Dispatcher
 from trainsync.integrations.telegram.client import TelegramApi, Update
 from trainsync.modules.chat.common import RedisStateStore, client_id
+from trainsync.modules.chat.links import ChatLinks
 from trainsync.modules.chat.read_api import ReadApi
 from trainsync.modules.chat.training import TrainingCommands
 from trainsync.modules.training.models import Workout, WorkoutSet
@@ -57,7 +60,7 @@ async def api(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
 
 async def ids(sessionmaker: async_sessionmaker[AsyncSession], *slugs: str) -> dict[str, int]:
     async with sessionmaker() as session:
-        repo = ExerciseRepository(session)
+        repo = ExerciseRepository(session, OWNER_ID)
         return {slug: e.id for slug in slugs if (e := await repo.by_slug(slug)) is not None}
 
 
@@ -117,6 +120,7 @@ async def test_next_day_rotates_through_the_program(
 async def test_redelivered_log_stores_its_sets_once(
     app: FastAPI, sessionmaker: async_sessionmaker[AsyncSession]
 ) -> None:
+    await link_chat(sessionmaker, CHAT)
     transport = httpx.ASGITransport(app=app)
     async with (
         httpx.AsyncClient(transport=transport) as api_http,
@@ -132,8 +136,9 @@ async def test_redelivered_log_stores_its_sets_once(
             training = TrainingCommands(
                 api, MemoryStateStore(), lambda: NOW, ZoneInfo("Europe/Istanbul"), MSG
             )
+            links = ChatLinks(api, lambda: NOW, ttl_s=0)
             return Dispatcher(
-                telegram, Commands(api, lambda: NOW, MSG), {CHAT}, MSG, features=[training]
+                telegram, Commands(api, lambda: NOW, MSG), links, MSG, features=[training]
             )
 
         update = Update.model_validate(message_update(501, CHAT, "/log bench 80x5x3"))
@@ -181,6 +186,7 @@ class LoseFirstStartAnswer(httpx.AsyncBaseTransport):
 async def test_start_retries_and_lost_answers_make_one_workout(
     app: FastAPI, sessionmaker: async_sessionmaker[AsyncSession]
 ) -> None:
+    await link_chat(sessionmaker, CHAT)
     transport = LoseFirstStartAnswer(httpx.ASGITransport(app=app))
     async with (
         httpx.AsyncClient(transport=transport) as api_http,
@@ -193,9 +199,8 @@ async def test_start_retries_and_lost_answers_make_one_workout(
         training = TrainingCommands(
             api, MemoryStateStore(), lambda: NOW, ZoneInfo("Europe/Istanbul"), MSG
         )
-        bot = Dispatcher(
-            telegram, Commands(api, lambda: NOW, MSG), {CHAT}, MSG, features=[training]
-        )
+        links = ChatLinks(api, lambda: NOW, ttl_s=0)
+        bot = Dispatcher(telegram, Commands(api, lambda: NOW, MSG), links, MSG, features=[training])
         update = Update.model_validate(message_update(502, CHAT, "/log bench 80x5x3"))
         await bot.handle(update)  # the start's answer is lost: a friendly error
         await bot.handle(update)  # Telegram redelivers

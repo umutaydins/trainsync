@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import Any, ClassVar
 
-from sqlalchemy import DateTime, MetaData, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, MetaData, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, mapped_column
 
@@ -26,6 +26,13 @@ def utc_timestamp(*, nullable: bool = False, default_now: bool = False) -> Any:
         DateTime(timezone=True),
         nullable=nullable,
         server_default=func.now() if default_now else None,
+    )
+
+
+def owner_id(*, nullable: bool = False, index: bool = False) -> Any:
+    """`user_id` of a user-owned row (ADR 0035): deleting the user deletes the row."""
+    return mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=nullable, index=index
     )
 
 

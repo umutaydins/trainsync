@@ -73,10 +73,16 @@ DEMO_HEADER = "x-trainsync-demo"
 READ_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 # GET routes that still write: the OAuth callback stores tokens; login only starts that flow.
 WRITE_PATH_PREFIXES = ("/auth/strava/",)
+# Writes the demo still allows: signing in to the published demo account and out again (ADR 0034).
+# The session rows they write go with the nightly reset.
+SESSION_WRITES = frozenset({("POST", "/v1/auth/login"), ("POST", "/v1/auth/logout")})
 
 
 def is_demo_blocked(method: str, path: str) -> bool:
-    """A request the read-only demo refuses: any non-read method, or the Strava connect flow."""
+    """A request the read-only demo refuses: any non-read method except signing in and out, or
+    the Strava connect flow."""
+    if (method.upper(), path) in SESSION_WRITES:
+        return False
     return method.upper() not in READ_METHODS or path.startswith(WRITE_PATH_PREFIXES)
 
 

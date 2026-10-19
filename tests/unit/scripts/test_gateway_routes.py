@@ -79,9 +79,23 @@ def test_every_route_has_a_body_limit_a_matching_probe_and_auth_is_rate_limited(
     for route in routes:
         assert route.max_body, route.name
         assert route.matches(route.probe), route.name
-    assert {r.name for r in routes if r.rate_limit} == {"auth"}
+    assert {r.name for r in routes if r.rate_limit} == {"auth", "account"}
     for probe in gateway.load().blocked_probes:
         assert not gateway.is_routed(probe), probe
+
+
+def test_sign_in_is_rate_limited_before_the_general_api_route_matches() -> None:
+    names = [route.name for route in gateway.load().routes]
+    assert names.index("account") < names.index("api")
+    caddyfile = gateway.render()
+    assert caddyfile.index("handle @account") < caddyfile.index("handle @api")
+
+
+def test_the_acting_user_header_is_stripped_from_every_public_request() -> None:
+    """ADR 0036: only the bot inside the compose network may send X-Acting-User."""
+    caddyfile = gateway.render()
+    site = caddyfile[caddyfile.index(":8080 {") :]
+    assert site.index("request_header -X-Acting-User") < site.index("handle @")
 
 
 def test_unknown_paths_fall_through_to_404_in_the_caddyfile() -> None:
