@@ -395,3 +395,32 @@ async def test_link_and_unlink_from_the_chat(
         neutral(NeutralKey.LINK_HINT, url=DASHBOARD),
     ]
     assert links.chats == {}
+
+
+async def test_the_dashboard_deep_link_links_the_chat(
+    http: httpx.AsyncClient, telegram: TelegramApi
+) -> None:
+    """`t.me/<bot>?start=CODE` makes Telegram send `/start CODE`; a bare `/start` gets the hint."""
+    with respx.mock(assert_all_called=False) as router:
+        links = ChatLinksApi()
+        links.codes["K7Q2M9XD"] = 5
+        links.names[5] = "Ayşe"
+        links.install(router, API)
+        replies = router.post(f"{BOT_URL}/sendMessage").mock(return_value=ok({}))
+        read_api = ReadApi(http, API, SecretStr("bot-key"))
+        bot = Dispatcher(
+            telegram,
+            Commands(read_api, lambda: NOW, MSG),
+            chat_links(http, API, lambda: NOW),
+            MSG,
+            dashboard_url=DASHBOARD,
+        )
+        texts: list[str] = []
+        for n, text in enumerate(["/start", "/start K7Q2M9XD"]):
+            await bot.handle(update(STRANGER, text, n + 1))
+            texts.append(sent_messages(replies)[-1]["text"])
+    assert texts == [
+        MSG.neutral(NeutralKey.LINK_HINT, url=DASHBOARD),
+        MSG.neutral(NeutralKey.LINK_DONE, name="Ayşe"),
+    ]
+    assert links.chats == {STRANGER: 5}

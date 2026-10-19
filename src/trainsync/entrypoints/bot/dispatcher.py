@@ -188,7 +188,8 @@ class Dispatcher:
             await self._handle(update, owner)
 
     async def _handle_unlinked(self, update: Update) -> None:
-        """The link hint, or `/link CODE`; nothing else runs for an unknown chat."""
+        """The link hint, or `/link CODE` (also `/start CODE`: what the dashboard's t.me deep
+        link sends); nothing else runs for an unknown chat."""
         message = update.message
         if message is None or not message.text:
             label = "button" if update.callback_query is not None else "none"
@@ -197,6 +198,8 @@ class Dispatcher:
         chat_id = message.chat.id
         command, args = parse_command(message.text)
         neutral = self._msg.neutral
+        if command == "start" and len(args) == 1:
+            command = "link"
         if command != "link":
             await self._send(
                 chat_id,

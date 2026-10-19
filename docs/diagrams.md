@@ -32,6 +32,8 @@ All diagrams are Mermaid, so GitHub renders them inline. They describe the desig
 - [27. Sequence — /lang and the chat's language](#27-sequence--lang-and-the-chats-language-p612-adr-0031)
 - [28. Activity — a chat message in savage mode](#28-activity--a-chat-message-in-savage-mode-profanity-and-the-guardrails-p613-adr-0032)
 - [29. Layers — code layout and allowed imports](#29-layers--code-layout-and-allowed-imports-adr-0033)
+- [30. Sequence — sign-up with an invite, then login through the BFF](#30-sequence--sign-up-with-an-invite-then-login-through-the-bff-p81-p87-adr-0034)
+- [31. Sequence — linking a Telegram chat with /link](#31-sequence--linking-a-telegram-chat-with-link-p84-adr-0036)
 
 ---
 
@@ -49,22 +51,26 @@ flowchart LR
     subgraph trainsync
         direction LR
         subgraph web["Web process (Next.js, web/)"]
-            gate["proxy.ts<br/>session-cookie gate"]
+            gate["proxy.ts<br/>session-cookie gate → /login"]
+            authh["route handlers<br/>/api/auth/* · /api/account · /api/strava/connect<br/>login, register, reset, delete"]
             pages["server components<br/>dashboard · activities · sync<br/>training · nutrition (PWA)"]
             bff["BFF route /api/ts/v1/*<br/>method + path allowlist, CSRF on writes"]
-            upstream["lib/upstream.ts<br/>adds X-API-Key"]
+            upstream["lib/upstream.ts<br/>unseals the cookie, adds Bearer token"]
         end
 
         subgraph bot["Bot process (python -m trainsync.entrypoints.bot)"]
             poller["Poller<br/>getUpdates long polling"]
-            dispatch["Dispatcher<br/>chat allowlist"]
+            dispatch["Dispatcher<br/>linked chats · /link /unlink<br/>unknown chat → hint"]
+            links["ChatLinks<br/>chat → user cache (BOT_CHAT_CACHE_S)"]
             cmds["Commands<br/>/week /last /stats /status"]
             assistant["Assistant<br/>Claude tool use (optional)"]
-            readapi["ReadApi<br/>httpx → /v1/*"]
+            readapi["ReadApi<br/>httpx → /v1/*<br/>service key + X-Acting-User"]
         end
 
         subgraph api["API process (FastAPI)"]
-            auth["auth router<br/>/auth/strava/*"]
+            auth["strava router<br/>/auth/strava/* · /v1/me/strava"]
+            accounts["accounts<br/>/v1/auth/* · /v1/me · /v1/admin/*<br/>/v1/me/telegram · /v1/telegram/chats"]
+            principal["CurrentUser<br/>Bearer · API key · service key + X-Acting-User"]
             hooks["webhooks router<br/>/webhooks/strava"]
             read["read API<br/>/v1/*"]
             ops["health + /metrics"]
@@ -77,6 +83,7 @@ flowchart LR
             sched["schedule_incremental<br/>(cron :00, :30)"]
             retry["retry_webhooks<br/>(cron 5 min)"]
             notify["notify_new_activity"]
+            purge["purge_user"]
             notifier["Notifier<br/>TelegramNotifier · NullNotifier"]
         end
 
@@ -92,7 +99,11 @@ flowchart LR
     end
 
     strava -- "webhook POST" --> hooks
-    client_user -- "X-API-Key" --> read
+    client_user -- "Bearer or X-API-Key" --> principal
+    principal --> read
+    principal --> accounts
+    accounts -- "users, sessions, invites, settings, chats" --> pg
+    accounts -- "login limits, link codes" --> redis
     hooks -- "insert (dedup)" --> pg
     hooks -- "enqueue" --> redis
     redis -- "jobs" --> worker
@@ -112,30 +123,37 @@ flowchart LR
     browser -- "session cookie" --> gate
     gate --> pages
     gate --> bff
+    browser -- "email + password" --> authh
+    authh -- "POST /v1/auth/login · register · reset" --> accounts
     pages --> upstream
     bff --> upstream
-    upstream -- "X-API-Key" --> read
+    upstream -- "Authorization: Bearer" --> principal
 
     tg_user -. "messages" .-> telegram
     poller -- "getUpdates" --> telegram
     poller --> dispatch
+    dispatch --> links
+    links --> readapi
     dispatch --> cmds
     dispatch -- "plain text" --> assistant
     assistant -- "plan tool calls" --> anthropic
-    assistant -- "rate limit per chat" --> redis
+    assistant -- "rate limit per chat, daily limit per user" --> redis
     cmds --> readapi
     assistant --> readapi
-    readapi -- "X-API-Key" --> read
+    readapi -- "X-API-Key (service) + X-Acting-User" --> principal
     dispatch -- "sendMessage" --> telegram
 
     proc -- "enqueue (activity create only)" --> redis
-    notify -- "claim (kind, object_id)" --> pg
+    notify -- "claim (user_id, kind, object_id)" --> pg
+    purge -- "delete the user's rows" --> pg
     notify --> notifier
     notifier -- "sendMessage" --> telegram
 ```
 
-The web app and the bot are clients of the read API: neither touches PostgreSQL, and the API key
-stays server-side (ADRs 0011, 0012). New-activity notifications run in the worker with its own
+The web app and the bot are clients of the read API: neither touches PostgreSQL (ADRs 0011, 0012).
+The web holds no API key: each browser's API session token travels sealed in its httpOnly cookie
+(ADR 0034). The bot acts as the user its chat is linked to, with a service key the public gateway
+cannot impersonate because it strips `X-Acting-User` (ADR 0036). New-activity notifications run in the worker with its own
 Telegram client, so they do not depend on the bot process.
 
 ## 2. Deployment diagram (docker compose)
@@ -164,8 +182,8 @@ flowchart TB
     browser -- ":9100 (metrics)" --> worker
     browser -- ":9101 (metrics)" --> bot
     browser -- ":8001 (OAuth authorize)" --> fake
-    web -- "http://api:8000 + X-API-Key" --> api
-    bot -- "http://api:8000 + X-API-Key" --> api
+    web -- "http://api:8000 + Bearer session token" --> api
+    bot -- "http://api:8000 + service key + X-Acting-User" --> api
     migrate --> pg
     api --> pg
     api --> rd
@@ -186,20 +204,118 @@ or without a token.
 
 ## 3. Data model (ER)
 
+Since Phase 8 (ADR 0035) every user-owned table has `user_id` → `users` (`ON DELETE CASCADE`);
+the diagrams draw that edge once per table. Shared rows (built-in exercises, the food catalogue)
+have `user_id` NULL.
+
+### Accounts (Phase 8, ADR 0034, ADR 0036)
+
 ```mermaid
 erDiagram
+    users ||--o{ sessions : "signs in with"
+    users |o--o{ invites : "creates (created_by)"
+    users |o--o| invites : "redeems (used_by)"
+    users ||--o{ password_resets : "gets"
+    users ||--o| user_settings : "has"
+    users ||--o| telegram_chats : "links"
+    users ||--o| athletes : "connects"
+
+    users {
+        bigint id PK
+        varchar email UK "lower-cased"
+        text password_hash "argon2id"
+        varchar display_name
+        varchar role "owner | user, exactly one owner"
+        varchar timezone "IANA"
+        timestamptz created_at
+        timestamptz deleted_at "nullable, purge pending"
+    }
+    sessions {
+        bigint id PK
+        bigint user_id FK
+        bytea token_hash UK "SHA-256 of the token"
+        varchar user_agent "nullable"
+        timestamptz created_at
+        timestamptz last_seen_at
+        timestamptz expires_at "slides, capped"
+        timestamptz revoked_at "nullable"
+    }
+    invites {
+        bigint id PK
+        bytea code_hash UK
+        varchar note "nullable"
+        bigint created_by FK "nullable"
+        timestamptz created_at
+        timestamptz expires_at
+        timestamptz used_at "nullable"
+        bigint used_by FK "nullable"
+        timestamptz revoked_at "nullable"
+    }
+    password_resets {
+        bigint id PK
+        bigint user_id FK
+        bytea token_hash UK
+        timestamptz created_at
+        timestamptz expires_at
+        timestamptz used_at "nullable"
+    }
+    user_settings {
+        bigint user_id PK, FK
+        varchar tone "neutral | hardcore, null = BOT_TONE"
+        varchar intensity "normal | savage, nullable"
+        varchar profanity "roast | max, nullable"
+        varchar lang "en | tr, nullable"
+        boolean checkin_enabled "nullable"
+        time checkin_time "nullable"
+        int checkin_reminder_minutes "nullable"
+        varchar quiet_hours "HH:MM-HH:MM, nullable"
+        time workout_reminder_time "nullable"
+        numeric sugar_limit_g "nullable"
+        varchar country "ISO 3166, emergency number"
+        timestamptz updated_at
+    }
+    telegram_chats {
+        bigint chat_id PK "Telegram chat"
+        bigint user_id FK, UK "one chat per user"
+        timestamptz linked_at
+    }
+    athletes {
+        bigint id PK
+        bigint user_id FK, UK
+    }
+```
+
+`user_settings` replaced `chat_settings` (migration 0017); a NULL column means the environment
+default. The `/link` code lives in Redis, not in a table.
+
+### Strava, sync and nutrition
+
+```mermaid
+erDiagram
+    users ||--o| athletes : "connects"
     athletes ||--o| oauth_tokens : "has"
     athletes ||--o{ activities : "owns"
     athletes ||--o{ sync_runs : "has"
+    users ||--o{ notifications : "receives"
+    users |o--o{ foods : "own foods (null = shared)"
+    users ||--o{ food_favorites : "marks"
+    foods ||--o{ food_favorites : "favourited as"
+    users ||--o{ food_logs : "logs"
+    users ||--o| nutrition_profile : "has"
 
+    users {
+        bigint id PK
+    }
     athletes {
         bigint id PK
-        bigint strava_athlete_id UK
+        bigint user_id FK, UK "one athlete per user (ADR 0037)"
+        bigint strava_athlete_id UK "one user per athlete"
         boolean active
         timestamptz created_at
     }
     oauth_tokens {
         bigint athlete_id PK, FK
+        bigint user_id FK
         bytea access_token_enc
         bytea refresh_token_enc
         timestamptz expires_at
@@ -207,6 +323,7 @@ erDiagram
     }
     activities {
         bigint id PK
+        bigint user_id FK
         bigint strava_activity_id UK
         bigint athlete_id FK
         text name
@@ -223,6 +340,7 @@ erDiagram
     }
     sync_runs {
         bigint id PK
+        bigint user_id FK
         bigint athlete_id FK
         text kind "backfill | incremental"
         text status "running | paused | succeeded | failed"
@@ -235,7 +353,7 @@ erDiagram
         timestamptz finished_at
     }
     webhook_events {
-        bigint id PK
+        bigint id PK "no user: routed via the athlete"
         text dedup_key UK
         jsonb payload
         text status "pending | processing | processed | failed"
@@ -246,23 +364,19 @@ erDiagram
     }
     notifications {
         bigint id PK
-        text kind "new_activity"
-        bigint object_id "strava_activity_id, UK with kind"
+        bigint user_id FK
+        text kind "new_activity | checkin_* | coach_*"
+        bigint object_id "UK with user_id, kind"
         timestamptz sent_at
-    }
-    chat_settings {
-        bigint chat_id PK "Telegram chat"
-        text lang "en | tr, nullable (ADR 0031)"
-        text profanity "roast | max, nullable (ADR 0032)"
-        timestamptz updated_at
     }
 
     foods ||--o{ food_logs : "logged as"
     foods {
         bigint id PK
+        bigint user_id FK "nullable = shared catalogue"
         text name
         text brand "nullable"
-        varchar barcode UK "nullable"
+        varchar barcode UK "nullable, unique among shared and per user"
         numeric kcal_100g
         numeric protein_100g "nullable = unknown"
         numeric carbs_100g "nullable = unknown"
@@ -271,12 +385,16 @@ erDiagram
         smallint nova_group "1-4, nullable"
         varchar food_group "free-sugar group, nullable (ADR 0032)"
         text source "manual | openfoodfacts"
-        boolean favorite
         timestamptz created_at
+    }
+    food_favorites {
+        bigint user_id PK, FK
+        bigint food_id PK, FK
     }
     food_logs {
         bigint id PK
-        uuid client_id UK "idempotent PUT"
+        bigint user_id FK
+        uuid client_id UK "idempotent PUT, unique per user"
         date date
         text meal "breakfast | lunch | dinner | snack"
         bigint food_id FK
@@ -291,7 +409,7 @@ erDiagram
         timestamptz created_at
     }
     nutrition_profile {
-        int id PK "always 1"
+        bigint user_id PK, FK "one per user"
         text sex
         int birth_year
         numeric height_cm
@@ -302,18 +420,24 @@ erDiagram
     }
 ```
 
-Nutrition (P6.4, ADR 0019) is single-user: no `athlete_id`. Body weight for the BMR estimate comes
-from `body_metrics` (training), exercise energy from `activities.raw`.
+Nutrition (P6.4, ADR 0019) has no `athlete_id`; it belongs to the user. Body weight for the BMR
+estimate comes from `body_metrics` (training), exercise energy from `activities.raw`.
 
-`notifications` has no foreign key: a row is the idempotency claim for one message (ADR 0012),
-kept even if the activity is deleted later.
+`notifications.object_id` has no foreign key: a row is the idempotency claim for one message
+(ADR 0012), kept even if the activity is deleted later; only `user_id` is a foreign key.
 
-### Training (Phase 6)
+### Training (Phase 6, per user since Phase 8)
 
-Single user, so no `athlete_id`. `workouts.strava_activity_id` is a link, not a foreign key.
+No `athlete_id`; every table has `user_id` (built-in exercises: NULL). `workouts.strava_activity_id`
+is a link, not a foreign key.
 
 ```mermaid
 erDiagram
+    users |o--o{ exercises : "custom (null = built-in)"
+    users ||--o{ programs : "owns"
+    users ||--o{ workouts : "logs"
+    users ||--o{ body_metrics : "enters"
+    users ||--o{ daily_checkins : "reports"
     programs ||--o{ program_days : "has"
     program_days ||--o{ program_exercises : "plans"
     exercises ||--o{ program_exercises : "used in"
@@ -322,9 +446,13 @@ erDiagram
     exercises ||--o{ workout_sets : "of"
     workouts |o--o{ daily_checkins : "reported by"
 
+    users {
+        bigint id PK
+    }
     exercises {
         int id PK
-        text slug UK
+        bigint user_id FK "nullable = built-in"
+        text slug UK "unique among built-ins, and per user"
         text name
         text primary_muscle
         text_array secondary_muscles
@@ -335,15 +463,17 @@ erDiagram
     }
     programs {
         bigint id PK
+        bigint user_id FK
         text name
         text goal "strength | hypertrophy | general"
         int days_per_week
         int weeks
-        boolean active "at most one true"
+        boolean active "at most one true per user"
         timestamptz created_at
     }
     program_days {
         bigint id PK
+        bigint user_id FK
         bigint program_id FK
         int day_index "UK with program_id"
         text name
@@ -352,6 +482,7 @@ erDiagram
     }
     program_exercises {
         bigint id PK
+        bigint user_id FK
         bigint program_day_id FK
         int exercise_id FK
         int position
@@ -364,7 +495,8 @@ erDiagram
     }
     workouts {
         bigint id PK
-        uuid client_id UK "client-generated start"
+        bigint user_id FK
+        uuid client_id UK "client-generated start, unique per user"
         bigint program_day_id FK "nullable"
         timestamptz started_at
         timestamptz ended_at "nullable"
@@ -373,7 +505,8 @@ erDiagram
     }
     workout_sets {
         bigint id PK
-        uuid client_id UK "client-generated"
+        bigint user_id FK
+        uuid client_id UK "client-generated, unique per user"
         bigint workout_id FK
         int exercise_id FK
         int set_index
@@ -385,12 +518,14 @@ erDiagram
         int rest_seconds "nullable, actual rest"
     }
     body_metrics {
+        bigint user_id PK, FK
         date date PK
         numeric weight_kg
     }
     daily_checkins {
         bigint id PK
-        date date UK "local day (CHECKIN_TZ)"
+        bigint user_id FK
+        date date UK "local day of the user, unique per user"
         text status "done | partial | skipped | rest | sick_or_injured"
         bigint workout_id FK "nullable, set null"
         text reason_note "nullable"
@@ -715,8 +850,8 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant Q as Redis (arq)
 
-    U->>API: GET /auth/strava/login
-    API->>API: sign_state(now)
+    U->>API: GET /auth/strava/login (Bearer session, or the BFF's POST /v1/me/strava/authorize-url)
+    API->>API: CurrentUser, sign_state(now, user_id, return_to)
     API-->>U: 302 → /oauth/authorize?client_id&scope=read,activity:read_all&state
     U->>S: authorize
     S-->>U: 302 → /auth/strava/callback?code&state&scope
@@ -727,7 +862,10 @@ sequenceDiagram
     else ok
         API->>S: POST /oauth/token (authorization_code)
         S-->>API: access_token, refresh_token, expires_at, athlete
-        API->>DB: BEGIN, upsert athlete (active=true), upsert encrypted tokens, COMMIT
+        alt athlete bound to another user (ADR 0037)
+            API-->>U: 409, nothing written
+        end
+        API->>DB: BEGIN, upsert athlete (user_id from state, active=true), upsert encrypted tokens, COMMIT
         API->>Q: enqueue backfill (job id backfill:{athlete_id})
         API-->>U: 200 {athlete_id, backfill: "queued"}
     end
@@ -917,8 +1055,10 @@ sequenceDiagram
 
 ## 11. Sequence — dashboard request through the BFF
 
-The browser only ever talks to the web server. The API key lives in the web server's environment
-and is added in one place, `lib/upstream.ts` (ADR 0011).
+The browser only ever talks to the web server. The web holds no API key: the user's API session
+token is sealed in the `ts_session` cookie (AES-256-GCM, `DASHBOARD_SESSION_SECRET`) and added as
+`Authorization: Bearer` in one place, `lib/upstream.ts` (ADR 0011, ADR 0034). A 401 from the API
+clears the cookie and sends the browser to `/login`.
 
 ```mermaid
 sequenceDiagram
@@ -931,21 +1071,21 @@ sequenceDiagram
     participant API as trainsync API /v1
 
     U->>P: GET /?from=2025-03-01&to=2025-12-31 (session cookie)
-    P->>P: verifySessionToken(cookie, DASHBOARD_SESSION_SECRET)
+    P->>P: openSession(cookie, DASHBOARD_SESSION_SECRET)
     alt no or invalid session
         P-->>U: 307 → /login?next=… (a page) or 401 JSON (an /api/ call)
     else valid
         P->>RSC: render
         par one Suspense block each
             RSC->>UP: api.summary(from, to, sport)
-            UP->>API: GET /v1/stats/summary + X-API-Key (timeout 10 s, no-store)
+            UP->>API: GET /v1/stats/summary + Bearer token (timeout 10 s, no-store)
             API-->>UP: totals, by sport, last_synced_at
         and
             RSC->>UP: api.weekly(from, to, sport)
-            UP->>API: GET /v1/stats/weekly + X-API-Key
+            UP->>API: GET /v1/stats/weekly + Bearer token
             API-->>UP: weeks (zero-filled)
         end
-        RSC-->>U: streamed HTML: KPI tiles, weekly chart, by sport (no key in it)
+        RSC-->>U: streamed HTML: KPI tiles, weekly chart, by sport (no token in it)
     end
 
     Note over U,BFF: Client components ("Load more" on /activities, the 15 s refresh on /sync)
@@ -953,7 +1093,7 @@ sequenceDiagram
     P->>BFF: valid session
     BFF->>BFF: allowedMethods(path)? (unknown path 404, wrong method 405)
     BFF->>UP: upstreamRequest(GET, path, query)
-    UP->>API: GET /v1/activities?cursor=… + X-API-Key
+    UP->>API: GET /v1/activities?cursor=… + Bearer token
     alt 2xx
         API-->>UP: page
         UP-->>BFF: data
@@ -969,7 +1109,7 @@ sequenceDiagram
     BFF->>BFF: allowlist (404/405) → Origin/Referer = WEB_PUBLIC_URL (403) → X-CSRF-Token = ts_csrf cookie (403)
     BFF->>BFF: application/json (415), ≤ 64 KB read with a cap (413), parses as JSON (400)
     BFF->>UP: upstreamRequest(PUT, path, query, body)
-    UP->>API: PUT /v1/training/... + X-API-Key (no browser cookies or headers)
+    UP->>API: PUT /v1/training/... + Bearer token (no browser cookies or headers)
     API-->>UP: status + JSON
     UP-->>BFF: data, or {error, detail}
     BFF-->>U: same status, JSON only (no upstream headers)
@@ -1000,16 +1140,16 @@ sequenceDiagram
     W->>Q: enqueue notify_new_activity(strava_id), job id notify:{strava_id}
     Note over W,Q: same job id already queued or recently done → not enqueued again
     Q->>N: run (try n)
-    alt no chat configured (NullNotifier)
+    alt no bot token (NullNotifier), or the athlete's user has no linked chat
         N-->>N: disabled
     else activity deleted or athlete gone
         N-->>N: skipped
     else
-        N->>DB: INSERT notifications (new_activity, strava_id) ON CONFLICT DO NOTHING, COMMIT
+        N->>DB: INSERT notifications (user_id, new_activity, strava_id) ON CONFLICT DO NOTHING, COMMIT
         alt already claimed
             N-->>N: duplicate: send nothing
         else claimed
-            N->>T: send(chat_ref, text with link to /activities/{id})
+            N->>T: send(the user's linked chat, text with link to /activities/{id})
             alt delivered
                 T-->>N: ok → sent
             else no answer after the request went out (DeliveryUnknownError)
@@ -1127,19 +1267,20 @@ sequenceDiagram
     participant TG as Telegram
     participant Bot as bot process
     participant API as API
-    Cron->>DB: check-in for local today? prompt / reminder claimed?
-    alt before CHECKIN_TIME, or answered
+    Note over Cron,DB: for each user with a linked chat (Phase 8), in the user's time zone
+    Cron->>DB: check-in for the user's local today? prompt / reminder claimed?
+    alt before the user's check-in time (default CHECKIN_TIME), or answered
         Cron-->>Cron: nothing
     else due and not sent yet
-        Cron->>DB: claim (checkin_prompt, yyyymmdd) — ON CONFLICT DO NOTHING
-        Cron->>TG: sendMessage + 5 status buttons (seq 0)
+        Cron->>DB: claim (user_id, checkin_prompt, yyyymmdd) — ON CONFLICT DO NOTHING
+        Cron->>TG: sendMessage to the linked chat + 5 status buttons (seq 0)
         Note over Cron,DB: failure → release, next tick retries;<br/>unknown outcome → keep the claim
     else prompt sent ≥ CHECKIN_REMINDER_MINUTES ago, unanswered
-        Cron->>DB: claim (checkin_reminder, yyyymmdd)
+        Cron->>DB: claim (user_id, checkin_reminder, yyyymmdd)
         Cron->>TG: one reminder
     end
     TG-->>Bot: callback_query (getUpdates)
-    Bot->>API: PUT /v1/checkins/{date} (status)
+    Bot->>API: PUT /v1/checkins/{date} (status) + service key + X-Acting-User
     Bot->>TG: answerCallbackQuery, remove buttons, next question
 ```
 
@@ -1160,8 +1301,8 @@ sequenceDiagram
     Note over UI,API: the workout itself was started the same way: PUT /v1/training/workouts/{uuid W}
     UI->>UI: tap ✓ (row already has client_id = uuid A)
     UI->>BFF: PUT /v1/training/workouts/42/sets/A (CSRF token, JSON)
-    BFF->>API: PUT … + X-API-Key
-    API->>DB: INSERT … ON CONFLICT (client_id) DO UPDATE … RETURNING xmax = 0
+    BFF->>API: PUT … + Bearer token
+    API->>DB: INSERT … ON CONFLICT (user_id, client_id) DO UPDATE … RETURNING xmax = 0
     DB-->>API: row, created
     API-->>UI: 201 set
     UI->>UI: second tap on the same row: same uuid A
@@ -1236,7 +1377,7 @@ flowchart TB
         icloud[("iCloud Drive<br/>trainsync-backups (*.dump.age)")]
         demo["compose.demo.yml · 127.0.0.1:8081<br/>read-only demo (diagram 25)"]
         subgraph dd["Docker Desktop · compose.prod.yml"]
-            gw["gateway (Caddy)<br/>127.0.0.1:8080 · route allowlist"]
+            gw["gateway (Caddy)<br/>127.0.0.1:8080 · route allowlist<br/>strips X-Acting-User · /v1/auth/* 30/min"]
             api["api"]
             worker["worker"]
             bot["bot"]
@@ -1249,7 +1390,7 @@ flowchart TB
     end
 
     strava -- "https://host/auth/strava/callback<br/>https://host/webhooks/strava" --> funnel
-    vercel -- "https://host/v1/* + X-API-Key" --> funnel
+    vercel -- "https://host/v1/* + Bearer session token" --> funnel
     gha -- "allowlisted → forwarded<br/>everything else → 404" --> funnel
     funnel -- "http 127.0.0.1:8080" --> gw
     gw --> api
@@ -1371,7 +1512,7 @@ stateDiagram-v2
 ```mermaid
 flowchart TB
     visitor["Visitor (README link)"]
-    preview["Vercel preview<br/>web/ BFF · demo key + password"]
+    preview["Vercel preview<br/>web/ BFF · demo account<br/>demo@trainsync.invalid"]
 
     subgraph ts["Tailscale"]
         funnel["Funnel :8443"]
@@ -1379,7 +1520,7 @@ flowchart TB
 
     subgraph dd["Docker Desktop · compose.demo.yml (project trainsync-demo)"]
         gw["gateway (same Caddy image + routes.toml)<br/>127.0.0.1:8081"]
-        api["api · DEMO_MODE=true<br/>DemoReadOnlyMiddleware: writes → 403"]
+        api["api · DEMO_MODE=true<br/>DemoReadOnlyMiddleware: writes → 403<br/>except login / logout"]
         subgraph backend["backend network (internal)"]
             pg[("postgres · demo-pgdata")]
             rd[("redis")]
@@ -1390,7 +1531,7 @@ flowchart TB
     end
 
     visitor --> preview
-    preview -- "GET /v1/* + X-API-Key" --> funnel
+    preview -- "POST /v1/auth/login, then GET /v1/* + Bearer" --> funnel
     funnel -- "http 127.0.0.1:8081" --> gw
     gw --> api
     api -- "reads" --> pg
@@ -1437,27 +1578,29 @@ sequenceDiagram
 ## 27. Sequence — /lang and the chat's language (P6.12, ADR 0031)
 
 `BOT_LANG` is the default; a stored choice wins. The bot sets the language once per update, the
-worker once per job, read at send time.
+worker once per job, read at send time. Since Phase 8 the choice is the linked user's
+`user_settings.lang` (ADR 0036).
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant U as Owner (Telegram)
+    participant U as User (linked Telegram chat)
     participant B as Bot
     participant API as API
-    participant DB as Postgres (chat_settings)
+    participant DB as Postgres (user_settings)
     participant W as Worker
 
     U->>B: /lang
-    B->>API: GET /v1/chats/{chat}/settings (first update only, then cached)
-    API->>DB: SELECT lang
+    B->>API: GET /v1/telegram/chats/{chat} (user id + settings, cached BOT_CHAT_CACHE_S)
+    API->>DB: SELECT telegram_chats, user_settings
     B-->>U: "Türkçe" / "English" buttons
     U->>B: press "English"
-    B->>API: PUT /v1/chats/{chat}/settings {"lang": "en"}
-    API->>DB: upsert
+    B->>API: PATCH /v1/me/settings {"lang": "en"} + service key + X-Acting-User
+    API->>DB: upsert user_settings
+    B->>B: drop the chat's cache entry
     B-->>U: confirmation in English (savage line in savage mode)
-    Note over W: a reminder, check-in, notification or alert is due
-    W->>DB: SELECT lang for TELEGRAM_NOTIFY_CHAT_ID
+    Note over W: a reminder, check-in or notification for this user is due
+    W->>DB: SELECT the user's settings and linked chat
     W-->>U: message in English
 ```
 
@@ -1496,14 +1639,17 @@ module may import any module's `models.py`.
 flowchart TB
   subgraph E["entrypoints"]
     direction LR
-    eapi["api"] ~~~ eworker["worker"] ~~~ ebot["bot"] ~~~ edemo["demo"]
+    eapi["api"] ~~~ eworker["worker"] ~~~ ebot["bot"] ~~~ edemo["demo"] ~~~ ecli["cli"]
   end
   subgraph M["modules"]
     notifications --> chat
-    chat --> coach & checkin & nutrition & stats & sync
+    chat --> users & admin
+    users & admin --> coach & checkin & nutrition & stats & sync
     coach & checkin & nutrition --> training
     training & nutrition & stats & sync --> activities
+    activities --> strava
     sync --> strava
+    strava --> auth
   end
   subgraph I["integrations"]
     direction LR
@@ -1512,4 +1658,104 @@ flowchart TB
   C["core"]
   E --> M --> I --> C
   O["ops (stdlib only)"]
+```
+
+## 30. Sequence — sign-up with an invite, then login through the BFF (P8.1, P8.7, ADR 0034)
+
+The owner hands out the invite; nothing is mailed. The browser never sees the API token: the BFF
+seals it into the httpOnly `ts_session` cookie.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Owner (Mac shell)
+    actor U as New user (browser)
+    participant CLI as cli invite create
+    participant BFF as Web BFF (/api/auth/*)
+    participant API as trainsync API
+    participant R as Redis (limits)
+    participant DB as PostgreSQL
+
+    O->>CLI: invite create --note "Ayşe"
+    CLI->>DB: INSERT invites (code_hash, expires_at = now + INVITE_TTL_DAYS)
+    CLI-->>O: code + DASHBOARD_PUBLIC_URL/register?invite=CODE
+    O-->>U: sends the link
+    U->>BFF: POST /api/auth/register {email, password, invite_code} (same Origin)
+    BFF->>API: POST /v1/auth/register
+    API->>R: registrations per address < REGISTER_MAX_PER_HOUR?
+    alt REGISTRATION_MODE=closed
+        API-->>BFF: 403
+    else invite missing, used or expired
+        API-->>BFF: 400
+    else email taken
+        API-->>BFF: 409
+    else ok
+        API->>DB: BEGIN, INSERT users (argon2id hash, role user), mark invite used, COMMIT
+        API-->>BFF: 201 me
+        BFF->>API: POST /v1/auth/login {email, password}
+        API->>R: failures for this email / address under LOGIN_MAX_FAILURES*?
+        API->>DB: verify argon2id, INSERT sessions (SHA-256 of a random 32-byte token)
+        API-->>BFF: {token, expires_at, user}
+        BFF->>BFF: seal token (AES-256-GCM, DASHBOARD_SESSION_SECRET)
+        BFF-->>U: 303 → next, Set-Cookie ts_session (httpOnly, Secure, SameSite=Lax) + ts_csrf
+    end
+
+    Note over U,API: Later requests
+    U->>BFF: GET a page (ts_session)
+    BFF->>API: GET /v1/... + Authorization: Bearer token
+    API->>DB: session by token hash: not revoked, not expired, slide expires_at (at most every SESSION_TOUCH_INTERVAL_S, capped at SESSION_MAX_AGE_DAYS)
+    alt valid
+        API-->>BFF: the user's data only
+    else revoked or expired
+        API-->>BFF: 401
+        BFF-->>U: clear ts_session, 307 → /login
+    end
+```
+
+## 31. Sequence — linking a Telegram chat with /link (P8.4, ADR 0036)
+
+One bot serves every account. The bot never touches the database; it acts as the linked user
+with its service key and `X-Acting-User`, a header the public gateway strips.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant BFF as Web BFF
+    participant API as trainsync API
+    participant R as Redis
+    participant DB as PostgreSQL
+    participant B as Bot
+    participant TG as Telegram
+
+    U->>BFF: "Link Telegram"
+    BFF->>API: POST /v1/me/telegram/code + Bearer token
+    API->>R: SET link code → user_id (TTL TELEGRAM_LINK_CODE_TTL_MINUTES)
+    API-->>BFF: {code, command: "/link CODE", bot_url (with TELEGRAM_BOT_USERNAME)}
+    BFF-->>U: shows the code
+    U->>TG: /link CODE (to the bot)
+    TG-->>B: getUpdates
+    B->>API: GET /v1/telegram/chats/{chat_id} + service key
+    API-->>B: 404 chat not linked
+    B->>API: POST /v1/telegram/chats/{chat_id}/link {code} + service key
+    API->>R: GET + DELETE code (single use)
+    alt unknown, used or expired code
+        API-->>B: 400
+        B-->>TG: "invalid or expired code"
+    else ok
+        API->>DB: upsert telegram_chats (chat_id → user_id, the user's previous chat unlinked)
+        API-->>B: {chat_id, user_id, display_name, settings}
+        B->>B: cache chat → user (BOT_CHAT_CACHE_S)
+        B-->>TG: "linked" in the user's language
+    end
+
+    Note over U,TG: Afterwards
+    U->>TG: /week
+    TG-->>B: getUpdates
+    B->>API: GET /v1/stats/weekly + service key + X-Acting-User: user_id
+    API-->>B: that user's weeks only
+    B-->>TG: reply in the user's tone and language
+
+    Note over B,TG: Any other chat that is not linked
+    B-->>TG: one hint: link your account at DASHBOARD_PUBLIC_URL (nothing else runs)
 ```

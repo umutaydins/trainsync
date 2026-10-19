@@ -27,23 +27,36 @@ Modular monolith, four layers, enforced by import-linter in `make lint` (ADR 003
 ```
 src/trainsync/
   core/            # settings, db engine/session + ORM base, logging, metrics, crypto, clock,
-                   # errors, FastAPI deps, job queue, http client
+                   # errors, FastAPI deps, job queue, http client, password/token hashing, redis
   integrations/    # outbound clients only, never import modules
+    notifier.py    #   Notifier interface (Telegram today, another channel later)
     strava/        #   Strava HTTP client, rate limiter, retries, circuit breaker, budget
     telegram/      #   Bot API client, Telegram notifier
     anthropic/     #   Claude Messages API call, the assistant's tool definitions
     openfoodfacts/ #   product lookup
   modules/         # one package per domain: router.py, schemas.py, repository.py, models.py,
                    # tasks.py (worker jobs) where they apply; models.py = the tables
-    activities/ strava/ sync/ stats/ training/ checkin/ nutrition/
+    auth/          #   users, sessions, invites, reset links, login limits, CurrentUser (/v1/auth)
+    strava/        #   OAuth bound to the signed-in user, athletes, encrypted tokens (/v1/me/strava)
+    activities/    #   activity upserts and reads (/v1/activities)
+    sync/          #   backfill, incremental, webhooks, deauthorize/disconnect (/v1/sync,
+                   #   /webhooks/strava)
+    stats/         #   weekly and summary stats (/v1/stats)
+    training/      #   exercises, programs, workouts, sets, progression, plates (/v1/training)
+    checkin/       #   daily check-ins, streaks (/v1/checkins)
+    nutrition/     #   foods, favourites, logs, energy balance (/v1/nutrition)
     coach/         #   voice, guardrails, savage lines; packs/ = message packs (tr/en, tones)
-    chat/          #   Telegram conversation over the read API (bot features, read-API client)
-    notifications/ #   worker senders: new activity, check-in, coach, stack alerts
+    users/         #   /v1/me: profile, password, sessions, per-user settings, export, deletion
+    admin/         #   owner-only /v1/admin: invites, accounts, reset links
+    chat/          #   Telegram conversation over the read API (bot features, read-API client),
+                   #   chat links (/v1/me/telegram, /v1/telegram/chats)
+    notifications/ #   worker senders per user: new activity, check-in, coach, stack alerts
     models.py      #   imports every models.py (complete Base.metadata)
   entrypoints/     # thin composition roots
-    api/           #   app factory, middleware, health, router registry
+    api/           #   app factory, middleware (incl. demo read-only), health, router registry
     worker/        #   arq WorkerSettings, cron registry
     bot/           #   long polling, dispatcher, feature wiring
+    cli/           #   owner tools: invite create|list|revoke, owner set-password|reset-link
     demo/          #   read-only demo seed and reset
   ops/             # backup + retention + alerts, standard library only (backup image)
 web/src/           # Next.js: app/ (routes only), features/<domain>/, lib/ (BFF, generated
@@ -52,7 +65,8 @@ fake_strava/       # standalone FastAPI app that imitates the Strava API (dev + 
 tests/{unit,integration}/<mirror of src/trainsync>/   tests/fault/ (end-to-end scenarios)
 config/            # messages.local.example.yaml (the real file is git-ignored)
 deploy/            # gateway (Caddy), backup image, launchd, compose overlays
-scripts/           # owner CLIs and checks (deploy, strava-subscription, prod/demo/public checks)
+scripts/           # owner CLIs and checks (deploy, invite, owner, strava-subscription,
+                   # prod/demo/public checks)
 loadtest/          # locust files
 migrations/        # alembic
 ```
