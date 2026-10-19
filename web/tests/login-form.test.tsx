@@ -10,11 +10,13 @@ describe("LoginForm", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<LoginForm next="/sync" />);
 
+    await userEvent.type(screen.getByLabelText("Email"), "runner@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "nope");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Wrong password.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Wrong email or password.");
     const body = fetchMock.mock.calls[0]?.[1]?.body as FormData;
+    expect(body.get("email")).toBe("runner@example.com");
     expect(body.get("password")).toBe("nope");
     expect(body.get("next")).toBe("/sync");
   });
@@ -24,6 +26,7 @@ describe("LoginForm", () => {
     vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue(response));
     render(<LoginForm next="/" />);
 
+    await userEvent.type(screen.getByLabelText("Email"), "runner@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "nope");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 

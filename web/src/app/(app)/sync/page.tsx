@@ -4,17 +4,12 @@ import { LastSynced } from "@/features/shell/components/last-synced";
 import { SyncStatusView } from "@/features/sync/components/sync-status-view";
 import { ErrorState, PageHeader, buttonClass } from "@/components/ui";
 import { api, load } from "@/lib/api";
-import { serverEnv } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Sync" };
 export const dynamic = "force-dynamic";
 
-/** The browser goes to the API's OAuth login; the API sends it back here (`return_to`). */
-function connectUrl(): string {
-  const env = serverEnv();
-  const returnTo = `${env.publicWebUrl}/sync`;
-  return `${env.publicApiUrl}/auth/strava/login?${new URLSearchParams({ return_to: returnTo })}`;
-}
+/** The BFF asks the API for the authorize URL as this user; the API sends the browser back here. */
+const CONNECT_URL = "/api/strava/connect";
 
 export default async function SyncPage({
   searchParams,
@@ -29,7 +24,7 @@ export default async function SyncPage({
         title="Sync"
         subtitle={result.ok ? <LastSynced at={result.data.last_synced_at} /> : "Strava sync health"}
         aside={
-          <a href={connectUrl()} className={buttonClass}>
+          <a href={CONNECT_URL} className={buttonClass}>
             Connect Strava
           </a>
         }

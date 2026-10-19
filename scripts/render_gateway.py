@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ROUTES = ROOT / "deploy" / "gateway" / "routes.toml"
 CADDYFILE = ROOT / "deploy" / "gateway" / "Caddyfile"
 UPSTREAM = "api:8000"
+ACTING_USER_HEADER = "X-Acting-User"
 # The webhook path with a query string; the access log keeps only the path ($1).
 WEBHOOK_QUERY_RE = "^(/webhooks/strava[^?]*)[?].*$"
 
@@ -131,6 +132,9 @@ def render(gateway: Gateway | None = None) -> str:
         '\t\tStrict-Transport-Security "max-age=31536000"',
         "\t\tContent-Security-Policy \"frame-ancestors 'none'\"",
         "\t}",
+        # Only the bot, inside the compose network, may say which user a service-key call acts
+        # as (ADR 0036): the header never gets through from the internet.
+        f"\trequest_header -{ACTING_USER_HEADER}",
         "\tlog {",
         "\t\toutput stdout",
         *_log_filter("\t\t"),

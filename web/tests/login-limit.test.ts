@@ -5,13 +5,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as login } from "@/app/api/auth/login/route";
 import { LOGIN_MAX_FAILURES, LOGIN_WINDOW_MS, LoginRateLimiter, clientIp } from "@/lib/login-limit";
 import { SESSION_COOKIE } from "@/lib/session";
-import { TEST_PASSWORD, stubServerEnv } from "./support/env";
+import { TEST_EMAIL, TEST_PASSWORD, TEST_TOKEN, jsonResponse, stubServerEnv } from "./support/env";
+
+/** The API's login: the right password gets a token, anything else 401. */
+const api = vi.fn<typeof fetch>(async (_url, init) => {
+  const { password } = JSON.parse(String(init?.body)) as { password: string };
+  return password === TEST_PASSWORD
+    ? jsonResponse({ token: TEST_TOKEN, expires_at: "2026-11-18T09:00:00Z", user: { id: 2 } })
+    : jsonResponse({ detail: "invalid email or password" }, 401);
+});
 
 function attempt(password: string, ip: string): Promise<Response> {
   return login(
     new NextRequest("http://localhost:3000/api/auth/login", {
       method: "POST",
-      body: new URLSearchParams({ password }),
+      body: new URLSearchParams({ email: TEST_EMAIL, password }),
       headers: { "content-type": "application/x-www-form-urlencoded", "x-forwarded-for": ip },
     }),
   );
@@ -24,6 +32,7 @@ async function failTimes(ip: string, times: number): Promise<void> {
 describe("login rate limit (route)", () => {
   beforeEach(() => {
     stubServerEnv();
+    vi.stubGlobal("fetch", api);
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-18T09:00:00Z"));
   });

@@ -1,13 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
-import { CSRF_COOKIE } from "@/lib/csrf-cookie";
+import { endSession, tokenFromCookie } from "@/lib/auth";
 import { SESSION_COOKIE, seeOther } from "@/lib/session";
+import { authRequest } from "@/lib/upstream";
 
 export const dynamic = "force-dynamic";
 
-export function POST(): NextResponse {
+/** Revokes the API session (best effort), clears the cookies and goes to the sign-in page. */
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  const token = tokenFromCookie(request.cookies.get(SESSION_COOKIE)?.value);
+  if (token) {
+    await authRequest("POST", "/v1/auth/logout", null, { Authorization: `Bearer ${token}` });
+  }
   const response = new NextResponse(null, seeOther("/login"));
-  response.cookies.delete(SESSION_COOKIE);
-  response.cookies.delete(CSRF_COOKIE);
+  endSession(response);
   return response;
 }

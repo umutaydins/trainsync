@@ -26,6 +26,10 @@ trap cleanup EXIT
 
 fail() { echo "smoke: $*" >&2; exit 1; }
 sql() { compose exec -T postgres psql -U trainsync -d trainsync -tAc "$1"; }
+# The compose dev defaults (docker-compose.yml): the owner tooling key and the owner's email.
+KEY=dev-key-1
+OWNER=owner@example.com
+OWNER_PASSWORD=dev-smoke-owner-password
 
 echo "smoke: starting stack"
 compose up -d --build --wait --wait-timeout 180
@@ -34,8 +38,13 @@ echo "smoke: readiness"
 ready=$(curl -fsS "$API/health/ready") || fail "/health/ready not 200"
 echo "  $ready"
 
+echo "smoke: owner account"
+printf '%s\n' "$OWNER_PASSWORD" \
+  | compose exec -T api python -m trainsync.entrypoints.cli owner set-password --stdin >/dev/null \
+  || fail "owner set-password failed"
+
 echo "smoke: oauth flow"
-authorize=$(curl -sS -o /dev/null -w '%{redirect_url}' "$API/auth/strava/login")
+authorize=$(curl -sS -o /dev/null -w '%{redirect_url}' -H "X-API-Key: $KEY" "$API/auth/strava/login")
 case "$authorize" in http://localhost:8001/oauth/authorize\?*) ;; *) fail "unexpected login redirect: $authorize";; esac
 callback=$(curl -sS -o /dev/null -w '%{redirect_url}' "$authorize")
 case "$callback" in "$API"/auth/strava/callback\?*) ;; *) fail "unexpected authorize redirect: $callback";; esac
@@ -44,8 +53,8 @@ echo "  $body"
 case "$body" in *'"backfill":"queued"'*) ;; *) fail "callback did not queue a backfill";; esac
 
 echo "smoke: database"
-athletes=$(sql "select count(*) from athletes where active")
-[ "$athletes" = "1" ] || fail "expected 1 active athlete, got $athletes"
+athletes=$(sql "select count(*) from athletes a join users u on u.id = a.user_id where a.active and u.role = 'owner'")
+[ "$athletes" = "1" ] || fail "expected 1 active athlete of the owner, got $athletes"
 # Fernet tokens are url-safe base64 starting with version byte 0x80 -> 'gAAAAA'.
 encrypted=$(sql "select count(*) from oauth_tokens where convert_from(access_token_enc, 'UTF8') like 'gAAAAA%' and convert_from(refresh_token_enc, 'UTF8') like 'gAAAAA%'")
 [ "$encrypted" = "1" ] || fail "tokens are not stored as Fernet ciphertext"
@@ -57,13 +66,14 @@ code=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "$WEB/")
 case "$code" in "307 $WEB/login"*) ;; *) fail "web / without a session: $code";; esac
 code=$(curl -sS -o /dev/null -w '%{http_code}' "$WEB/api/ts/v1/sync/status")
 [ "$code" = "401" ] || fail "BFF without a session: $code"
-code=$(curl -sS -o /dev/null -w '%{http_code}' -d password=wrong "$WEB/api/auth/login")
+code=$(curl -sS -o /dev/null -w '%{http_code}' -d email=$OWNER -d password=wrong "$WEB/api/auth/login")
 [ "$code" = "401" ] || fail "wrong password: $code"
-code=$(curl -sS -o /dev/null -w '%{http_code}' -c "$jar" -d password=dev-only-dashboard-password "$WEB/api/auth/login")
+code=$(curl -sS -o /dev/null -w '%{http_code}' -c "$jar" -d email=$OWNER -d "password=$OWNER_PASSWORD" "$WEB/api/auth/login")
 [ "$code" = "303" ] || fail "right password: $code"
 summary=$(curl -fsS -b "$jar" "$WEB/api/ts/v1/stats/summary") || fail "BFF summary failed"
 case "$summary" in *'"totals"'*) ;; *) fail "unexpected BFF summary: $summary";; esac
 case "$summary" in *dev-key-1*) fail "BFF response contains the API key";; esac
+grep -q "^#HttpOnly_.*ts_session" "$jar" || fail "the session cookie must be httpOnly"
 code=$(curl -sS -o /dev/null -w '%{http_code}' -b "$jar" -X POST "$WEB/api/ts/v1/sync/status")
 [ "$code" = "405" ] || fail "BFF POST: $code"
 # Writes: the login sets a readable ts_csrf cookie; without it, or from another origin, 403.
@@ -82,7 +92,7 @@ code=$(write -H "$json" -H "Origin: http://evil.example" -H "X-CSRF-Token: $csrf
 code=$(write -H 'Content-Type: text/plain' -H "Origin: $WEB" -H "X-CSRF-Token: $csrf")
 [ "$code" = "415" ] || fail "BFF write with a non-JSON body: $code"
 rm -rf "$web_dir"
-echo "  login gate, BFF, CSRF and key isolation OK"
+echo "  login gate, BFF, CSRF and session isolation OK"
 
 echo "smoke: dev-default warning"
 # The stack runs with ENV=prod on the DEV-ONLY defaults, so every process must say so.

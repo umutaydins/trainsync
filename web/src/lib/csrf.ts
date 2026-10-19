@@ -51,6 +51,14 @@ export function checkCsrf(
   return timingSafeEqual(Buffer.from(cookieToken), Buffer.from(headerToken)) ? null : "token";
 }
 
+/**
+ * The origin half of `checkCsrf`, for the routes used before a session (and its CSRF cookie)
+ * exists: register and password reset.
+ */
+export function checkCsrfOrigin(headers: Headers, allowed: readonly string[]): boolean {
+  return sameOrigin(headers, allowed);
+}
+
 function sameOrigin(headers: Headers, allowed: readonly string[]): boolean {
   const expected = new Set(allowed.map(originOf).filter((o): o is string => o !== null));
   if (expected.size === 0) return false;

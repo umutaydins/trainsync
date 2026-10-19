@@ -25,6 +25,7 @@ DEV_ONLY_SECRETS = (
     "TOKEN_ENCRYPTION_KEY",
     "STATE_SIGNING_KEY",
     "API_KEYS",
+    "SERVICE_API_KEYS",
 )
 
 
@@ -116,6 +117,7 @@ class Settings(BaseSettings):
             ],
             "STATE_SIGNING_KEY": [self.state_signing_key],
             "API_KEYS": self.api_keys,
+            "SERVICE_API_KEYS": self.service_api_keys,
         }
         return [
             name
@@ -228,7 +230,15 @@ class Settings(BaseSettings):
         return bool(self.anthropic_api_key.get_secret_value())
 
     def bot_read_api_key(self) -> SecretStr:
-        return self.bot_api_key if self.bot_api_key.get_secret_value() else self.api_keys[0]
+        """BOT_API_KEY, else the first service key (ADR 0036), else the first of API_KEYS."""
+        if self.bot_api_key.get_secret_value():
+            return self.bot_api_key
+        return self.service_api_keys[0] if self.service_api_keys else self.api_keys[0]
+
+    @property
+    def all_api_keys(self) -> list[SecretStr]:
+        """Every key the API accepts: the tooling keys and the service keys."""
+        return [*self.api_keys, *self.service_api_keys]
 
     def notify_chat_id(self) -> int | None:
         if self.telegram_notify_chat_id is not None:

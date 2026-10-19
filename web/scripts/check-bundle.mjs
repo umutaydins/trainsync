@@ -1,13 +1,14 @@
 // Fails if a server secret that was set at build time appears in any browser-served file, or if
-// code that sends the API key (the `X-API-Key` header name, src/lib/upstream.ts) was bundled for the
-// browser: that would mean a client module reaches the upstream call path (ADR 0011).
+// code that talks to the API (the `Authorization: Bearer` header of src/lib/upstream.ts, or an
+// `X-API-Key`) was bundled for the browser: that would mean a client module reaches the upstream
+// call path (ADR 0011, ADR 0034).
 // Usage (after `pnpm build` with the same env): node scripts/check-bundle.mjs
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const SECRETS = ["TRAINSYNC_API_KEY", "DASHBOARD_PASSWORD", "DASHBOARD_SESSION_SECRET"];
+const SECRETS = ["DASHBOARD_SESSION_SECRET"];
 const ROOTS = [".next/static", "public"];
-const SERVER_MARKERS = [/x-api-key/i];
+const SERVER_MARKERS = [/x-api-key/i, /\bBearer /];
 
 const values = SECRETS.map((name) => [name, process.env[name] ?? ""]);
 const missing = values.filter(([, value]) => value.length < 8).map(([name]) => name);

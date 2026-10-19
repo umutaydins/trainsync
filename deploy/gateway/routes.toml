@@ -23,6 +23,16 @@ max_body = "16KB"
 rate_limit = "20/1m"
 probe = "/auth/strava/login"
 
+# Sign-in, sign-up and password reset: the API limits per email and per client too
+# (LOGIN_*, REGISTER_MAX_PER_HOUR); this is the coarse per-IP guard in front (ADR 0034).
+# Listed before `api`, which would also match: Caddy tries named-matcher handles in order.
+[[route]]
+name = "account"
+paths = ["/v1/auth/*"]
+max_body = "16KB"
+rate_limit = "30/1m"
+probe = "/v1/auth/registration"
+
 [[route]]
 name = "api"
 paths = ["/v1/*"]

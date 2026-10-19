@@ -71,7 +71,7 @@ def require_api_key(
 ) -> None:
     """`401` unless `X-API-Key` matches a configured key."""
     settings: Settings = request.app.state.settings
-    if not key_matches(api_key, settings.api_keys):
+    if not key_matches(api_key, settings.all_api_keys):
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             "missing or invalid API key",

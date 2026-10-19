@@ -113,7 +113,6 @@ Strava API application (docs/strava-setup.md)
   webhook callback_url            $base/webhooks/strava
 Vercel (web/, P7.6): the BFF calls the backend server-side, so no CORS is involved
   TRAINSYNC_API_URL=$base
-  TRAINSYNC_PUBLIC_API_URL=$base
 Check from outside
   make public-check URL=$base
 EOF

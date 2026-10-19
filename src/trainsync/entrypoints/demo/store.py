@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from trainsync.core.clock import Clock
 from trainsync.core.logging import get_logger
-from trainsync.core.security import UNUSABLE_HASH
+from trainsync.core.security import hash_password
 from trainsync.core.settings import Settings
 from trainsync.entrypoints.demo import seed
 from trainsync.entrypoints.demo.seed import DemoDataset
@@ -39,8 +39,10 @@ from trainsync.modules.training.models import (
 log = get_logger(__name__)
 
 # The demo's one account (a reserved .invalid domain, never a real address); it is the owner,
-# so the demo's API key reads its data.
+# so the demo's API key reads its data. Its password is public on purpose (README "Live demo"):
+# the demo is read-only and wiped every night.
 DEMO_EMAIL = "demo@trainsync.invalid"
+DEMO_PASSWORD = "trainsync-demo"  # noqa: S105  (published demo login, read-only data)
 DEMO_DISPLAY_NAME = "Demo athlete"
 # The exercise library is seeded by migration 0005; it stays (custom exercises go). `users` is
 # emptied with DELETE: a TRUNCATE ... CASCADE of it would also empty the library.
@@ -97,7 +99,7 @@ async def _wipe(session: AsyncSession) -> None:
 async def _write(session: AsyncSession, data: DemoDataset, now: datetime, timezone: str) -> None:
     user = await UserRepository(session).add(
         email=DEMO_EMAIL,
-        password_hash=UNUSABLE_HASH,
+        password_hash=await hash_password(DEMO_PASSWORD),
         display_name=DEMO_DISPLAY_NAME,
         timezone=timezone,
         role=UserRole.OWNER,

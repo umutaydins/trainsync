@@ -1,7 +1,9 @@
 import "server-only";
 
+import { redirect } from "next/navigation";
 import { cache } from "react";
 
+import { sessionToken } from "@/lib/auth";
 import type {
   ActivitiesQuery,
   ActivityDetail,
@@ -28,15 +30,20 @@ function rangeQuery(from?: string, to?: string, sportType?: string): RangeQuery 
   return { from, to, sport_type: sportType };
 }
 
+/**
+ * GET as the signed-in user. A session the API no longer accepts (expired, revoked) sends the
+ * browser to the sign-in page instead of rendering an error.
+ */
 export async function getJson<T>(path: string, query: object = {}): Promise<T> {
-  const result = await upstreamGet(path, toSearchParams(query));
+  const result = await upstreamGet(path, toSearchParams(query), await sessionToken());
+  if (!result.ok && result.status === 401) redirect("/login");
   if (!result.ok) throw new ApiError(result.status, result.error);
   return result.data as T;
 }
 
 /**
- * Typed trainsync API client for server components. Same code path as the BFF route, so the API
- * key handling lives in one place. `cache` dedupes identical calls within one request.
+ * Typed trainsync API client for server components. Same code path as the BFF route, so the
+ * session handling lives in one place. `cache` dedupes identical calls within one request.
  */
 export const api = {
   activities: (query: ActivitiesQuery = {}) => getJson<ActivityPage>("/v1/activities", query),

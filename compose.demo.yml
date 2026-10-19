@@ -8,7 +8,8 @@
 # fake_strava publish nothing; the only published port is the gateway on 127.0.0.1:8081 (same
 # image and routes.toml as production), which `scripts/funnel.sh on demo` exposes on :8443.
 #
-# Secrets: none worth keeping. DEMO_API_KEY (for the Vercel preview BFF) comes from .env.demo
+# Secrets: none worth keeping. The web (Vercel preview) signs in to the published demo account
+# (demo@trainsync.invalid / trainsync-demo, ADR 0034); DEMO_API_KEY (tooling only) comes from .env.demo
 # (git-ignored; template .env.demo.example); the token-encryption and OAuth-state keys are
 # generated per process start by `python -m trainsync.entrypoints.demo exec`; the rest are labelled public
 # demo values.

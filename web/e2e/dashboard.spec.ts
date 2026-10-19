@@ -7,7 +7,8 @@ import type { StatsSummary, WeeklyStats } from "@/lib/types";
 
 const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
 const API_KEY = process.env.E2E_API_KEY ?? "dev-key-1";
-const PASSWORD = process.env.E2E_PASSWORD ?? "dev-only-dashboard-password";
+const EMAIL = process.env.E2E_EMAIL ?? "owner@example.com";
+const PASSWORD = process.env.E2E_PASSWORD ?? "dev-e2e-owner-password";
 
 function screenshotPath(name: string): string {
   return fileURLToPath(new URL(`../../docs/img/${name}.png`, import.meta.url));
@@ -28,9 +29,10 @@ test("log in, connect Strava, backfill, dashboard matches the API, activity, syn
   await test.step("the dashboard needs a login", async () => {
     await page.goto("/");
     await expect(page).toHaveURL(/\/login$/);
+    await page.getByLabel("Email").fill(EMAIL);
     await page.getByLabel("Password").fill("wrong password");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.locator("#login-error")).toHaveText("Wrong password.");
+    await expect(page.locator("#login-error")).toHaveText("Wrong email or password.");
     await page.getByLabel("Password").fill(PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/$/);

@@ -50,7 +50,7 @@ async def current_principal(
         if principal is None:
             raise _unauthorized("the session is invalid or has expired")
         return principal
-    if not key_matches(api_key, settings.api_keys):
+    if not key_matches(api_key, settings.all_api_keys):
         raise _unauthorized("sign in or send a valid API key")
     async with sessionmaker() as session:
         users = UserRepository(session)
@@ -90,7 +90,7 @@ def require_service_key(
     settings: SettingsDep, api_key: Annotated[str | None, Security(API_KEY_HEADER)]
 ) -> None:
     """Only a key in `SERVICE_API_KEYS` (the bot's) may call service routes."""
-    if not key_matches(api_key, settings.api_keys):
+    if not key_matches(api_key, settings.all_api_keys):
         raise _unauthorized("send a valid API key")
     if not key_matches(api_key, settings.service_api_keys):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "service key required")

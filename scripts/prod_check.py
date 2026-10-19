@@ -8,7 +8,7 @@
    that names the variable.
 4. The stack starts (own project name and port), then a curl matrix built from routes.toml: every
    allowlisted route is forwarded, everything else is 404; body limit, auth rate limit and
-   security headers hold.
+   security headers hold, and the gateway strips X-Acting-User.
 5. The gateway's logs (access and error) never show the webhook query string (Strava's
    hub.verify_token) or an X-API-Key value.
 
@@ -186,6 +186,17 @@ def check_routes() -> None:
     if 429 not in statuses:
         fail(f"25 quick /auth requests were never rate limited: {sorted(set(statuses))}")
     print("  headers, 64 KB webhook body limit and the /auth rate limit hold")
+    check_acting_user_stripped()
+
+
+def check_acting_user_stripped() -> None:
+    """A tooling key (not a service key) with X-Acting-User is a 403 at the API (ADR 0036). Through
+    the gateway the header is gone, so the same call is anything but that 403."""
+    headers = {"X-API-Key": _dummy("API_KEYS"), "X-Acting-User": "1"}
+    status, _ = request("/v1/sync/status", headers=headers)
+    if status == 403:
+        fail("X-Acting-User reached the API through the gateway")
+    print(f"  X-Acting-User is stripped by the gateway ({status} without it)")
 
 
 def _dummy(key: str) -> str:

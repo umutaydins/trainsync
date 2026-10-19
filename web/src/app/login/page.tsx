@@ -19,7 +19,7 @@ export default async function LoginPage({
           <span className="text-lg font-semibold tracking-tight">trainsync</span>
         </div>
         <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
-        <p className="mt-1 text-sm text-muted">Private dashboard. Enter the dashboard password.</p>
+        <p className="mt-1 text-sm text-muted">Sign in with your trainsync account.</p>
         <LoginForm next={safeNextPath(typeof next === "string" ? next : undefined)} />
       </div>
     </main>

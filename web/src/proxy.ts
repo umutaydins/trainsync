@@ -2,13 +2,26 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { createCsrfToken, isCsrfToken, setCsrfCookie } from "@/lib/csrf";
 import { CSRF_COOKIE } from "@/lib/csrf-cookie";
-import { SESSION_COOKIE, cookieSecureFromEnv, verifySessionToken } from "@/lib/session";
+import { SESSION_COOKIE, cookieSecureFromEnv, openSession } from "@/lib/session";
 
 /** Paths reachable without a session (exact). */
-const PUBLIC_PATHS = new Set(["/login", "/api/auth/login", "/api/health"]);
+const PUBLIC_PATHS = new Set([
+  "/login",
+  "/register",
+  "/reset-password",
+  "/forgot-password",
+  "/privacy",
+  "/terms",
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/registration",
+  "/api/auth/reset",
+  "/api/health",
+]);
 
 /**
- * Access gate: every page and BFF call needs a valid signed session cookie. A signed-in request
+ * Access gate: every page and BFF call needs a session cookie that opens (sealed, unexpired; the
+ * API still decides whether the token inside is valid). A signed-in request
  * without a well-formed CSRF cookie gets one, so pages can always send mutations (ADR 0011).
  */
 export function proxy(request: NextRequest): NextResponse {
@@ -17,7 +30,7 @@ export function proxy(request: NextRequest): NextResponse {
 
   const secret = process.env.DASHBOARD_SESSION_SECRET ?? "";
   const token = request.cookies.get(SESSION_COOKIE)?.value;
-  if (secret && verifySessionToken(token, secret, new Date())) {
+  if (openSession(token, secret, new Date()) !== null) {
     const response = NextResponse.next();
     if (!isCsrfToken(request.cookies.get(CSRF_COOKIE)?.value)) {
       setCsrfCookie(response, createCsrfToken(), cookieSecureFromEnv());

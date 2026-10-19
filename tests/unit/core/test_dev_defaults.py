@@ -15,7 +15,7 @@ from trainsync.core.settings import DEV_ONLY_SECRETS, Settings, is_dev_default
 COMPOSE = (Path(__file__).parents[3] / "docker-compose.yml").read_text(encoding="utf-8")
 # The dev values come from the compose file only; the code finds them by their label.
 DEFAULTS = dict(re.findall(r"\$\{([A-Z0-9_]+):-([^}]*)\}", COMPOSE))
-WEB_SECRETS = ("TRAINSYNC_API_KEY", "DASHBOARD_PASSWORD", "DASHBOARD_SESSION_SECRET")
+WEB_SECRETS = ("DASHBOARD_SESSION_SECRET",)
 
 
 def compose_defaults(env: str = "prod") -> Settings:

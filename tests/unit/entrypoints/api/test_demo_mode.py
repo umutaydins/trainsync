@@ -54,7 +54,11 @@ def test_the_spec_has_writes_and_reads() -> None:
     assert {"POST", "PUT", "PATCH", "DELETE"} <= methods
     assert ("POST", "/webhooks/strava") in WRITES
     assert ("GET", "/auth/strava/callback") in WRITES
-    assert all(method == "GET" for method, _ in READS)
+    # Signing in and out of the published demo account are the only writes let through.
+    assert {op for op in READS if op[0] != "GET"} == {
+        ("POST", "/v1/auth/login"),
+        ("POST", "/v1/auth/logout"),
+    }
     assert ("GET", "/v1/activities") in READS
 
 
@@ -120,6 +124,11 @@ async def test_health_and_unknown_writes(demo: httpx.AsyncClient) -> None:
         ("GET", "/webhooks/strava", False),
         ("POST", "/webhooks/strava", True),
         ("delete", "/v1/nutrition/log/x", True),
+        ("POST", "/v1/auth/login", False),
+        ("post", "/v1/auth/logout", False),
+        ("POST", "/v1/auth/register", True),
+        ("POST", "/v1/auth/reset", True),
+        ("DELETE", "/v1/me", True),
     ],
 )
 def test_is_demo_blocked(method: str, path: str, blocked: bool) -> None:

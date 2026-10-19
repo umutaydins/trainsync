@@ -29,6 +29,22 @@ export function LoginForm({ next }: { next: string }) {
     <form method="post" action="/api/auth/login" onSubmit={onSubmit} className="mt-6 space-y-4">
       <input type="hidden" name="next" value={next} />
       <div className="space-y-1.5">
+        <label htmlFor="email" className="block text-sm font-medium">
+          Email
+        </label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          required
+          autoComplete="username"
+          autoFocus
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? "login-error" : undefined}
+          className="block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
+        />
+      </div>
+      <div className="space-y-1.5">
         <label htmlFor="password" className="block text-sm font-medium">
           Password
         </label>
@@ -38,7 +54,6 @@ export function LoginForm({ next }: { next: string }) {
           type="password"
           required
           autoComplete="current-password"
-          autoFocus
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "login-error" : undefined}
           className="block w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
@@ -61,7 +76,7 @@ export function LoginForm({ next }: { next: string }) {
 }
 
 function errorMessage(response: Response): string {
-  if (response.status === 401) return "Wrong password.";
+  if (response.status === 401) return "Wrong email or password.";
   if (response.status === 429) {
     const minutes = Math.ceil(Number(response.headers.get("retry-after") ?? "900") / 60);
     return `Too many failed attempts. Try again in ${minutes} min.`;

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE, GET, PATCH, POST, PUT } from "@/app/api/ts/[...path]/route";
 import { CSRF_COOKIE } from "@/lib/csrf-cookie";
 import { BACKEND_UNREACHABLE, DEMO_READ_ONLY, MAX_BODY_BYTES, allowedMethods } from "@/lib/upstream";
-import { TEST_API_KEY, jsonResponse, stubServerEnv } from "./support/env";
+import { TEST_TOKEN, jsonResponse, sessionCookie, stubServerEnv } from "./support/env";
 
 const fetchMock = vi.fn<typeof fetch>();
 const ORIGIN = "http://localhost:3000";
@@ -26,7 +26,9 @@ function call(method: HandlerMethod, path: string, options: Options = {}): Promi
   const origin = options.origin === undefined ? ORIGIN : options.origin;
   if (origin !== null) headers.origin = origin;
   const cookieToken = options.cookieToken === undefined ? TOKEN : options.cookieToken;
-  if (cookieToken !== null) headers.cookie = `${CSRF_COOKIE}=${cookieToken}`;
+  const cookies = [sessionCookie()];
+  if (cookieToken !== null) cookies.push(`${CSRF_COOKIE}=${cookieToken}`);
+  headers.cookie = cookies.join("; ");
   const headerToken = options.headerToken === undefined ? TOKEN : options.headerToken;
   if (headerToken !== null) headers["x-csrf-token"] = headerToken;
   if (options.body !== undefined && options.body !== null) headers["content-type"] = "application/json";
@@ -154,7 +156,7 @@ describe("BFF mutations: CSRF", () => {
     expect(init?.method).toBe("PUT");
     expect(init?.body).toBe(SET_BODY);
     const headers = new Headers(init?.headers);
-    expect(headers.get("x-api-key")).toBe(TEST_API_KEY);
+    expect(headers.get("authorization")).toBe(`Bearer ${TEST_TOKEN}`);
     expect(headers.get("content-type")).toBe("application/json");
     // Browser credentials never travel upstream.
     expect(headers.get("cookie")).toBeNull();
@@ -347,13 +349,12 @@ describe("BFF mutations: upstream answers", () => {
     expect(await invalid.json()).toEqual({ error: "invalid request parameters", detail });
   });
 
-  it("keeps upstream auth failures opaque", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ detail: `bad key ${TEST_API_KEY}` }, 401));
+  it("keeps upstream auth failures opaque and ends a session the API refused", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ detail: `bad token ${TEST_TOKEN}` }, 401));
     const response = await call("POST", "v1/training/workouts", { body: "{}" });
     expect(response.status).toBe(401);
-    expect(await response.json()).toEqual({
-      error: "the web app is not authorized for the trainsync API",
-    });
+    expect(await response.json()).toEqual({ error: "not signed in" });
+    expect(response.headers.get("set-cookie")).toMatch(/ts_session=;/);
   });
 
   it("says so when the read-only demo refuses a write, and only for its marked 403", async () => {
@@ -370,9 +371,7 @@ describe("BFF mutations: upstream answers", () => {
     // A 403 without the marker stays an opaque authorization failure.
     fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "This is a read-only demo." }, 403));
     const plain = await call("PUT", SET, { body: SET_BODY });
-    expect(await plain.json()).toEqual({
-      error: "the web app is not authorized for the trainsync API",
-    });
+    expect(await plain.json()).toEqual({ error: "not allowed" });
   });
 
   it("answers 204 without a body", async () => {
@@ -383,7 +382,7 @@ describe("BFF mutations: upstream answers", () => {
   });
 
   it("returns 502 when the API is unreachable", async () => {
-    fetchMock.mockRejectedValueOnce(new TypeError(`fetch failed ${TEST_API_KEY}`));
+    fetchMock.mockRejectedValueOnce(new TypeError(`fetch failed ${TEST_TOKEN}`));
     const response = await call("POST", "v1/training/workouts", { body: "{}" });
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({ error: BACKEND_UNREACHABLE });
@@ -395,9 +394,9 @@ describe("BFF mutations: upstream answers", () => {
         status: 201,
         headers: {
           "content-type": "application/json",
-          "x-api-key": TEST_API_KEY,
-          "set-cookie": `upstream=${TEST_API_KEY}`,
-          "x-upstream-debug": TEST_API_KEY,
+          "x-api-key": TEST_TOKEN,
+          "set-cookie": `upstream=${TEST_TOKEN}`,
+          "x-upstream-debug": TEST_TOKEN,
         },
       });
     fetchMock.mockImplementation(async () => leaky());
@@ -410,7 +409,7 @@ describe("BFF mutations: upstream answers", () => {
     ];
     for (const response of responses) {
       const headers = [...response.headers.entries()].map(([k, v]) => `${k}: ${v}`).join("\n");
-      expect(`${headers}\n${await response.text()}`).not.toContain(TEST_API_KEY);
+      expect(`${headers}\n${await response.text()}`).not.toContain(TEST_TOKEN);
       expect(response.headers.get("x-upstream-debug")).toBeNull();
       expect(response.headers.get("set-cookie")).toBeNull();
     }

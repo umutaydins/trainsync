@@ -12,6 +12,13 @@ export const BACKEND_UNREACHABLE = BACKEND_UNREACHABLE_TEXT;
 const READ: readonly Method[] = ["GET"];
 const READ_WRITE: readonly Method[] = ["GET", "POST", "PUT", "DELETE"];
 const READ_WRITE_PATCH: readonly Method[] = [...READ_WRITE, "PATCH"];
+const READ_PATCH: readonly Method[] = ["GET", "PATCH"];
+const READ_DELETE: readonly Method[] = ["GET", "DELETE"];
+const POST_ONLY: readonly Method[] = ["POST"];
+const DELETE_ONLY: readonly Method[] = ["DELETE"];
+
+/** Shown when the API refuses the session (expired, revoked, signed out elsewhere). */
+export const NOT_SIGNED_IN = "not signed in";
 
 /**
  * The only API paths and methods the web app may use (ADR 0011). A path that matches no rule is
@@ -24,6 +31,21 @@ export const RULES: readonly { pattern: RegExp; methods: readonly Method[] }[] =
   { pattern: /^\/v1\/stats\/weekly$/, methods: READ },
   { pattern: /^\/v1\/stats\/summary$/, methods: READ },
   { pattern: /^\/v1\/sync\/status$/, methods: READ },
+  // The account (P8.1-P8.6). The web app deletes it and signs out through its own route
+  // handlers, which also end the browser session.
+  { pattern: /^\/v1\/me$/, methods: [...READ_PATCH, "DELETE"] },
+  { pattern: /^\/v1\/me\/strava\/authorize-url$/, methods: POST_ONLY },
+  { pattern: /^\/v1\/me\/settings$/, methods: READ_PATCH },
+  { pattern: /^\/v1\/me\/password$/, methods: POST_ONLY },
+  { pattern: /^\/v1\/me\/sessions$/, methods: READ },
+  { pattern: /^\/v1\/me\/sessions\/\d{1,20}$/, methods: DELETE_ONLY },
+  { pattern: /^\/v1\/me\/(?:telegram|strava)$/, methods: READ_DELETE },
+  { pattern: /^\/v1\/me\/telegram\/code$/, methods: POST_ONLY },
+  { pattern: /^\/v1\/me\/export$/, methods: READ },
+  // Owner only; the API answers 403 to everyone else.
+  { pattern: /^\/v1\/admin\/(?:invites|users)$/, methods: ["GET", "POST"] },
+  { pattern: /^\/v1\/admin\/invites\/\d{1,20}$/, methods: DELETE_ONLY },
+  { pattern: /^\/v1\/admin\/users\/\d{1,20}\/reset-link$/, methods: POST_ONLY },
   // Partial updates of a food (P6.4) or a custom exercise (P6.2) are the only PATCHes; the first
   // matching rule wins.
   { pattern: /^\/v1\/nutrition\/foods\/\d{1,20}$/, methods: READ_WRITE_PATCH },
@@ -80,25 +102,27 @@ export const DEMO_READ_ONLY = "This is a read-only demo.";
 
 export type UpstreamResult =
   | { ok: true; status: number; data: unknown }
-  | { ok: false; status: number; error: string; detail?: unknown };
+  | { ok: false; status: number; error: string; detail?: unknown; retryAfter?: string | null };
 
 type Fetch = typeof fetch;
 
 /**
- * GET an allowlisted API path with the server-side API key. Shared by the BFF route handler
+ * GET an allowlisted API path as the signed-in user. Shared by the BFF route handler
  * (browser → /api/ts/...) and by server components (lib/api.ts).
  */
 export function upstreamGet(
   path: string,
-  search: URLSearchParams = new URLSearchParams(),
+  search: URLSearchParams,
+  token: string | null,
   fetchImpl: Fetch = fetch,
 ): Promise<UpstreamResult> {
-  return upstreamRequest("GET", path, search, null, fetchImpl);
+  return upstreamRequest("GET", path, search, null, token, fetchImpl);
 }
 
 /**
- * Send an allowlisted request with the server-side API key. `body` is already validated JSON text
- * (or null). Only the status and the JSON body of the answer are used; upstream headers are never
+ * Send an allowlisted request as the signed-in user (`Authorization: Bearer <token>`; the shared
+ * API key never serves a user request, ADR 0034). `body` is already validated JSON text (or
+ * null). Only the status and the JSON body of the answer are used; upstream headers are never
  * passed on.
  */
 export async function upstreamRequest(
@@ -106,14 +130,38 @@ export async function upstreamRequest(
   path: string,
   search: URLSearchParams,
   body: string | null,
+  token: string | null,
   fetchImpl: Fetch = fetch,
 ): Promise<UpstreamResult> {
   if (!isAllowed(method, path)) return { ok: false, status: 404, error: "not found" };
+  if (!token) return { ok: false, status: 401, error: NOT_SIGNED_IN };
+  return send(method, path, search, body, { Authorization: `Bearer ${token}` }, fetchImpl);
+}
+
+/** The sign-in routes of the API (`/v1/auth/*`): no session yet, so no credentials. */
+export function authRequest(
+  method: Method,
+  path: `/v1/auth/${string}`,
+  body: string | null,
+  headers: Record<string, string> = {},
+  fetchImpl: Fetch = fetch,
+): Promise<UpstreamResult> {
+  return send(method, path, new URLSearchParams(), body, headers, fetchImpl);
+}
+
+async function send(
+  method: Method,
+  path: string,
+  search: URLSearchParams,
+  body: string | null,
+  auth: Record<string, string>,
+  fetchImpl: Fetch,
+): Promise<UpstreamResult> {
   const env = serverEnv();
   const url = new URL(`${env.apiUrl}${path}`);
   url.search = search.toString();
 
-  const headers: Record<string, string> = { "X-API-Key": env.apiKey, Accept: "application/json" };
+  const headers: Record<string, string> = { ...auth, Accept: "application/json" };
   if (body !== null) headers["Content-Type"] = "application/json";
 
   let response: Response;
@@ -136,6 +184,9 @@ export async function upstreamRequest(
   if (response.status === 403 && response.headers.get(DEMO_HEADER) === "read-only") {
     return { ok: false, status: 403, error: DEMO_READ_ONLY };
   }
+  if (response.status === 429) {
+    return { ok: false, status: 429, error: errorMessage(429, data), retryAfter: response.headers.get("retry-after") };
+  }
   const error = errorMessage(response.status, data);
   // Field-level details (409 conflicts, 422 validation) help forms; auth failures stay opaque.
   if (!isAuthFailure(response.status) && data && typeof data === "object" && "detail" in data) {
@@ -149,7 +200,8 @@ function isAuthFailure(status: number): boolean {
 }
 
 function errorMessage(status: number, body: unknown): string {
-  if (isAuthFailure(status)) return "the web app is not authorized for the trainsync API";
+  if (status === 401) return NOT_SIGNED_IN;
+  if (status === 403) return "not allowed";
   if (body && typeof body === "object" && "detail" in body) {
     const { detail } = body as { detail: unknown };
     if (typeof detail === "string") return detail;
