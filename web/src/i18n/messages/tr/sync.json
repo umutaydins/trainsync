@@ -1,0 +1,65 @@
+{
+  "title": "Senkron",
+  "subtitle": "Strava senkron durumu",
+  "loading": "Senkron durumu yükleniyor",
+  "failed": "Senkron durumu yüklenemedi",
+  "connect": "Strava'yı bağla",
+  "connected": "Strava bağlandı. İlk aktarım sıraya alındı ve aşağıda görünecek.",
+  "connectFailed": "Strava bağlanamadı",
+  "connectFailedHint": "Strava bağlantıyı tamamlamadı. Tekrar dene.",
+  "refresh": "{seconds} sn'de bir yenilenir",
+  "updated": "güncellendi {time}",
+  "refreshFailed": "Yenilenemedi, son bilinen durum gösteriliyor",
+  "runs": {
+    "title": "Senkron çalışmaları",
+    "athlete": "Strava sporcusu {id}",
+    "backfill": "İlk aktarım",
+    "incremental": "Artımlı",
+    "never": "hiç çalışmadı",
+    "pages": "Sayfa",
+    "upserted": "Kaydedilen",
+    "started": "Başladı",
+    "finished": "Bitti",
+    "lastProgress": "Son ilerleme",
+    "status": {
+      "succeeded": "Başarılı",
+      "running": "Çalışıyor",
+      "paused": "Duraklatıldı",
+      "failed": "Başarısız",
+      "queued": "Sırada"
+    }
+  },
+  "noStrava": "Bağlı Strava hesabı yok",
+  "noStravaHint": "İlk aktarımı başlatmak için Strava'yı bağla.",
+  "webhooks": {
+    "title": "Webhook'lar",
+    "pending": "Bekleyen",
+    "processing": "İşlenen",
+    "failed": "Başarısız (yeniden deneniyor)",
+    "dead": "Ölü mektuplar",
+    "lastReceived": "Son alınan {time}",
+    "never": "Son alınan: hiç"
+  },
+  "rate": {
+    "title": "Strava istek sınırı",
+    "short": "15 dakika",
+    "daily": "Günlük",
+    "blocked": "429 sonrası şu zamana kadar engelli: {time}",
+    "pauses": "İlk aktarım 15 dakikalık bütçenin %80'i aşılınca duraklar.",
+    "empty": "Henüz kullanım yok",
+    "emptyHint": "Strava yanıt verince gösterilir."
+  },
+  "circuit": {
+    "title": "Devre kesici",
+    "none": "Henüz hiçbir süreç bildirmedi.",
+    "states": {
+      "closed": "Kapalı",
+      "half_open": "Yarı açık",
+      "open": "Açık"
+    }
+  },
+  "freshness": {
+    "synced": "Son senkron {ago}",
+    "never": "Henüz senkron yok"
+  }
+}

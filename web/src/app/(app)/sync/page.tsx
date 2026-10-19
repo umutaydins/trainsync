@@ -1,49 +1,54 @@
+import { CheckCircle2, Link2 } from "lucide-react";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
+import { Button } from "@/components/ui/button";
+import { PageTitle } from "@/components/ui/page-header";
+import { Failure } from "@/components/ui/states";
 import { LastSynced } from "@/features/shell/components/last-synced";
+import { LoadFailed } from "@/features/shell/components/load-failed";
 import { SyncStatusView } from "@/features/sync/components/sync-status-view";
-import { ErrorState, PageHeader, buttonClass } from "@/components/ui";
 import { api, load } from "@/lib/api";
 
-export const metadata: Metadata = { title: "Sync" };
 export const dynamic = "force-dynamic";
 
 /** The BFF asks the API for the authorize URL as this user; the API sends the browser back here. */
 const CONNECT_URL = "/api/strava/connect";
 
-export default async function SyncPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("sync");
+  return { title: t("title") };
+}
+
+export default async function SyncPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const t = await getTranslations("sync");
   const params = await searchParams;
   const result = await load(() => api.syncStatus());
+  const connected = result.ok && result.data.athletes.length > 0;
   return (
     <>
-      <PageHeader
-        title="Sync"
-        subtitle={result.ok ? <LastSynced at={result.data.last_synced_at} /> : "Strava sync health"}
+      <PageTitle
+        title={t("title")}
+        subtitle={result.ok ? <LastSynced at={result.data.last_synced_at} /> : t("subtitle")}
         aside={
-          <a href={CONNECT_URL} className={buttonClass}>
-            Connect Strava
-          </a>
+          <Button asChild variant={connected ? "secondary" : "primary"}>
+            <a href={CONNECT_URL}>
+              <Link2 aria-hidden />
+              {t("connect")}
+            </a>
+          </Button>
         }
       />
-      {params.connected === "1" ? (
-        <p role="status" className="mb-4 rounded-xl border border-ok/30 bg-ok-soft px-4 py-3 text-sm text-ok">
-          Strava connected. The backfill is queued and shows up below.
-        </p>
-      ) : null}
-      {typeof params.connect_error === "string" ? (
-        <div className="mb-4">
-          <ErrorState title="Connecting Strava failed" message={params.connect_error} />
-        </div>
-      ) : null}
-      {result.ok ? (
-        <SyncStatusView initial={result.data} />
-      ) : (
-        <ErrorState title="Could not load sync status" message={result.error} />
-      )}
+      <div className="flex flex-col gap-4">
+        {params.connected === "1" ? (
+          <p role="status" className="flex items-center gap-2 rounded-card border border-ok/30 bg-ok-soft p-4 text-sm font-medium text-ok">
+            <CheckCircle2 aria-hidden className="size-5" />
+            {t("connected")}
+          </p>
+        ) : null}
+        {typeof params.connect_error === "string" ? <Failure title={t("connectFailed")} message={t("connectFailedHint")} /> : null}
+        {result.ok ? <SyncStatusView initial={result.data} /> : <LoadFailed title={t("failed")} status={result.status} />}
+      </div>
     </>
   );
 }

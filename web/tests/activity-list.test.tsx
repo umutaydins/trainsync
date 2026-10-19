@@ -1,9 +1,11 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { cleanup } from "@testing-library/react";
 
 import { ActivityList } from "@/features/activities/components/activity-list";
 import { jsonResponse } from "./support/env";
+import { renderWithIntl as render } from "./support/intl";
 import { page } from "./support/fixtures";
 
 const QUERY = { limit: "50", sport_type: "Run" };
@@ -50,10 +52,13 @@ describe("ActivityList", () => {
     render(<ActivityList initial={page([1], "c1")} query={QUERY} />);
 
     await userEvent.click(screen.getByRole("button", { name: "Load more" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("trainsync API unavailable");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Could not load more activities");
+    expect(alert).toHaveTextContent("backend is not answering");
+    expect(alert).not.toHaveTextContent("trainsync API unavailable");
     expect(rows()).toEqual(["1"]);
 
-    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("End of list")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(rows()).toEqual(["1", "2"]);
@@ -72,5 +77,24 @@ describe("ActivityList", () => {
     render(<ActivityList initial={initial} query={QUERY} />);
     expect(screen.getByText("5:00 /km")).toBeInTheDocument();
     expect(screen.getByText("40.0 km/h")).toBeInTheDocument();
+  });
+
+  it("tells a user without Strava where to connect it, and one not synced yet where to look", () => {
+    render(<ActivityList initial={page([], null)} query={QUERY} emptyReason="noStrava" />);
+    expect(screen.getByText("Strava is not connected")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Connect Strava" })).toHaveAttribute("href", "/me/connections");
+    cleanup();
+    render(<ActivityList initial={page([], null)} query={QUERY} emptyReason="notSynced" />, "tr");
+    expect(screen.getByText("Henüz aktivite yok")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Senkron durumuna bak" })).toHaveAttribute("href", "/sync");
+  });
+
+  it("speaks Turkish with Turkish numbers and sport names", () => {
+    const initial = page([1, 2], null);
+    initial.items[1] = { ...initial.items[1]!, sport_type: "Ride", distance_m: 40_000, moving_time_s: 3600 };
+    render(<ActivityList initial={initial} query={QUERY} />, "tr");
+    expect(screen.getByText("40,0 km/sa")).toBeInTheDocument();
+    expect(screen.getAllByText("Bisiklet").length).toBeGreaterThan(0);
+    expect(screen.getByText("2 aktivite gösteriliyor")).toBeInTheDocument();
   });
 });

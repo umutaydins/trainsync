@@ -30,11 +30,15 @@ import enCheckins from "@/i18n/messages/en/checkins.json";
 import trCheckins from "@/i18n/messages/tr/checkins.json";
 import enNutrition from "@/i18n/messages/en/nutrition.json";
 import trNutrition from "@/i18n/messages/tr/nutrition.json";
+import enActivities from "@/i18n/messages/en/activities.json";
+import trActivities from "@/i18n/messages/tr/activities.json";
+import enSync from "@/i18n/messages/en/sync.json";
+import trSync from "@/i18n/messages/tr/sync.json";
 
 /** Every message file, synchronously (tests do not go through next-intl's request config). */
 export const MESSAGES = {
-  en: { common: enCommon, nav: enNav, auth: enAuth, onboarding: enOnboarding, legal: enLegal, settings: enSettings, admin: enAdmin, progress: enProgress, today: enToday, training: enTraining, workout: enWorkout, checkins: enCheckins, nutrition: enNutrition },
-  tr: { common: trCommon, nav: trNav, auth: trAuth, onboarding: trOnboarding, legal: trLegal, settings: trSettings, admin: trAdmin, progress: trProgress, today: trToday, training: trTraining, workout: trWorkout, checkins: trCheckins, nutrition: trNutrition },
+  en: { common: enCommon, nav: enNav, auth: enAuth, onboarding: enOnboarding, legal: enLegal, settings: enSettings, admin: enAdmin, progress: enProgress, today: enToday, training: enTraining, workout: enWorkout, checkins: enCheckins, nutrition: enNutrition, activities: enActivities, sync: enSync },
+  tr: { common: trCommon, nav: trNav, auth: trAuth, onboarding: trOnboarding, legal: trLegal, settings: trSettings, admin: trAdmin, progress: trProgress, today: trToday, training: trTraining, workout: trWorkout, checkins: trCheckins, nutrition: trNutrition, activities: trActivities, sync: trSync },
 } satisfies Record<Locale, Record<(typeof NAMESPACES)[number], unknown>>;
 
 /** `render` inside the intl provider; `rerender` keeps it (the provider is the wrapper). */

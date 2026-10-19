@@ -5,7 +5,7 @@ import type { Locale } from "@/i18n/config";
  * `messages/<locale>/<namespace>.json` → `t("<namespace>.<key>")`. Add a namespace here and in
  * both languages; tests/i18n.test.ts checks that the key sets match.
  */
-export const NAMESPACES = ["common", "nav", "auth", "onboarding", "legal", "settings", "admin", "progress", "today", "training", "workout", "checkins", "nutrition"] as const;
+export const NAMESPACES = ["common", "nav", "auth", "onboarding", "legal", "settings", "admin", "progress", "today", "training", "workout", "checkins", "nutrition", "activities", "sync"] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 
 export type Messages = Record<Namespace, Record<string, unknown>>;

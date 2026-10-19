@@ -45,7 +45,7 @@ test("log in, connect Strava, backfill, Today and Progress match the API, activi
       await page.reload();
       await expect(page.getByTestId("run-backfill")).toHaveAttribute("data-status", "succeeded", { timeout: 1000 });
     }).toPass({ timeout: 120_000, intervals: [2000] });
-    await expect(page.getByTestId("run-backfill").getByText("succeeded")).toBeVisible();
+    await expect(page.getByTestId("run-backfill").getByText("Succeeded")).toBeVisible();
   });
 
   await test.step("Today greets the user; Progress equals /v1/stats/summary and follows the period", async () => {

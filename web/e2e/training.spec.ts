@@ -92,8 +92,12 @@ test("training and nutrition: program → workout with rest timer → history; t
       await first.getByLabel(`Weight in kg, ${name} set ${set}`).fill(String(kg));
       await first.getByRole("button", { name: `Log ${name} set ${set}` }).click();
       await expect(first.getByTestId("set-row").nth(set - 1)).toHaveAttribute("data-status", "saved");
+      // The rest timer takes the whole screen; "Hide timer" shrinks it to a bar for the next set.
+      const timer = page.getByRole("dialog", { name: "Rest" });
+      await expect(timer).toBeVisible();
+      await expect(timer.getByTestId("rest-remaining")).toHaveText(/^\d+:\d\d$/);
+      await timer.getByRole("button", { name: "Hide timer" }).click();
       await expect(page.getByTestId("rest-timer")).toBeVisible();
-      await expect(page.getByTestId("rest-remaining")).toHaveText(/^\d+:\d\d$/);
     }
     await noHorizontalScroll(page);
     await expectNoAxeViolations(page, "/training/workout (rest timer)");
@@ -109,7 +113,8 @@ test("training and nutrition: program → workout with rest timer → history; t
     await expect(sheet.getByTestId("plates-per-side")).toHaveText("20");
     await expect(sheet.locator('rect[data-side="left"]')).toHaveCount(1);
     await page.screenshot({ path: screenshotPath("workout") });
-    await sheet.getByRole("button", { name: "Close" }).click();
+    await sheet.getByRole("button", { name: "Done" }).click();
+    await expect(sheet).toBeHidden();
   });
 
   await test.step("finish; the summary and the history show the volume", async () => {
@@ -166,7 +171,9 @@ test("training and nutrition: program → workout with rest timer → history; t
     const expected = foods.reduce((sum, f) => sum + (f.kcal100 * f.grams) / 100, 0);
     await expect(page.getByTestId("log-entry")).toHaveCount(2);
 
-    const today = new Date().toISOString().slice(0, 10);
+    // The Food page's day is the user's local day (the `tz` cookie the BFF sets), not UTC.
+    const zone = (await page.context().cookies()).find((c) => c.name === "tz")?.value ?? "UTC";
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     const log = await apiGet<DayLog>(request, "/v1/nutrition/log", { date: today });
     const summary = await apiGet<DaySummary>(request, "/v1/nutrition/summary", { date: today });
     expect(log.entries.reduce((sum, e) => sum + e.kcal, 0)).toBe(expected);

@@ -1,11 +1,17 @@
-import { Skeleton } from "@/components/ui";
+import { getTranslations } from "next-intl/server";
 
-export default function Loading() {
+import { Skeleton } from "@/components/ui/skeleton";
+
+const FILTERS_PX = 72;
+const TABLE_PX = 480;
+
+export default async function ActivitiesLoading() {
+  const t = await getTranslations("activities");
   return (
-    <div className="space-y-4">
-      <Skeleton className="h-8 w-40" />
-      <Skeleton className="h-[62px] rounded-2xl" />
-      <Skeleton className="h-[480px] rounded-2xl" label="Loading activities" />
+    <div className="flex flex-col gap-4">
+      <Skeleton className="h-10 w-48" />
+      <Skeleton height={FILTERS_PX} className="w-full rounded-card" />
+      <Skeleton height={TABLE_PX} className="w-full rounded-card" label={t("loading")} />
     </div>
   );
 }

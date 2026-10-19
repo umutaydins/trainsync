@@ -1,20 +1,24 @@
-import { formatAgo, formatDateTime } from "@/lib/format";
+import { useFormatter, useTranslations } from "next-intl";
 
-/** Freshness indicator for `last_synced_at` (server-rendered, so "ago" never mismatches on hydrate). */
+import { cn } from "@/lib/cn";
+
+/** A sync older than this shows a warning dot. */
+const STALE_MS = 2 * 3600 * 1000;
+
+/** Freshness of `last_synced_at` (rendered on the server, so "ago" matches the moment of the page). */
 export function LastSynced({ at, now = new Date() }: { at: string | null | undefined; now?: Date }) {
-  const stale = at ? now.getTime() - new Date(at).getTime() > 2 * 3600 * 1000 : true;
+  const t = useTranslations("sync.freshness");
+  const format = useFormatter();
+  const stale = at ? now.getTime() - Date.parse(at) > STALE_MS : true;
   return (
     <p className="inline-flex items-center gap-2 text-xs text-muted" data-testid="last-synced">
-      <span
-        aria-hidden="true"
-        className={`size-2 rounded-full ${at ? (stale ? "bg-warn" : "bg-ok") : "bg-border"}`}
-      />
+      <span aria-hidden className={cn("size-2 rounded-full", at ? (stale ? "bg-warn" : "bg-ok") : "bg-surface-3")} />
       {at ? (
-        <span>
-          Last synced <time dateTime={at} title={formatDateTime(at)}>{formatAgo(at, now)}</time>
-        </span>
+        <time dateTime={at} title={format.dateTime(new Date(at), { dateStyle: "medium", timeStyle: "short" })}>
+          {t("synced", { ago: format.relativeTime(new Date(at), now) })}
+        </time>
       ) : (
-        <span>Not synced yet</span>
+        <span>{t("never")}</span>
       )}
     </p>
   );
