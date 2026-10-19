@@ -57,7 +57,7 @@ async def test_product_by_barcode_with_user_agent_and_timeout(off: OpenFoodFacts
     )
     request = route.calls.last.request
     assert request.headers["User-Agent"].startswith("trainsync/")
-    assert "+https://" in request.headers["User-Agent"]
+    assert "github.com" not in request.headers["User-Agent"]  # no owner URL by default
     assert request.extensions["timeout"] == {"connect": 3.0, "read": 3.0, "write": 3.0, "pool": 3.0}
     assert "nutriments" in request.url.params["fields"]
 

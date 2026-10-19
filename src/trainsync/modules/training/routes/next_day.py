@@ -17,12 +17,8 @@ from trainsync.core.errors import UNAUTHORIZED, error
 from trainsync.modules.auth.dependencies import CurrentUser
 from trainsync.modules.training.models import Workout
 from trainsync.modules.training.repository import ProgramRepository, WorkoutRepository
-from trainsync.modules.training.routes.workouts import (
-    PLANNED_EXAMPLE,
-    PlannedExercise,
-    planned_exercises,
-    progression_rules,
-)
+from trainsync.modules.training.workout_detail import planned_exercises, progression_rules
+from trainsync.modules.training.workout_schemas import PLANNED_EXAMPLE, PlannedExercise
 
 router = APIRouter(prefix="/v1/training", tags=["training"])
 

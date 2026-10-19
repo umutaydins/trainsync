@@ -8,6 +8,7 @@ from trainsync.modules.training.routes import (
     planning,
     programs,
     progress,
+    sets,
     workouts,
 )
 
@@ -17,5 +18,6 @@ ROUTERS: tuple[APIRouter, ...] = (
     next_day.router,
     programs.router,
     workouts.router,
+    sets.router,
     progress.router,
 )

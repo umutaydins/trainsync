@@ -37,7 +37,7 @@ from trainsync.modules.coach.context import current_sugar_limit, current_zone
 from trainsync.modules.coach.packs import Messages, NeutralKey
 from trainsync.modules.coach.voice import CoachVoice
 from trainsync.modules.nutrition.models import Meal
-from trainsync.modules.nutrition.router import FoodOut, LogIn, LogOut
+from trainsync.modules.nutrition.schemas import FoodOut, LogIn, LogOut
 from trainsync.modules.nutrition.sugar import ULTRA_PROCESSED, counts_as_free_sugar, is_intrinsic
 
 NUTRITION_COMMANDS = frozenset({"eat", "kcal", "weight"})

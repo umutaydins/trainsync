@@ -43,13 +43,13 @@ from trainsync.modules.chat.read_api import ReadApi
 from trainsync.modules.coach.context import current_zone
 from trainsync.modules.coach.packs import Key, Messages, NeutralKey
 from trainsync.modules.training.models import Equipment
-from trainsync.modules.training.routes.workouts import (
+from trainsync.modules.training.schemas import ExerciseOut, RecordOut
+from trainsync.modules.training.workout_schemas import (
     PlannedExercise,
     SetIn,
     WorkoutDetail,
     WorkoutSummary,
 )
-from trainsync.modules.training.schemas import ExerciseOut, RecordOut
 
 TRAINING_COMMANDS = frozenset({"today", "plates", "log", "done"})
 

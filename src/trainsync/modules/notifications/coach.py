@@ -64,12 +64,9 @@ from trainsync.modules.notifications.repository import NotificationRepository
 from trainsync.modules.training.models import ProgramDay, Workout, WorkoutSet
 from trainsync.modules.training.progression import Rules
 from trainsync.modules.training.repository import ProgramRepository
-from trainsync.modules.training.routes.workouts import (
-    WorkoutDetail,
-    progression_rules,
-    workout_detail,
-)
 from trainsync.modules.training.schemas import SetOut
+from trainsync.modules.training.workout_detail import progression_rules, workout_detail
+from trainsync.modules.training.workout_schemas import WorkoutDetail
 
 log = get_logger(__name__)
 
