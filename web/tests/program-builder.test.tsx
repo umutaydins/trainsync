@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProgramBuilder } from "@/features/training/components/program-builder";
@@ -6,6 +6,7 @@ import { CSRF_COOKIE } from "@/lib/csrf-cookie";
 import { fromPreview, move, toProgramIn } from "@/features/training/program-draft";
 import type { ProgramSummary } from "@/features/training/types";
 import { jsonResponse } from "./support/env";
+import { renderWithIntl as render } from "./support/intl";
 import { BENCH, CURL, PREVIEW } from "./support/training-fixtures";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -50,9 +51,9 @@ describe("program draft", () => {
     const checked = toProgramIn(draft);
     expect(checked.ok).toBe(false);
     expect(!checked.ok && checked.errors).toEqual([
-      "Day 1, Bench Press: minimum reps above maximum",
-      "Day 1, Dumbbell Curl: sets 1 to 10",
-      "Day 1, Dumbbell Curl: start weight 0 to 500 kg in 0.25 steps",
+      { key: "repsOrder", day: 1, name: "Bench Press" },
+      { key: "sets", day: 1, name: "Dumbbell Curl" },
+      { key: "weight", day: 1, name: "Dumbbell Curl" },
     ]);
   });
 });
@@ -98,10 +99,31 @@ describe("program builder", () => {
     await waitFor(() => expect(within(screen.getByTestId("program-list")).getByText("Active")).toBeInTheDocument());
   });
 
-  it("shows the API's reason when generating fails", async () => {
+  it("says when the generator refuses, in the user's words, not the API's", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ error: "upper_lower takes 4 days a week", detail: "upper_lower takes 4 days a week" }, 400));
     render(<ProgramBuilder initial={[]} exercises={[]} />);
     fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("upper_lower takes 4 days a week");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("The generator cannot build this combination.");
+    expect(alert).not.toHaveTextContent("upper_lower");
+  });
+
+  it("names the fields the API would refuse before saving, in Turkish too", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(PREVIEW));
+    render(<ProgramBuilder initial={[]} exercises={[BENCH, CURL]} />, "tr");
+    fireEvent.click(screen.getByRole("button", { name: "Önizleme oluştur" }));
+    await screen.findByTestId("program-editor");
+    fireEvent.change(screen.getByLabelText("Set, Bench Press"), { target: { value: "0" } });
+    fireEvent.click(screen.getByRole("button", { name: "Programı kaydet" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("1. gün, Bench Press: set 1 ile 10 arası");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("checks the minutes per session before asking the API", () => {
+    render(<ProgramBuilder initial={[]} exercises={[]} />);
+    fireEvent.change(screen.getByLabelText("Minutes per session"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate preview" }));
+    expect(screen.getByText("Minutes per session: 20 to 180.")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

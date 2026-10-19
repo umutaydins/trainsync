@@ -26,7 +26,7 @@ export function plateLook(kg: number): PlateLook {
   return LOOKS[String(kg)] ?? OTHER;
 }
 
-/** `[25, 15, 2.5]` → `25 + 15 + 2.5`. */
-export function plateList(perSide: readonly number[]): string {
-  return perSide.length === 0 ? "none (empty bar)" : perSide.join(" + ");
+/** `[25, 15, 2.5]` → `25 + 15 + 2.5` (numbers in the user's notation); empty for an empty bar. */
+export function plateList(perSide: readonly number[], number: (kg: number) => string = String): string {
+  return perSide.map(number).join(" + ");
 }

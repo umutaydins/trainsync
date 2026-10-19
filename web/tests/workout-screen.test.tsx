@@ -1,12 +1,14 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WorkoutScreen } from "@/features/training/components/workout-screen";
 import type { MutationResult } from "@/lib/mutate";
+import { SET_DONE_VIBRATION_MS } from "@/features/training/alerts";
 import { readQueue } from "@/features/training/retry-queue";
 import type { KeyValueStore } from "@/features/training/timers";
 import type { WorkoutDetail } from "@/features/training/types";
 import { jsonResponse } from "./support/env";
+import { renderWithIntl } from "./support/intl";
 import { BENCH, CURL, PLATES_100, idSequence, memoryStore, planned, workout } from "./support/training-fixtures";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), usePathname: () => "/training" }));
@@ -20,10 +22,15 @@ function setup(options: { send?: Send; store?: KeyValueStore; initial?: WorkoutD
   const send = vi.fn<Send>(options.send ?? (() => Promise.resolve(ok())));
   const store = options.store ?? memoryStore();
   const finish = vi.fn(options.finish ?? (() => Promise.resolve({ ok: true as const, status: 200, data: workout() })));
-  const view = render(
+  const view = renderWithIntl(
     <WorkoutScreen initial={options.initial ?? workout()} exercises={[BENCH, CURL]} store={store} send={send} finish={finish} newId={idSequence()} />,
   );
   return { send, store, finish, view };
+}
+
+/** The full-screen rest timer is modal; "Hide timer" shrinks it to a bar so the sets are reachable. */
+function hideTimer() {
+  fireEvent.click(screen.getByRole("button", { name: "Hide timer" }));
 }
 
 function rows() {
@@ -38,12 +45,15 @@ async function flush() {
 }
 
 beforeEach(() => {
+  // Desktop: sheets are dialogs; no reduced motion.
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("min-width"), addEventListener: () => undefined, removeEventListener: () => undefined }));
   vi.useFakeTimers();
   vi.setSystemTime(T0 + 5 * 60_000); // five minutes into the workout
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe("workout screen", () => {
@@ -54,7 +64,7 @@ describe("workout screen", () => {
     const bench = rows()[0]!;
     expect(within(bench).getByLabelText("Weight in kg, Bench Press set 1")).toHaveValue("80");
     expect(within(bench).getByLabelText("Reps, Bench Press set 1")).toHaveValue("8");
-    expect(bench).toHaveTextContent("Last: 12 × 77.5 kg");
+    expect(bench).toHaveTextContent("Last time 12 × 77.5 kg");
     expect(screen.getAllByTestId("suggestion")[0]).toHaveTextContent("Suggested 80 kg");
     expect(screen.getByTestId("workout-elapsed")).toHaveTextContent("5:00");
   });
@@ -83,6 +93,7 @@ describe("workout screen", () => {
 
     await act(async () => answer(ok()));
     expect(rows()[0]).toHaveAttribute("data-status", "saved");
+    hideTimer();
     expect(screen.getByRole("button", { name: "Update Bench Press set 1" })).toBeInTheDocument();
   });
 
@@ -123,18 +134,21 @@ describe("workout screen", () => {
     expect(screen.queryByTestId("rest-timer")).not.toBeInTheDocument();
   });
 
-  it("vibrates at zero", async () => {
+  it("ticks under the thumb on set done, and vibrates once at zero", async () => {
     const vibrate = vi.fn();
     Object.defineProperty(navigator, "vibrate", { value: vibrate, configurable: true });
     setup();
     fireEvent.click(screen.getByRole("button", { name: "Log Dumbbell Curl set 1" }));
     await flush();
+    expect(vibrate).toHaveBeenCalledTimes(1);
+    expect(vibrate).toHaveBeenLastCalledWith(SET_DONE_VIBRATION_MS);
     act(() => vi.advanceTimersByTime(59_000));
-    expect(vibrate).not.toHaveBeenCalled();
+    expect(vibrate).toHaveBeenCalledTimes(1);
     act(() => vi.advanceTimersByTime(1_500));
-    expect(vibrate).toHaveBeenCalledTimes(1);
+    expect(vibrate).toHaveBeenCalledTimes(2);
+    expect(vibrate).toHaveBeenLastCalledWith([200, 100, 200]);
     act(() => vi.advanceTimersByTime(5_000));
-    expect(vibrate).toHaveBeenCalledTimes(1);
+    expect(vibrate).toHaveBeenCalledTimes(2);
     Reflect.deleteProperty(navigator, "vibrate");
   });
 
@@ -198,7 +212,8 @@ describe("workout screen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
     await flush();
     expect(rows()[0]).toHaveAttribute("data-status", "error");
-    expect(rows()[0]).toHaveTextContent("invalid set");
+    expect(rows()[0]).toHaveTextContent("The server did not take this set.");
+    expect(rows()[0]).not.toHaveTextContent("invalid set");
     expect(readQueue(store)).toEqual([]);
   });
 
@@ -223,6 +238,7 @@ describe("workout screen", () => {
     await flush();
     expect(screen.getByLabelText("Weight in kg, Bench Press set 2")).toHaveValue("50");
     expect(screen.getByLabelText("Weight in kg, Bench Press set 3")).toHaveValue("50");
+    hideTimer();
     expect(screen.getByRole("button", { name: "Plates" })).toBeInTheDocument();
   });
 
@@ -269,6 +285,7 @@ describe("workout screen", () => {
     const { finish } = setup({ send: () => Promise.resolve({ ok: false, status: 0, error: "network error" }) });
     fireEvent.click(screen.getByRole("button", { name: "Log Bench Press set 1" }));
     await flush();
+    hideTimer();
     fireEvent.click(screen.getByRole("button", { name: "Finish workout" }));
     await flush();
     expect(finish).not.toHaveBeenCalled();

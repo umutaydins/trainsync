@@ -97,8 +97,8 @@ export function PlannedWorkout({
         ))}
         {rest > 0 ? <li className="rounded-full px-2 py-1 text-muted">{t("more", { count: rest })}</li> : null}
       </ul>
-      <div className="mt-4 [&_button]:h-14 [&_button]:w-full [&_button]:text-base">
-        <StartWorkoutButton programDayId={day.id} label={t("start")} busyLabel={t("starting")} />
+      <div className="mt-4">
+        <StartWorkoutButton programDayId={day.id} label={t("start")} busyLabel={t("starting")} size="lg" block />
       </div>
     </Card>
   );

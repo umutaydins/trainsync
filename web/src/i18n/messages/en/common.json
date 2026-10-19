@@ -14,7 +14,11 @@
     "copy": "Copy",
     "copied": "Copied",
     "signOut": "Sign out",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "loadMore": "Load more",
+    "endOfList": "End of list",
+    "apply": "Apply",
+    "clear": "Clear"
   },
   "states": {
     "loading": "Loading…",
@@ -44,7 +48,13 @@
     "km": "{value} km",
     "kg": "{value} kg",
     "kcal": "{value} kcal",
-    "minutes": "{value} min"
+    "minutes": "{value} min",
+    "g": "{value} g",
+    "m": "{value} m",
+    "kmh": "{value} km/h",
+    "perKm": "{value} /km",
+    "per100m": "{value} /100 m",
+    "bpm": "{value} bpm"
   },
   "manifestDescription": "Training, food and progress, synced from Strava"
 }

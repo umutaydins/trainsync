@@ -1,10 +1,14 @@
-import { Skeleton } from "@/components/ui";
+import { getTranslations } from "next-intl/server";
 
-export default function Loading() {
+import { Skeleton } from "@/components/ui/skeleton";
+
+export default async function WorkoutLoading() {
+  const t = await getTranslations("workout");
   return (
-    <div className="space-y-4">
-      <Skeleton className="h-8 w-40" />
-      <Skeleton className="h-96 rounded-2xl" label="Loading workout" />
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+      <Skeleton className="h-10 w-48" />
+      <Skeleton className="h-16 w-full rounded-card" />
+      <Skeleton className="h-96 w-full rounded-card" label={t("loading")} />
     </div>
   );
 }

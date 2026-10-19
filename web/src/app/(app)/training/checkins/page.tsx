@@ -1,33 +1,34 @@
 import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageTitle } from "@/components/ui/page-header";
+import { checkinsApi } from "@/features/checkins/api";
+import { dayLabel } from "@/features/checkins/checkins";
 import { CheckinDayEditor } from "@/features/checkins/components/day-editor";
 import { CheckinHeatmap } from "@/features/checkins/components/heatmap";
 import { CheckinTiles } from "@/features/checkins/components/tiles";
-import { Card, ErrorState, PageHeader } from "@/components/ui";
+import { LoadFailed } from "@/features/shell/components/load-failed";
 import { load } from "@/lib/api";
-import { dayLabel } from "@/features/checkins/checkins";
-import { checkinsApi } from "@/features/checkins/api";
 
-export const metadata: Metadata = { title: "Check-ins" };
 export const dynamic = "force-dynamic";
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
-export default async function CheckinsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("checkins");
+  return { title: t("title") };
+}
+
+export default async function CheckinsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
-  const [list, summary] = await Promise.all([
-    load(() => checkinsApi.list()),
-    load(() => checkinsApi.summary()),
-  ]);
+  const [t, locale] = await Promise.all([getTranslations("checkins"), getLocale()]);
+  const [list, summary] = await Promise.all([load(() => checkinsApi.list()), load(() => checkinsApi.summary())]);
   if (!list.ok) {
     return (
       <>
-        <PageHeader title="Check-ins" />
-        <ErrorState title="Could not load check-ins" message={list.error} />
+        <PageTitle title={t("title")} />
+        <LoadFailed title={t("failed")} status={list.status} />
       </>
     );
   }
@@ -35,28 +36,21 @@ export default async function CheckinsPage({
   const wanted = typeof params.day === "string" && DAY.test(params.day) ? params.day : today;
   const selected = wanted >= list.data.from && wanted <= list.data.to ? wanted : today;
   const day = await load(() => checkinsApi.day(selected));
+  const range = `${dayLabel(locale, list.data.from)} – ${dayLabel(locale, list.data.to)}`;
   return (
     <>
-      <PageHeader
-        title="Check-ins"
-        subtitle={`${dayLabel(list.data.from)} – ${dayLabel(list.data.to)} · answered in Telegram every evening`}
-      />
-      <div className="space-y-4">
-        {summary.ok ? (
-          <CheckinTiles summary={summary.data} />
-        ) : (
-          <ErrorState title="Could not load streak and adherence" message={summary.error} />
-        )}
+      <PageTitle title={t("title")} subtitle={t("subtitle", { range })} />
+      <div className="flex flex-col gap-4">
+        {summary.ok ? <CheckinTiles summary={summary.data} /> : <LoadFailed title={t("summaryFailed")} status={summary.status} />}
         <div className="grid gap-4 lg:grid-cols-[auto_1fr]">
-          <Card title="Calendar" labelledBy="calendar-title">
+          <Card aria-labelledby="calendar-title" className="overflow-x-auto">
+            <CardHeader>
+              <CardTitle id="calendar-title">{t("calendar")}</CardTitle>
+            </CardHeader>
             <CheckinHeatmap from={list.data.from} to={list.data.to} items={list.data.items} selected={selected} />
           </Card>
           <Card>
-            {day.ok ? (
-              <CheckinDayEditor key={selected} day={selected} checkin={day.data} />
-            ) : (
-              <ErrorState title="Could not load the day" message={day.error} />
-            )}
+            {day.ok ? <CheckinDayEditor key={selected} day={selected} checkin={day.data} /> : <LoadFailed title={t("dayFailed")} status={day.status} />}
           </Card>
         </div>
       </div>

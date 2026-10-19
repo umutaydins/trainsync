@@ -109,7 +109,7 @@ export function groupRows(
   for (const e of extras) add(e.id, e.name, e.equipment, e.restSeconds, null);
   for (const r of rows) {
     const e = exercises.get(r.exerciseId);
-    add(r.exerciseId, e?.name ?? `Exercise ${r.exerciseId}`, e?.equipment ?? "", DEFAULT_REST_S, null);
+    add(r.exerciseId, e?.name ?? `#${r.exerciseId}`, e?.equipment ?? "", DEFAULT_REST_S, null);
   }
   return groups;
 }
@@ -124,15 +124,19 @@ export function extraRow(group: ExerciseGroup, newId: NewId): SetDraft {
   return { clientId: newId(), exerciseId: group.exerciseId, setIndex, ...base, completedAt: null, status: "idle" };
 }
 
-export type Parsed = { ok: true; reps: number; weightKg: number } | { ok: false; error: string };
+export type Parsed = { ok: true; reps: number; weightKg: number } | { ok: false; error: "reps" | "weight" };
+
+/** The API's bounds for a set (SetIn). */
+export const SET_LIMITS = { reps: { min: 0, max: 100 }, weight: { min: 0, max: 500, step: 0.25 } } as const;
+const QUARTERS = 1 / SET_LIMITS.weight.step;
 
 /** Reps 0–100 whole; weight 0–500 kg in 0.25 steps (a comma works as the decimal mark). */
 export function parseSet(reps: string, weightKg: string): Parsed {
   const r = Number(reps.trim());
-  if (reps.trim() === "" || !Number.isInteger(r) || r < 0 || r > 100) return { ok: false, error: "Reps: a whole number from 0 to 100" };
+  if (reps.trim() === "" || !Number.isInteger(r) || r < SET_LIMITS.reps.min || r > SET_LIMITS.reps.max) return { ok: false, error: "reps" };
   const w = Number(weightKg.trim().replace(",", ".") || "0");
-  if (!Number.isFinite(w) || w < 0 || w > 500 || Math.round(w * 4) !== w * 4) {
-    return { ok: false, error: "Weight: 0–500 kg in 0.25 kg steps" };
+  if (!Number.isFinite(w) || w < SET_LIMITS.weight.min || w > SET_LIMITS.weight.max || Math.round(w * QUARTERS) !== w * QUARTERS) {
+    return { ok: false, error: "weight" };
   }
   return { ok: true, reps: r, weightKg: w };
 }

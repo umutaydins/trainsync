@@ -1,0 +1,41 @@
+{
+  "title": "Günlük kayıt",
+  "subtitle": "{range} · her akşam Telegram'da yanıtlanır",
+  "loading": "Günlük kayıtlar yükleniyor",
+  "failed": "Günlük kayıtlar yüklenemedi",
+  "summaryFailed": "Seri ve uyum yüklenemedi",
+  "dayFailed": "Gün yüklenemedi",
+  "calendar": "Takvim",
+  "tableLabel": "{from} – {to} günlük kayıtları",
+  "legend": "Açıklama",
+  "none": "Kayıt yok",
+  "cellLabel": "{day}: {status}",
+  "statuses": {
+    "done": "Yapıldı",
+    "partial": "Kısmen",
+    "skipped": "Atlandı",
+    "rest": "Dinlenme günü",
+    "sick_or_injured": "Hasta ya da sakat"
+  },
+  "tiles": {
+    "label": "Günlük kayıtlar",
+    "streak": "Kayıt serisi",
+    "days": "gün",
+    "longest": "en uzun {count} gün",
+    "adherence": "Programa uyum",
+    "ofPlanned": "planlanan {planned} günden {done}",
+    "noProgram": "aktif program yok"
+  },
+  "editor": {
+    "status": "Durum",
+    "note": "Neden ya da not",
+    "sleep": "Uyku (sa)",
+    "energy": "Enerji (1–5)",
+    "scale": "Tartı (kg)",
+    "saved": "Kaydedildi.",
+    "chooseStatus": "Bir durum seç.",
+    "numbers": "Uyku ve tartı sayı olmalı.",
+    "invalid": "Değerleri kontrol et.",
+    "failed": "Gün kaydedilemedi."
+  }
+}

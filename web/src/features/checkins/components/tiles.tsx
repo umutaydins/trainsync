@@ -1,21 +1,29 @@
-import { StatTile } from "@/components/ui";
-import type { CheckinSummary } from "@/features/checkins/checkins";
-import { formatAdherence, plural } from "@/features/checkins/checkins";
+import { useLocale, useTranslations } from "next-intl";
 
-/** Streak and adherence (P6.9): two stat tiles. */
+import { Card } from "@/components/ui/card";
+import { Stat } from "@/components/ui/stat";
+import type { CheckinSummary } from "@/features/checkins/checkins";
+import { formatAdherence } from "@/features/checkins/checkins";
+
+/** Streak and adherence (P6.9). */
 export function CheckinTiles({ summary }: { summary: CheckinSummary }) {
-  const adherenceHint =
-    summary.adherence === null
-      ? "no active program"
-      : `${summary.planned_days_done} of ${plural(summary.planned_days, "planned day")}`;
+  const t = useTranslations("checkins.tiles");
+  const locale = useLocale();
   return (
-    <dl aria-label="Check-ins" data-testid="checkin-tiles" className="grid grid-cols-2 gap-3">
-      <StatTile
-        label="Check-in streak"
-        value={plural(summary.current_streak, "day")}
-        hint={`longest ${plural(summary.longest_streak, "day")}`}
-      />
-      <StatTile label="Adherence" value={formatAdherence(summary)} hint={adherenceHint} />
-    </dl>
+    <Card>
+      <dl aria-label={t("label")} data-testid="checkin-tiles" className="grid grid-cols-2 gap-4">
+        <Stat
+          label={t("streak")}
+          value={summary.current_streak}
+          unit={t("days", { count: summary.current_streak })}
+          hint={t("longest", { count: summary.longest_streak })}
+        />
+        <Stat
+          label={t("adherence")}
+          value={formatAdherence(locale, summary)}
+          hint={summary.adherence === null ? t("noProgram") : t("ofPlanned", { done: summary.planned_days_done, planned: summary.planned_days })}
+        />
+      </dl>
+    </Card>
   );
 }

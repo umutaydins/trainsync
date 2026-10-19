@@ -1,0 +1,41 @@
+{
+  "title": "Check-ins",
+  "subtitle": "{range} · answered in Telegram every evening",
+  "loading": "Loading check-ins",
+  "failed": "Could not load check-ins",
+  "summaryFailed": "Could not load streak and adherence",
+  "dayFailed": "Could not load the day",
+  "calendar": "Calendar",
+  "tableLabel": "Check-ins {from} to {to}",
+  "legend": "Legend",
+  "none": "No check-in",
+  "cellLabel": "{day}: {status}",
+  "statuses": {
+    "done": "Done",
+    "partial": "Partly",
+    "skipped": "Skipped",
+    "rest": "Rest day",
+    "sick_or_injured": "Sick or injured"
+  },
+  "tiles": {
+    "label": "Check-ins",
+    "streak": "Check-in streak",
+    "days": "{count, plural, one {day} other {days}}",
+    "longest": "longest {count, plural, one {# day} other {# days}}",
+    "adherence": "Adherence",
+    "ofPlanned": "{done} of {planned, plural, one {# planned day} other {# planned days}}",
+    "noProgram": "no active program"
+  },
+  "editor": {
+    "status": "Status",
+    "note": "Reason or note",
+    "sleep": "Sleep (h)",
+    "energy": "Energy (1–5)",
+    "scale": "Scale (kg)",
+    "saved": "Saved.",
+    "chooseStatus": "Choose a status.",
+    "numbers": "Sleep and scale must be numbers.",
+    "invalid": "Check the values.",
+    "failed": "Could not save the day."
+  }
+}

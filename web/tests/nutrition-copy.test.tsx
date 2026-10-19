@@ -52,7 +52,7 @@ function visibleStrings(container: HTMLElement): string[] {
 }
 
 function judgementWords(ui: ReactElement): string[] {
-  const { container, unmount } = render(<main>{ui}</main>);
+  const { container, unmount } = renderWithIntl(<main>{ui}</main>);
   const found = visibleStrings(container).flatMap((s) => s.match(new RegExp(PATTERN, "gi")) ?? []);
   unmount();
   return found;

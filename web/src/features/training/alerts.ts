@@ -79,9 +79,12 @@ export function notify(title: string, body: string): void {
   }
 }
 
-/** Everything at once, for the rest timer reaching zero. */
-export function restOver(label: string): void {
+/** A short tick for a logged set (feedback under the thumb), distinct from the rest-over pattern. */
+export const SET_DONE_VIBRATION_MS = 30;
+
+/** Everything at once, for the rest timer reaching zero; the texts come in the user's language. */
+export function restOver(title: string, body: string): void {
   vibrate();
   beep();
-  notify("Rest over", label ? `Next: ${label}` : "Time for the next set");
+  notify(title, body);
 }

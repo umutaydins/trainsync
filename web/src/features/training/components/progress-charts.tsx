@@ -1,12 +1,15 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import { formatDate, formatDay } from "@/lib/format";
 import type { BodyMetric, ExerciseProgress, MuscleWeek } from "@/features/training/types";
-import { formatKg, formatVolume, label } from "@/features/training/types";
+import { useTrainingFormat } from "@/features/training/use-training-format";
 
 export const PROGRESS_CHART_HEIGHT = 240;
+const WEIGHT_CHART_HEIGHT = 180;
+const E1RM_DIGITS = 1;
 
 const AXIS = { tickLine: false, axisLine: false, tick: { fill: "var(--muted)", fontSize: 11 } } as const;
 
@@ -25,10 +28,10 @@ export const MUSCLE_COLORS: Record<string, string> = {
   core: "var(--muscle-core)",
 };
 
-function Details({ summary, children }: { summary: string; children: React.ReactNode }) {
+function Details({ summary, children }: { summary: string; children: ReactNode }) {
   return (
     <details className="mt-3 text-sm">
-      <summary className="cursor-pointer text-xs font-medium text-muted hover:text-text">{summary}</summary>
+      <summary className="flex min-h-touch cursor-pointer items-center text-sm font-semibold text-muted hover:text-text">{summary}</summary>
       <div className="mt-2 overflow-x-auto">{children}</div>
     </details>
   );
@@ -36,36 +39,39 @@ function Details({ summary, children }: { summary: string; children: React.React
 
 /** e1RM and best-set weight per workout for one exercise, oldest first. */
 export function ExerciseProgressChart({ progress }: { progress: ExerciseProgress }) {
+  const t = useTranslations("training.lifts.chart");
+  const fmt = useTrainingFormat();
+  const name = progress.exercise.name;
   const data = progress.sessions.map((s) => ({
-    label: formatDate(s.started_at),
+    label: fmt.date(s.started_at),
     e1rm: s.e1rm_kg,
     best: s.best_set?.weight_kg ?? null,
   }));
   return (
     <div>
-      <div style={{ height: PROGRESS_CHART_HEIGHT }} role="figure" aria-label={`${progress.exercise.name}: e1RM and best set per workout`} data-testid="exercise-chart">
+      <div style={{ height: PROGRESS_CHART_HEIGHT }} role="figure" aria-label={t("exerciseLabel", { name })} data-testid="exercise-chart">
         <ResponsiveContainer width="100%" height={PROGRESS_CHART_HEIGHT} initialDimension={{ width: 600, height: PROGRESS_CHART_HEIGHT }}>
           <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
             <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
             <XAxis dataKey="label" {...AXIS} minTickGap={16} />
             <YAxis {...AXIS} width={44} />
-            <Tooltip formatter={(v) => (typeof v === "number" ? formatKg(v, 1) : String(v))} />
+            <Tooltip formatter={(v) => (typeof v === "number" ? fmt.kg(v, E1RM_DIGITS) : String(v))} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Line type="monotone" dataKey="e1rm" name="e1RM" stroke="var(--chart-1)" strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
-            <Line type="monotone" dataKey="best" name="Best set kg" stroke="var(--chart-2)" strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
+            <Line type="monotone" dataKey="e1rm" name={t("e1rm")} stroke="var(--chart-1)" strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
+            <Line type="monotone" dataKey="best" name={t("best")} stroke="var(--chart-2)" strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <Details summary="Show sessions">
+      <Details summary={t("showSessions")}>
         <table className="w-full text-left text-xs tabular-nums" data-testid="exercise-table">
-          <caption className="sr-only">{progress.exercise.name} per workout</caption>
+          <caption className="sr-only">{t("sessionsCaption", { name })}</caption>
           <thead className="text-muted">
             <tr>
-              <th scope="col" className="py-1.5 pr-3 font-medium">Workout</th>
-              <th scope="col" className="py-1.5 pr-3 text-right font-medium">Best set</th>
-              <th scope="col" className="py-1.5 pr-3 text-right font-medium">e1RM</th>
-              <th scope="col" className="py-1.5 pr-3 text-right font-medium">Volume</th>
-              <th scope="col" className="py-1.5 text-right font-medium">Sets</th>
+              <th scope="col" className="py-1.5 pr-3 font-medium">{t("workout")}</th>
+              <th scope="col" className="py-1.5 pr-3 text-right font-medium">{t("bestSet")}</th>
+              <th scope="col" className="py-1.5 pr-3 text-right font-medium">{t("e1rm")}</th>
+              <th scope="col" className="py-1.5 pr-3 text-right font-medium">{t("volume")}</th>
+              <th scope="col" className="py-1.5 text-right font-medium">{t("sets")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -78,10 +84,10 @@ export function ExerciseProgressChart({ progress }: { progress: ExerciseProgress
                 data-e1rm={s.e1rm_kg ?? ""}
                 data-volume={s.volume_kg}
               >
-                <th scope="row" className="py-1.5 pr-3 font-normal">{formatDate(s.started_at)}</th>
-                <td className="py-1.5 pr-3 text-right">{s.best_set ? `${s.best_set.reps} × ${formatKg(s.best_set.weight_kg)}` : "—"}</td>
-                <td className="py-1.5 pr-3 text-right">{s.e1rm_kg !== null ? formatKg(s.e1rm_kg, 1) : "—"}</td>
-                <td className="py-1.5 pr-3 text-right">{formatVolume(s.volume_kg)}</td>
+                <th scope="row" className="py-1.5 pr-3 font-normal">{fmt.date(s.started_at)}</th>
+                <td className="py-1.5 pr-3 text-right">{s.best_set ? t("bestValue", { reps: s.best_set.reps, weight: fmt.kg(s.best_set.weight_kg) }) : "—"}</td>
+                <td className="py-1.5 pr-3 text-right">{s.e1rm_kg !== null ? fmt.kg(s.e1rm_kg, E1RM_DIGITS) : "—"}</td>
+                <td className="py-1.5 pr-3 text-right">{fmt.volume(s.volume_kg)}</td>
                 <td className="py-1.5 text-right">{s.working_sets}</td>
               </tr>
             ))}
@@ -113,42 +119,45 @@ export function pivotWeeks(items: MuscleWeek[]): { rows: WeekRow[]; muscles: str
 
 /** Weekly kg per primary muscle, stacked. */
 export function WeeklyMuscleChart({ items }: { items: MuscleWeek[] }) {
+  const t = useTranslations("training.lifts.chart");
+  const muscleName = useTranslations("progress.strength.muscles");
+  const fmt = useTrainingFormat();
   const { rows, muscles } = pivotWeeks(items);
-  const data = rows.map((r) => ({ ...r, label: formatDay(r.week) }));
+  const data = rows.map((r) => ({ ...r, label: fmt.day(r.week) }));
   return (
     <div>
-      <div style={{ height: PROGRESS_CHART_HEIGHT }} role="figure" aria-label={`Weekly volume per muscle, ${rows.length} weeks`} data-testid="muscle-chart">
+      <div style={{ height: PROGRESS_CHART_HEIGHT }} role="figure" aria-label={t("muscleLabel", { count: rows.length })} data-testid="muscle-chart">
         <ResponsiveContainer width="100%" height={PROGRESS_CHART_HEIGHT} initialDimension={{ width: 600, height: PROGRESS_CHART_HEIGHT }}>
           <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -4 }}>
             <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
             <XAxis dataKey="label" {...AXIS} />
             <YAxis {...AXIS} width={52} />
-            <Tooltip formatter={(v) => (typeof v === "number" ? formatVolume(v) : String(v))} />
-            <Legend wrapperStyle={{ fontSize: 12 }} formatter={(v: string) => label(v)} />
+            <Tooltip formatter={(v) => (typeof v === "number" ? fmt.volume(v) : String(v))} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
             {muscles.map((m) => (
-              <Bar key={m} dataKey={m} name={m} stackId="kg" fill={MUSCLE_COLORS[m] ?? "var(--muted)"} isAnimationActive={false} />
+              <Bar key={m} dataKey={m} name={muscleName(m)} stackId="kg" fill={MUSCLE_COLORS[m] ?? "var(--muted)"} isAnimationActive={false} />
             ))}
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <Details summary="Show weekly data">
+      <Details summary={t("showWeeks")}>
         <table className="w-full text-left text-xs tabular-nums" data-testid="muscle-table">
-          <caption className="sr-only">Working sets and kg per week and muscle</caption>
+          <caption className="sr-only">{t("weeksCaption")}</caption>
           <thead className="text-muted">
             <tr>
-              <th scope="col" className="py-1.5 pr-3 font-medium">Week of</th>
-              <th scope="col" className="py-1.5 pr-3 font-medium">Muscle</th>
-              <th scope="col" className="py-1.5 pr-3 text-right font-medium">Sets</th>
-              <th scope="col" className="py-1.5 text-right font-medium">Volume</th>
+              <th scope="col" className="py-1.5 pr-3 font-medium">{t("weekOf")}</th>
+              <th scope="col" className="py-1.5 pr-3 font-medium">{t("muscle")}</th>
+              <th scope="col" className="py-1.5 pr-3 text-right font-medium">{t("sets")}</th>
+              <th scope="col" className="py-1.5 text-right font-medium">{t("volume")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {items.map((i) => (
               <tr key={`${i.week_start}-${i.muscle}`} data-week={i.week_start} data-muscle={i.muscle} data-sets={i.sets} data-volume={i.volume_kg}>
-                <th scope="row" className="py-1.5 pr-3 font-normal">{formatDay(i.week_start, true)}</th>
-                <td className="py-1.5 pr-3">{label(i.muscle)}</td>
+                <th scope="row" className="py-1.5 pr-3 font-normal">{fmt.day(i.week_start, true)}</th>
+                <td className="py-1.5 pr-3">{muscleName(i.muscle)}</td>
                 <td className="py-1.5 pr-3 text-right">{i.sets}</td>
-                <td className="py-1.5 text-right">{formatVolume(i.volume_kg)}</td>
+                <td className="py-1.5 text-right">{fmt.volume(i.volume_kg)}</td>
               </tr>
             ))}
           </tbody>
@@ -160,34 +169,36 @@ export function WeeklyMuscleChart({ items }: { items: MuscleWeek[] }) {
 
 /** Body weight over time. */
 export function BodyWeightChart({ items }: { items: BodyMetric[] }) {
-  const data = items.map((m) => ({ label: formatDay(m.date), kg: m.weight_kg }));
+  const t = useTranslations("training.lifts.chart");
+  const fmt = useTrainingFormat();
+  const data = items.map((m) => ({ label: fmt.day(m.date), kg: m.weight_kg }));
   return (
     <div>
-      <div style={{ height: 180 }} role="figure" aria-label={`Body weight, ${items.length} entries`} data-testid="weight-chart">
-        <ResponsiveContainer width="100%" height={180} initialDimension={{ width: 600, height: 180 }}>
+      <div style={{ height: WEIGHT_CHART_HEIGHT }} role="figure" aria-label={t("weightLabel", { count: items.length })} data-testid="weight-chart">
+        <ResponsiveContainer width="100%" height={WEIGHT_CHART_HEIGHT} initialDimension={{ width: 600, height: WEIGHT_CHART_HEIGHT }}>
           <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
             <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
             <XAxis dataKey="label" {...AXIS} minTickGap={16} />
             <YAxis {...AXIS} width={44} domain={["dataMin - 1", "dataMax + 1"]} />
-            <Tooltip formatter={(v) => (typeof v === "number" ? formatKg(v, 1) : String(v))} />
-            <Line type="monotone" dataKey="kg" name="kg" stroke="var(--chart-1)" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} />
+            <Tooltip formatter={(v) => (typeof v === "number" ? fmt.kg(v, E1RM_DIGITS) : String(v))} />
+            <Line type="monotone" dataKey="kg" name={t("weightColumn")} stroke="var(--chart-1)" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <Details summary="Show entries">
+      <Details summary={t("showEntries")}>
         <table className="w-full text-left text-xs tabular-nums" data-testid="weight-table">
-          <caption className="sr-only">Body weight entries</caption>
+          <caption className="sr-only">{t("entriesCaption")}</caption>
           <thead className="text-muted">
             <tr>
-              <th scope="col" className="py-1.5 pr-3 font-medium">Date</th>
-              <th scope="col" className="py-1.5 text-right font-medium">Weight</th>
+              <th scope="col" className="py-1.5 pr-3 font-medium">{t("date")}</th>
+              <th scope="col" className="py-1.5 text-right font-medium">{t("weightColumn")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {items.map((m) => (
               <tr key={m.date} data-date={m.date} data-weight={m.weight_kg}>
-                <th scope="row" className="py-1.5 pr-3 font-normal">{formatDay(m.date, true)}</th>
-                <td className="py-1.5 text-right">{formatKg(m.weight_kg, 2)}</td>
+                <th scope="row" className="py-1.5 pr-3 font-normal">{fmt.day(m.date, true)}</th>
+                <td className="py-1.5 text-right">{fmt.kg(m.weight_kg)}</td>
               </tr>
             ))}
           </tbody>

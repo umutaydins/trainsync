@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ActivityDetailCard } from "@/features/activities/components/activity-detail";
 import { ActivityFiltersForm } from "@/features/activities/components/activity-filters";
@@ -28,6 +28,10 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
   usePathname: () => "/",
 }));
+
+beforeEach(() => {
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("min-width"), addEventListener: () => undefined, removeEventListener: () => undefined }));
+});
 
 describe("accessibility (axe)", () => {
   it.each<[string, ReactElement]>([

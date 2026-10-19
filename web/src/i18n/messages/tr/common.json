@@ -14,7 +14,11 @@
     "copy": "Kopyala",
     "copied": "Kopyalandı",
     "signOut": "Çıkış yap",
-    "refresh": "Yenile"
+    "refresh": "Yenile",
+    "loadMore": "Daha fazla",
+    "endOfList": "Listenin sonu",
+    "apply": "Uygula",
+    "clear": "Temizle"
   },
   "states": {
     "loading": "Yükleniyor…",
@@ -44,7 +48,13 @@
     "km": "{value} km",
     "kg": "{value} kg",
     "kcal": "{value} kcal",
-    "minutes": "{value} dk"
+    "minutes": "{value} dk",
+    "g": "{value} g",
+    "m": "{value} m",
+    "kmh": "{value} km/sa",
+    "perKm": "{value} /km",
+    "per100m": "{value} /100 m",
+    "bpm": "{value} atım/dk"
   },
   "manifestDescription": "Antrenman, beslenme ve ilerleme, Strava ile senkron"
 }

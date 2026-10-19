@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { HistoryList } from "@/features/training/components/history-list";
@@ -7,6 +7,7 @@ import { BodyWeightChart, ExerciseProgressChart, WeeklyMuscleChart, pivotWeeks }
 import { WorkoutSets } from "@/features/training/components/workout-sets";
 import type { CurrentRecord, ExerciseProgress, MuscleWeek, WorkoutSummary } from "@/features/training/types";
 import { jsonResponse } from "./support/env";
+import { renderWithIntl as render } from "./support/intl";
 import { BENCH, CURL, workout } from "./support/training-fixtures";
 
 const PROGRESS: ExerciseProgress = {

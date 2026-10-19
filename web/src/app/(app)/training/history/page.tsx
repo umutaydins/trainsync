@@ -1,20 +1,27 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
-import { HistoryList } from "@/features/training/components/history-list";
-import { ErrorState, PageHeader } from "@/components/ui";
-import { load } from "@/lib/api";
+import { PageTitle } from "@/components/ui/page-header";
+import { LoadFailed } from "@/features/shell/components/load-failed";
 import { trainingApi } from "@/features/training/api";
+import { HistoryList } from "@/features/training/components/history-list";
 import { HISTORY_PAGE_SIZE } from "@/features/training/types";
+import { load } from "@/lib/api";
 
-export const metadata: Metadata = { title: "Workout history" };
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("training.history");
+  return { title: t("title") };
+}
+
 export default async function HistoryPage() {
+  const t = await getTranslations("training.history");
   const page = await load(() => trainingApi.workouts(HISTORY_PAGE_SIZE));
   return (
     <>
-      <PageHeader title="History" subtitle="Workouts, newest first" />
-      {page.ok ? <HistoryList initial={page.data} /> : <ErrorState title="Could not load workouts" message={page.error} />}
+      <PageTitle title={t("title")} subtitle={t("subtitle")} />
+      {page.ok ? <HistoryList initial={page.data} /> : <LoadFailed title={t("loadFailed")} status={page.status} />}
     </>
   );
 }
