@@ -71,10 +71,10 @@ demo-check: ## Demo compose: own project, DEMO_MODE, seeded reads and 403 writes
 
 .PHONY: backup-now restore-check restore-check-ci
 
-PROD_COMPOSE := docker compose --env-file .env.prod -f compose.prod.yml
-
+# mac-prod.sh resolves the image tag (env file, last deploy, running stack, git SHA), so these
+# work without TRAINSYNC_TAG in the shell.
 backup-now: ## Production: one encrypted backup now + retention (LABEL=predeploy to tag it)
-	$(PROD_COMPOSE) run --rm backup now $(LABEL)
+	./scripts/mac-prod.sh compose run --rm backup now $(LABEL)
 
 restore-check: ## Production: restore the newest backup into a scratch DB and compare row counts
 	./scripts/restore-check.sh

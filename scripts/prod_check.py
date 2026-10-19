@@ -9,6 +9,8 @@
 4. The stack starts (own project name and port), then a curl matrix built from routes.toml: every
    allowlisted route is forwarded, everything else is 404; body limit, auth rate limit and
    security headers hold.
+5. The gateway's logs (access and error) never show the webhook query string (Strava's
+   hub.verify_token) or an X-API-Key value.
 
     uv run python scripts/prod_check.py [--keep]
 """
@@ -67,9 +69,14 @@ def compose(
 
 
 def request(
-    path: str, method: str = "GET", body: bytes | None = None
+    path: str,
+    method: str = "GET",
+    body: bytes | None = None,
+    headers: dict[str, str] | None = None,
 ) -> tuple[int, dict[str, str]]:
-    req = urllib.request.Request(BASE + path, method=method, data=body)  # noqa: S310  (local URL)
+    req = urllib.request.Request(  # noqa: S310  (local URL)
+        BASE + path, method=method, data=body, headers=headers or {}
+    )
     try:
         with urllib.request.urlopen(req, timeout=10) as response:  # noqa: S310  (local URL)
             return response.status, dict(response.headers)
@@ -178,6 +185,32 @@ def check_routes() -> None:
     print("  headers, 64 KB webhook body limit and the /auth rate limit hold")
 
 
+def _dummy(key: str) -> str:
+    for line in DUMMY_ENV.read_text(encoding="utf-8").splitlines():
+        if line.startswith(f"{key}="):
+            return line.split("=", 1)[1]
+    fail(f"{key} missing from {DUMMY_ENV.name}")
+    return ""
+
+
+def check_logs() -> None:
+    token = _dummy("STRAVA_WEBHOOK_VERIFY_TOKEN")
+    api_key = "prodcheck-log-canary-key"
+    query = f"hub.mode=subscribe&hub.verify_token={token}&hub.challenge=prodcheck-challenge"
+    status, _ = request(f"/webhooks/strava?{query}")
+    if status != 200:
+        fail(f"the webhook handshake through the gateway must be 200, got {status}")
+    request("/v1/sync/status", headers={"X-API-Key": api_key})  # 401: only the log matters
+    time.sleep(1)
+    logs = compose("logs", "--no-color", "gateway").stdout
+    if '"uri":"/webhooks/strava"' not in logs:
+        fail("no access log line for /webhooks/strava: is the gateway logging?")
+    for secret in (token, "hub.verify_token", "prodcheck-challenge", api_key):
+        if secret in logs:
+            fail(f"the gateway log contains {secret!r}")
+    print("  gateway logs: no webhook query string, no API key")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--keep", action="store_true", help="leave the stack running")
@@ -193,6 +226,7 @@ def main() -> int:
         compose("up", "-d")
         wait_ready()
         check_routes()
+        check_logs()
     finally:
         if not args.keep:
             compose("--profile", "migrate", "down", "-v", "--remove-orphans", check=False)

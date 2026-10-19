@@ -1,4 +1,5 @@
-"""Backup retention (P7.4, ADR 0024): 7 daily / 4 weekly / 6 monthly, newest always kept."""
+"""Backup retention (P7.4, ADR 0024): 7 daily / 4 weekly / 6 monthly, newest always kept;
+pre-deploy backups outside the buckets, the newest 3 always kept."""
 
 from datetime import UTC, date, datetime, timedelta
 
@@ -116,7 +117,33 @@ def test_the_newest_backup_is_never_deleted() -> None:
     assert len(result.delete) == 2
 
 
-def test_labelled_backups_take_part_in_retention() -> None:
-    predeploy = backup_name(datetime(2026, 10, 18, 10, 0, tzinfo=UTC), "predeploy")
-    result = plan([name("2026-10-18"), predeploy], NOW)
-    assert result.keep == (predeploy,)
+def predeploy(day: str, sha: str = "1a2b3c4", at: str = "10:00:00") -> str:
+    return backup_name(datetime.fromisoformat(f"{day}T{at}+00:00"), f"predeploy{sha}")
+
+
+def test_a_predeploy_backup_does_not_take_a_nightly_bucket() -> None:
+    nightly_one, before_deploy = name("2026-10-18"), predeploy("2026-10-18")
+    result = plan([nightly_one, before_deploy], NOW)
+    assert set(result.keep) == {nightly_one, before_deploy}
+    assert result.delete == ()
+
+
+def test_the_newest_three_predeploy_backups_are_always_kept() -> None:
+    deploys = [predeploy(f"2026-{m:02d}-01", sha=f"{m:07d}") for m in range(1, 7)]
+    result = plan([*deploys, *nightly("2026-10-01", "2026-10-18")], NOW)
+    assert [n for n in result.keep if "predeploy" in n] == deploys[-3:]
+    assert set(deploys[:3]) <= set(result.delete)
+
+
+def test_old_predeploy_backups_survive_any_policy() -> None:
+    """Even with every bucket at zero and many newer nightly backups."""
+    deploys = [predeploy("2025-01-01", "aaaaaaa"), predeploy("2025-02-01", "bbbbbbb")]
+    result = plan([*deploys, *nightly("2026-10-01", "2026-10-18")], NOW, Policy(0, 0, 0))
+    assert set(deploys) <= set(result.keep)
+    assert name("2026-10-18") in result.keep  # the newest nightly one, as always
+
+
+def test_other_labels_still_take_part_in_retention() -> None:
+    manual = backup_name(datetime(2026, 10, 18, 10, 0, tzinfo=UTC), "manual")
+    result = plan([name("2026-10-18"), manual], NOW)
+    assert result.keep == (manual,)
