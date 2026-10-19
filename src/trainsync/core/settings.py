@@ -45,6 +45,7 @@ BotLang = Literal["en", "tr"]
 BotIntensity = Literal["normal", "savage"]
 # Where savage swears (ADR 0032): only in the roast lines, or in every savage message.
 BotProfanity = Literal["roast", "max"]
+RegistrationMode = Literal["invite", "open", "closed"]
 # The emergency number in the distress reply (ADR 0032); 112 works across the EU and Türkiye.
 DEFAULT_EMERGENCY_NUMBER = "112"
 
@@ -138,6 +139,38 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [part.strip() for part in value.split(",") if part.strip()]
         return value
+
+    # ---------------------------------------------------------------- accounts (P8.1, ADR 0034)
+    # invite: an unused owner invite is needed; open: anyone may register; closed: nobody.
+    registration_mode: RegistrationMode = "invite"
+    # The owner account the single-user data migrates to (required when data exists).
+    owner_email: str = ""
+    session_ttl_days: int = Field(default=30, ge=1, le=365)
+    session_max_age_days: int = Field(default=90, ge=1, le=730)
+    # A session's expiry slides forward on use, written at most this often.
+    session_touch_interval_s: int = Field(default=3600, ge=0, le=86400)
+    invite_ttl_days: int = Field(default=7, ge=1, le=90)
+    reset_ttl_minutes: int = Field(default=60, ge=5, le=1440)
+    # Failed logins for one email inside the window lock it for the window (right password too).
+    login_max_failures: int = Field(default=5, ge=1, le=100)
+    login_lockout_minutes: int = Field(default=15, ge=1, le=1440)
+    login_max_failures_per_ip: int = Field(default=20, ge=1, le=10000)
+    register_max_per_hour: int = Field(default=5, ge=1, le=1000)
+    # API keys that may act as any user with `X-Acting-User` (the bot's; ADR 0036). Every other
+    # key of API_KEYS acts as the owner.
+    service_api_keys: Annotated[list[SecretStr], NoDecode] = Field(default_factory=list)
+
+    @field_validator("service_api_keys", mode="before")
+    @classmethod
+    def _split_service_keys(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [part.strip() for part in value.split(",") if part.strip()]
+        return value
+
+    @field_validator("owner_email")
+    @classmethod
+    def _normal_owner_email(cls, value: str) -> str:
+        return value.strip().lower()
 
     # ---------------------------------------------------------------- bot + notifications (P5.5+)
     # All optional: the API and the worker start without them.

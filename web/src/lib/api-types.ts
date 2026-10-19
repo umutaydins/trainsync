@@ -118,6 +118,172 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List invites */
+        get: operations["list_invites_v1_admin_invites_get"];
+        put?: never;
+        /**
+         * Create an invite
+         * @description The code is shown once; the link opens the dashboard's register page.
+         */
+        post: operations["create_invite_v1_admin_invites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/invites/{invite_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke an unused invite */
+        delete: operations["revoke_invite_v1_admin_invites__invite_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List accounts */
+        get: operations["list_users_v1_admin_users_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{user_id}/reset-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate a one-time password reset link */
+        post: operations["create_reset_link_v1_admin_users__user_id__reset_link_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in
+         * @description Returns a session token for `Authorization: Bearer`. After `LOGIN_MAX_FAILURES` failures for one email the email is locked for `LOGIN_LOCKOUT_MINUTES`, right password or not.
+         */
+        post: operations["login_v1_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign out (revoke this session) */
+        post: operations["logout_v1_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create an account */
+        post: operations["register_v1_auth_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/registration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How accounts are created
+         * @description `invite` (an invite code is needed), `open` or `closed`. No auth.
+         */
+        get: operations["registration_v1_auth_registration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a new password with a reset link's token
+         * @description The token comes from a link the owner generated. Every session of the user ends.
+         */
+        post: operations["reset_v1_auth_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/chats/{chat_id}/settings": {
         parameters: {
             query?: never;
@@ -198,6 +364,78 @@ export interface paths {
         put: operations["put_checkin_v1_checkins__day__put"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who am I */
+        get: operations["me_v1_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the display name or time zone */
+        patch: operations["patch_me_v1_me_patch"];
+        trace?: never;
+    };
+    "/v1/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change the password
+         * @description Needs the current password. Every other session of the account ends.
+         */
+        post: operations["change_password_v1_me_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My signed-in sessions */
+        get: operations["sessions_v1_me_sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Sign out one session */
+        delete: operations["revoke_session_v1_me_sessions__session_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1064,6 +1302,42 @@ export interface components {
              * @description Pass as `cursor` for the next page; null at the end
              */
             next_cursor: string | null;
+        };
+        /**
+         * AdminUserList
+         * @example {
+         *       "items": [
+         *         {
+         *           "created_at": "2026-10-19T08:00:00Z",
+         *           "display_name": "Runner",
+         *           "email": "runner@example.com",
+         *           "id": 2,
+         *           "role": "user"
+         *         }
+         *       ]
+         *     }
+         */
+        AdminUserList: {
+            /** Items */
+            items: components["schemas"]["AdminUserOut"][];
+        };
+        /**
+         * AdminUserOut
+         * @description Account facts only: the owner never sees a user's training data.
+         */
+        AdminUserOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Display Name */
+            display_name: string;
+            /** Email */
+            email: string;
+            /** Id */
+            id: number;
+            role: components["schemas"]["UserRole"];
         };
         /** AthleteSync */
         AthleteSync: {
@@ -2055,6 +2329,104 @@ export interface components {
             detail?: components["schemas"]["ValidationError"][];
         };
         /**
+         * InviteCreated
+         * @example {
+         *       "code": "Xr2…",
+         *       "created_at": "2026-10-19T08:00:00Z",
+         *       "expires_at": "2026-10-26T08:00:00Z",
+         *       "id": 3,
+         *       "note": "for my training partner",
+         *       "status": "open",
+         *       "url": "https://dashboard.example/register?invite=Xr2…"
+         *     }
+         */
+        InviteCreated: {
+            /**
+             * Code
+             * @description Shown only once
+             */
+            code: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Id */
+            id: number;
+            /** Note */
+            note: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "used" | "revoked" | "expired";
+            /** Url */
+            url: string;
+            /** Used At */
+            used_at: string | null;
+        };
+        /**
+         * InviteIn
+         * @example {
+         *       "note": "for my training partner"
+         *     }
+         */
+        InviteIn: {
+            /** Note */
+            note?: string | null;
+        };
+        /**
+         * InviteList
+         * @example {
+         *       "items": [
+         *         {
+         *           "created_at": "2026-10-19T08:00:00Z",
+         *           "expires_at": "2026-10-26T08:00:00Z",
+         *           "id": 3,
+         *           "note": "for my training partner",
+         *           "status": "open"
+         *         }
+         *       ]
+         *     }
+         */
+        InviteList: {
+            /** Items */
+            items: components["schemas"]["InviteOut"][];
+        };
+        /** InviteOut */
+        InviteOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Id */
+            id: number;
+            /** Note */
+            note: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "used" | "revoked" | "expired";
+            /** Used At */
+            used_at: string | null;
+        };
+        /**
          * KcalSource
          * @enum {string}
          */
@@ -2177,6 +2549,59 @@ export interface components {
             sugars_g?: number | null;
         };
         /**
+         * LoginIn
+         * @example {
+         *       "email": "runner@example.com",
+         *       "password": "correct horse battery"
+         *     }
+         */
+        LoginIn: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
+        /**
+         * MeOut
+         * @example {
+         *       "created_at": "2026-10-19T08:00:00Z",
+         *       "display_name": "Runner",
+         *       "email": "runner@example.com",
+         *       "id": 2,
+         *       "role": "user",
+         *       "timezone": "Europe/Berlin"
+         *     }
+         */
+        MeOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Display Name */
+            display_name: string;
+            /** Email */
+            email: string;
+            /** Id */
+            id: number;
+            role: components["schemas"]["UserRole"];
+            /** Timezone */
+            timezone: string;
+        };
+        /**
+         * MePatch
+         * @example {
+         *       "display_name": "Runner",
+         *       "timezone": "Europe/Berlin"
+         *     }
+         */
+        MePatch: {
+            /** Display Name */
+            display_name?: string | null;
+            /** Timezone */
+            timezone?: string | null;
+        };
+        /**
          * Meal
          * @enum {string}
          */
@@ -2296,6 +2721,19 @@ export interface components {
              * @description 0 = Monday; null = default spread (ADR 0030)
              */
             weekday?: number | null;
+        };
+        /**
+         * PasswordChangeIn
+         * @example {
+         *       "current_password": "correct horse battery",
+         *       "new_password": "a brand new password"
+         *     }
+         */
+        PasswordChangeIn: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
         };
         /** PerformedSet */
         PerformedSet: {
@@ -3124,6 +3562,79 @@ export interface components {
             value: number;
         };
         /**
+         * RegisterIn
+         * @example {
+         *       "display_name": "Runner",
+         *       "email": "runner@example.com",
+         *       "invite_code": "Xr2…",
+         *       "password": "correct horse battery",
+         *       "timezone": "Europe/Berlin"
+         *     }
+         */
+        RegisterIn: {
+            /** Display Name */
+            display_name?: string | null;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /**
+             * Invite Code
+             * @description Required unless REGISTRATION_MODE=open
+             */
+            invite_code?: string | null;
+            /** Password */
+            password: string;
+            /**
+             * Timezone
+             * @description IANA zone; default CHECKIN_TZ
+             */
+            timezone?: string | null;
+        };
+        /**
+         * RegistrationOut
+         * @example {
+         *       "mode": "invite"
+         *     }
+         */
+        RegistrationOut: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "invite" | "open" | "closed";
+        };
+        /**
+         * ResetIn
+         * @example {
+         *       "password": "a brand new password",
+         *       "token": "Zt4…"
+         *     }
+         */
+        ResetIn: {
+            /** Password */
+            password: string;
+            /** Token */
+            token: string;
+        };
+        /**
+         * ResetLinkOut
+         * @example {
+         *       "expires_at": "2026-10-19T09:00:00Z",
+         *       "url": "https://dashboard.example/reset-password?token=Zt4…"
+         *     }
+         */
+        ResetLinkOut: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Url */
+            url: string;
+        };
+        /**
          * Role
          * @enum {string}
          */
@@ -3153,6 +3664,52 @@ export interface components {
             /** Upserted */
             upserted: number;
         };
+        /**
+         * SessionList
+         * @example {
+         *       "items": [
+         *         {
+         *           "created_at": "2026-10-19T08:00:00Z",
+         *           "current": true,
+         *           "expires_at": "2026-11-18T09:30:00Z",
+         *           "id": 12,
+         *           "last_seen_at": "2026-10-19T09:30:00Z",
+         *           "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X)"
+         *         }
+         *       ]
+         *     }
+         */
+        SessionList: {
+            /** Items */
+            items: components["schemas"]["SessionOut"][];
+        };
+        /** SessionOut */
+        SessionOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Current
+             * @description The session this request was made with
+             */
+            current: boolean;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Id */
+            id: number;
+            /**
+             * Last Seen At
+             * Format: date-time
+             */
+            last_seen_at: string;
+            /** User Agent */
+            user_agent: string | null;
+        };
         /** SessionProgress */
         SessionProgress: {
             /** @description Working set with the highest e1RM (then weight); null without working sets */
@@ -3173,6 +3730,34 @@ export interface components {
             working_sets: number;
             /** Workout Id */
             workout_id: number;
+        };
+        /**
+         * SessionTokenOut
+         * @example {
+         *       "expires_at": "2026-11-18T08:00:00Z",
+         *       "token": "q9c…",
+         *       "user": {
+         *         "created_at": "2026-10-19T08:00:00Z",
+         *         "display_name": "Runner",
+         *         "email": "runner@example.com",
+         *         "id": 2,
+         *         "role": "user",
+         *         "timezone": "Europe/Berlin"
+         *       }
+         *     }
+         */
+        SessionTokenOut: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Token
+             * @description Send as `Authorization: Bearer <token>`; shown only once
+             */
+            token: string;
+            user: components["schemas"]["MeOut"];
         };
         /**
          * SetIn
@@ -3441,6 +4026,11 @@ export interface components {
             /** Moving Time S */
             moving_time_s: number;
         };
+        /**
+         * UserRole
+         * @enum {string}
+         */
+        UserRole: "owner" | "user";
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -4044,7 +4634,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4052,7 +4642,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4093,7 +4683,7 @@ export interface operations {
                     "application/json": components["schemas"]["ActivityDetail"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4101,7 +4691,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4116,6 +4706,583 @@ export interface operations {
                     /**
                      * @example {
                      *       "detail": "activity not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_invites_v1_admin_invites_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteList"];
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Owner only */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "owner only"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_invite_v1_admin_invites_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteCreated"];
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Owner only */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "owner only"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_invite_v1_admin_invites__invite_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Owner only */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "owner only"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description No open invite with this id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "invite not found"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_users_v1_admin_users_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserList"];
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Owner only */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "owner only"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_reset_link_v1_admin_users__user_id__reset_link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResetLinkOut"];
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Owner only */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "owner only"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description No such account */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "no such user"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_v1_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "user-agent"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionTokenOut"];
+                };
+            };
+            /** @description Wrong email or password */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "invalid email or password"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too many attempts; see `Retry-After` */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "too many failed sign-ins; try again later"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    logout_v1_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_v1_auth_register_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeOut"];
+                };
+            };
+            /** @description Invite missing, used or expired */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "an invite code is required"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description REGISTRATION_MODE=closed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "registration is closed"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Email already registered */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "an account with this email already exists"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too many attempts; see `Retry-After` */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "too many failed sign-ins; try again later"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    registration_v1_auth_registration_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationOut"];
+                };
+            };
+        };
+    };
+    reset_v1_auth_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unknown, used or expired token */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "the reset link is invalid, used or expired"
                      *     }
                      */
                     "application/json": unknown;
@@ -4153,7 +5320,7 @@ export interface operations {
                     "application/json": components["schemas"]["ChatSettingsOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4161,7 +5328,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4203,7 +5370,7 @@ export interface operations {
                     "application/json": components["schemas"]["ChatSettingsOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4211,7 +5378,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4263,7 +5430,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4271,7 +5438,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4323,7 +5490,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4331,7 +5498,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4368,7 +5535,7 @@ export interface operations {
                     "application/json": components["schemas"]["CheckinOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4376,7 +5543,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4454,7 +5621,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4462,7 +5629,261 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    me_v1_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeOut"];
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_me_v1_me_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeOut"];
+                };
+            };
+            /** @description Unknown time zone */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "unknown time zone 'Mars/Base'"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_password_v1_me_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordChangeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Current password wrong */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "the current password is wrong"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description New password too short or long */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "password must be at least 10 characters"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    sessions_v1_me_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionList"];
+                };
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_session_v1_me_sessions__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "sign in or send a valid API key"
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+            /** @description No such session of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "detail": "session not found"
                      *     }
                      */
                     "application/json": unknown;
@@ -4502,7 +5923,7 @@ export interface operations {
                     "application/json": components["schemas"]["FoodList"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4510,7 +5931,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4549,7 +5970,7 @@ export interface operations {
                     "application/json": components["schemas"]["FoodOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4557,7 +5978,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4624,7 +6045,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4632,7 +6053,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4687,7 +6108,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4695,7 +6116,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4746,7 +6167,7 @@ export interface operations {
                     "application/json": components["schemas"]["FoodOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4754,7 +6175,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4805,7 +6226,7 @@ export interface operations {
                     "application/json": components["schemas"]["FoodOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4813,7 +6234,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4864,7 +6285,7 @@ export interface operations {
                     "application/json": components["schemas"]["DayLog"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4872,7 +6293,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4922,7 +6343,7 @@ export interface operations {
                     "application/json": components["schemas"]["LogOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4930,7 +6351,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -4979,7 +6400,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4987,7 +6408,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5036,7 +6457,7 @@ export interface operations {
                     "application/json": components["schemas"]["ProfileOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5044,7 +6465,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5088,7 +6509,7 @@ export interface operations {
                     "application/json": components["schemas"]["ProfileOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5096,7 +6517,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5133,7 +6554,7 @@ export interface operations {
                     "application/json": components["schemas"]["DaySummary"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5141,7 +6562,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5193,7 +6614,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5201,7 +6622,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5256,7 +6677,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5264,7 +6685,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5319,7 +6740,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5327,7 +6748,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5365,7 +6786,7 @@ export interface operations {
                     "application/json": components["schemas"]["SyncStatusOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5373,7 +6794,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5425,7 +6846,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5433,7 +6854,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5474,7 +6895,7 @@ export interface operations {
                     "application/json": components["schemas"]["BodyMetricOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5482,7 +6903,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5521,7 +6942,7 @@ export interface operations {
                     "application/json": components["schemas"]["ExerciseList"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5529,7 +6950,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5568,7 +6989,7 @@ export interface operations {
                     "application/json": components["schemas"]["ExerciseOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5576,7 +6997,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5631,7 +7052,7 @@ export interface operations {
                     "application/json": components["schemas"]["ExerciseOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5639,7 +7060,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5721,7 +7142,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5729,7 +7150,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5781,7 +7202,7 @@ export interface operations {
                     "application/json": components["schemas"]["PlatesOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5789,7 +7210,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5824,7 +7245,7 @@ export interface operations {
                     "application/json": components["schemas"]["ProgramList"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5832,7 +7253,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5876,7 +7297,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5884,7 +7305,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5919,7 +7340,7 @@ export interface operations {
                     "application/json": components["schemas"]["ProgramOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5927,7 +7348,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -5967,7 +7388,7 @@ export interface operations {
                     "application/json": components["schemas"]["NextDay"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5975,7 +7396,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6033,7 +7454,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6041,7 +7462,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6078,7 +7499,7 @@ export interface operations {
                     "application/json": components["schemas"]["ProgramOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6086,7 +7507,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6155,7 +7576,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6163,7 +7584,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6212,7 +7633,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6220,7 +7641,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6271,7 +7692,7 @@ export interface operations {
                     "application/json": components["schemas"]["ProgramOut"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6279,7 +7700,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6331,7 +7752,7 @@ export interface operations {
                     "application/json": components["schemas"]["RecordList"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6339,7 +7760,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6391,7 +7812,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6399,7 +7820,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6452,7 +7873,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6460,7 +7881,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6524,7 +7945,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6532,7 +7953,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6569,7 +7990,7 @@ export interface operations {
                     "application/json": components["schemas"]["WorkoutDetail"];
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6577,7 +7998,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6626,7 +8047,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6634,7 +8055,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6703,7 +8124,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6711,7 +8132,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6790,7 +8211,7 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6798,7 +8219,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;
@@ -6862,7 +8283,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or invalid `X-API-Key` */
+            /** @description Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key` */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6870,7 +8291,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "detail": "missing or invalid API key"
+                     *       "detail": "sign in or send a valid API key"
                      *     }
                      */
                     "application/json": unknown;

@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
+from pydantic import SecretStr
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -49,23 +50,28 @@ def get_job_queue(request: Request) -> JobQueue:
     return queue
 
 
-_api_key_header = APIKeyHeader(
+API_KEY_HEADER = APIKeyHeader(
     name="X-API-Key",
     auto_error=False,
-    description="One of the keys configured in `API_KEYS`.",
+    description="One of the keys configured in `API_KEYS` (machine and owner tooling).",
 )
 
 
-def require_api_key(
-    request: Request, api_key: Annotated[str | None, Security(_api_key_header)]
-) -> None:
-    """`401` unless `X-API-Key` matches a configured key (constant-time, every key compared)."""
-    settings: Settings = request.app.state.settings
-    supplied = (api_key or "").encode()
+def key_matches(supplied: str | None, keys: list[SecretStr]) -> bool:
+    """Constant-time: every configured key is compared, whatever matches first."""
+    raw = (supplied or "").encode()
     matched = False
-    for key in settings.api_keys:
-        matched |= hmac.compare_digest(supplied, key.get_secret_value().encode())
-    if not api_key or not matched:
+    for key in keys:
+        matched |= hmac.compare_digest(raw, key.get_secret_value().encode())
+    return bool(supplied) and matched
+
+
+def require_api_key(
+    request: Request, api_key: Annotated[str | None, Security(API_KEY_HEADER)]
+) -> None:
+    """`401` unless `X-API-Key` matches a configured key."""
+    settings: Settings = request.app.state.settings
+    if not key_matches(api_key, settings.api_keys):
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             "missing or invalid API key",

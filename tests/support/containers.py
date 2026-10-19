@@ -25,6 +25,8 @@ from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
 
 from tests.conftest import make_settings
+from tests.support.accounts import OWNER_EMAIL
+from trainsync.core.security import UNUSABLE_HASH
 from trainsync.core.settings import Settings
 from trainsync.modules.models import Base
 
@@ -67,6 +69,14 @@ async def _reset_state(pg_url: str, redis_url: str) -> None:
         async with engine.begin() as conn:
             await conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
             await conn.execute(text("DELETE FROM exercises WHERE is_custom"))
+            # The owner every API-key request acts as (ADR 0034); id 1 after the restart.
+            await conn.execute(
+                text(
+                    "INSERT INTO users (email, password_hash, display_name, role, timezone)"
+                    " VALUES (:email, :hash, 'Owner', 'owner', 'UTC')"
+                ),
+                {"email": OWNER_EMAIL, "hash": UNUSABLE_HASH},
+            )
     finally:
         await engine.dispose()
     redis = Redis.from_url(redis_url)

@@ -36,6 +36,11 @@ TABLES = {
     "food_logs",
     "nutrition_profile",
     "daily_checkins",
+    "users",
+    "user_settings",
+    "sessions",
+    "invites",
+    "password_resets",
 }
 
 

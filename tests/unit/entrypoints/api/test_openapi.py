@@ -20,6 +20,15 @@ TAGS = {
     "training",
     "nutrition",
     "chats",
+    "me",
+    "admin",
+}
+# Reachable without signing in.
+PUBLIC_V1 = {
+    "GET /v1/auth/registration",
+    "POST /v1/auth/register",
+    "POST /v1/auth/login",
+    "POST /v1/auth/reset",
 }
 
 
@@ -71,6 +80,21 @@ def test_every_endpoint_is_documented(spec: dict[str, Any]) -> None:
         "GET /auth/strava/callback",
         "GET /webhooks/strava",
         "POST /webhooks/strava",
+        "GET /v1/auth/registration",
+        "POST /v1/auth/register",
+        "POST /v1/auth/login",
+        "POST /v1/auth/logout",
+        "POST /v1/auth/reset",
+        "GET /v1/me",
+        "PATCH /v1/me",
+        "POST /v1/me/password",
+        "GET /v1/me/sessions",
+        "DELETE /v1/me/sessions/{session_id}",
+        "POST /v1/admin/invites",
+        "GET /v1/admin/invites",
+        "DELETE /v1/admin/invites/{invite_id}",
+        "GET /v1/admin/users",
+        "POST /v1/admin/users/{user_id}/reset-link",
         "GET /v1/activities",
         "GET /v1/activities/{strava_activity_id}",
         "GET /v1/stats/weekly",
@@ -123,11 +147,14 @@ def test_every_endpoint_is_documented(spec: dict[str, Any]) -> None:
     }
 
 
-def test_v1_routes_declare_api_key_and_401(spec: dict[str, Any]) -> None:
+def test_v1_routes_declare_their_auth_and_401(spec: dict[str, Any]) -> None:
+    """A session token or an API key (ADR 0034); the sign-in routes themselves are public."""
     for name, op in _operations(spec):
-        if " /v1/" in name:
-            assert op.get("security") == [{"APIKeyHeader": []}], name
-            assert "401" in op["responses"], name
+        if " /v1/" not in name or name in PUBLIC_V1:
+            continue
+        schemes = {scheme for requirement in op.get("security", []) for scheme in requirement}
+        assert {"HTTPBearer", "APIKeyHeader"} <= schemes or schemes == {"APIKeyHeader"}, name
+        assert "401" in op["responses"], name
 
 
 def _export_script() -> ModuleType:

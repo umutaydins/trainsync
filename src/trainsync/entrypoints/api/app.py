@@ -31,6 +31,8 @@ from trainsync.integrations.openfoodfacts.client import OpenFoodFactsClient
 from trainsync.integrations.strava.breaker_status import RedisBreakerPublisher, process_name
 from trainsync.integrations.strava.client import StravaClient
 from trainsync.modules.activities import router as activities
+from trainsync.modules.admin import router as admin
+from trainsync.modules.auth import router as accounts
 from trainsync.modules.chat import router as chats
 from trainsync.modules.checkin import router as checkins
 from trainsync.modules.nutrition import router as nutrition
@@ -39,6 +41,7 @@ from trainsync.modules.strava import router as auth
 from trainsync.modules.sync import router as sync_status
 from trainsync.modules.sync import webhook_router as webhooks
 from trainsync.modules.training import router as training
+from trainsync.modules.users import router as me
 
 log = get_logger(__name__)
 
@@ -86,6 +89,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(MetricsMiddleware)
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router)
+    app.include_router(accounts.router)
+    app.include_router(me.router)
+    app.include_router(admin.router)
     app.include_router(auth.router)
     app.include_router(webhooks.router)
     app.include_router(activities.router)

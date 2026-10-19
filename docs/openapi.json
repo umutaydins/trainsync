@@ -323,6 +323,69 @@
         "title": "ActivityPage",
         "type": "object"
       },
+      "AdminUserList": {
+        "examples": [
+          {
+            "items": [
+              {
+                "created_at": "2026-10-19T08:00:00Z",
+                "display_name": "Runner",
+                "email": "runner@example.com",
+                "id": 2,
+                "role": "user"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminUserOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "AdminUserList",
+        "type": "object"
+      },
+      "AdminUserOut": {
+        "description": "Account facts only: the owner never sees a user's training data.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "role",
+          "created_at"
+        ],
+        "title": "AdminUserOut",
+        "type": "object"
+      },
       "AthleteSync": {
         "properties": {
           "athlete_id": {
@@ -2379,6 +2442,228 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "InviteCreated": {
+        "examples": [
+          {
+            "code": "Xr2…",
+            "created_at": "2026-10-19T08:00:00Z",
+            "expires_at": "2026-10-26T08:00:00Z",
+            "id": 3,
+            "note": "for my training partner",
+            "status": "open",
+            "url": "https://dashboard.example/register?invite=Xr2…"
+          }
+        ],
+        "properties": {
+          "code": {
+            "description": "Shown only once",
+            "title": "Code",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "used",
+              "revoked",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Used At"
+          }
+        },
+        "required": [
+          "id",
+          "note",
+          "created_at",
+          "expires_at",
+          "used_at",
+          "revoked_at",
+          "status",
+          "code",
+          "url"
+        ],
+        "title": "InviteCreated",
+        "type": "object"
+      },
+      "InviteIn": {
+        "examples": [
+          {
+            "note": "for my training partner"
+          }
+        ],
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "InviteIn",
+        "type": "object"
+      },
+      "InviteList": {
+        "examples": [
+          {
+            "items": [
+              {
+                "created_at": "2026-10-19T08:00:00Z",
+                "expires_at": "2026-10-26T08:00:00Z",
+                "id": 3,
+                "note": "for my training partner",
+                "status": "open"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InviteOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "InviteList",
+        "type": "object"
+      },
+      "InviteOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "used",
+              "revoked",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Used At"
+          }
+        },
+        "required": [
+          "id",
+          "note",
+          "created_at",
+          "expires_at",
+          "used_at",
+          "revoked_at",
+          "status"
+        ],
+        "title": "InviteOut",
+        "type": "object"
+      },
       "KcalSource": {
         "enum": [
           "calories",
@@ -2623,6 +2908,123 @@
         "title": "LogOut",
         "type": "object"
       },
+      "LoginIn": {
+        "examples": [
+          {
+            "email": "runner@example.com",
+            "password": "correct horse battery"
+          }
+        ],
+        "properties": {
+          "email": {
+            "maxLength": 320,
+            "minLength": 1,
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginIn",
+        "type": "object"
+      },
+      "MeOut": {
+        "examples": [
+          {
+            "created_at": "2026-10-19T08:00:00Z",
+            "display_name": "Runner",
+            "email": "runner@example.com",
+            "id": 2,
+            "role": "user",
+            "timezone": "Europe/Berlin"
+          }
+        ],
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "role",
+          "timezone",
+          "created_at"
+        ],
+        "title": "MeOut",
+        "type": "object"
+      },
+      "MePatch": {
+        "examples": [
+          {
+            "display_name": "Runner",
+            "timezone": "Europe/Berlin"
+          }
+        ],
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "examples": [
+                  "Europe/Berlin"
+                ],
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          }
+        },
+        "title": "MePatch",
+        "type": "object"
+      },
       "Meal": {
         "enum": [
           "breakfast",
@@ -2836,6 +3238,34 @@
           "planned"
         ],
         "title": "NextDay",
+        "type": "object"
+      },
+      "PasswordChangeIn": {
+        "examples": [
+          {
+            "current_password": "correct horse battery",
+            "new_password": "a brand new password"
+          }
+        ],
+        "properties": {
+          "current_password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "PasswordChangeIn",
         "type": "object"
       },
       "PerformedSet": {
@@ -4389,6 +4819,155 @@
         "title": "RecordOut",
         "type": "object"
       },
+      "RegisterIn": {
+        "examples": [
+          {
+            "display_name": "Runner",
+            "email": "runner@example.com",
+            "invite_code": "Xr2…",
+            "password": "correct horse battery",
+            "timezone": "Europe/Berlin"
+          }
+        ],
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "invite_code": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Required unless REGISTRATION_MODE=open",
+            "title": "Invite Code"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "examples": [
+                  "Europe/Berlin"
+                ],
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "IANA zone; default CHECKIN_TZ",
+            "title": "Timezone"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "RegisterIn",
+        "type": "object"
+      },
+      "RegistrationOut": {
+        "examples": [
+          {
+            "mode": "invite"
+          }
+        ],
+        "properties": {
+          "mode": {
+            "enum": [
+              "invite",
+              "open",
+              "closed"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "RegistrationOut",
+        "type": "object"
+      },
+      "ResetIn": {
+        "examples": [
+          {
+            "password": "a brand new password",
+            "token": "Zt4…"
+          }
+        ],
+        "properties": {
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "password"
+        ],
+        "title": "ResetIn",
+        "type": "object"
+      },
+      "ResetLinkOut": {
+        "examples": [
+          {
+            "expires_at": "2026-10-19T09:00:00Z",
+            "url": "https://dashboard.example/reset-password?token=Zt4…"
+          }
+        ],
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expires_at"
+        ],
+        "title": "ResetLinkOut",
+        "type": "object"
+      },
       "Role": {
         "enum": [
           "compound",
@@ -4462,6 +5041,85 @@
         "title": "RunOut",
         "type": "object"
       },
+      "SessionList": {
+        "examples": [
+          {
+            "items": [
+              {
+                "created_at": "2026-10-19T08:00:00Z",
+                "current": true,
+                "expires_at": "2026-11-18T09:30:00Z",
+                "id": 12,
+                "last_seen_at": "2026-10-19T09:30:00Z",
+                "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X)"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SessionOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SessionList",
+        "type": "object"
+      },
+      "SessionOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current": {
+            "description": "The session this request was made with",
+            "title": "Current",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "user_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Agent"
+          }
+        },
+        "required": [
+          "id",
+          "user_agent",
+          "created_at",
+          "last_seen_at",
+          "expires_at",
+          "current"
+        ],
+        "title": "SessionOut",
+        "type": "object"
+      },
       "SessionProgress": {
         "properties": {
           "best_set": {
@@ -4514,6 +5172,44 @@
           "working_sets"
         ],
         "title": "SessionProgress",
+        "type": "object"
+      },
+      "SessionTokenOut": {
+        "examples": [
+          {
+            "expires_at": "2026-11-18T08:00:00Z",
+            "token": "q9c…",
+            "user": {
+              "created_at": "2026-10-19T08:00:00Z",
+              "display_name": "Runner",
+              "email": "runner@example.com",
+              "id": 2,
+              "role": "user",
+              "timezone": "Europe/Berlin"
+            }
+          }
+        ],
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "token": {
+            "description": "Send as `Authorization: Bearer <token>`; shown only once",
+            "title": "Token",
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/MeOut"
+          }
+        },
+        "required": [
+          "token",
+          "expires_at",
+          "user"
+        ],
+        "title": "SessionTokenOut",
         "type": "object"
       },
       "SetIn": {
@@ -5035,6 +5731,14 @@
         ],
         "title": "TotalsOut",
         "type": "object"
+      },
+      "UserRole": {
+        "enum": [
+          "owner",
+          "user"
+        ],
+        "title": "UserRole",
+        "type": "string"
       },
       "ValidationError": {
         "properties": {
@@ -5733,10 +6437,15 @@
     },
     "securitySchemes": {
       "APIKeyHeader": {
-        "description": "One of the keys configured in `API_KEYS`.",
+        "description": "One of the keys configured in `API_KEYS` (machine and owner tooling).",
         "in": "header",
         "name": "X-API-Key",
         "type": "apiKey"
+      },
+      "HTTPBearer": {
+        "description": "A session token from `POST /v1/auth/login`.",
+        "scheme": "bearer",
+        "type": "http"
       }
     }
   },
@@ -6118,11 +6827,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6200,11 +6909,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -6235,6 +6944,615 @@
         "summary": "Get one activity",
         "tags": [
           "activities"
+        ]
+      }
+    },
+    "/v1/admin/invites": {
+      "get": {
+        "operationId": "list_invites_v1_admin_invites_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "owner only"
+                }
+              }
+            },
+            "description": "Owner only"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List invites",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "description": "The code is shown once; the link opens the dashboard's register page.",
+        "operationId": "create_invite_v1_admin_invites_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "owner only"
+                }
+              }
+            },
+            "description": "Owner only"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Create an invite",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/invites/{invite_id}": {
+      "delete": {
+        "operationId": "revoke_invite_v1_admin_invites__invite_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "title": "Invite Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "owner only"
+                }
+              }
+            },
+            "description": "Owner only"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "invite not found"
+                }
+              }
+            },
+            "description": "No open invite with this id"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Revoke an unused invite",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/users": {
+      "get": {
+        "operationId": "list_users_v1_admin_users_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "owner only"
+                }
+              }
+            },
+            "description": "Owner only"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List accounts",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/users/{user_id}/reset-link": {
+      "post": {
+        "operationId": "create_reset_link_v1_admin_users__user_id__reset_link_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetLinkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "owner only"
+                }
+              }
+            },
+            "description": "Owner only"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "no such user"
+                }
+              }
+            },
+            "description": "No such account"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Generate a one-time password reset link",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "description": "Returns a session token for `Authorization: Bearer`. After `LOGIN_MAX_FAILURES` failures for one email the email is locked for `LOGIN_LOCKOUT_MINUTES`, right password or not.",
+        "operationId": "login_v1_auth_login_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "user-agent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User-Agent"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionTokenOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "invalid email or password"
+                }
+              }
+            },
+            "description": "Wrong email or password"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "too many failed sign-ins; try again later"
+                }
+              }
+            },
+            "description": "Too many attempts; see `Retry-After`"
+          }
+        },
+        "summary": "Sign in",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "logout_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Sign out (revoke this session)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "operationId": "register_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "an invite code is required"
+                }
+              }
+            },
+            "description": "Invite missing, used or expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "registration is closed"
+                }
+              }
+            },
+            "description": "REGISTRATION_MODE=closed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "an account with this email already exists"
+                }
+              }
+            },
+            "description": "Email already registered"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "too many failed sign-ins; try again later"
+                }
+              }
+            },
+            "description": "Too many attempts; see `Retry-After`"
+          }
+        },
+        "summary": "Create an account",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/registration": {
+      "get": {
+        "description": "`invite` (an invite code is needed), `open` or `closed`. No auth.",
+        "operationId": "registration_v1_auth_registration_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "How accounts are created",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/reset": {
+      "post": {
+        "description": "The token comes from a link the owner generated. Every session of the user ends.",
+        "operationId": "reset_v1_auth_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "the reset link is invalid, used or expired"
+                }
+              }
+            },
+            "description": "Unknown, used or expired token"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a new password with a reset link's token",
+        "tags": [
+          "auth"
         ]
       }
     },
@@ -6273,11 +7591,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6344,11 +7662,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6443,11 +7761,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6542,11 +7860,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6603,11 +7921,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -6703,11 +8021,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6728,6 +8046,287 @@
         "summary": "Save a day's check-in (idempotent)",
         "tags": [
           "training"
+        ]
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "operationId": "me_v1_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Who am I",
+        "tags": [
+          "me"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_me_v1_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "unknown time zone 'Mars/Base'"
+                }
+              }
+            },
+            "description": "Unknown time zone"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Change the display name or time zone",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/password": {
+      "post": {
+        "description": "Needs the current password. Every other session of the account ends.",
+        "operationId": "change_password_v1_me_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "the current password is wrong"
+                }
+              }
+            },
+            "description": "Current password wrong"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "password must be at least 10 characters"
+                }
+              }
+            },
+            "description": "New password too short or long"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Change the password",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/sessions": {
+      "get": {
+        "operationId": "sessions_v1_me_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "My signed-in sessions",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/sessions/{session_id}": {
+      "delete": {
+        "operationId": "revoke_session_v1_me_sessions__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "sign in or send a valid API key"
+                }
+              }
+            },
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": "session not found"
+                }
+              }
+            },
+            "description": "No such session of yours"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Sign out one session",
+        "tags": [
+          "me"
         ]
       }
     },
@@ -6796,11 +8395,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -6851,11 +8450,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "409": {
             "content": {
@@ -6973,11 +8572,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -7054,11 +8653,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -7125,11 +8724,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -7194,11 +8793,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -7273,11 +8872,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -7327,11 +8926,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -7417,11 +9016,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -7474,11 +9073,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -7529,11 +9128,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -7598,11 +9197,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -7697,11 +9296,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -7833,11 +9432,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -7969,11 +9568,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8036,11 +9635,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8135,11 +9734,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8207,11 +9806,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8311,11 +9910,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8366,11 +9965,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "409": {
             "content": {
@@ -8447,11 +10046,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -8578,11 +10177,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -8660,11 +10259,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8707,11 +10306,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           }
         },
         "security": [
@@ -8762,11 +10361,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8809,11 +10408,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -8856,11 +10455,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -8923,11 +10522,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -8977,11 +10576,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9046,11 +10645,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9135,11 +10734,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9206,11 +10805,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9283,11 +10882,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -9382,11 +10981,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -9471,11 +11070,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -9582,11 +11181,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "422": {
             "content": {
@@ -9636,11 +11235,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9705,11 +11304,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9813,11 +11412,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -9890,11 +11489,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
@@ -10002,11 +11601,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "detail": "missing or invalid API key"
+                  "detail": "sign in or send a valid API key"
                 }
               }
             },
-            "description": "Missing or invalid `X-API-Key`"
+            "description": "Not signed in: no valid session token (`Authorization: Bearer`) or `X-API-Key`"
           },
           "404": {
             "content": {
