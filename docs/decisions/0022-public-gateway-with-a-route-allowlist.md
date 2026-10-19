@@ -22,7 +22,7 @@ instead of starting it half-configured.
   per-client-IP rate limit (20/min, client IP from Funnel's `X-Forwarded-For`).
 - The allowlist lives in one file, `deploy/gateway/routes.toml`. The Caddyfile is rendered from
   it (a test fails when it is stale), and `make prod-check` (also a CI job) builds its curl
-  matrix from it. Later phases add routes there (e.g. the Phase 8 upload with a larger limit).
+  matrix from it. Later phases add routes there (e.g. the Phase 9 upload with a larger limit).
 
 ## Alternatives considered
 - Expose the API directly and hide paths in FastAPI — every new router is public by default,

@@ -445,4 +445,5 @@ workflow (manual dispatch) runs the same on a GitHub-hosted runner and uploads t
 - [x] Phase 5 — Web dashboard and Telegram bot
 - [x] Phase 6 — Strength training, programs and nutrition
 - [ ] Phase 7 — Deploy (Mac backend + Vercel web) — built and tested; waiting for the owner checks in [docs/operations.md](docs/operations.md#owner-checks) ([evidence](docs/phases/phase-7-deploy.md#evidence))
-- [ ] Phase 8 — Body composition, Apple Health and adaptive programs
+- [ ] Phase 8 — Multi-user (invite-only accounts, per-user data, Strava and Telegram) — in progress
+- [ ] Phase 9 — Body composition, Apple Health and adaptive programs

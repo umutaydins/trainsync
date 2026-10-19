@@ -4,7 +4,7 @@
 - Date: 2026-10-18
 
 ## Context
-Strava's OAuth callback and webhooks, the Vercel BFF and the Apple Health Shortcut (Phase 8) need
+Strava's OAuth callback and webhooks, the Vercel BFF and the Apple Health Shortcut (Phase 9) need
 a stable public HTTPS URL for the backend on the MacBook. There is no domain, the Mac sits behind
 a home router, and nothing should be exposed besides the gateway's allowlist (ADR 0022).
 

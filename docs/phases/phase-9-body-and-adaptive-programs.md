@@ -1,4 +1,4 @@
-# Phase 8 — Body composition, Apple Health and adaptive programs
+# Phase 9 — Body composition, Apple Health and adaptive programs
 
 Goal: body measurements flow in automatically (Xiaomi S400 → Xiaomi Home → Apple Health →
 iOS Shortcut → trainsync), and programs and nutrition targets adapt to measured progress through

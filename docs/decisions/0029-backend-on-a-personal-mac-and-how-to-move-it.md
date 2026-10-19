@@ -6,7 +6,7 @@
 ## Context
 Phase 7 runs trainsync for real. The owner has an always-on MacBook (M1, 16 GB) and no budget
 or domain for a server. The backend needs a stable public HTTPS URL for Strava (OAuth callback,
-webhooks), for the Vercel-hosted web app and for the Apple Health Shortcut (Phase 8). It must stay
+webhooks), for the Vercel-hosted web app and for the Apple Health Shortcut (Phase 9). It must stay
 movable to Oracle Cloud Always Free or a small VPS later without code changes.
 
 ## Decision

@@ -4,7 +4,7 @@ Goal: run trainsync for real — backend on the always-on MacBook behind Tailsca
 Vercel (`*.vercel.app`), real Strava connected — plus a separate public demo with fake data, all
 portable to a VPS/Oracle later without code changes.
 
-Runs right after Phase 6 (before body composition, now Phase 8) so the Apple Health Shortcut
+Runs right after Phase 6 (before body composition, now Phase 9) so the Apple Health Shortcut
 and real Strava webhooks have a public URL from day one.
 
 ## How this phase is run
